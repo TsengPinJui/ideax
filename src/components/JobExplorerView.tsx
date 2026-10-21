@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
-import { CityMultiSelect } from './jobExplorer/CityMultiSelect';
+import { CityMultiSelect, CategoryMultiSelect } from './jobExplorer/CityMultiSelect';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
@@ -353,6 +353,8 @@ interface ChatMessage {
   roleSwitched?: boolean;
   /** 觸發這則回覆的使用者原話（清除對話後可以直接帶回輸入框） */
   sourceText?: string;
+  /** 搜尋完成：開頭顯示「以下為您精選 N 個職缺」，N 跟下方實際列出的筆數一致（篩選改了也會跟著變） */
+  showPicked?: boolean;
 }
 
 type SearchActionKey = 'wait' | 'bulb' | 'retry' | 'dismiss';
@@ -366,6 +368,23 @@ const SEARCH_ACTION_LABEL: Record<SearchActionKey, string> = {
 const DIFY_ASK_MS = 50000;
 const DIFY_PAUSE_MS = 80000;
 const MAX_JOBS = 100;
+
+/** 職務標籤的值拆成多個職務（「服務生、行政」→ ['服務生','行政']） */
+export function splitRoles(v: string): string[] {
+  return Array.from(new Set(String(v || '').split(/[、,，/／;；]|\s+或\s*|\s*和\s*/).map((s) => s.trim()).filter(Boolean)));
+}
+
+/** 最近一則有條件標籤的回覆裡，目前的職務（可能好幾個） */
+function currentRolesFrom(msgs: Array<{ role: string; conditionTags?: ConditionTag[] }>): string[] {
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const tags = msgs[i].role === 'bot' ? msgs[i].conditionTags : undefined;
+    if (tags && tags.length) {
+      const r = tags.find((t) => t.type === 'role');
+      return r ? splitRoles(r.value) : [];
+    }
+  }
+  return [];
+}
 
 export function parseConditionTags(brief: string, intakeData?: any): ConditionTag[] {
   if (Array.isArray(intakeData?.conditionTags) && intakeData.conditionTags.length > 0) {
@@ -401,7 +420,7 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   if (Array.isArray(intakeData?.roles) && intakeData.roles.length > 0) {
     extractedRoles = intakeData.roles;
   } else {
-    const roleMatch = text.match(/職務[：:]\s*([^、,，\n]+)/);
+    const roleMatch = text.match(/職務(?:（複選）)?[：:]\s*([^\n]+)/);
     if (roleMatch && roleMatch[1]) {
       extractedRoles = roleMatch[1].split(/[、,，]+/).map((s) => s.trim()).filter(Boolean);
     }
@@ -586,7 +605,9 @@ export const JobExplorerView: React.FC = () => {
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const selectedCity = selectedCities.length ? selectedCities.join('、') : '全部';
   const [userBaseCity, setUserBaseCity] = useState('台北市');
-  const [selectedCategory, setSelectedCategory] = useState('全部');
+  // 職務類別：可複選（空陣列＝不限）；送到後端與文字摘要時合併成「A、B」
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const selectedCategory = selectedCategories.length ? selectedCategories.join('、') : '全部';
   const [minSalaryFilter, setMinSalaryFilter] = useState<number>(0);
   // 篩選：正職／兼職、台灣／國外（含國家，預設不限、先不預設台灣）
   const [jobTypeFilter, setJobTypeFilter] = useState<'全部' | '正職' | '兼職' | '實習'>('全部');
@@ -737,7 +758,8 @@ export const JobExplorerView: React.FC = () => {
         if (typeof saved.keyword === 'string') setKeyword(saved.keyword);
         if (Array.isArray(saved.selectedCities)) setSelectedCities(saved.selectedCities.filter((c: unknown) => typeof c === 'string'));
         else if (saved.selectedCity && saved.selectedCity !== '全部') setSelectedCities(String(saved.selectedCity).split('、').filter(Boolean));
-        if (saved.selectedCategory) setSelectedCategory(saved.selectedCategory);
+        if (Array.isArray(saved.selectedCategories)) setSelectedCategories(saved.selectedCategories.filter((c: unknown) => typeof c === 'string'));
+        else if (saved.selectedCategory && saved.selectedCategory !== '全部') setSelectedCategories(String(saved.selectedCategory).split('、').filter(Boolean));
         if (saved.sortBy) setSortBy(saved.sortBy);
         if (saved.sortOrder) setSortOrder(saved.sortOrder);
         if (Array.isArray(saved.userCarePoints)) setUserCarePoints(saved.userCarePoints);
@@ -902,7 +924,7 @@ export const JobExplorerView: React.FC = () => {
           messages: messages.slice(-40),
           jobs: jobs.slice(0, 100),
           hasSearched,
-          keyword, selectedCity, selectedCities, selectedCategory, sortBy, sortOrder, userCarePoints,
+          keyword, selectedCity, selectedCities, selectedCategory, selectedCategories, sortBy, sortOrder, userCarePoints,
           searchingMsgId: isSearching && sess ? sess.botMsgId : null,
           searchingBrief: isSearching && sess ? sess.brief : null,
           scrollY: window.scrollY,
@@ -1297,7 +1319,9 @@ export const JobExplorerView: React.FC = () => {
   };
 
   const updateBotMsg = (sess: SearchSession, patch: Partial<ChatMessage>) => {
-    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...patch } : m)));
+    // 之後又改了文字（重新搜尋等）就不再顯示「以下為您精選」
+    const p2 = patch.text !== undefined && patch.showPicked === undefined ? { ...patch, showPicked: false } : patch;
+    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...p2 } : m)));
   };
 
   const stopSearchSession = (sess: SearchSession | null) => {
@@ -1329,7 +1353,7 @@ export const JobExplorerView: React.FC = () => {
     const n = sess.jobs.length;
     setSearchProgressText(n ? `${foundSummary(sess)}，共 ${n} 筆` : '');
     if (note !== undefined) updateBotMsg(sess, { text: note });
-    else if (n) updateBotMsg(sess, { text: `找好了！${foundSummary(sess)}${userBrowsingRef.current ? '。' : '，已依推薦程度排序。'}`, searchActions: undefined });
+    else if (n) updateBotMsg(sess, { text: userBrowsingRef.current ? '' : '已依推薦程度排序。', showPicked: true, searchActions: undefined });
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   };
 
@@ -1584,6 +1608,8 @@ export const JobExplorerView: React.FC = () => {
         body: JSON.stringify({
           message: queryText,
           previousBrief: pendingConfirmedBrief,
+          // 目前條件裡的職務（使用者說「也想看…」時，後端會和新職務合併成複選）
+          previousRoles: currentRolesFrom(messages),
           conversationHistory: userHistory,
           skippedDimensions: effectiveSkipped,
           filters: {
@@ -1700,7 +1726,7 @@ export const JobExplorerView: React.FC = () => {
     if (keyword.trim()) count++;
     if (companyFilter.trim()) count++;
     if (selectedCities.length) count++;
-    if (selectedCategory !== '全部') count++;
+    if (selectedCategories.length) count++;
     if (minSalaryFilter > 0 || abroadSalaryFilter) count++;
     if (jobTypeFilter !== '全部') count++;
     if (regionFilter !== '全部') count++;
@@ -1712,6 +1738,11 @@ export const JobExplorerView: React.FC = () => {
   }, [keyword, companyFilter, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter, isSiteFiltered, abroadSalaryFilter]);
 
   // 合併目前列表（或僅顯示收藏職缺）並進行篩選與排序
+  // 篩選面板把職缺篩掉時：記下找到幾筆、留下幾筆，讓使用者可以一鍵顯示全部
+  const [showUnfiltered, setShowUnfiltered] = useState(false);
+  useEffect(() => { if (!jobs.length) setShowUnfiltered(false); }, [jobs.length]);
+  const filterStatsRef = useRef({ total: 0, kept: 0 });
+
   const filteredAndSortedJobs = useMemo(() => {
     const sourceList = showSavedOnly ? Object.values(savedJobsMap) : jobs;
     const baseCoord = CITY_COORDS[userBaseCity];
@@ -1746,24 +1777,47 @@ export const JobExplorerView: React.FC = () => {
       };
     });
 
+    // 職務關鍵字拆成多個詞（「服務生（外場）、行政」→ 服務生、外場、行政），符合任何一個就算
+    const kwTokens = Array.from(new Set(
+      keyword.trim().toLowerCase()
+        .split(/[、,，/／;；()（）\[\]「」\s]+|或|和/)
+        .map((t) => t.replace(/^(職務|工作型態|地區)[：:]/, '').trim())
+        .filter((t) => t.length >= 2 && !/^(兼職|正職|工讀|打工|實習|全職)$/.test(t)),
+    ));
+    // 薪資換算成「月」比較：時薪 ×176、日薪 ×22、年薪 ÷12（兼職的時薪職缺不會被月薪條件誤刪）
+    const toMonthly = (amount: number, text: string) => {
+      const t = text || '';
+      if (/時薪|\/\s*h(ou)?r|per hour|hourly/i.test(t) || (amount > 0 && amount < 1000)) return amount * 176;
+      if (/日薪|\/\s*day|per day|daily/i.test(t) || (amount >= 1000 && amount < 5000)) return amount * 22;
+      if (/年薪|\/\s*y(ea)?r|per year|annual/i.test(t) || amount >= 300000) return amount / 12;
+      return amount;
+    };
+    // 篩選條件的薪水：兼職時填的是時薪（小於 1000），其他是月薪
+    const minMonthly = minSalaryFilter > 0 ? (minSalaryFilter < 1000 ? minSalaryFilter * 176 : minSalaryFilter) : 0;
+
     let filtered = withDynamicDistance.filter((job) => {
+      if (showUnfiltered) return true;
       if (selectedCities.length) {
-        // 多選：符合任何一個地區就留下
+        // 多選：符合任何一個地區就留下；寫「全台」「多個地點」的也留下
         const normLoc = `${job.location || ''} ${job.city || ''}`.replace(/臺/g, '台');
         const isRemote = /遠端|WFH|居家/i.test(`${job.workEnvironment} ${job.title} ${job.description}`);
-        const hit = selectedCities.some((c) => {
+        const anywhere = /全台|全省|不限|多個地點|多地|各地|各縣市|台灣/.test(normLoc) && !/[市縣]/.test(normLoc.replace(/台灣/g, ''));
+        const hit = anywhere || selectedCities.some((c) => {
           if (c === '遠端工作') return isRemote;
           const norm = c.replace(/臺/g, '台');
           return !normLoc.trim() || normLoc.includes(norm) || normLoc.includes(norm.slice(0, 2));
         });
         if (!hit) return false;
       }
-      if (selectedCategory !== '全部' && job.category && job.category !== selectedCategory && !job.industry.includes(selectedCategory)) {
-        return false;
+      // 職務類別複選：類別、產業或職稱裡出現任何一個字詞就留下（「門市／餐飲／零售」拆成三個詞）
+      if (selectedCategories.length && job.category) {
+        const hay = `${job.category} ${job.industry || ''} ${job.title || ''}`;
+        const ok = selectedCategories.some((c) => job.category === c || c.split(/[／/]/).some((w) => w && hay.includes(w.replace(/工程$/, ''))));
+        if (!ok) return false;
       }
       const jobCur = detectCurrency(job.salaryText, job.location || '');
       const maxInTwd = jobCur === 'TWD' ? job.salaryMax : convert(job.salaryMax, jobCur, 'TWD', fxRates);
-      if (minSalaryFilter > 0 && job.salaryMax > 0 && maxInTwd < minSalaryFilter) {
+      if (minMonthly > 0 && job.salaryMax > 0 && toMonthly(maxInTwd, job.salaryText) < minMonthly * 0.95) {
         return false;
       }
       if (maxExpFilter !== 'all' && job.experienceYears > maxExpFilter) {
@@ -1772,27 +1826,16 @@ export const JobExplorerView: React.FC = () => {
       if (maxEduFilter !== 'all' && job.educationLevel > maxEduFilter) {
         return false;
       }
-      if (keyword.trim()) {
-        const kw = keyword.trim().toLowerCase();
-        const haystack = `${job.title} ${job.company} ${job.location} ${job.industry} ${job.workEnvironment} ${job.benefits} ${job.description}`.toLowerCase();
-        if (!haystack.includes(kw)) return false;
+      if (kwTokens.length) {
+        const haystack = `${job.title} ${job.company} ${job.location} ${job.industry} ${job.category || ''} ${job.workEnvironment} ${job.benefits} ${job.description}`.toLowerCase();
+        // 每個詞也試前兩個字（「服務生」對得到「外場服務人員」）
+        const hit = kwTokens.some((t) => haystack.includes(t) || (t.length >= 3 && /^[\u4e00-\u9fff]{2}/.test(t) && haystack.includes(t.slice(0, 2))));
+        if (!hit) return false;
       }
       return true;
     });
+    filterStatsRef.current = { total: withDynamicDistance.length, kept: filtered.length };
 
-    // 保證在非收藏模式下，若已取得職缺列表，至少顯示 3 筆、最多 100 筆
-    if (!showSavedOnly && withDynamicDistance.length > 0 && filtered.length < 3) {
-      const existingIds = new Set(filtered.map((j) => j.id));
-      for (const item of withDynamicDistance) {
-        if (!existingIds.has(item.id)) {
-          filtered.push(item);
-          existingIds.add(item.id);
-        }
-        if (filtered.length >= Math.min(withDynamicDistance.length, Math.max(3, filtered.length))) {
-          if (filtered.length >= 3) break;
-        }
-      }
-    }
     filtered = filtered.slice(0, 100);
 
     const parseJobTimestamp = (job: typeof withDynamicDistance[number]): number => {
@@ -1854,8 +1897,7 @@ export const JobExplorerView: React.FC = () => {
     sortBy,
     sortOrder,
     fxRates,
-    arrivalOrder,
-  ]);
+    arrivalOrder, showUnfiltered]);
 
   const handleSortClick = (key: JobSortKey) => {
     // 使用者自己選了排序：馬上照他選的排，之後也不再自動重排
@@ -1878,7 +1920,7 @@ export const JobExplorerView: React.FC = () => {
     setKeyword('');
     setCompanyFilter('');
     setSelectedCities([]);
-    setSelectedCategory('全部');
+    setSelectedCategories([]);
     setMinSalaryFilter(0);
     setJobTypeFilter('全部');
     setRegionFilter('台灣');
@@ -2076,20 +2118,7 @@ export const JobExplorerView: React.FC = () => {
 
                 <CityMultiSelect value={selectedCities} onChange={setSelectedCities} disabled={regionFilter === '國外'} />
 
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
-                >
-                  <option value="全部">類別：不限</option>
-                  <option value="門市／餐飲／零售">門市／餐飲／零售</option>
-                  <option value="軟體／AI工程">軟體／AI工程</option>
-                  <option value="產品／專案管理">產品／專案管理</option>
-                  <option value="行銷／企劃／社群">行銷／企劃／社群</option>
-                  <option value="設計／UIUX">設計／UIUX</option>
-                  <option value="業務／商務開發">業務／商務開發</option>
-                  <option value="行政／人資／財會">行政／人資／財會</option>
-                </select>
+                <CategoryMultiSelect value={selectedCategories} onChange={setSelectedCategories} />
 
                 {regionFilter === '國外' ? (
                   <select
@@ -2495,25 +2524,48 @@ export const JobExplorerView: React.FC = () => {
                                 </div>
                               </div>
                             ) : (
-                              <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                              <p className="whitespace-pre-wrap font-medium">
+                                {m.showPicked ? `以下為您精選 ${filteredAndSortedJobs.length} 個職缺${m.text ? `，${m.text}` : '。'}` : m.text}
+                              </p>
                             )}
 
-                            {/* 換了不同職務：提醒先清除對話，條件才不會混在一起 */}
-                            {m.role === 'bot' && m.roleSwitched && (
-                              <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium leading-relaxed">
-                                <div>💡 你換了一個不同的職務。要搜尋其他職務，建議先清除對話重新開始，之前的條件才不會混在一起。</div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    clearJobChat();
-                                    if (m.sourceText) setChatInput(m.sourceText);
-                                  }}
-                                  className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black cursor-pointer"
-                                >
-                                  清除對話，用這個職務重新開始
-                                </button>
-                              </div>
-                            )}
+                            {/* 換了不同職務：可以兩個一起搜（職務複選），或清除對話只搜新的 */}
+                            {m.role === 'bot' && m.roleSwitched && (() => {
+                              const idx = messages.findIndex((x) => x.id === m.id);
+                              const prevRoles = currentRolesFrom(messages.slice(0, Math.max(0, idx)));
+                              const roleTag = (m.conditionTags || []).find((t) => t.type === 'role');
+                              const merged = Array.from(new Set([...prevRoles, ...splitRoles(roleTag?.value || '')]));
+                              const canMerge = Boolean(roleTag) && prevRoles.length > 0 && merged.length > splitRoles(roleTag?.value || '').length;
+                              return (
+                                <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium leading-relaxed">
+                                  <div>💡 你換了一個不同的職務。職務可以複選：要和之前的職務一起搜，還是清除對話只搜新的？</div>
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {canMerge && roleTag && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateConditionTag(m.id, { ...roleTag, value: merged.join('、') });
+                                          setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, roleSwitched: false } : x)));
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[11px] font-black cursor-pointer"
+                                      >
+                                        一起搜：{merged.join('、')}
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        clearJobChat();
+                                        if (m.sourceText) setChatInput(m.sourceText);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black cursor-pointer"
+                                    >
+                                      清除對話，只搜新的職務
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* 搜尋中要使用者決定：繼續等搜搜／派小燈泡／重新搜尋 */}
                             {m.role === 'bot' && m.searchActions && m.searchActions.length > 0 && (
@@ -2878,7 +2930,7 @@ export const JobExplorerView: React.FC = () => {
                     <div ref={chatEndRef} />
                   </div>
                   <div className="flex items-center justify-between gap-3 px-1">
-                    <span className="text-[11px] text-stone-500 leading-snug">💡 要搜尋其他職務，請先「清除對話」再重新輸入</span>
+                    <span className="text-[11px] text-stone-500 leading-snug">💡 職務可以複選：說「也想看行政」就會一起搜；要整個換掉請先「清除對話」</span>
                     <div className="flex items-center gap-3 shrink-0">
                       <button
                         type="button"
@@ -2943,6 +2995,17 @@ export const JobExplorerView: React.FC = () => {
               <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-200 shrink-0">
                 共 {filteredAndSortedJobs.length} 筆職缺
               </span>
+            )}
+            {/* 篩選條件擋掉一些職缺時：說清楚，並可一鍵顯示全部 */}
+            {!showSavedOnly && (showUnfiltered || filterStatsRef.current.kept < filterStatsRef.current.total) && (
+              <button
+                type="button"
+                onClick={() => setShowUnfiltered((v) => !v)}
+                className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 shrink-0 cursor-pointer"
+                title={showUnfiltered ? '套回篩選條件' : '顯示被篩選條件擋掉的職缺'}
+              >
+                {showUnfiltered ? '套回篩選條件' : `另有 ${filterStatsRef.current.total - filterStatsRef.current.kept} 筆被篩掉・顯示全部`}
+              </button>
             )}
           </div>
 

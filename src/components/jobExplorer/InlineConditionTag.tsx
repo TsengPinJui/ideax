@@ -173,7 +173,7 @@ export const InlineConditionTag: React.FC<Props> = ({ tag, colors, icon, autoEdi
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           maxLength={60}
-          placeholder={tag.type === 'company' ? '公司名稱，例如：台積電' : tag.type === 'location' ? '例如：台北市大安區' : tag.type === 'role' ? '例如：前端工程師' : '輸入條件'}
+          placeholder={tag.type === 'company' ? '公司名稱，例如：台積電' : tag.type === 'location' ? '例如：台北市大安區' : tag.type === 'role' ? '可填多個，例如：服務生、行政' : '輸入條件'}
           aria-label={tag.label}
           style={{ width: text.trim() ? `${Math.min(22, Math.max(6, [...text.trim()].length + 2))}em` : '11em' }}
           className={`${field} max-w-[60vw]`}

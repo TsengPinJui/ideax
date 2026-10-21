@@ -3640,6 +3640,9 @@ function extractRolesFromText(text: string): string[] {
     .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, ' ')
     .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
     .replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, ' ')
+    .replace(/職務(?:（複選）)?[：:]/g, ' ')
+    // 職務複選的連接詞：「服務生或廚房助手」「也想看行政」「改找櫃台」
+    .replace(/或是|或者|以及|還有|另外|加上|再加|也想看|也想找|也想|也可以|都可以|都行|順便|改找|改成|換成|換找|想看|或|和|跟|也/g, ' ')
     .replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, ' ')
     .trim();
 
@@ -3676,7 +3679,10 @@ function buildJobConditionSummary(
   if (campus) {
     lines.push(`地區：${campus.label}`);
   } else if (cities && cities.length) {
-    lines.push(`地區：${uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : /[市縣]$/.test(c) ? c : c))).join('、')}`);
+    // 「台北」「台北市」算同一個：補上市／縣再去重（新竹、嘉義市縣都有，維持原樣）
+    const CITY_SUFFIX: Record<string, string> = { 台北: '台北市', 新北: '新北市', 基隆: '基隆市', 桃園: '桃園市', 台中: '台中市', 台南: '台南市', 高雄: '高雄市', 苗栗: '苗栗縣', 彰化: '彰化縣', 南投: '南投縣', 雲林: '雲林縣', 屏東: '屏東縣', 宜蘭: '宜蘭縣', 花蓮: '花蓮縣', 台東: '台東縣', 澎湖: '澎湖縣', 金門: '金門縣' };
+    const full = uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : CITY_SUFFIX[c] || c)));
+    lines.push(`地區：${full.filter((c) => !(c.length === 2 && full.some((x) => x !== c && x.startsWith(c)))).join('、')}`);
   } else if (ctx.isTaiwanWide) {
     lines.push('地區：台灣（不限縣市）');
   } else if (ctx.mentionsAbroad) {
@@ -3704,7 +3710,7 @@ function buildJobConditionSummary(
   }
 
   const role = extractRolesFromText(text);
-  if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
+  if (role.length) lines.push(`職務：${uniq(role).slice(0, 5).join('、')}`);
   for (const pf of extractPreferencesFromText(text)) lines.push(`${pf.label}：${pf.value}`);
 
   // 薪資
@@ -3756,6 +3762,27 @@ app.get('/api/fx', async (_req: Request, res: Response) => {
 let lastIntakeAiNote = '';
 
 /** 看起來是「條件」而不是職務的詞：AI 誤放進職務時移出來 */
+/** 補充另一個職務的說法（職務複選），和明確要換掉的說法 */
+const ROLE_ALSO_RE = /也|還有|或是|或者|或|另外|加上|再加|一起|都可以|都行|順便|以及/;
+const ROLE_REPLACE_RE = /改找|改成|換成|換找|不要.{0,8}了|不找.{0,8}了|不想.{0,8}了/;
+
+/** 把之前的職務併進這次的整理結果（roles、條列摘要、搜尋條件都更新） */
+function mergeIntakeRoles(intake: any, previousRoles: string[]) {
+  const now: string[] = Array.isArray(intake.roles) ? intake.roles.map((r: any) => String(r || '').trim()).filter(Boolean) : [];
+  const merged = Array.from(new Set([...previousRoles, ...now]));
+  if (merged.length === now.length) { intake.newRoleDifferentFromPrevious = false; return; }
+  intake.roles = merged;
+  intake.newRoleDifferentFromPrevious = false;
+  const line = `職務：${merged.join('、')}`;
+  if (Array.isArray(intake.summaryLines)) {
+    const i = intake.summaryLines.findIndex((l: any) => /^\s*職務/.test(String(l)));
+    if (i >= 0) intake.summaryLines[i] = line; else intake.summaryLines.unshift(line);
+  }
+  const brief = String(intake.confirmedBrief || '');
+  const missing = previousRoles.filter((r) => !brief.includes(r));
+  if (missing.length) intake.confirmedBrief = brief ? `${brief}、職務（複選）：${merged.join('、')}` : line;
+}
+
 const NOT_A_ROLE_RE = /大眾交通|大眾運輸|交通|捷運|公車|至少|最少|最低|起碼|週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
 const INTAKE_PREF_LABELS: Record<string, string> = {
   industry: '產業', schedule: '班別工時', workMode: '工作方式', benefits: '福利',
@@ -3879,9 +3906,11 @@ async function parseJobIntakeWithGemini(params: {
      {"dimension": "industry" | "schedule" | "workMode" | "benefits" | "environment" | "skills" | "background" | "other", "label": "產業" | "班別工時" | "工作方式" | "福利" | "工作環境" | "技能證照" | "個人背景" | "其他偏好", "value": "使用者的條件（簡短）"}
    - 同一個面向有多個條件就用「、」合併成一筆，例如 {"dimension":"schedule","label":"班別工時","value":"週休二日、不輪班"}。
    - preferences 裡的條件也要寫進 summaryLines（例如 "班別工時：週休二日、不輪班"）和 confirmedBrief。
-9. 【換了不同職務 (newRoleDifferentFromPrevious)】：
-   - 先前累積條件裡已經有職務，而最新輸入提到的是「另一個不同的職務」（不是補充同一個職務的細節）時，填 true；其他情況填 false。
-   - 這時 roles 只放最新輸入的職務，不要和先前的職務混在一起。
+9. 【職務可以複選；換了不同職務 (newRoleDifferentFromPrevious)】：
+   - 職務可以複選。使用者一次講好幾個職務（「服務生或廚房助手」「行政、櫃台都可以」）時，roles 全部列出。
+   - 先前已經有職務，最新輸入用「也」「還有」「或」「另外」「加上」「再加」「一起」「都可以」「順便」等說法補充另一個職務時，是職務複選：roles 放「先前的職務＋新職務」，newRoleDifferentFromPrevious 填 false；summaryLines 寫「職務：先前職務、新職務」。
+   - 只有直接換成另一個不同的職務（沒有上述補充說法，或明說「改找」「換成」「不要…了」）時才填 true；這時 roles 只放最新輸入的職務。
+   - 只是補充同一個職務的細節，填 false。
 10. 【條列摘要 (summaryLines)】：
    - 請輸出簡潔且高水準的條列清單（只列出目前已確定的條件），例如：
      - "工作型態：正職"
@@ -4199,6 +4228,10 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const rawMessage = String(req.body?.message || '').trim().slice(0, 600);
     const filters = req.body?.filters || {};
     const previousBrief = String(req.body?.previousBrief || '').trim().slice(0, 600);
+    // 目前條件裡已有的職務（職務可以複選）
+    const previousRoles: string[] = Array.isArray(req.body?.previousRoles)
+      ? Array.from(new Set<string>(req.body.previousRoles.map((s: any) => String(s || '').trim().slice(0, 40)).filter(Boolean))).slice(0, 8)
+      : [];
     const conversationHistory: string[] = Array.isArray(req.body?.conversationHistory)
       ? req.body.conversationHistory.map((s: any) => String(s || '').trim()).filter(Boolean)
       : [];
@@ -4223,12 +4256,16 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     });
 
     if (geminiIntake) {
+      // 職務複選：使用者說「也想看…」「還有…」時，就算模型判成換職務，也把之前的職務併進來
+      if (geminiIntake.newRoleDifferentFromPrevious === true && previousRoles.length && ROLE_ALSO_RE.test(rawMessage) && !ROLE_REPLACE_RE.test(rawMessage)) {
+        mergeIntakeRoles(geminiIntake, previousRoles);
+      }
       const summaryText = Array.isArray(geminiIntake.summaryLines) && geminiIntake.summaryLines.length > 0
         ? geminiIntake.summaryLines.map((l: string) => `• ${l}`).join('\n')
         : '';
       const questionText = geminiIntake.clarificationQuestion || '請問您期望找正職還是兼職？';
       const roleSwitchTip = geminiIntake.newRoleDifferentFromPrevious === true
-        ? '\n💡 要搜尋不同的職務，建議先按下方「清除對話」重新開始，條件才不會混在一起。'
+        ? '\n💡 你換了一個不同的職務。職務可以複選：可以和之前的職務一起搜，或清除對話只搜新的。'
         : '';
       const resolvedReply = (summaryText
         ? `已記錄：\n${summaryText}\n${questionText}`
@@ -4285,12 +4322,19 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     }
 
     // 若 Gemini 暫不可用，以本機規則引擎備援
-    const allSegments = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage]
+    // 職務複選：規則版本來就會把前後講過的職務都留著；只有明說「改找／換成」時，才把之前的職務拿掉
+    const rulesReplaceRole = previousRoles.length > 0 && ROLE_REPLACE_RE.test(rawMessage);
+    const stripPrevRoles = (s: string) => rulesReplaceRole
+      ? previousRoles.reduce((acc, r) => acc.split(r).join(' '), s.replace(/職務(?:（複選）)?[：:][^、,，\n]*(?:[、,，][^、,，\n：:]*)*/g, ' '))
+      : s;
+    const rulesHistory = conversationHistory.map(stripPrevRoles);
+    const rulesPrevBrief = stripPrevRoles(previousBrief);
+    const allSegments = expandRegionAliases(normalizeChineseAmounts([...rulesHistory, rulesPrevBrief, rawMessage]
       .join(' 、 ')))
       .split(/[、,，\n]+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const fullText = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(' '))).toLowerCase();
+    const fullText = expandRegionAliases(normalizeChineseAmounts([...rulesHistory, rulesPrevBrief, rawMessage].join(' '))).toLowerCase();
 
     // ─── 各維度關鍵字檢測正則 ───
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
