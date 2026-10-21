@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { OPENAI_MODEL, getAiProvider, getLastOpenAiError, hasOpenAiKey, openAiGenerate, setAiProvider, shouldUseOpenAi, type AiProvider } from './server/llm';
 import { GoogleGenAI, Type } from '@google/genai';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
@@ -274,6 +275,12 @@ function isGeminiAuthError(err: any): boolean {
 }
 
 async function generateWithGeminiFallback(prompt: string, schema: any) {
+  // 後台選了 GPT-5.6 Luna：先用 OpenAI（把結構描述附在提示詞裡），失敗再用 Gemini
+  if (await shouldUseOpenAi()) {
+    const text = await openAiGenerate({ prompt: `${prompt}\n\n請只輸出一個 JSON 物件，結構如下：\n${JSON.stringify(schema)}`, json: true });
+    const parsed = text ? extractJsonFromText(text) : null;
+    if (parsed) return parsed;
+  }
   if (isGeminiAuthDisabled) return null;
   const ai = getGeminiClient();
   if (!ai) return null;
@@ -316,6 +323,13 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
 
 // Helper to generate open-ended or JSON raw text via Gemini fallback
 async function generateRawTextWithGemini(prompt: string, systemInstruction?: string): Promise<string | null> {
+  if (await shouldUseOpenAi()) {
+    const text = await openAiGenerate({
+      prompt,
+      system: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
+    });
+    if (text) return text;
+  }
   if (!isGeminiAuthDisabled) {
     const ai = getGeminiClient();
     if (ai) {
@@ -3715,7 +3729,6 @@ async function parseJobIntakeWithGemini(params: {
   userBaseCity: string;
 }): Promise<any> {
   const ai = getGeminiClient();
-  if (!ai) { lastIntakeAiNote = '伺服器沒有設定 Gemini 金鑰'; return null; }
 
   const prompt = `你是一個極度敏銳、理解力高超的「求職語意理解與結構化條件分析」專家。
 使用者的最新輸入訊息：
@@ -3859,12 +3872,52 @@ async function parseJobIntakeWithGemini(params: {
 }
 `;
 
+  /** AI 回來的結果補齊摘要、把誤放進職務的條件移出來 */
+  const finalizeIntake = (parsed: any) => {
+    // 少了條列摘要也沒關係：用抽出來的欄位自己補
+    if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
+      const lines: string[] = [];
+      if (parsed.jobType) lines.push(`工作型態：${parsed.jobType}`);
+      if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`職務：${parsed.roles.join('、')}`);
+      if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`目標公司：${parsed.companies.join('、')}`);
+      if (parsed.location) lines.push(`地區：${parsed.location}`);
+      if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
+      if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
+      if (parsed.education) lines.push(`學歷：${parsed.education}`);
+      for (const pf of cleanIntakePreferences(parsed.preferences)) lines.push(`${pf.label}：${pf.value}`);
+      parsed.summaryLines = lines;
+    }
+    // 保險：把被誤放進職務的「條件」移到其他面向（例如週休二日、員工餐、離家近）
+    if (Array.isArray(parsed.roles)) {
+      const moved: string[] = [];
+      parsed.roles = parsed.roles.map((r: any) => String(r || '').trim()).filter((r: string) => {
+        if (r && NOT_A_ROLE_RE.test(r)) { moved.push(r); return false; }
+        return Boolean(r);
+      });
+      if (moved.length) parsed.preferences = [...(Array.isArray(parsed.preferences) ? parsed.preferences : []), { dimension: 'other', label: '其他偏好', value: moved.join('、') }];
+    }
+    parsed.preferences = cleanIntakePreferences(parsed.preferences);
+  };
+
+  const notes: string[] = [];
+  // 後台選了 GPT-5.6 Luna：先用 OpenAI，失敗再用 Gemini
+  if (await shouldUseOpenAi()) {
+    const text = await openAiGenerate({ prompt, json: true, timeoutMs: 15000, effort: 'low' });
+    const parsed = text ? extractJsonFromText(text) : null;
+    if (parsed && typeof parsed === 'object') {
+      finalizeIntake(parsed);
+      parsed.__engine = OPENAI_MODEL;
+      return parsed;
+    }
+    notes.push(`${OPENAI_MODEL}: ${getLastOpenAiError() || '回覆不是 JSON'}`);
+  }
+  if (!ai) { lastIntakeAiNote = [...notes, '伺服器沒有設定 Gemini 金鑰'].join('；'); return null; }
+
   // flash-lite 先試；不行再用 3.8-flash（思考程度調低，回得比較快）
   const modelsToTry: Array<{ model: string; timeoutMs: number; thinking?: any }> = [
     { model: 'gemini-3.1-flash-lite', timeoutMs: 10000 },
     { model: 'gemini-3.8-flash', timeoutMs: 12000, thinking: { thinkingLevel: 'LOW' } },
   ];
-  const notes: string[] = [];
   for (const { model, timeoutMs, thinking } of modelsToTry) {
     try {
       const callPromise = ai.models.generateContent({
@@ -3882,29 +3935,7 @@ async function parseJobIntakeWithGemini(params: {
       const res = await Promise.race([callPromise, timeoutPromise]);
       const parsed = extractJsonFromText(String(res.text || ''));
       if (parsed && typeof parsed === 'object') {
-        // 少了條列摘要也沒關係：用抽出來的欄位自己補
-        if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
-          const lines: string[] = [];
-          if (parsed.jobType) lines.push(`工作型態：${parsed.jobType}`);
-          if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`職務：${parsed.roles.join('、')}`);
-          if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`目標公司：${parsed.companies.join('、')}`);
-          if (parsed.location) lines.push(`地區：${parsed.location}`);
-          if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
-          if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
-          if (parsed.education) lines.push(`學歷：${parsed.education}`);
-          for (const pf of cleanIntakePreferences(parsed.preferences)) lines.push(`${pf.label}：${pf.value}`);
-          parsed.summaryLines = lines;
-        }
-        // 保險：把被誤放進職務的「條件」移到其他面向（例如週休二日、員工餐、離家近）
-        if (Array.isArray(parsed.roles)) {
-          const moved: string[] = [];
-          parsed.roles = parsed.roles.map((r: any) => String(r || '').trim()).filter((r: string) => {
-            if (r && NOT_A_ROLE_RE.test(r)) { moved.push(r); return false; }
-            return Boolean(r);
-          });
-          if (moved.length) parsed.preferences = [...(Array.isArray(parsed.preferences) ? parsed.preferences : []), { dimension: 'other', label: '其他偏好', value: moved.join('、') }];
-        }
-        parsed.preferences = cleanIntakePreferences(parsed.preferences);
+        finalizeIntake(parsed);
         parsed.__engine = model;
         return parsed;
       }
@@ -3994,6 +4025,48 @@ app.post('/api/admin/public-metrics-config', async (req: Request, res: Response)
     console.warn('[public-metrics-config]', err?.code || err?.message);
     res.status(500).json({ ok: false, reason: 'write_failed' });
   }
+});
+
+// 內建 AI 模型切換（Gemini ／ GPT-5.6 Luna）：只有管理員能看與切換；金鑰不會回傳
+const requireAdmin = async (req: Request, res: Response) => {
+  const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+  if (!au) { res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' }); return null; }
+  if (!(await isVerifiedAdmin(au.uid))) { res.status(403).json({ ok: false, error: '這個帳號沒有管理員權限' }); return null; }
+  return au;
+};
+app.get('/api/admin/ai-provider', async (req: Request, res: Response) => {
+  if (!(await requireAdmin(req, res))) return;
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true, provider: await getAiProvider(), openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+});
+app.post('/api/admin/ai-provider', async (req: Request, res: Response) => {
+  if (!(await requireAdmin(req, res))) return;
+  const provider: AiProvider = req.body?.provider === 'openai' ? 'openai' : 'gemini';
+  try {
+    await setAiProvider(provider);
+    res.json({ ok: true, provider });
+  } catch {
+    res.status(500).json({ ok: false, error: '儲存失敗，請稍後再試' });
+  }
+});
+// 測試目前的模型：用一句口語求職需求，看它轉成條件的結果與花費時間
+app.post('/api/admin/ai-provider/test', async (req: Request, res: Response) => {
+  if (!(await requireAdmin(req, res))) return;
+  const sample = String(req.body?.message || '想在台北端盤子，不要太累，下午要接小孩，月薪三萬五').slice(0, 200);
+  const prompt = `把這句求職需求整理成 JSON 物件，欄位：roles（正式職稱陣列）、location、salaryText、preferences（[{label, value}]）。口語要轉成具體條件，例如「端盤子」→「服務生（外場）」。\n需求：「${sample}」`;
+  const t0 = Date.now();
+  const useOpenAi = await shouldUseOpenAi();
+  let text: string | null = null;
+  let engine = '';
+  if (useOpenAi) {
+    text = await openAiGenerate({ prompt, json: true, timeoutMs: 20000 });
+    engine = text ? OPENAI_MODEL : '';
+  }
+  if (!text) {
+    text = await generateRawTextWithGemini(prompt, '你是求職條件整理助手，只輸出 JSON。');
+    engine = text ? `Gemini${useOpenAi ? '（OpenAI 失敗，自動退回）' : ''}` : '';
+  }
+  res.json({ ok: Boolean(text), engine, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
 });
 
 // 首頁創點子播放區（預留）：管理員選擇播放來源，由伺服器確認管理員後寫入

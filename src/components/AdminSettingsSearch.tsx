@@ -17,7 +17,7 @@ const INDEX: Entry[] = [
   { tab: 'admin_user_management', label: '用戶管理', where: '用戶審核', keywords: ['用戶', '會員', '帳號', '封鎖', '停權', '解除封鎖', '刪除帳號', '測試帳號', '管理員授權', '最近上線', '註冊'] },
   { tab: 'admin_certifications', label: '受理認證', where: '用戶審核', keywords: ['認證', '實名', '專家認證', '審核', '身分證', '證照'] },
   { tab: 'admin_user_analytics', label: '用戶分佈與習慣統計', where: '用戶審核', keywords: ['用戶分佈', '習慣', '問卷', '統計', 'excel', '匯出', '用戶畫像'] },
-  { tab: 'admin_aicrm', label: 'AI-CRM 與 Agent 測試', where: 'AI與方案', keywords: ['ai', 'crm', 'agent', '小燈泡', '吉祥物', '泡泡文字', '音效', '彈性', 'dify', '金鑰', '轉接', '客服助理', '市場顧問', '搜搜', '探險家', '通知規則', '特助', '測試'] },
+  { tab: 'admin_aicrm', label: 'AI-CRM 與 Agent 測試', where: 'AI與方案', keywords: ['ai', 'crm', 'agent', '小燈泡', '吉祥物', '泡泡文字', '音效', '彈性', 'dify', '金鑰', '轉接', '客服助理', '市場顧問', '搜搜', '探險家', '通知規則', '特助', '測試', 'gemini', 'gpt', 'openai', 'luna', '模型', 'ai模型'] },
   { tab: 'subscriptions', label: '會員方案與費率', where: 'AI與方案', keywords: ['方案', '費率', '月費', '抽成', '服務費', '訂閱', '達人', '專家級', '權威', '大師', '減免'] },
   { tab: 'profile', label: '管理員設定', where: '帳號', keywords: ['管理員設定', '頭像', '營運模式', '正常營運', '無金流', '競賽模式', '測試模式', '密碼', '收退款帳戶', '隱私', '名稱顯示', '切換身分'] },
   { tab: 'admin_mail_disputes', label: '申訴郵件與客服', where: '信封圖示', keywords: ['申訴', '郵件', '客服', '工單', 'faq', '回報', '退款申請', '爭議'] },

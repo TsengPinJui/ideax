@@ -1,3 +1,4 @@
+import { AdminAiProviderCard } from './AdminAiProviderCard';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AdminAssistantTickCard } from './AdminAssistantTickCard';
@@ -954,6 +955,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       </div>
 
       {/* 小燈泡（網站吉祥物）：設定、轉接檢查與互動統計（預設收合） */}
+      <AdminAiProviderCard />
       <AdminMascotSettingsCard />
 
       {/* 主頁籤切換欄 */}

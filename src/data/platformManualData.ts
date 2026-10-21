@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#173',
+    version: 'v3.2.6',
+    releaseDate: '2026.10.21',
+    releaseTime: '18:09',
+    author: 'IdeaX 創點子團隊',
+    summary: '內建 AI 可切換為 GPT-5.6 Luna。',
+    changes: [
+      '管理後台「AI-CRM 與 Agent 測試」新增「內建 AI 模型」切換：可在 Gemini 3.8 Flash 與 GPT-5.6 Luna 之間選擇，影響匯職缺語意理解、小燈泡分流與回答等 AI 文字回覆；選 GPT-5.6 Luna 出錯時自動退回 Gemini，並可一鍵測試目前模型的回覆與速度。',
+      '平台版本推進至 v3.2.6 (#173)。',
+    ],
+  },
+  {
     seqNumber: '#172',
     version: 'v3.2.5',
     releaseDate: '2026.10.21',
@@ -2217,10 +2229,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v3.2.5
-* **遞增序號**：#172（從 #001 依序遞增）
+* **版本號碼**：v3.2.6
+* **遞增序號**：#173（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：17:57（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：18:09（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -2279,6 +2291,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#173** | **v3.2.6** | 2026.10.21 | 18:09 | IdeaX 創點子核心 | 內建 AI 模型切換 |
 | **#172** | **v3.2.5** | 2026.10.21 | 17:57 | IdeaX 創點子核心 | 匯職缺語意理解加強 |
 | **#171** | **v3.2.4** | 2026.10.21 | 17:38 | IdeaX 創點子核心 | 角色頁網址與分頁 SEO 修正 |
 | **#170** | **v3.2.3** | 2026.10.21 | 16:56 | IdeaX 創點子核心 | 播放區可複選 |
