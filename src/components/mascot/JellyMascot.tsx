@@ -374,6 +374,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const goTo = (to: string) => {
     if (!MASCOT_NAV_TARGETS.has(to)) return;
     markActive();
+    trackMascotEvent('nav', undefined, to); // 小燈泡轉介：使用者點了建議的功能
     try { window.dispatchEvent(new CustomEvent(MASCOT_NAVIGATE_EVENT, { detail: { to } })); } catch {}
     if (window.innerWidth < WIDE_MIN) setChatOpen(false);
   };
@@ -388,6 +389,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const addBotReply = (text: string, tag?: string, actions?: MascotAction[]) => new Promise<void>((resolve) => {
     const id = ++msgSeq.current;
     const safeActions = (actions || []).filter((a) => a && typeof a.label === 'string' && MASCOT_NAV_TARGETS.has(a.to)).slice(0, 3);
+    for (const a of safeActions) trackMascotEvent('nav_offer', undefined, a.to); // 小燈泡轉介：回答裡建議了這個功能
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dur = reduce ? 0 : Math.min(4500, Math.max(700, text.length * 35));
     setLiveText('');
