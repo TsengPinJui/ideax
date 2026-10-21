@@ -3,10 +3,10 @@ import { Cpu, FlaskConical, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-
 import { getAuthHeaders } from '../services/authHeader';
 
 /**
- * 管理後台：內建 AI 模型切換（Gemini ／ GPT-5.6 Luna）
+ * 管理後台：內建 AI 模型切換（GPT-6 Luna ／ Gemini）
  * 影響：匯職缺語意理解、小燈泡分流與回答、各種 AI 文字與結構化回覆。
  * 小燈泡上網搜職缺（需要網路搜尋）與身分證辨識仍使用 Gemini。
- * 選 GPT-5.6 Luna 但出錯時，會自動退回 Gemini。
+ * 預設 GPT-6 Luna，出錯或沒有金鑰時會自動退回 Gemini。
  */
 type Info = { provider: 'gemini' | 'openai'; openAiModel: string; hasOpenAiKey: boolean; forced: string | null; lastOpenAiError: string | null };
 type TestResult = { ok: boolean; engine: string; ms: number; sample: string; output: string | null; openAiError: string | null };
@@ -51,8 +51,8 @@ export const AdminAiProviderCard: React.FC = () => {
   };
 
   const options: Array<{ id: 'gemini' | 'openai'; name: string; desc: string }> = [
-    { id: 'gemini', name: 'Gemini 3.8 Flash（目前預設）', desc: '輸入 $0.75／輸出 $3.75 每百萬 tokens' },
-    { id: 'openai', name: `GPT-5.6 Luna`, desc: '輸入 $0.20／輸出 $1.20 每百萬 tokens；出錯時自動退回 Gemini' },
+    { id: 'openai', name: 'GPT-6 Luna（預設）', desc: '輸入 $0.10／輸出 $0.50 每百萬 tokens；出錯時自動退回 Gemini' },
+    { id: 'gemini', name: 'Gemini 3.8 Flash', desc: '輸入 $0.75／輸出 $3.75 每百萬 tokens' },
   ];
 
   return (

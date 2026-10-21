@@ -135056,9 +135056,9 @@ async function recordRealPresenceHeartbeat(sessionId) {
 }
 
 // server/llm.ts
-var OPENAI_MODEL = (process.env.OPENAI_MODEL || "gpt-5.6-luna").trim();
+var OPENAI_MODEL = (process.env.OPENAI_MODEL || "gpt-6-luna").trim();
 var hasOpenAiKey = () => Boolean((process.env.OPENAI_API_KEY || "").trim());
-var cached = { provider: "gemini", at: 0 };
+var cached = { provider: "openai", at: 0 };
 var lastOpenAiError = "";
 var getLastOpenAiError = () => lastOpenAiError;
 async function getAiProvider() {
@@ -135068,7 +135068,7 @@ async function getAiProvider() {
   try {
     const snap = await adminDb.collection("platform_settings").doc("global").get();
     const v = snap.exists ? snap.data()?.aiProvider : null;
-    cached = { provider: v === "openai" ? "openai" : "gemini", at: Date.now() };
+    cached = { provider: v === "gemini" ? "gemini" : "openai", at: Date.now() };
   } catch {
     cached = { ...cached, at: Date.now() };
   }
@@ -161958,7 +161958,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.2.6";
+var APP_VERSION = "3.2.7";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));

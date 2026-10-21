@@ -275,7 +275,7 @@ function isGeminiAuthError(err: any): boolean {
 }
 
 async function generateWithGeminiFallback(prompt: string, schema: any) {
-  // 後台選了 GPT-5.6 Luna：先用 OpenAI（把結構描述附在提示詞裡），失敗再用 Gemini
+  // 使用 GPT-6 Luna：先用 OpenAI（把結構描述附在提示詞裡），失敗再用 Gemini
   if (await shouldUseOpenAi()) {
     const text = await openAiGenerate({ prompt: `${prompt}\n\n請只輸出一個 JSON 物件，結構如下：\n${JSON.stringify(schema)}`, json: true });
     const parsed = text ? extractJsonFromText(text) : null;
@@ -3900,7 +3900,7 @@ async function parseJobIntakeWithGemini(params: {
   };
 
   const notes: string[] = [];
-  // 後台選了 GPT-5.6 Luna：先用 OpenAI，失敗再用 Gemini
+  // 使用 GPT-6 Luna：先用 OpenAI，失敗再用 Gemini
   if (await shouldUseOpenAi()) {
     const text = await openAiGenerate({ prompt, json: true, timeoutMs: 15000, effort: 'low' });
     const parsed = text ? extractJsonFromText(text) : null;
@@ -4027,7 +4027,7 @@ app.post('/api/admin/public-metrics-config', async (req: Request, res: Response)
   }
 });
 
-// 內建 AI 模型切換（Gemini ／ GPT-5.6 Luna）：只有管理員能看與切換；金鑰不會回傳
+// 內建 AI 模型切換（GPT-6 Luna ／ Gemini）：只有管理員能看與切換；金鑰不會回傳
 const requireAdmin = async (req: Request, res: Response) => {
   const au = await verifyAuthToken(req.headers.authorization as string | undefined);
   if (!au) { res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' }); return null; }
