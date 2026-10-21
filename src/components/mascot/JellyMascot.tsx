@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { setMascotExpanded } from './mascotPresence';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
@@ -55,6 +56,11 @@ const Drop = ({ style }: { style: React.CSSProperties }) => (
 
 const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal?: NewProposalNotice | null }> = ({ config, userId, newProposal }) => {
   const [collapsed, setCollapsed] = useState(() => readLS(COLLAPSED_KEY) === '1');
+  // 告訴「回到頂部」等浮動按鈕：小燈泡展開時要讓位，收合或離開時可以靠右
+  useEffect(() => {
+    setMascotExpanded(!collapsed);
+    return () => setMascotExpanded(false);
+  }, [collapsed]);
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(false);
   chatOpenRef.current = chatOpen;

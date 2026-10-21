@@ -794,8 +794,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       // 泡泡剛出現（尺寸還是 0）才量一次，其他時候用 ResizeObserver 記住的尺寸
       if (!dims.bubbleW) { dims.bubbleW = bubble.offsetWidth; dims.bubbleH = bubble.offsetHeight; }
       const bw = dims.bubbleW, bh = dims.bubbleH;
-      // 手機上燈泡比較小，訊息框往下靠近燈泡一點（不然離太遠，像是飄在內容上）
-      const near = vw < 640 ? 38 : 0;
+      // 訊息框靠近燈泡頭頂一點；手機上燈泡比較小，再往下多靠一些（不然離太遠，像是飄在內容上）
+      const near = vw < 640 ? 48 : 24;
       const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - msize().h * 0.95 - bh + S.jumpY + near);
       bubble.style.transform = `translate(${bx}px, ${by}px)`;
     }
