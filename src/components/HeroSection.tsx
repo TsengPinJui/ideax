@@ -198,7 +198,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   const allMetricItems = useMemo(() => {
     const list: { key: string; label: string; value: string; unit?: string; accent?: string }[] = [];
-    if (publicMetricsConfig.showQuestionsCount) list.push({ key: 'questions', label: '市場問題', value: questionsCountFormatted, unit: '題' });
+    if (publicMetricsConfig.showQuestionsCount) list.push({ key: 'questions', label: '發布卡片', value: questionsCountFormatted, unit: '個' });
     if (publicMetricsConfig.showProposalsCount) list.push({ key: 'proposals', label: '專家提案', value: proposalsCountFormatted, unit: '件' });
     if (publicMetricsConfig.showVerifiedSolvers) list.push({ key: 'solvers', label: '認證專家', value: verifiedSolversFormatted, unit: '位' });
     if (publicMetricsConfig.showSolvedCount) list.push({ key: 'solved', label: '已解決', value: solvedCountFormatted });
