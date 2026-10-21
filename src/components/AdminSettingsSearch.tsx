@@ -9,7 +9,7 @@ import { Search, X, CornerDownLeft } from 'lucide-react';
 type Entry = { tab: string; label: string; where: string; keywords: string[] };
 
 const INDEX: Entry[] = [
-  { tab: 'overview', label: '管理儀表板', where: '總覽', keywords: ['儀表板', '總覽', '流量', '訪客', '在線人數', '待處理', '統計', '數據'] },
+  { tab: 'overview', label: '管理儀表板', where: '總覽', keywords: ['儀表板', '總覽', '流量', '訪客', '在線人數', '待處理', '統計', '數據', '播放區', '優秀作品', '付費推播', '自選', '首頁', '創點子'] },
   { tab: 'points_receivables', label: '點數 & 收支', where: '金流與案件', keywords: ['點數', '收支', '轉入點數', '撥款', '提領', '託管', '餘額', '應收', '打賞'] },
   { tab: 'transactions', label: '交易管理', where: '金流與案件', keywords: ['交易', '退款', '發票', '收據', '對帳', '金流', '付款', '憑證'] },
   { tab: 'admin_cases', label: '案件管理', where: '金流與案件', keywords: ['案件', '驗收', '交付', '爭議', '合約', '懸賞', '進度'] },

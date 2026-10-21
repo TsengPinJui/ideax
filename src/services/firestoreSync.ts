@@ -1111,6 +1111,7 @@ export function subscribePlatformSettingsFromFirestore(
     isHideTestAccounts?: boolean;
     isSimulatedDataPurged?: boolean;
     mascotConfig?: any;
+    homeShowcaseConfig?: any;
   }) => void
 ): Unsubscribe | null {
   if (isQuotaExhausted) return null;
@@ -1131,6 +1132,7 @@ export function subscribePlatformSettingsFromFirestore(
             isHideTestAccounts: data.isHideTestAccounts,
             isSimulatedDataPurged: data.isSimulatedDataPurged,
             mascotConfig: data.mascotConfig,
+            homeShowcaseConfig: data.homeShowcaseConfig,
           });
         }
       },
@@ -1785,6 +1787,20 @@ export async function savePublicMetricsConfig(config: Record<string, boolean>): 
   } catch (err: any) {
     handleFirestoreError('savePublicMetricsConfig', err);
     return { ok: false, reason: reason || err?.code || 'write_failed', message };
+  }
+}
+
+/** 儲存首頁創點子播放區設定：由伺服器確認管理員後寫入 */
+export async function saveHomeShowcaseConfig(config: { enabled: boolean; mode: string }): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const headers = await getAuthHeaders();
+    if (!headers.Authorization) return { ok: false, message: '登入狀態已過期，請重新登入後再試' };
+    const r = await fetch('/api/admin/home-showcase-config', { method: 'POST', headers, body: JSON.stringify({ config }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j?.ok) return { ok: true };
+    return { ok: false, message: typeof j?.error === 'string' ? j.error : '請稍後再試' };
+  } catch {
+    return { ok: false, message: '網路連線不穩，請稍後再試' };
   }
 }
 

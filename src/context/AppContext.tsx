@@ -122,7 +122,15 @@ import {
   subscribePresenceFromFirestore,
   CategorizedSyncResult,
   savePublicMetricsConfig,
+  saveHomeShowcaseConfig,
 } from '../services/firestoreSync';
+import { DEFAULT_HOME_SHOWCASE_CONFIG, type HomeShowcaseConfig } from '../types';
+
+/** 雲端讀回來的播放區設定整理成固定格式 */
+function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
+  const mode = raw?.mode === 'paid' || raw?.mode === 'custom' ? raw.mode : 'excellent';
+  return { enabled: raw?.enabled === true, mode, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
+}
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
@@ -443,6 +451,8 @@ interface AppContextType {
 
   // Public Metrics Controls (Admin)
   publicMetricsConfig: PublicMetricsConfig;
+  homeShowcaseConfig: HomeShowcaseConfig;
+  updateHomeShowcaseConfig: (config: Partial<HomeShowcaseConfig>) => Promise<boolean>;
   updatePublicMetricsConfig: (config: Partial<PublicMetricsConfig>) => void;
 
   // 燈泡吉祥物設定 (Admin)
@@ -1177,6 +1187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
       if (settings.mascotConfig) applyMascotConfig(settings.mascotConfig);
+      if (settings.homeShowcaseConfig && homeShowcaseSavingRef.current === 0) setHomeShowcaseConfig(normalizeHomeShowcase(settings.homeShowcaseConfig));
       if (settings.competitionHomepageStatsConfig) {
         try {
           localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(settings.competitionHomepageStatsConfig));
@@ -1844,6 +1855,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return defaultPublicMetricsConfig;
   });
+  // 首頁創點子播放區（預留）：雲端 platform_settings/global.homeShowcaseConfig
+  const [homeShowcaseConfig, setHomeShowcaseConfig] = useState<HomeShowcaseConfig>(DEFAULT_HOME_SHOWCASE_CONFIG);
+  const homeShowcaseSavingRef = useRef(0);
+  const updateHomeShowcaseConfig = async (config: Partial<HomeShowcaseConfig>) => {
+    const before = homeShowcaseConfig;
+    const next = normalizeHomeShowcase({ ...before, ...config });
+    setHomeShowcaseConfig(next);
+    homeShowcaseSavingRef.current += 1;
+    try {
+      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, mode: next.mode });
+      if (!r.ok) {
+        setHomeShowcaseConfig(before);
+        alert(`首頁播放區設定沒有儲存成功：${(r.message || '請稍後再試').replace(/[。.]$/, '')}。`);
+        return false;
+      }
+      return true;
+    } finally {
+      homeShowcaseSavingRef.current = Math.max(0, homeShowcaseSavingRef.current - 1);
+    }
+  };
+
   // 最新的開關狀態（連按好幾個時不會用到舊值）與「正在儲存」計數
   const publicMetricsConfigRef = useRef(publicMetricsConfig);
   useEffect(() => { publicMetricsConfigRef.current = publicMetricsConfig; }, [publicMetricsConfig]);
@@ -9689,6 +9721,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllSystemNotificationsRead,
         publicMetricsConfig,
         updatePublicMetricsConfig,
+        homeShowcaseConfig,
+        updateHomeShowcaseConfig,
         mascotConfig,
         saveMascotConfig,
         aiCrmConfig,

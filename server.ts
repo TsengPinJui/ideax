@@ -3827,6 +3827,23 @@ app.post('/api/admin/public-metrics-config', async (req: Request, res: Response)
   }
 });
 
+// 首頁創點子播放區（預留）：管理員選擇播放來源，由伺服器確認管理員後寫入
+app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+    if (!au) return res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' });
+    if (!(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, error: '這個帳號沒有管理員權限' });
+    const raw = req.body?.config || {};
+    const mode = ['excellent', 'paid', 'custom'].includes(raw.mode) ? raw.mode : 'excellent';
+    const config = { enabled: raw.enabled === true, mode, updatedAt: new Date().toISOString() };
+    await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
+    res.json({ ok: true, config });
+  } catch (err: any) {
+    console.warn('[home-showcase-config]', err?.code || err?.message);
+    res.status(500).json({ ok: false, error: '儲存失敗，請稍後再試' });
+  }
+});
+
 // 前端定期問目前的版本：開著很久沒重新整理的頁面（例如手機上的 APP）才知道要更新
 app.get('/api/version', (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
