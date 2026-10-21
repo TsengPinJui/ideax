@@ -104,7 +104,7 @@ export async function confirmFirebasePasswordReset(actionCodeOrLink: string, new
  * 手機 Facebook 登入（直接向 Facebook 取得授權，不經 Firebase 登入處理頁）：
  * 手機裝有 Facebook App 時，授權完常被送回瀏覽器的「新分頁」，Firebase 存在單一分頁的狀態會遺失。
  * 這裡把驗證碼存在所有分頁共用的 localStorage，回到 /auth/facebook-callback 後再用通行證登入 Firebase。
- * 需在 Vercel 設定 VITE_FACEBOOK_APP_ID，並在 Facebook 後台登記 https://<網域>/auth/facebook-callback。
+ * 需在 Facebook 後台登記 https://ideax.tw/auth/facebook-callback 與 https://www.ideax.tw/auth/facebook-callback。
  */
 const FB_DIRECT_STATE_KEY = 'ideax_fb_direct_oauth_state';
 const FB_CALLBACK_PATH = '/auth/facebook-callback';
@@ -112,8 +112,10 @@ const FB_CALLBACK_PATH = '/auth/facebook-callback';
 const initialFbCallbackHash: string | null =
   typeof window !== 'undefined' && window.location.pathname === FB_CALLBACK_PATH ? window.location.hash || window.location.search : null;
 
+// Facebook 應用程式編號是公開資訊（登入網址上本來就看得到），不是密鑰；Vercel 有設定時以設定為準
+const DEFAULT_FACEBOOK_APP_ID = '1443796954300824';
 function facebookAppId(): string {
-  return String((import.meta as any).env?.VITE_FACEBOOK_APP_ID || '').trim();
+  return String((import.meta as any).env?.VITE_FACEBOOK_APP_ID || DEFAULT_FACEBOOK_APP_ID).trim();
 }
 function canUseFacebookDirect(): boolean {
   if (typeof window === 'undefined') return false;
