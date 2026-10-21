@@ -32,6 +32,7 @@ import {
   Calendar,
   GraduationCap,
   Info,
+  Paperclip,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
@@ -323,7 +324,7 @@ export interface ConditionTag {
   experienceYears?: number; // numeric years
 }
 
-export type AiIntakeStatus = 'idle' | 'received' | 'understanding' | 'typing';
+export type AiIntakeStatus = 'idle' | 'received' | 'understanding' | 'typing' | 'reading';
 
 interface ChatMessage {
   id: string;
@@ -1797,6 +1798,67 @@ export const JobExplorerView: React.FC = () => {
     }
   };
 
+  // 上傳履歷／求職需求（PDF、Word）：AI 讀完後整理成一句求職需求，再走原本的條件整理流程
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [isReadingDoc, setIsReadingDoc] = useState(false);
+  const handleUploadDoc = async (file: File) => {
+    const name = file.name.slice(0, 80);
+    const pushBot = (text: string) =>
+      setMessages((prev) => [...prev, { id: `doc-bot-${Date.now()}`, role: 'bot', text }]);
+    setIsChatCollapsed(false);
+    setMessages((prev) => [...prev, { id: `doc-user-${Date.now()}`, role: 'user', text: `📄 上傳檔案：${name}` }]);
+    if (!/\.(pdf|docx?)$/i.test(file.name)) {
+      pushBot('目前只支援 PDF 或 Word（.docx）檔，請換個檔案再試一次。');
+      return;
+    }
+    if (/\.doc$/i.test(file.name)) {
+      pushBot('舊版 Word（.doc）無法讀取，請在 Word 裡「另存新檔」成 .docx 或 PDF 再上傳。');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      pushBot('檔案太大了（上限 4MB），可以把圖片拿掉或另存成較小的 PDF 再上傳。');
+      return;
+    }
+    setIsReadingDoc(true);
+    setAiStatus('reading');
+    try {
+      const res = await fetch('/api/job-explorer/parse-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(name) },
+        body: file,
+      });
+      const data = await res.json().catch(() => null);
+      if (res.status === 429) {
+        pushBot('上傳分析太頻繁了，請過幾分鐘再試，或直接用文字描述想找的工作。');
+        return;
+      }
+      if (!data?.ok || !data.brief) {
+        pushBot(data?.error || '這次沒能讀懂檔案，請稍後再試，或直接用文字描述想找的工作。');
+        return;
+      }
+      const lines = [
+        `已讀完《${name}》${data.docType && data.docType !== '其他' ? `（${data.docType}）` : ''}${data.summary ? `：${data.summary}` : ''}`,
+        data.roles?.length ? `・推薦職務：${data.roles.join('、')}` : '',
+        data.regions?.length ? `・希望地區：${data.regions.join('、')}` : '',
+        data.education ? `・學歷：${data.education}` : '',
+        data.experienceYears != null ? `・相關經驗：約 ${data.experienceYears} 年` : '',
+        data.skills?.length ? `・技能：${data.skills.join('、')}` : '',
+        '接著幫您整理成搜尋條件，之後都可以再調整。',
+      ].filter(Boolean);
+      pushBot(lines.join('\n'));
+      setAiStatus('idle');
+      setIsReadingDoc(false);
+      await handleSendInput(data.brief);
+    } catch {
+      pushBot('上傳時連線中斷了，請再試一次。');
+    } finally {
+      setIsReadingDoc(false);
+      setAiStatus((s) => (s === 'reading' ? 'idle' : s));
+      if (docInputRef.current) docInputRef.current.value = '';
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+    }
+  };
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (keyword.trim()) count++;
@@ -2054,9 +2116,30 @@ export const JobExplorerView: React.FC = () => {
                 />
               </div>
 
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleUploadDoc(f);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                disabled={isSearching || isRegulating || isReadingDoc}
+                title="上傳履歷或求職需求（PDF、Word），AI 幫你整理成搜尋條件"
+                aria-label="上傳履歷或求職需求檔案"
+                className="p-2 rounded-xl bg-white hover:bg-blue-50 disabled:opacity-40 text-[#1e3a8a] border border-stone-200 shrink-0 transition-colors cursor-pointer"
+              >
+                {isReadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+
               <button
                 type="submit"
-                disabled={isSearching || isRegulating || (!chatInput.trim() && !pendingConfirmedBrief)}
+                disabled={isSearching || isRegulating || isReadingDoc || (!chatInput.trim() && !pendingConfirmedBrief)}
                 className="px-3.5 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] disabled:opacity-40 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
               >
                 {isSearching || isRegulating ? (
@@ -2987,6 +3070,15 @@ export const JobExplorerView: React.FC = () => {
                               <Sparkles className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
                               <div className="flex items-center gap-1.5 font-bold text-indigo-950">
                                 <span>AI正在整理語義…</span>
+                              </div>
+                            </>
+                          )}
+                          {aiStatus === 'reading' && (
+                            <>
+                              <Sparkles className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                                <span>AI 正在讀取檔案…</span>
+                                <span className="text-[11px] text-indigo-600 font-normal">（約 10–30 秒，檔案只用來整理條件、不會儲存）</span>
                               </div>
                             </>
                           )}

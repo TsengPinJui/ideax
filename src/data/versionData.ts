@@ -4,7 +4,7 @@
  */
 export const APP_VERSION = '3.4.0';
 export const APP_RELEASE_DATE = '2026.10.22';
-export const APP_RELEASE_TIME = '04:20';
-export const APP_LAST_UPDATED = '2026.10.22 04:20 (UTC+8)';
+export const APP_RELEASE_TIME = '04:23';
+export const APP_LAST_UPDATED = '2026.10.22 04:23 (UTC+8)';
 export const APP_TIMEZONE = 'UTC+8';
 export const APP_SEQUENCE_NUMBER = '#187';
