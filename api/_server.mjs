@@ -168741,7 +168741,8 @@ var PROTECTED_QUESTION_FIELDS = /* @__PURE__ */ new Set([
   "externalLink",
   "fileLink",
   "techArchitecture",
-  "publishedPlatforms"
+  "publishedPlatforms",
+  "mindMap"
 ]);
 async function isContentOwner(docData, uid) {
   if (!docData || !uid) return false;

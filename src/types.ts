@@ -962,6 +962,7 @@ export interface Question {
   version?: string; // 相容 currentVersion
   vibeCodingData?: any; // VibeCoding 專屬規格與作品資料
   publishedPlatforms?: PublishedPlatform[]; // VibeCoding 作品已上架的平台（選填，可附網址）
+  mindMap?: MindMapData | null; // 心智圖（創新提案、VibeCoding 作品選填）
   isSimulated?: boolean; // 是否為系統模擬貼文（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   tipsHistory?: Array<{
@@ -1465,6 +1466,17 @@ export interface HomeShowcaseConfig {
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
 export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [], includeSimulated: true };
 export const HOME_SHOWCASE_MAX_CUSTOM = 30;
+
+/** 心智圖：中心主題往外分支，最多 3 層、40 個節點 */
+export interface MindMapNode {
+  id: string;
+  text: string;
+  children: MindMapNode[];
+}
+export interface MindMapData {
+  root: MindMapNode;
+  updatedAt?: string;
+}
 
 export interface PublicMetricsConfig {
   showPublicMetrics?: boolean;     // 統一開關：關閉時首頁不顯示任何公開數據（沒設定過視為開啟）

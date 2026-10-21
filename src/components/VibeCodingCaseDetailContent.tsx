@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getYoutubeEmbedUrl } from '../utils/youtubeUtils';
+import { MindMapSection } from './mindmap/MindMapSection';
 
 interface VibeCodingCaseDetailContentProps {
   question: Question;
@@ -979,6 +980,9 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
               </p>
             </section>
           )}
+
+          {/* 心智圖（作者選填） */}
+          <MindMapSection data={question.mindMap} className="rounded-xl" />
         </div>
       </div>
 

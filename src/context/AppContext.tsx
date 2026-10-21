@@ -125,7 +125,7 @@ import {
   savePublicMetricsConfig,
   saveHomeShowcaseConfig,
 } from '../services/firestoreSync';
-import { DEFAULT_HOME_SHOWCASE_CONFIG, HOME_SHOWCASE_MODES, type HomeShowcaseConfig } from '../types';
+import { DEFAULT_HOME_SHOWCASE_CONFIG, HOME_SHOWCASE_MODES, type HomeShowcaseConfig, type MindMapData } from '../types';
 
 /** 雲端讀回來的播放區設定整理成固定格式 */
 function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
@@ -309,6 +309,8 @@ interface AppContextType {
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      /** 心智圖：null＝移除 */
+      mindMap?: MindMapData | null;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -5145,6 +5147,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      /** 心智圖：null＝移除 */
+      mindMap?: MindMapData | null;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -5187,6 +5191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.cardHoverMode !== undefined && params.cardHoverMode !== currentQ.cardHoverMode) changedFields.push('卡片動態展示');
     if (params.proposalProgressStage !== undefined && params.proposalProgressStage !== currentQ.proposalProgressStage) changedFields.push('提案進度狀態');
     if (params.techArchitecture !== undefined && params.techArchitecture !== currentQ.techArchitecture) changedFields.push('技術架構');
+    if (params.mindMap !== undefined && JSON.stringify(params.mindMap?.root || null) !== JSON.stringify(currentQ.mindMap?.root || null)) changedFields.push('心智圖');
     if (params.version && params.version !== currentQ.currentVersion) changedFields.push('版本號');
     if (changedFields.length === 0) changedFields.push('內容更新');
 
@@ -5225,6 +5230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCardImage: params.showCardImage !== undefined ? params.showCardImage : currentQ.showCardImage,
       cardDisplayImage: params.cardDisplayImage !== undefined ? params.cardDisplayImage : currentQ.cardDisplayImage,
       proposalProgressStage: params.proposalProgressStage !== undefined ? params.proposalProgressStage : currentQ.proposalProgressStage,
+      mindMap: params.mindMap !== undefined ? params.mindMap : currentQ.mindMap,
       vibeCodingData: currentQ.vibeCodingData
         ? {
             ...currentQ.vibeCodingData,

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { MindMapEditor } from './mindmap/MindMapEditor';
+import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import { BaiMiao } from './baimiao/BaiMiao';
-import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
+import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES, MindMapData } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { AIAnalysisResult } from '../services/aiService';
@@ -198,6 +200,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'帳戶點數付點' | '信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('帳戶點數付點');
   const [referencedPainPoint, setReferencedPainPoint] = useState('');
   const [targetGoal, setTargetGoal] = useState('');
+  // 心智圖（創新提案、VibeCoding 作品選填；null＝不使用）
+  const [mindMap, setMindMap] = useState<MindMapData | null>(null);
 
   // VibeCoding 與創新提案專屬欄位狀態
   const [appName, setAppName] = useState<string>('');
@@ -650,6 +654,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         specialZone: postType === 'vibecoding_app' ? 'vibecoding' : undefined,
         referencedPainPoint: referencedPainPoint.trim() || undefined,
         targetGoal: targetGoal.trim() || undefined,
+        mindMap: (postType === 'innovation_proposal' || postType === 'vibecoding_app') ? (sanitizeMindMap(mindMap) || undefined) : undefined,
         currentVersion: postType === 'vibecoding_app' ? (currentVersion.trim() || undefined) : undefined,
         updateLogs: (postType === 'vibecoding_app' && currentVersion.trim()) ? [{
           id: `log-init-${Date.now()}`,
@@ -1203,6 +1208,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* 心智圖（選填）：創新提案、VibeCoding 作品 */}
+        {(postType === 'innovation_proposal' || postType === 'vibecoding_app') && (
+          <MindMapEditor value={mindMap} onChange={setMindMap} title={title} kind={postType === 'vibecoding_app' ? 'vibecoding' : 'proposal'} />
         )}
 
         {/* 創新提案 & VibeCoding 軟體刊登：展示圖片上傳 */}
