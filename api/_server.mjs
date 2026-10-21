@@ -158447,7 +158447,8 @@ var OPENAI_MODEL = (process.env.OPENAI_MODEL || "gpt-6-luna").trim();
 var ANTHROPIC_MODEL = (process.env.ANTHROPIC_MODEL || "claude-haiku-5-5").trim();
 var GEMINI_MAIN_MODEL = "gemini-3.8-flash";
 var MODEL_OF = { openai: OPENAI_MODEL, anthropic: ANTHROPIC_MODEL, gemini: GEMINI_MAIN_MODEL };
-var hasProviderKey = (p) => p === "openai" ? Boolean((process.env.OPENAI_API_KEY || "").trim()) : p === "anthropic" ? Boolean((process.env.ANTHROPIC_API_KEY || "").trim()) : Boolean((process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim());
+var claudeKey = () => (process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "").trim();
+var hasProviderKey = (p) => p === "openai" ? Boolean((process.env.OPENAI_API_KEY || "").trim()) : p === "anthropic" ? Boolean(claudeKey()) : Boolean((process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim());
 var EFFORT_OPTIONS = {
   openai: ["none", "low", "medium", "high", "xhigh"],
   anthropic: ["none", "low", "medium", "high", "xhigh"],
@@ -158568,9 +158569,9 @@ async function openAiGenerate(opts) {
   }
 }
 async function anthropicGenerate(opts) {
-  const key = (process.env.ANTHROPIC_API_KEY || "").trim();
+  const key = claudeKey();
   if (!key) {
-    lastError.anthropic = "\u6C92\u6709\u8A2D\u5B9A ANTHROPIC_API_KEY";
+    lastError.anthropic = "\u6C92\u6709\u8A2D\u5B9A CLAUDE_API_KEY";
     return null;
   }
   const effort = opts.effort || await getEffort("anthropic");
@@ -162053,7 +162054,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.2";
+var APP_VERSION = "3.3.3";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165534,7 +165535,7 @@ app.post("/api/admin/ai-provider/test", async (req, res) => {
   let text = null;
   let error = "";
   if (!hasProviderKey(p)) {
-    error = p === "openai" ? "\u6C92\u6709\u8A2D\u5B9A OPENAI_API_KEY" : p === "anthropic" ? "\u6C92\u6709\u8A2D\u5B9A ANTHROPIC_API_KEY" : "\u6C92\u6709\u8A2D\u5B9A GEMINI_API_KEY";
+    error = p === "openai" ? "\u6C92\u6709\u8A2D\u5B9A OPENAI_API_KEY" : p === "anthropic" ? "\u6C92\u6709\u8A2D\u5B9A CLAUDE_API_KEY" : "\u6C92\u6709\u8A2D\u5B9A GEMINI_API_KEY";
   } else if (p === "openai") {
     text = await openAiGenerate({ prompt, json: true });
     if (!text) error = getLastProviderError("openai");

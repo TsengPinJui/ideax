@@ -2,7 +2,7 @@
  * 內建 AI 模型：OpenAI GPT-6 Luna（預設）、Anthropic Claude Haiku 5.5、Google Gemini 3.8 Flash。
  * - 管理員在後台選一個使用中的模型，三個模型各自有推理強度，存在 platform_settings/global；伺服器每 60 秒重讀一次
  * - 選 Luna 或 Haiku 時先用它；沒有金鑰、逾時或出錯，呼叫端自動退回 Gemini
- * - 金鑰放在 Vercel 環境變數：OPENAI_API_KEY、ANTHROPIC_API_KEY、GEMINI_API_KEY；只在伺服器使用，不會傳到前端
+ * - 金鑰放在 Vercel 環境變數：OPENAI_API_KEY、CLAUDE_API_KEY（也接受 ANTHROPIC_API_KEY）、GEMINI_API_KEY；只在伺服器使用，不會傳到前端
  * - 可用 OPENAI_MODEL、ANTHROPIC_MODEL 換模型
  */
 import { ThinkingLevel } from '@google/genai';
@@ -16,9 +16,12 @@ export const ANTHROPIC_MODEL = (process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5
 export const GEMINI_MAIN_MODEL = 'gemini-3.8-flash';
 export const MODEL_OF: Record<AiProvider, string> = { openai: OPENAI_MODEL, anthropic: ANTHROPIC_MODEL, gemini: GEMINI_MAIN_MODEL };
 
+/** Claude 金鑰：用 CLAUDE_API_KEY（舊名稱 ANTHROPIC_API_KEY 也可以） */
+const claudeKey = () => (process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
+
 export const hasProviderKey = (p: AiProvider): boolean =>
   p === 'openai' ? Boolean((process.env.OPENAI_API_KEY || '').trim())
-  : p === 'anthropic' ? Boolean((process.env.ANTHROPIC_API_KEY || '').trim())
+  : p === 'anthropic' ? Boolean(claudeKey())
   : Boolean((process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim());
 export const hasOpenAiKey = () => hasProviderKey('openai');
 
@@ -181,8 +184,8 @@ export async function openAiGenerate(opts: GenOpts & { omitReasoning?: boolean }
  * 推理強度用 output_config.effort；none＝關閉思考並用 low。
  */
 export async function anthropicGenerate(opts: GenOpts): Promise<string | null> {
-  const key = (process.env.ANTHROPIC_API_KEY || '').trim();
-  if (!key) { lastError.anthropic = '沒有設定 ANTHROPIC_API_KEY'; return null; }
+  const key = claudeKey();
+  if (!key) { lastError.anthropic = '沒有設定 CLAUDE_API_KEY'; return null; }
   const effort = opts.effort || (await getEffort('anthropic'));
   const timeoutMs = opts.timeoutMs || EFFORT_TIMEOUT_MS[effort];
   const controller = new AbortController();
