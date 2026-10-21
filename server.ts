@@ -5046,7 +5046,7 @@ app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => 
     const raw = String(req.body?.message || '').trim().slice(0, 500);
     if (!raw) return res.status(400).json({ success: false, error: '請輸入測試問題' });
     const guard = guardMascotQuestion(raw);
-    const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能請到網站介面使用）' };
+    const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能請到網站介面使用）', agent_directory: '（指名找角色：介紹並給捷徑）' };
     if (guard.action === 'reply') return res.json({ success: true, agent: 'none', label: guardLabel[guard.reason], routedBy: 'guard', answer: guard.reply, actions: guard.actions });
     const message = guard.message;
     // 和網站上一樣：小燈泡先判斷，聊天與簡單問題自己回答，答不了才轉接

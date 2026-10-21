@@ -474,7 +474,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
           return;
         }
         agentForAsk = self.escalate;
-        label = self.agentLabel || '官方客服特助';
+        label = self.agentLabel || '多慧（官方客服）';
         available = self.available !== false;
       }
 
@@ -490,7 +490,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
         if (sec >= 60 && !shyShown) { shyShown = true; engineRef.current?.embarrassed(); } // 等太久：不好意思
         setStatus(
           sec >= 180 ? '小燈泡正在代為回答…'
-          : sec >= 60 ? `再給${label === '官方客服特助' ? '客服' : label}一點時間，超過三分鐘將由小燈泡代為回答...`
+          : sec >= 60 ? `再給${label}一點時間，超過三分鐘將由小燈泡代為回答...`
           : sec >= 30 ? `${label}已經收到你的問題，正在撰寫回覆...`
           : `小燈泡正在轉接${label}...`
         );
