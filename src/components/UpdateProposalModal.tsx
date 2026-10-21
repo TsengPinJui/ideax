@@ -30,6 +30,9 @@ import {
   MAX_IMAGE_FILE_SIZE_MB,
   ACCEPTED_IMAGE_TYPES,
 } from '../utils/imageUploadUtils';
+import { MindMapEditor } from './mindmap/MindMapEditor';
+import { sanitizeMindMap } from './mindmap/mindMapUtils';
+import type { MindMapData } from '../types';
 
 interface UpdateProposalModalProps {
   question: Question;
@@ -72,6 +75,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [description, setDescription] = useState(question.description || '');
   const [referencedPainPoint, setReferencedPainPoint] = useState(question.referencedPainPoint || '');
   const [targetGoal, setTargetGoal] = useState(question.targetGoal || '');
+  const [mindMap, setMindMap] = useState<MindMapData | null>(question.mindMap || null);
   const [demoUrl, setDemoUrl] = useState(question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '');
   const [fileLink, setFileLink] = useState(question.fileLink || question.externalLink || question.fileUrl || '');
   const [previewMode, setPreviewMode] = useState<'embed' | 'external'>(
@@ -112,6 +116,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setDescription(question.description || '');
       setReferencedPainPoint(question.referencedPainPoint || '');
       setTargetGoal(question.targetGoal || '');
+      setMindMap(question.mindMap || null);
       setDemoUrl(question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '');
       setFileLink(question.fileLink || question.externalLink || question.fileUrl || '');
       setPreviewMode(
@@ -215,6 +220,8 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       subcategories: isVibeCoding ? selectedCategories : undefined,
       referencedPainPoint: referencedPainPoint.trim(),
       targetGoal: targetGoal.trim(),
+      // 心智圖：關掉或清空時存 null（移除）
+      mindMap: (question.postType === 'innovation_proposal' || isVibeCoding) ? sanitizeMindMap(mindMap) : undefined,
       demoUrl: demoUrl.trim() || (isVibeCoding ? fileLink.trim() : ''),
       externalLink: isVibeCoding ? (fileLink.trim() || demoUrl.trim()) : undefined,
       previewMode: isVibeCoding ? previewMode : undefined,
@@ -514,6 +521,11 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* 心智圖（選填） */}
+            {(question.postType === 'innovation_proposal' || isVibeCoding) && (
+              <MindMapEditor value={mindMap} onChange={setMindMap} title={title} kind={isVibeCoding ? 'vibecoding' : 'proposal'} />
+            )}
 
             {/* URLs & Tech Stack */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

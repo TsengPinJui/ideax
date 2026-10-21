@@ -33,6 +33,7 @@ import { getProposalShareUrl, getBaseUrl } from '../../services/seoService';
 import { shareOrCopyUrl, copyPureUrl } from '../../utils/shareUtils';
 import { getUserNameColorClass } from '../../utils/userDisplay';
 import { useApp } from '../../context/AppContext';
+import { MindMapSection } from '../mindmap/MindMapSection';
 import {
   extractProposalSections,
   extractProposalAttachments,
@@ -667,6 +668,9 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             </p>
           </section>
         )}
+
+        {/* 心智圖（作者選填，存在原本的提案資料上） */}
+        <MindMapSection data={(questions || []).find((q) => q.id === proposal.id)?.mindMap} className="rounded-3xl sm:p-6" />
 
         {/* 4. 痛點專用：針對此痛點提案雙軌 CTA */}
         {proposal.stage === 'pain_point' && (

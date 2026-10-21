@@ -88,6 +88,7 @@ import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
 import { isGuestPreviewOnly } from '../utils/guestAccess';
+import { MindMapSection } from './mindmap/MindMapSection';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -1427,6 +1428,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               </div>
             )}
           </div>
+        )}
+
+        {/* 心智圖（作者選填） */}
+        {(liveQuestion.postType === 'innovation_proposal' || liveQuestion.postType === 'vibecoding_app') && (
+          <MindMapSection data={liveQuestion.mindMap} />
         )}
 
         {/* Question Full Description & AI Tags Section */}
