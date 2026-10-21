@@ -526,7 +526,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                   type="url"
                   value={demoUrl}
                   onChange={(e) => setDemoUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://my-app.vercel.app、https://my-app.streamlit.app"
                   className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
               </div>

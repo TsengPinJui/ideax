@@ -10,6 +10,7 @@ import {
   Play,
 } from 'lucide-react';
 import { extractYoutubeVideoId } from '../utils/youtubeUtils';
+import { toEmbedTarget, EMBED_PLATFORM_LABEL } from '../utils/embedPlatforms';
 
 interface VibeCodingEmbedPreviewProps {
   url?: string;
@@ -25,6 +26,9 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
   previewMode = 'embed',
 }) => {
   const cleanUrl = (url || '').trim();
+  const { embedUrl, platform } = React.useMemo(() => toEmbedTarget(cleanUrl), [cleanUrl]);
+  // Streamlit / Hugging Face 免費方案閒置後會休眠，喚醒需較久
+  const loadTimeoutMs = platform ? 30000 : 8500;
   const [status, setStatus] = useState<EmbedStatus>('loading');
   const [blockReason, setBlockReason] = useState<string>('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -54,16 +58,16 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
     setStatus('loading');
     setBlockReason('');
 
-    // 1. 前端載入逾時保護（8.5 秒未完成載入則切換為外部連結提示）
+    // 1. 前端載入逾時保護（一般網站 8.5 秒、Streamlit 等平台 30 秒未完成載入則切換為外部連結提示）
     const timeoutId = window.setTimeout(() => {
       if (!cancelled && !iframeLoadedRef.current && !blockedByServerRef.current) {
         setStatus('timeout');
         setBlockReason('預覽載入超時，目標網站可能回應較慢或限制內嵌連線。');
       }
-    }, 8500);
+    }, loadTimeoutMs);
 
     // 2. 後端標頭與連線相容性檢查（偵測 X-Frame-Options / CSP frame-ancestors / 無法連線網域）
-    fetch(`/api/competition/check-embed?url=${encodeURIComponent(cleanUrl)}`)
+    fetch(`/api/competition/check-embed?url=${encodeURIComponent(embedUrl)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data) return;
@@ -88,7 +92,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [cleanUrl, isValidWebUrl, previewMode, reloadKey]);
+  }, [cleanUrl, embedUrl, loadTimeoutMs, isValidWebUrl, previewMode, reloadKey]);
 
   if (!isValidWebUrl) return null;
 
@@ -137,6 +141,11 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
             <Play className="w-3 h-3 fill-emerald-400 text-emerald-400" />
             <span>互動預覽區</span>
           </span>
+          {platform && (
+            <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-400/40 text-rose-200 text-[11px] font-black shrink-0">
+              {EMBED_PLATFORM_LABEL[platform]}
+            </span>
+          )}
           <span className="text-xs font-bold text-stone-200 truncate hidden md:inline">
             {title}
           </span>
@@ -243,6 +252,11 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
               <div className="text-xs font-bold text-stone-700">
                 正在載入互動預覽網頁...
               </div>
+              {platform && (
+                <div className="text-[11px] text-stone-500 max-w-xs leading-relaxed">
+                  {EMBED_PLATFORM_LABEL[platform]} 應用閒置後會休眠，首次喚醒約需 30 秒；若畫面出現喚醒按鈕，點一下即可。
+                </div>
+              )}
               <a
                 href={cleanUrl}
                 target="_blank"
@@ -257,11 +271,11 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
 
           <iframe
             key={reloadKey}
-            src={cleanUrl}
+            src={embedUrl}
             title={`${title} - 互動預覽`}
             className="w-full h-full border-0 bg-white"
             allow="clipboard-read; clipboard-write; fullscreen; autoplay; microphone; camera; geolocation"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"
             onLoad={() => {
               iframeLoadedRef.current = true;
               if (!blockedByServerRef.current) {
