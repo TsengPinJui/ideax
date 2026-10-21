@@ -1448,7 +1448,8 @@ export interface PublicMetricsConfig {
   showAvgResponseSpeed: boolean;   // 平均回覆速度
   showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
-  showTotalViews?: boolean;        // 網站造訪量（進入網站的總造訪次數）
+  showTotalViews?: boolean;        // 網站總瀏覽量（進入網站的總瀏覽次數）
+  showUniqueVisitors?: boolean;    // 造訪用戶（不重複裝置數）
   showOnlineUsers?: boolean;       // 即時線上人數
   showTotalMembers?: boolean;      // 總註冊用戶
   showVerifiedSolvers?: boolean;   // 認證專家
