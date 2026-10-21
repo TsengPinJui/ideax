@@ -3465,8 +3465,89 @@ function detectCampusLandmark(text: string): CampusLandmarkMeta | null {
   return null;
 }
 
+/** 口語說「要做的事」→ 求職網通用職稱（規則版備援；AI 版在提示詞裡有同樣的對照） */
+const COLLOQUIAL_ROLES: Array<[RegExp, string]> = [
+  [/端盤子|端菜|送餐|外場/, '服務生（外場）'],
+  [/洗碗|內場/, '洗碗人員（內場）'],
+  [/顧店|看店|顧櫃台/, '門市人員'],
+  [/收銀|結帳/, '收銀員'],
+  [/送外送|外送|跑外送/, '外送員'],
+  [/搬貨|理貨|上架|揀貨/, '理貨員／倉管人員'],
+  [/打字|處理文件|文書/, '行政助理／文書處理人員'],
+  [/接電話|回訊息|客訴/, '客服人員'],
+  [/寫程式|寫code|寫網站|做app/i, '軟體工程師'],
+  [/修電腦|修手機/, '電腦維修技術員'],
+  [/帶小孩|顧小孩|保母/, '保母／課後照顧老師'],
+  [/照顧老人|照顧長輩|長照/, '照顧服務員'],
+  [/開車載人|當司機|載貨|開貨車|開計程車|開公車/, '司機'], // 只寫「開車」常是通勤（開車 20 分鐘），不算
+  [/掃地|打掃|清潔/, '清潔人員'],
+  [/煮咖啡|沖咖啡|拉花/, '咖啡師'],
+  [/做飯|炒菜|煮飯|做菜/, '廚師／廚房助手'],
+  [/剪頭髮|洗頭/, '美髮設計師／美髮助理'],
+  [/拍片|剪片|剪影片/, '影音剪輯師'],
+  [/發傳單/, '派報員／活動工讀生'],
+  [/站櫃/, '專櫃人員'],
+];
+
+/** 中文數字的金額轉成阿拉伯數字（「月薪四萬」→ 40000、「三萬五」→ 35000、「四五萬」→ 40000、「時薪兩百」→ 200） */
+const CN_DIGIT: Record<string, number> = { 零: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+function cnSmallNumber(s: string): number {
+  if (s.length === 1 && s in CN_DIGIT) return CN_DIGIT[s];
+  const m = s.match(/^([一二兩三四五六七八九])?十([一二三四五六七八九])?$/);
+  if (m) return (m[1] ? CN_DIGIT[m[1]] : 1) * 10 + (m[2] ? CN_DIGIT[m[2]] : 0);
+  return NaN;
+}
+function normalizeChineseAmounts(t: string): string {
+  return t
+    .replace(/([一二兩三四五六七八九])([一二三四五六七八九])萬/g, (_, a) => String(CN_DIGIT[a] * 10000))
+    .replace(/([一二兩三四五六七八九十]{1,3})萬([一二三四五六七八九])?/g, (all, a, b) => {
+      const n = cnSmallNumber(a);
+      return Number.isNaN(n) ? all : String(n * 10000 + (b ? CN_DIGIT[b] * 1000 : 0));
+    })
+    .replace(/([一二兩三四五六七八九])百([一二三四五六七八九])?/g, (_, a, b) => String(CN_DIGIT[a] * 100 + (b ? CN_DIGIT[b] * 10 : 0)));
+}
+
+/** 規則版：把口語的偏好轉成具體條件（AI 沒回應時使用） */
+const PREFERENCE_RULES: Array<{ dimension: string; re: RegExp; value: string | ((m: RegExpMatchArray) => string) }> = [
+  { dimension: 'schedule', re: /週休二日|周休二日/, value: '週休二日' },
+  { dimension: 'schedule', re: /不輪班|不要輪班|固定班/, value: '固定班、不輪班' },
+  { dimension: 'schedule', re: /接小孩|接送小孩/, value: '早班或 15:30 前下班（要接小孩）' },
+  { dimension: 'schedule', re: /只上?早班|早上班/, value: '早班' },
+  { dimension: 'schedule', re: /夜班|大夜/, value: '夜班' },
+  { dimension: 'schedule', re: /不加班|準時下班/, value: '不常加班、準時下班' },
+  { dimension: 'schedule', re: /彈性(工時|上下班)/, value: '彈性工時' },
+  { dimension: 'schedule', re: /假日休|見紅休/, value: '假日休' },
+  { dimension: 'workMode', re: /遠端|在家工作|wfh/i, value: '可遠端' },
+  { dimension: 'workMode', re: /混合辦公/, value: '混合辦公' },
+  { dimension: 'benefits', re: /員工餐|供餐/, value: '供餐' },
+  { dimension: 'benefits', re: /供宿|宿舍/, value: '供宿' },
+  { dimension: 'benefits', re: /交通補助/, value: '交通補助' },
+  { dimension: 'benefits', re: /教育訓練|想學東西|有成長/, value: '有教育訓練' },
+  { dimension: 'environment', re: /輕鬆|不要太累|不想太累/, value: '工作量適中、不需久站' },
+  { dimension: 'environment', re: /不用面對客人|不面對客人|社恐|不太會(跟人)?講話/, value: '不需接待客人' },
+  { dimension: 'environment', re: /安靜/, value: '環境安靜' },
+  { dimension: 'environment', re: /寵物友善/, value: '寵物友善' },
+  { dimension: 'skills', re: /會(日文|英文|韓文|法文|德文|西班牙文)/, value: (m) => `${m[1]}能力` },
+  { dimension: 'skills', re: /英文(流利|很好|好)/, value: '英文流利' },
+  { dimension: 'skills', re: /(機車|汽車|大貨車)?駕照/, value: (m) => `${m[1] || ''}駕照` },
+  { dimension: 'background', re: /新鮮人|應屆/, value: '社會新鮮人' },
+  { dimension: 'background', re: /二度就業/, value: '二度就業' },
+  { dimension: 'background', re: /剛退伍|退伍/, value: '剛退伍' },
+  { dimension: 'background', re: /轉職|轉行/, value: '轉職中' },
+];
+function extractPreferencesFromText(text: string): Array<{ dimension: string; label: string; value: string }> {
+  const raw: Array<{ dimension: string; value: string }> = [];
+  for (const r of PREFERENCE_RULES) {
+    const m = text.match(r.re);
+    if (m) raw.push({ dimension: r.dimension, value: typeof r.value === 'function' ? r.value(m) : r.value });
+  }
+  return cleanIntakePreferences(raw);
+}
+
 /** 從使用者的話裡挑出職務（規則版，AI 沒回應時使用）；記錄條件與判斷「是否還缺職務」共用 */
 function extractRolesFromText(text: string): string[] {
+  const colloquial = [...new Set(COLLOQUIAL_ROLES.filter(([re]) => re.test(text)).map(([, t]) => t))];
+  if (colloquial.length) return colloquial.slice(0, 3);
   // 職務：去掉地區、地標名稱、薪資、工作型態等字樣後剩下的部分
   let cleanedForRole = text
     .replace(/[一二兩三四五六七八九十\d]{1,2}\s*年(?:多|半)?(?:以上)?(?:的)?(?:經驗|資歷|年資)?/g, ' ')
@@ -3505,7 +3586,7 @@ function extractRolesFromText(text: string): string[] {
     ? [] // 長篇自我介紹、又沒明說職位：不要亂猜，讓使用者補充職務
     : cleanedForRole
         .split(/\s+/)
-        .filter((w) => w.length >= 2 && w.length <= 14 && !SENTENCE_NOISE.test(w) && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
+        .filter((w) => w.length >= 2 && w.length <= 14 && !SENTENCE_NOISE.test(w) && !NOT_A_ROLE_RE.test(w) && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
 }
 
 /** 把已經確定的條件整理成一行一項（工作型態、地區、職務、薪資、學歷、經歷） */
@@ -3556,6 +3637,7 @@ function buildJobConditionSummary(
 
   const role = extractRolesFromText(text);
   if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
+  for (const pf of extractPreferencesFromText(text)) lines.push(`${pf.label}：${pf.value}`);
 
   // 薪資
   const si = ctx.salaryInfo;
@@ -3605,6 +3687,26 @@ app.get('/api/fx', async (_req: Request, res: Response) => {
 /** 最近一次 AI 語意整理失敗的原因（回傳給前端除錯用，不含金鑰） */
 let lastIntakeAiNote = '';
 
+/** 看起來是「條件」而不是職務的詞：AI 誤放進職務時移出來 */
+const NOT_A_ROLE_RE = /週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
+const INTAKE_PREF_LABELS: Record<string, string> = {
+  industry: '產業', schedule: '班別工時', workMode: '工作方式', benefits: '福利',
+  environment: '工作環境', skills: '技能證照', background: '個人背景', other: '其他偏好',
+};
+/** AI 給的其他面向整理成固定格式：同一面向合併、去重、限制長度 */
+function cleanIntakePreferences(raw: any): Array<{ dimension: string; label: string; value: string }> {
+  if (!Array.isArray(raw)) return [];
+  const byDim = new Map<string, string[]>();
+  for (const p of raw) {
+    const dim = INTAKE_PREF_LABELS[p?.dimension] ? p.dimension : 'other';
+    const values = String(p?.value || '').split(/[、,，]/).map((v) => v.trim()).filter(Boolean);
+    const list = byDim.get(dim) || [];
+    for (const v of values) if (!list.includes(v) && v.length <= 30) list.push(v);
+    byDim.set(dim, list);
+  }
+  return [...byDim.entries()].filter(([, v]) => v.length).map(([dimension, v]) => ({ dimension, label: INTAKE_PREF_LABELS[dimension], value: v.slice(0, 6).join('、') }));
+}
+
 async function parseJobIntakeWithGemini(params: {
   rawMessage: string;
   previousBrief: string;
@@ -3624,6 +3726,50 @@ async function parseJobIntakeWithGemini(params: {
 
 使用者已明確略過的維度：
 """${params.skippedDimensions.join('、') || '無'}"""
+
+【第一步：先把使用者的話拆開，逐句判斷「這句在講哪個面向」】
+使用者輸入的不一定是職務！常見面向如下，每一句都要先歸類，再放進對應欄位：
+- 職務／職稱（roles）：只有「職業、職稱、工作內容」才算，例如「行政助理」「早餐店店員」「前端工程師」。
+  使用者用口語描述「要做的事」時，要轉成求職網上通用的正式職稱（roles 放正式職稱，必要時括號補充）：
+  「端盤子」→「服務生（外場）」、「洗碗」→「洗碗人員（內場）」、「顧店」→「門市人員」、「收銀」→「收銀員」、
+  「送外送」→「外送員」、「搬貨」「理貨」→「理貨員／倉管人員」、「打字」「處理文件」→「行政助理／文書處理人員」、
+  「接電話」→「客服人員」、「寫程式」→「軟體工程師」、「修電腦」→「電腦維修技術員」、「帶小孩」→「保母／課後照顧老師」、
+  「照顧老人」→「照顧服務員」、「開車載人」→「司機」、「掃地打掃」→「清潔人員」、「煮咖啡」→「咖啡師」、
+  「做飯」「炒菜」→「廚師／廚房助手」、「剪頭髮」→「美髮設計師／美髮助理」、「拍片剪片」→「影音剪輯師」、
+  「顧小孩補習班」→「補習班導師／課輔老師」、「發傳單」→「派報員／活動工讀生」、「站櫃」→「專櫃人員」。
+  沒列在上面的口語說法也要依同樣原則轉換。
+- 公司（companies）、地區（location）、工作型態（jobType）、薪資（salary）、年資（experience）、學歷（education）
+- 產業（industry）：例如「半導體業」「餐飲業」「遊戲公司」「外商」「新創」「公家機關」
+- 班別與工時（schedule）：例如「週休二日」「不輪班」「只上早班」「夜班」「不加班」「彈性上下班」「假日休」「一週三天」
+- 工作方式（workMode）：例如「可遠端」「在家工作」「混合辦公」「不出差」
+- 福利（benefits）：例如「有員工餐」「供宿」「交通補助」「年終兩個月」「有勞健保」「三節獎金」
+- 工作環境與氛圍（environment）：例如「安靜」「不用面對客人」「小團隊」「寵物友善」「不要太累」「不用久站」
+- 技能、語言、證照（skills）：例如「會日文」「英文流利」「有機車駕照」「會 Excel」「有堆高機證照」
+- 個人背景（background）：例如「文組新鮮人」「二度就業媽媽」「剛退伍」「大學生」「轉職」「身心障礙」
+- 其他偏好（other）：以上都不是，但對找工作有意義的條件
+判斷原則：
+- roles 只能放職業／職稱。像「週休二日」「離家近」「有員工餐」「會日文」「文組新鮮人」「想輕鬆一點」都不是職務，絕不可放進 roles。
+- 技能或背景只是「暗示」職務方向時（例如「我會日文」），不要自己把它變成職務；放進 skills／background，再用 clarificationQuestion 問他想找哪一類工作，並給 suggestedChips（例如「日文翻譯」「日商業務」「日文客服」）。
+- 整段話完全沒提到職務時，roles 必須是 []，不要猜。
+- 同一句話可能同時包含多個面向（例如「台北週休二日的會計，月薪四萬」= 地區＋班別＋職務＋薪資），要全部拆出來。
+
+【第二步：把模糊、口語、混亂的說法，翻成「搜尋或篩選時用得上」的具體條件】
+使用者常常講得很口語、很模糊，甚至前後矛盾。不要照抄原話，要轉成職缺上看得到、可以比對的條件：
+- 「錢多事少離家近」→ 薪資：高於該職務市場行情；工作環境：工作量適中、不常加班；地區：住家附近（追問住哪一區）
+- 「不想太累」「想輕鬆一點」→ 工作環境：非體力勞動、不需久站、工作量適中
+- 「我不太會跟人講話」「社恐」→ 工作環境：不需接待客人、不用電話銷售
+- 「下午要接小孩」→ 班別工時：早班或 15:30 前下班
+- 「想穩定一點」→ 工作型態：正職；產業：公家機關、大型企業或連鎖企業（作為偏好，不是限制）
+- 「想學東西、有成長」→ 福利：有教育訓練、有師徒制
+- 「不要太遠，騎車 20 分鐘內」→ 地區：住家附近、通勤 20 分鐘內（追問住哪一區）
+- 「薪水至少要能付房租」「三萬多就好」→ 薪資：月薪 30,000 以上（「三萬多」取 30,000、「四五萬」取 40,000）
+- 「什麼都可以、沒經驗」→ 年資：不拘、經歷：無經驗可；roles 留空並追問想往哪個方向
+- 前後矛盾時（例如先說兼職、後說要月薪），以最新的說法為準，並在 clarificationQuestion 跟他確認。
+轉換規則：
+- preferences 的 value 寫「轉換後的具體條件」，必要時在括號附上原話，例如「早班或 15:30 前下班（要接小孩）」。
+- 能落到標準欄位的就放進標準欄位（薪資 → minSalary／salaryText、全職兼職 → jobType、新鮮人 → experienceYears 0）。
+- confirmedBrief 要寫成可以直接拿去搜尋的條件句，例如「台北市、行政助理、正職、月薪 32,000 以上、早班或 15:30 前下班、不需接待客人」，不要放口語原話。
+- 轉換時不可以加入使用者沒有表達過的條件；真的看不出意思時，用 clarificationQuestion 問清楚，不要亂猜。
 
 【核心語意理解與實體抽取要求（務必深刻洞察，絕不可粗暴字面拆詞！）】：
 1. 【地點與地標 (locations)】：
@@ -3659,7 +3805,15 @@ async function parseJobIntakeWithGemini(params: {
      - salaryCurrency: 若是薪資，填入幣別代碼
      - salaryPeriod: 若是薪資，填入 "月薪" | "年薪" | "時薪"
      - experienceYears: 若是年資，填入純數字
-8. 【條列摘要 (summaryLines)】：
+8. 【其他面向 (preferences)】：
+   - 產業、班別與工時、工作方式、福利、工作環境、技能語言證照、個人背景、其他偏好，一律放進 preferences 陣列：
+     {"dimension": "industry" | "schedule" | "workMode" | "benefits" | "environment" | "skills" | "background" | "other", "label": "產業" | "班別工時" | "工作方式" | "福利" | "工作環境" | "技能證照" | "個人背景" | "其他偏好", "value": "使用者的條件（簡短）"}
+   - 同一個面向有多個條件就用「、」合併成一筆，例如 {"dimension":"schedule","label":"班別工時","value":"週休二日、不輪班"}。
+   - preferences 裡的條件也要寫進 summaryLines（例如 "班別工時：週休二日、不輪班"）和 confirmedBrief。
+9. 【換了不同職務 (newRoleDifferentFromPrevious)】：
+   - 先前累積條件裡已經有職務，而最新輸入提到的是「另一個不同的職務」（不是補充同一個職務的細節）時，填 true；其他情況填 false。
+   - 這時 roles 只放最新輸入的職務，不要和先前的職務混在一起。
+10. 【條列摘要 (summaryLines)】：
    - 請輸出簡潔且高水準的條列清單（只列出目前已確定的條件），例如：
      - "工作型態：正職"
      - "職務：高級工程師"
@@ -3681,6 +3835,10 @@ async function parseJobIntakeWithGemini(params: {
   "education": "學歷要求，若無則 null",
   "experience": "經歷要求，若無則 null",
   "experienceYears": 0,
+  "preferences": [
+    {"dimension": "schedule", "label": "班別工時", "value": "週休二日"}
+  ],
+  "newRoleDifferentFromPrevious": false,
   "conditionTags": [
     {
       "id": "tag-role",
@@ -3734,8 +3892,19 @@ async function parseJobIntakeWithGemini(params: {
           if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
           if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
           if (parsed.education) lines.push(`學歷：${parsed.education}`);
+          for (const pf of cleanIntakePreferences(parsed.preferences)) lines.push(`${pf.label}：${pf.value}`);
           parsed.summaryLines = lines;
         }
+        // 保險：把被誤放進職務的「條件」移到其他面向（例如週休二日、員工餐、離家近）
+        if (Array.isArray(parsed.roles)) {
+          const moved: string[] = [];
+          parsed.roles = parsed.roles.map((r: any) => String(r || '').trim()).filter((r: string) => {
+            if (r && NOT_A_ROLE_RE.test(r)) { moved.push(r); return false; }
+            return Boolean(r);
+          });
+          if (moved.length) parsed.preferences = [...(Array.isArray(parsed.preferences) ? parsed.preferences : []), { dimension: 'other', label: '其他偏好', value: moved.join('、') }];
+        }
+        parsed.preferences = cleanIntakePreferences(parsed.preferences);
         parsed.__engine = model;
         return parsed;
       }
@@ -3884,9 +4053,12 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
         ? geminiIntake.summaryLines.map((l: string) => `• ${l}`).join('\n')
         : '';
       const questionText = geminiIntake.clarificationQuestion || '請問您期望找正職還是兼職？';
-      const resolvedReply = summaryText
+      const roleSwitchTip = geminiIntake.newRoleDifferentFromPrevious === true
+        ? '\n💡 要搜尋不同的職務，建議先按下方「清除對話」重新開始，條件才不會混在一起。'
+        : '';
+      const resolvedReply = (summaryText
         ? `已記錄：\n${summaryText}\n${questionText}`
-        : questionText;
+        : questionText) + roleSwitchTip;
 
       const isAmb = Boolean(geminiIntake.missingDimension);
       const activeGroup = isAmb ? {
@@ -3933,16 +4105,18 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
           minSalary: Number(geminiIntake.minSalary) || 0,
         },
         carePoints: Array.isArray(geminiIntake.carePoints) ? geminiIntake.carePoints : filters.carePoints || [],
+        preferences: geminiIntake.preferences || [],
+        roleSwitched: geminiIntake.newRoleDifferentFromPrevious === true,
       });
     }
 
     // 若 Gemini 暫不可用，以本機規則引擎備援
-    const allSegments = [...conversationHistory, previousBrief, rawMessage]
-      .join(' 、 ')
+    const allSegments = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage]
+      .join(' 、 '))
       .split(/[、,，\n]+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const fullText = [...conversationHistory, previousBrief, rawMessage].join(' ').toLowerCase();
+    const fullText = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(' ')).toLowerCase();
 
     // ─── 各維度關鍵字檢測正則 ───
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
@@ -4267,6 +4441,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       success: true,
       intakeEngine: 'rules',
       aiNote: lastIntakeAiNote || undefined,
+      preferences: extractPreferencesFromText(fullText),
       reply: resolvedReply,
       confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
       searchBriefIfSkipped: finalBrief,

@@ -348,6 +348,10 @@ interface ChatMessage {
   searchActions?: SearchActionKey[];
   /** 這則訊息對應的搜尋條件（頁面重開後還能「重新搜尋」） */
   retryBrief?: string;
+  /** 使用者這次講的是另一個不同的職務：提醒先清除對話 */
+  roleSwitched?: boolean;
+  /** 觸發這則回覆的使用者原話（清除對話後可以直接帶回輸入框） */
+  sourceText?: string;
 }
 
 type SearchActionKey = 'wait' | 'bulb' | 'retry' | 'dismiss';
@@ -508,6 +512,16 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
       type: 'education',
       label: '學歷',
       value: eduMatch[1].trim(),
+    });
+  }
+
+  // 8. 其他面向（產業、班別工時、工作方式、福利、工作環境、技能證照、個人背景、其他偏好）
+  if (Array.isArray(intakeData?.preferences)) {
+    intakeData.preferences.forEach((p: any, idx: number) => {
+      const value = String(p?.value || '').trim();
+      const label = String(p?.label || '其他偏好').trim();
+      if (!value || tags.some((t) => t.label === label && t.value === value)) return;
+      tags.push({ id: `tag-pref-${p?.dimension || 'other'}-${Date.now()}-${idx}`, type: 'carePoint', label, value });
     });
   }
 
@@ -738,6 +752,15 @@ export const JobExplorerView: React.FC = () => {
   const [isAddTagOpen, setIsAddTagOpen] = useState(false);
   // 剛新增的標籤：一出現就直接在標籤上輸入
   const [newTagId, setNewTagId] = useState<string | null>(null);
+
+  /** 清除對話：條件從頭開始（換找其他職務前要先清除） */
+  const clearJobChat = () => {
+    setMessages([]);
+    setPendingConfirmedBrief('');
+    setPendingFallbackBrief('');
+    setSkippedDimensions([]);
+    setAmbiguousClarification(null);
+  };
 
   // 同步確定與整理後的條件標籤至篩選面板，搜尋過後仍可修改再次搜尋
   const syncConditionsToFilters = (tags: ConditionTag[]) => {
@@ -1620,6 +1643,8 @@ export const JobExplorerView: React.FC = () => {
           activeConditionKey: nextAutoConditionKey,
           selectedConditionMap: {},
           conditionTags: initialTags,
+          roleSwitched: Boolean(data?.roleSwitched),
+          sourceText: queryText,
         },
       ]);
     } catch {
@@ -2461,6 +2486,23 @@ export const JobExplorerView: React.FC = () => {
                               <p className="whitespace-pre-wrap font-medium">{m.text}</p>
                             )}
 
+                            {/* 換了不同職務：提醒先清除對話，條件才不會混在一起 */}
+                            {m.role === 'bot' && m.roleSwitched && (
+                              <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium leading-relaxed">
+                                <div>💡 你換了一個不同的職務。要搜尋其他職務，建議先清除對話重新開始，之前的條件才不會混在一起。</div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    clearJobChat();
+                                    if (m.sourceText) setChatInput(m.sourceText);
+                                  }}
+                                  className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black cursor-pointer"
+                                >
+                                  清除對話，用這個職務重新開始
+                                </button>
+                              </div>
+                            )}
+
                             {/* 搜尋中要使用者決定：繼續等搜搜／派小燈泡／重新搜尋 */}
                             {m.role === 'bot' && m.searchActions && m.searchActions.length > 0 && (
                               <div className="mt-2.5 flex flex-wrap gap-2">
@@ -2823,18 +2865,13 @@ export const JobExplorerView: React.FC = () => {
                     )}
                     <div ref={chatEndRef} />
                   </div>
-                  <div className="flex items-center justify-end gap-3 px-1">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <span className="text-[11px] text-stone-500 leading-snug">💡 要搜尋其他職務，請先「清除對話」再重新輸入</span>
+                    <div className="flex items-center gap-3 shrink-0">
                       <button
                         type="button"
-                        onClick={() => {
-                          setMessages([]);
-                          setPendingConfirmedBrief('');
-                          setPendingFallbackBrief('');
-                          setSkippedDimensions([]);
-                          setAmbiguousClarification(null);
-                        }}
-                        className="text-[11px] text-stone-400 hover:text-stone-600 cursor-pointer"
+                        onClick={clearJobChat}
+                        className="text-[11px] font-bold text-amber-700 hover:text-amber-900 underline underline-offset-2 cursor-pointer"
                       >
                         清除對話
                       </button>
