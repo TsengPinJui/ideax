@@ -239,7 +239,7 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
 
           const displaySkills = matchedSkills.length > 0 ? matchedSkills : solver.skills.slice(0, 3);
           const reason = hasRelevance
-            ? `專精於「${displaySkills.join('、')}」，在 ${solver.domain} 領域擁有高度專業口碑（${solver.rating || 4.9}★），契合您所尋求之解法。`
+            ? `專精於「${displaySkills.join('、')}」，在 ${solver.domain} 領域${solver.rating ? `擁有專業口碑（${solver.rating}★）` : '具備相關專長'}，契合您所尋求之解法。`
             : `專業背景為 ${solver.domain}，專長為「${solver.skills.slice(0, 2).join('、')}」。`;
 
           return {
@@ -562,8 +562,8 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
                       </span>
                       <div className="flex items-center gap-1 text-[11px] font-bold text-stone-700">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                        <span>{rec.solver.rating || 5.0}</span>
-                        <span className="text-stone-400 text-[10px]">({rec.solver.answerCount || 12} 次解答)</span>
+                        <span>{rec.solver.rating ? rec.solver.rating : '尚無評價'}</span>
+                        <span className="text-stone-400 text-[10px]">({rec.solver.answerCount || 0} 次解答)</span>
                       </div>
                     </div>
 

@@ -8905,9 +8905,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-1 mt-1">
                       <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                       <span className="text-sm font-black text-stone-900 font-mono">
-                        {currentUser.rating || 4.9}
+                        {currentUser.rating ? currentUser.rating : '尚無評價'}
                       </span>
-                      <span className="text-[10px] text-stone-400">({currentUser.reviewCount || 9} 評價)</span>
+                      <span className="text-[10px] text-stone-400">({currentUser.reviewCount || 0} 評價)</span>
                     </div>
                   </div>
                 </div>
@@ -9214,7 +9214,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <p className="text-[11px] text-stone-500 leading-relaxed">
                   成為認證專家可享有全站優先推薦與專屬標章。達成條件：(1) 提交專業證照審核通過官方認證，或 (2) 在平台累計採納落地方案達 50 份以上且評分 ≥ 4 星。
                 </p>
-                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50 && (currentUser.rating || 5.0) >= 4.0) || currentUser.verifiedBadge) ? (
+                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50 && (currentUser.rating || 0) >= 4.0) || currentUser.verifiedBadge) ? (
                   <button
                     type="button"
                     onClick={() => setActiveTab('expert_certification')}

@@ -29,7 +29,7 @@ export const ExpertCertificationTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal, answers } = useApp();
 
   const userAcceptedAnswers = answers.filter((a) => a.solverId === currentUser.id && a.isAccepted);
-  const userRating = currentUser.rating || 5.0;
+  const userRating = currentUser.rating || 0; // 沒有評分就是 0，不當成 5 分
   const isAutoQualified = userAcceptedAnswers.length >= 50 && userRating >= 4.0;
 
   // 7-day cooldown calculation

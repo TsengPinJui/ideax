@@ -653,6 +653,24 @@ const getInitialIsDemoMode = (): boolean => {
   return getInitialPlatformMode() === 'TEST';
 };
 
+/**
+ * 以前創星季期間，真實用戶新留言／方案會被預設 28 讚、120,000 支持點數、12 則留言和一張圖庫封面。
+ * 讀進來時扣掉這些假基數（用那張圖庫封面辨認），並標記 fakeDefaultsFixed，之後同步回資料庫就不會重複扣。
+ */
+const FAKE_STAR_SEASON_COVER = 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80';
+function stripFakeStarSeasonDefaults<T extends { isSimulated?: boolean; coverImageUrl?: string; likes?: number; supportPoints?: number; commentsCount?: number; fakeDefaultsFixed?: boolean }>(a: T): T {
+  if (!a || a.isSimulated || a.fakeDefaultsFixed || a.coverImageUrl !== FAKE_STAR_SEASON_COVER) return a;
+  const sp = Math.max(0, (Number(a.supportPoints) || 0) - 120000);
+  return {
+    ...a,
+    likes: Math.max(0, (Number(a.likes) || 0) - 28),
+    supportPoints: sp || undefined,
+    commentsCount: Math.max(0, (Number(a.commentsCount) || 0) - 12),
+    coverImageUrl: '',
+    fakeDefaultsFixed: true,
+  };
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Demo Mode State (管理員示範資料與測試模式開關：默認開啟測試環境，除非開啟正式營運模式或無金流模式)
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => getInitialPlatformMode() === 'TEST');
@@ -1554,7 +1572,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const seen = new Set<string>();
       const out: Answer[] = [];
       const activeVirtualAns = isPurged ? [] : ALL_VIRTUAL_ANSWERS_SEED;
-      for (const rawA of [...baseList, ...activeVirtualAns]) {
+      for (const rawA0 of [...baseList, ...activeVirtualAns]) {
+        const rawA = stripFakeStarSeasonDefaults(rawA0);
         if (isAnswerValid(rawA) && !seen.has(rawA.id)) {
           seen.add(rawA.id);
           const seedAns = virtualAnsMap.get(rawA.id);
@@ -2782,7 +2801,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const ansSeen = new Set<string>();
         const mergedAns: Answer[] = [];
         const activeVirtualAns = isPurgedPull ? [] : ALL_VIRTUAL_ANSWERS_SEED;
-        for (const rawA of [...rawCleanAns, ...activeVirtualAns]) {
+        for (const rawA0 of [...rawCleanAns, ...activeVirtualAns]) {
+          const rawA = stripFakeStarSeasonDefaults(rawA0);
           if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !deletedIds.has(rawA.questionId) && !ansSeen.has(rawA.id)) {
             ansSeen.add(rawA.id);
             const seedAns = virtualAnsMap.get(rawA.id);
@@ -3110,7 +3130,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const answersToSync: Answer[] = [];
             const activeVirtualAns = isPurgedBoot ? [] : ALL_VIRTUAL_ANSWERS_SEED;
             const cloudAnsMap = new Map(rawCloudAns.map((ca) => [ca.id, ca]));
-            for (const rawA of [...rawCloudAns, ...activeVirtualAns]) {
+            for (const rawA0 of [...rawCloudAns, ...activeVirtualAns]) {
+              const rawA = stripFakeStarSeasonDefaults(rawA0);
               if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !currentDeletedQ.has(rawA.questionId) && !seenAns.has(rawA.id)) {
                 seenAns.add(rawA.id);
                 const seedAns = virtualAnsMap.get(rawA.id);
@@ -5232,7 +5253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       solverName: currentUser.name,
       solverTitle: currentUser.title || `${currentUser.domain || '創新創業'}專家`,
       solverAvatar: currentUser.avatar,
-      solverRating: currentUser.rating || 4.9,
+      solverRating: currentUser.rating || 0, // 沒有評分就是 0（不灌假評分）
       deliveryType: isDiscussion ? '交流探討' : (newAns.deliveryType || '商業策略架構'),
       deliveryFormat: isDiscussion ? 'text' : (newAns.deliveryFormats?.[0] || newAns.deliveryFormat || 'text'),
       deliveryFormats: isDiscussion ? ['text'] : (newAns.deliveryFormats || (newAns.deliveryFormat ? [newAns.deliveryFormat] : ['text'])),
@@ -5245,14 +5266,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unlockedByUserIds: [currentUser.id],
       isUnlockedByCurrentUser: true,
       createdAt: new Date().toISOString(),
-      likes: newAns.likes ?? (isStarSeasonAnswer ? 28 : 0),
-      coverImageUrl: newAns.coverImageUrl || (isStarSeasonAnswer ? 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80' : undefined),
+      // 真實用戶的留言／方案一律從 0 開始（以前創星季會預設 28 讚、120,000 支持點數、12 則留言和一張圖庫封面）
+      likes: newAns.likes ?? 0,
+      coverImageUrl: newAns.coverImageUrl || undefined,
       exclusiveChallengeUrl: newAns.exclusiveChallengeUrl || (isStarSeasonAnswer ? `https://ideax.tw/challenge/proposal?proposalId=${ansId}` : undefined),
       isStarSeasonSolution: isStarSeasonAnswer ? true : false,
       starSeasonProposalId: newAns.starSeasonProposalId || (isStarSeasonAnswer ? ansId : undefined),
       sourcePainPointProposalId: targetQ?.id,
-      supportPoints: newAns.supportPoints || (isStarSeasonAnswer ? 120000 : undefined),
-      commentsCount: newAns.commentsCount || (isStarSeasonAnswer ? 12 : 0),
+      supportPoints: newAns.supportPoints || undefined,
+      commentsCount: newAns.commentsCount || 0,
     };
 
     setAnswers((prev) => [ans, ...prev]);

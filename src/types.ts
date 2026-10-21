@@ -1133,6 +1133,7 @@ export interface Answer {
   sourcePainPointProposalId?: string;
   supportPoints?: number; // 創星季模擬募資點數
   coverImageUrl?: string; // 提案卡片封面圖片
+  fakeDefaultsFixed?: boolean; // 已扣掉以前創星季預設的假讚數／點數／留言數
   commentsCount?: number; // 討論數
   isSimulated?: boolean; // 是否為系統模擬解答/討論留言（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)

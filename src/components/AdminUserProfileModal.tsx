@@ -324,7 +324,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
             <div className="flex items-center justify-center gap-1 mt-0.5">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               <span className="text-base font-black text-stone-900 font-mono">
-                {user.rating || 5.0}
+                {user.rating ? user.rating : '尚無評價'}
               </span>
             </div>
             <span className="text-[9px] text-stone-400">({user.reviewCount || 0} 則評價)</span>
@@ -576,7 +576,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                       <span>解答各等級問題解答分佈（L0 ~ L4）</span>
                     </h4>
                     <span className="text-xs font-bold text-purple-800 font-mono">
-                      採納率：{solverInfo.acceptedRate || 85}%
+                      採納率：{solverInfo.acceptedRate ? `${solverInfo.acceptedRate}%` : '—'}
                     </span>
                   </div>
 
