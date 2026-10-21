@@ -1457,6 +1457,8 @@ export interface HomeShowcaseConfig {
   customIds: string[];
   /** 優秀作品、付費推播也播放虛擬（模擬）卡片；真實作品夠多後可以關掉。預設開 */
   includeSimulated?: boolean;
+  /** 隱藏首頁的大標題「一個問題，找到更多可能。」與小標題（只是視覺上隱藏，搜尋引擎仍讀得到） */
+  hideHeroTitles?: boolean;
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];

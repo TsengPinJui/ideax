@@ -24,6 +24,7 @@ import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
+import { BackToTopButton } from './components/BackToTopButton';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { CenterToast } from './components/CenterToast';
 import { SplashScreen } from './components/SplashScreen';
@@ -3469,6 +3470,9 @@ function MainContent() {
           }}
         />
       )}
+
+      {/* 瀏覽卡片的頁面：右下角「回到頂部」 */}
+      {['explore', 'solvers', 'job_explorer', 'star_season', 'leaderboard', 'my_projects'].includes(activeTab) && <BackToTopButton />}
 
       {/* 手機行動裝置專屬底部導覽列 (創星季獨立站模式下隱藏，保持獨立單頁體驗) */}
       {activeTab !== 'star_season' && (

@@ -240,7 +240,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     // 統一開關關閉：首頁不顯示任何公開數據
     if (publicMetricsConfig.showPublicMetrics === false) return list;
     if (publicMetricsConfig.showQuestionsCount) list.push({ key: 'questions', label: '發布卡片', value: questionsCountFormatted, unit: '張' });
-    if (publicMetricsConfig.showProposalsCount) list.push({ key: 'proposals', label: '專家提案', value: proposalsCountFormatted, unit: '件' });
+    if (publicMetricsConfig.showProposalsCount) list.push({ key: 'proposals', label: '提案總數', value: proposalsCountFormatted, unit: '件' });
     if (publicMetricsConfig.showVerifiedSolvers) list.push({ key: 'solvers', label: '認證專家', value: verifiedSolversFormatted, unit: '位' });
     if (publicMetricsConfig.showSolvedCount) list.push({ key: 'solved', label: '已解決', value: solvedCountFormatted });
     if (publicMetricsConfig.showTotalBounty) list.push({ key: 'bounty', label: '累計懸賞', value: totalBountyFormatted, accent: 'text-amber-600' });
@@ -312,15 +312,17 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           )}
 
-          {/* Main Headline */}
-          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2">
+          {/* Main Headline（管理員可隱藏：隱藏時只是畫面上看不到，搜尋引擎與讀屏仍讀得到） */}
+          <h1 className={homeShowcaseConfig.hideHeroTitles ? 'sr-only' : 'text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2'}>
             一個問題，找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
 
           {/* Subtitle */}
-          <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
-            <span>痛點許願 · 創新提案 · 專家懸賞</span>
-          </div>
+          {!homeShowcaseConfig.hideHeroTitles && (
+            <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
+              <span>痛點許願 · 創新提案 · 專家懸賞</span>
+            </div>
+          )}
         </div>
 
         {/* Clean Collapsible Metrics Bar (精簡橫條 + 可展開完整指標) */}
