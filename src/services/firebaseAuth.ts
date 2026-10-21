@@ -126,9 +126,6 @@ function startFacebookDirectOAuth(): Promise<never> {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   const state = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  try {
-    localStorage.setItem(FB_DIRECT_STATE_KEY, JSON.stringify({ state, at: Date.now() }));
-  } catch {}
   const redirectUri = `${window.location.origin}${FB_CALLBACK_PATH}`;
   const url =
     'https://www.facebook.com/v19.0/dialog/oauth' +
@@ -136,7 +133,12 @@ function startFacebookDirectOAuth(): Promise<never> {
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&state=${state}` +
     '&response_type=token&scope=public_profile';
-  window.location.assign(url);
+  try {
+    localStorage.setItem(FB_DIRECT_STATE_KEY, JSON.stringify({ state, at: Date.now(), url }));
+  } catch {}
+  // 先到自己網站的中繼頁，再由中繼頁自動轉往 Facebook：
+  // 直接從按鈕跳 facebook.com，Android 會把授權頁交給 Facebook App 開，App 裡常顯示「無法載入」
+  window.location.assign('/fb-login.html');
   return new Promise<never>(() => {});
 }
 
