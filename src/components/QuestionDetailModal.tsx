@@ -2429,7 +2429,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                               </button>
                             ) : (
                               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                                免費公開交流
+                                公開交流
                               </span>
                             )}
                           </div>

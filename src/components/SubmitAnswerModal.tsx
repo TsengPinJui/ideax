@@ -63,7 +63,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   const [answerType, setAnswerType] = useState<AnswerType>(initialType);
   const [deliveryFormats, setDeliveryFormats] = useState<DeliveryFormat[]>(['text']);
 
-  // 1. 文字建議（免費公開 + 付費解鎖）
+  // 1. 文字建議（公開內容 + 付費解鎖）
   const [freePreview, setFreePreview] = useState('');
   const [fullContent, setFullContent] = useState('');
   const [isPaid, setIsPaid] = useState(true);
