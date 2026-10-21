@@ -158357,6 +158357,7 @@ async function getRealSiteTrafficStats() {
   const daily = readCountMap(raw?.daily);
   const visitorsDaily = readCountMap(raw?.visitorsDaily);
   const visitorsHourly = readCountMap(raw?.visitorsHourly);
+  const newVisitorsDaily = readCountMap(raw?.newVisitorsDaily);
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
   const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
@@ -158385,7 +158386,8 @@ async function getRealSiteTrafficStats() {
     onlineUsersCount: await getOnlineCount(),
     uniqueVisitorsTotal: Number(raw?.uniqueVisitorsTotal) || 0,
     visitorsDaily,
-    visitorsHourly
+    visitorsHourly,
+    newVisitorsDaily
   };
 }
 async function recordRealSiteVisit(sessionId, visitor = {}) {
@@ -158405,7 +158407,7 @@ async function recordRealSiteVisit(sessionId, visitor = {}) {
           visitorsHourly: { [nowParts.hourKey]: increment(1) },
           visitorsDaily: { [nowParts.dateKey]: increment(1) }
         } : {},
-        ...visitor.newEver ? { uniqueVisitorsTotal: increment(1) } : {},
+        ...visitor.newEver ? { uniqueVisitorsTotal: increment(1), newVisitorsDaily: { [nowParts.dateKey]: increment(1) } } : {},
         lastUpdatedUtc8: nowParts.fullDateTime
       },
       { merge: true }

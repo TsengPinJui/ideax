@@ -6,6 +6,7 @@ import { isMockTransactionId, isMockQuestionId, isRealRegisteredUser } from '../
 import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
+import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -488,6 +489,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           onlineUsersCount={onlineUsersCount || 1}
         />
 
+        {/* 成長趨勢：註冊會員、不重複訪客 */}
+        <AdminGrowthTrendsCard />
+
         {/* 吉祥物互動統計 */}
 
         {/* 1. 平台獲利數據與核心運營指標 */}
@@ -625,13 +629,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 1b: 造訪用戶（和總瀏覽量分開開關） */}
+            {/* Metric 1b: 不重複訪客（和總瀏覽量分開開關） */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showUniqueVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">造訪用戶</span>
+                  <span className="font-extrabold text-xs text-stone-900">不重複訪客</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">不重複人數</span>
                 </div>
                 <p className="text-[11px] text-stone-500 mt-0.5">來過網站的不重複裝置數（同一裝置只算一次）</p>

@@ -38,6 +38,7 @@ export interface RealSiteTrafficStatsPayload {
   uniqueVisitorsTotal?: number;
   visitorsDaily?: Record<string, number>;
   visitorsHourly?: Record<string, number>;
+  newVisitorsDaily?: Record<string, number>;
 }
 
 export const REAL_TRAFFIC_STORAGE_KEY = 'ideax_real_site_traffic_utc8_v3';
@@ -86,6 +87,7 @@ export function getCachedRealTrafficStats(): RealSiteTrafficStatsPayload {
           uniqueVisitorsTotal: Number(parsed.uniqueVisitorsTotal) || 0,
           visitorsDaily: parsed.visitorsDaily && typeof parsed.visitorsDaily === 'object' ? parsed.visitorsDaily : {},
           visitorsHourly: parsed.visitorsHourly && typeof parsed.visitorsHourly === 'object' ? parsed.visitorsHourly : {},
+          newVisitorsDaily: parsed.newVisitorsDaily && typeof parsed.newVisitorsDaily === 'object' ? parsed.newVisitorsDaily : {},
           hourly,
           daily,
           firstRecordedAtUtc8: parsed.firstRecordedAtUtc8 || '',
@@ -586,14 +588,14 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4">
-      {/* 指標摘要：瀏覽量與造訪用戶數分開呈現 */}
+      {/* 指標摘要：瀏覽量與不重複訪客數分開呈現 */}
       {(() => {
         const todayKey = getUtc8Parts(Date.now()).dateKey;
         const tiles = [
           { label: '累計瀏覽量', value: (trafficStats.totalVisits || 0).toLocaleString(), hint: '每次開啟網站算一次' },
           { label: '今日瀏覽量', value: (trafficStats.daily?.[todayKey] || 0).toLocaleString(), hint: '台灣時間今日' },
-          { label: '累計造訪用戶', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
-          { label: '今日造訪用戶', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
+          { label: '累計不重複訪客', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
+          { label: '今日不重複訪客', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
           { label: '即時在線', value: `${trafficStats.onlineUsersCount || onlineUsersCount}`, hint: '最近 75 秒內在線' },
         ];
         return (

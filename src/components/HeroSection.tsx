@@ -205,7 +205,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     if (publicMetricsConfig.showSolvedCount) list.push({ key: 'solved', label: '已解決', value: solvedCountFormatted });
     if (publicMetricsConfig.showTotalBounty) list.push({ key: 'bounty', label: '累計懸賞', value: totalBountyFormatted, accent: 'text-amber-600' });
     if (publicMetricsConfig.showTotalViews) list.push({ key: 'views', label: '總瀏覽', value: siteVisitsFormatted });
-    if (publicMetricsConfig.showUniqueVisitors && (uniqueVisitorsCount || 0) > 0) list.push({ key: 'visitors', label: '造訪用戶', value: (uniqueVisitorsCount || 0).toLocaleString(), unit: '位' });
+    if (publicMetricsConfig.showUniqueVisitors && (uniqueVisitorsCount || 0) > 0) list.push({ key: 'visitors', label: '不重複訪客', value: (uniqueVisitorsCount || 0).toLocaleString(), unit: '位' });
     if (publicMetricsConfig.showOnlineUsers) list.push({ key: 'online', label: '線上人數', value: onlineUsersFormatted, unit: '位', accent: 'text-emerald-600' });
     if (publicMetricsConfig.showTotalMembers) list.push({ key: 'members', label: '註冊會員', value: totalMembersFormatted, unit: '位' });
     if (publicMetricsConfig.showTotalDeals) list.push({ key: 'deals', label: '已成交', value: totalDealsFormatted, unit: '筆' });
