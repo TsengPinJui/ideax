@@ -1453,10 +1453,13 @@ export interface HomeShowcaseConfig {
   enabled: boolean;
   /** 可複選：要播放哪幾種內容 */
   modes: HomeShowcaseMode[];
+  /** 管理員自選：要播放的作品（問題／提案）ID，最多 30 個，依勾選順序 */
+  customIds: string[];
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
-export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'] };
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [] };
+export const HOME_SHOWCASE_MAX_CUSTOM = 30;
 
 export interface PublicMetricsConfig {
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數

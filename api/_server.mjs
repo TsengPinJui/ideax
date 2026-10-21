@@ -162054,7 +162054,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.3";
+var APP_VERSION = "3.3.4";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165566,7 +165566,8 @@ app.post("/api/admin/home-showcase-config", async (req, res) => {
     const raw = req.body?.config || {};
     const list = Array.isArray(raw.modes) ? raw.modes : [];
     const modes = ["excellent", "paid", "custom"].filter((m2) => list.includes(m2));
-    const config = { enabled: raw.enabled === true, modes, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const customIds = (Array.isArray(raw.customIds) ? raw.customIds : []).map((x2) => String(x2 || "").trim()).filter((x2, i2, a) => /^[\w-]{1,100}$/.test(x2) && a.indexOf(x2) === i2).slice(0, 30);
+    const config = { enabled: raw.enabled === true, modes, customIds, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
     await adminDb.collection("platform_settings").doc("global").set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err) {
