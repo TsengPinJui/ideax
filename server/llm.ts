@@ -12,7 +12,14 @@ export type AiProvider = 'gemini' | 'openai';
 export const OPENAI_MODEL = (process.env.OPENAI_MODEL || 'gpt-6-luna').trim();
 export const hasOpenAiKey = () => Boolean((process.env.OPENAI_API_KEY || '').trim());
 
-let cached: { provider: AiProvider; at: number } = { provider: 'openai', at: 0 };
+/** 推理等級：越高越會想、越準，但越慢、推理 token 也越多 */
+export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+export const REASONING_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high', 'xhigh'];
+export const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'medium';
+/** 依推理等級給的最長等待時間 */
+const EFFORT_TIMEOUT_MS: Record<ReasoningEffort, number> = { none: 15000, low: 20000, medium: 30000, high: 45000, xhigh: 60000 };
+
+let cached: { provider: AiProvider; effort: ReasoningEffort; at: number } = { provider: 'openai', effort: DEFAULT_REASONING_EFFORT, at: 0 };
 let lastOpenAiError = '';
 export const getLastOpenAiError = () => lastOpenAiError;
 
@@ -20,21 +27,40 @@ export const getLastOpenAiError = () => lastOpenAiError;
 export async function getAiProvider(): Promise<AiProvider> {
   const forced = (process.env.AI_PROVIDER || '').trim().toLowerCase();
   if (forced === 'openai' || forced === 'gemini') return forced;
-  if (Date.now() - cached.at < 60000) return cached.provider;
+  await refreshSettings();
+  return cached.provider;
+}
+
+/** 從資料庫讀模型設定（60 秒內用快取） */
+async function refreshSettings(): Promise<void> {
+  if (Date.now() - cached.at < 60000) return;
   try {
     const snap = await adminDb.collection('platform_settings').doc('global').get();
-    const v = snap.exists ? (snap.data() as any)?.aiProvider : null;
+    const d: any = snap.exists ? snap.data() : {};
     // 沒設定過就用 GPT-6 Luna；管理員選過 Gemini 才用 Gemini
-    cached = { provider: v === 'gemini' ? 'gemini' : 'openai', at: Date.now() };
+    const effort = REASONING_EFFORTS.includes(d?.aiReasoningEffort) ? d.aiReasoningEffort : DEFAULT_REASONING_EFFORT;
+    cached = { provider: d?.aiProvider === 'gemini' ? 'gemini' : 'openai', effort, at: Date.now() };
   } catch {
     cached = { ...cached, at: Date.now() };
   }
-  return cached.provider;
+}
+
+/** 目前的推理等級（環境變數 AI_REASONING_EFFORT 可強制指定） */
+export async function getReasoningEffort(): Promise<ReasoningEffort> {
+  const forced = (process.env.AI_REASONING_EFFORT || '').trim().toLowerCase() as ReasoningEffort;
+  if (REASONING_EFFORTS.includes(forced)) return forced;
+  await refreshSettings();
+  return cached.effort;
+}
+
+export async function setReasoningEffort(effort: ReasoningEffort): Promise<void> {
+  await adminDb.collection('platform_settings').doc('global').set({ aiReasoningEffort: effort }, { merge: true });
+  cached = { ...cached, effort, at: Date.now() };
 }
 
 export async function setAiProvider(provider: AiProvider): Promise<void> {
   await adminDb.collection('platform_settings').doc('global').set({ aiProvider: provider, aiProviderUpdatedAt: new Date().toISOString() }, { merge: true });
-  cached = { provider, at: Date.now() };
+  cached = { ...cached, provider, at: Date.now() };
 }
 
 /** 這次要不要用 OpenAI（選了 OpenAI 而且有金鑰） */
@@ -51,13 +77,15 @@ export async function openAiGenerate(opts: {
   system?: string;
   json?: boolean;
   timeoutMs?: number;
-  /** 推理程度；'omit' 不帶這個參數（給不支援的模型） */
-  effort?: 'none' | 'low' | 'medium' | 'high' | 'omit';
+  /** 推理程度；不填就用後台設定；'omit' 不帶這個參數（給不支援的模型） */
+  effort?: ReasoningEffort | 'omit';
 }): Promise<string | null> {
   const key = (process.env.OPENAI_API_KEY || '').trim();
   if (!key) { lastOpenAiError = '沒有設定 OPENAI_API_KEY'; return null; }
+  const effort = opts.effort || (await getReasoningEffort());
+  const timeoutMs = opts.timeoutMs || (effort === 'omit' ? 30000 : EFFORT_TIMEOUT_MS[effort]);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs || 25000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const body: Record<string, any> = {
       model: OPENAI_MODEL,
@@ -67,7 +95,6 @@ export async function openAiGenerate(opts: {
       ],
       store: false,
     };
-    const effort = opts.effort || 'low';
     if (effort !== 'omit') body.reasoning = { effort };
     if (opts.json) body.text = { format: { type: 'json_object' } };
     const res = await fetch('https://api.openai.com/v1/responses', {
@@ -82,7 +109,7 @@ export async function openAiGenerate(opts: {
       // 不支援 reasoning 參數的模型：拿掉再試一次
       if (res.status === 400 && /reasoning/i.test(lastOpenAiError) && body.reasoning) {
         clearTimeout(timer);
-        return openAiGenerate({ ...opts, effort: 'omit' }).catch(() => null);
+        return openAiGenerate({ ...opts, effort: 'omit', timeoutMs }).catch(() => null);
       }
       return null;
     }
@@ -97,7 +124,7 @@ export async function openAiGenerate(opts: {
     lastOpenAiError = '';
     return text.trim();
   } catch (err: any) {
-    lastOpenAiError = err?.name === 'AbortError' ? `逾時（${Math.round((opts.timeoutMs || 25000) / 1000)} 秒）` : String(err?.message || err).slice(0, 160);
+    lastOpenAiError = err?.name === 'AbortError' ? `逾時（${Math.round(timeoutMs / 1000)} 秒）` : String(err?.message || err).slice(0, 160);
     return null;
   } finally {
     clearTimeout(timer);

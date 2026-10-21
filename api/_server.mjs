@@ -135058,25 +135058,42 @@ async function recordRealPresenceHeartbeat(sessionId) {
 // server/llm.ts
 var OPENAI_MODEL = (process.env.OPENAI_MODEL || "gpt-6-luna").trim();
 var hasOpenAiKey = () => Boolean((process.env.OPENAI_API_KEY || "").trim());
-var cached = { provider: "openai", at: 0 };
+var REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh"];
+var DEFAULT_REASONING_EFFORT = "medium";
+var EFFORT_TIMEOUT_MS = { none: 15e3, low: 2e4, medium: 3e4, high: 45e3, xhigh: 6e4 };
+var cached = { provider: "openai", effort: DEFAULT_REASONING_EFFORT, at: 0 };
 var lastOpenAiError = "";
 var getLastOpenAiError = () => lastOpenAiError;
 async function getAiProvider() {
   const forced = (process.env.AI_PROVIDER || "").trim().toLowerCase();
   if (forced === "openai" || forced === "gemini") return forced;
-  if (Date.now() - cached.at < 6e4) return cached.provider;
+  await refreshSettings();
+  return cached.provider;
+}
+async function refreshSettings() {
+  if (Date.now() - cached.at < 6e4) return;
   try {
     const snap = await adminDb.collection("platform_settings").doc("global").get();
-    const v = snap.exists ? snap.data()?.aiProvider : null;
-    cached = { provider: v === "gemini" ? "gemini" : "openai", at: Date.now() };
+    const d = snap.exists ? snap.data() : {};
+    const effort = REASONING_EFFORTS.includes(d?.aiReasoningEffort) ? d.aiReasoningEffort : DEFAULT_REASONING_EFFORT;
+    cached = { provider: d?.aiProvider === "gemini" ? "gemini" : "openai", effort, at: Date.now() };
   } catch {
     cached = { ...cached, at: Date.now() };
   }
-  return cached.provider;
+}
+async function getReasoningEffort() {
+  const forced = (process.env.AI_REASONING_EFFORT || "").trim().toLowerCase();
+  if (REASONING_EFFORTS.includes(forced)) return forced;
+  await refreshSettings();
+  return cached.effort;
+}
+async function setReasoningEffort(effort) {
+  await adminDb.collection("platform_settings").doc("global").set({ aiReasoningEffort: effort }, { merge: true });
+  cached = { ...cached, effort, at: Date.now() };
 }
 async function setAiProvider(provider) {
   await adminDb.collection("platform_settings").doc("global").set({ aiProvider: provider, aiProviderUpdatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
-  cached = { provider, at: Date.now() };
+  cached = { ...cached, provider, at: Date.now() };
 }
 async function shouldUseOpenAi() {
   return hasOpenAiKey() && await getAiProvider() === "openai";
@@ -135087,8 +135104,10 @@ async function openAiGenerate(opts) {
     lastOpenAiError = "\u6C92\u6709\u8A2D\u5B9A OPENAI_API_KEY";
     return null;
   }
+  const effort = opts.effort || await getReasoningEffort();
+  const timeoutMs = opts.timeoutMs || (effort === "omit" ? 3e4 : EFFORT_TIMEOUT_MS[effort]);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs || 25e3);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const body = {
       model: OPENAI_MODEL,
@@ -135100,7 +135119,6 @@ async function openAiGenerate(opts) {
       ],
       store: false
     };
-    const effort = opts.effort || "low";
     if (effort !== "omit") body.reasoning = { effort };
     if (opts.json) body.text = { format: { type: "json_object" } };
     const res = await fetch("https://api.openai.com/v1/responses", {
@@ -135114,7 +135132,7 @@ async function openAiGenerate(opts) {
       lastOpenAiError = `HTTP ${res.status}\uFF1A${String(data?.error?.message || "").slice(0, 160)}`;
       if (res.status === 400 && /reasoning/i.test(lastOpenAiError) && body.reasoning) {
         clearTimeout(timer);
-        return openAiGenerate({ ...opts, effort: "omit" }).catch(() => null);
+        return openAiGenerate({ ...opts, effort: "omit", timeoutMs }).catch(() => null);
       }
       return null;
     }
@@ -135126,7 +135144,7 @@ async function openAiGenerate(opts) {
     lastOpenAiError = "";
     return text.trim();
   } catch (err) {
-    lastOpenAiError = err?.name === "AbortError" ? `\u903E\u6642\uFF08${Math.round((opts.timeoutMs || 25e3) / 1e3)} \u79D2\uFF09` : String(err?.message || err).slice(0, 160);
+    lastOpenAiError = err?.name === "AbortError" ? `\u903E\u6642\uFF08${Math.round(timeoutMs / 1e3)} \u79D2\uFF09` : String(err?.message || err).slice(0, 160);
     return null;
   } finally {
     clearTimeout(timer);
@@ -161958,7 +161976,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.2.7";
+var APP_VERSION = "3.2.8";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165234,7 +165252,7 @@ async function parseJobIntakeWithGemini(params) {
   };
   const notes = [];
   if (await shouldUseOpenAi()) {
-    const text = await openAiGenerate({ prompt, json: true, timeoutMs: 15e3, effort: "low" });
+    const text = await openAiGenerate({ prompt, json: true });
     const parsed = text ? extractJsonFromText(text) : null;
     if (parsed && typeof parsed === "object") {
       finalizeIntake(parsed);
@@ -165379,14 +165397,17 @@ var requireAdmin2 = async (req, res) => {
 app.get("/api/admin/ai-provider", async (req, res) => {
   if (!await requireAdmin2(req, res)) return;
   res.setHeader("Cache-Control", "no-store");
-  res.json({ ok: true, provider: await getAiProvider(), openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || "").trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+  res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || "").trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || "").trim() || null, lastOpenAiError: getLastOpenAiError() || null });
 });
 app.post("/api/admin/ai-provider", async (req, res) => {
   if (!await requireAdmin2(req, res)) return;
-  const provider = req.body?.provider === "openai" ? "openai" : "gemini";
   try {
-    await setAiProvider(provider);
-    res.json({ ok: true, provider });
+    if (req.body?.provider) await setAiProvider(req.body.provider === "openai" ? "openai" : "gemini");
+    if (req.body?.effort) {
+      if (!REASONING_EFFORTS.includes(req.body.effort)) return res.status(400).json({ ok: false, error: "\u63A8\u7406\u7B49\u7D1A\u4E0D\u6B63\u78BA" });
+      await setReasoningEffort(req.body.effort);
+    }
+    res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort() });
   } catch {
     res.status(500).json({ ok: false, error: "\u5132\u5B58\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
   }
@@ -165401,14 +165422,14 @@ app.post("/api/admin/ai-provider/test", async (req, res) => {
   let text = null;
   let engine = "";
   if (useOpenAi) {
-    text = await openAiGenerate({ prompt, json: true, timeoutMs: 2e4 });
+    text = await openAiGenerate({ prompt, json: true });
     engine = text ? OPENAI_MODEL : "";
   }
   if (!text) {
     text = await generateRawTextWithGemini(prompt, "\u4F60\u662F\u6C42\u8077\u689D\u4EF6\u6574\u7406\u52A9\u624B\uFF0C\u53EA\u8F38\u51FA JSON\u3002");
     engine = text ? `Gemini${useOpenAi ? "\uFF08OpenAI \u5931\u6557\uFF0C\u81EA\u52D5\u9000\u56DE\uFF09" : ""}` : "";
   }
-  res.json({ ok: Boolean(text), engine, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
+  res.json({ ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
 });
 app.post("/api/admin/home-showcase-config", async (req, res) => {
   try {
