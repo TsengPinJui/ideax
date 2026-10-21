@@ -8,8 +8,9 @@ import { getAuthHeaders } from '../services/authHeader';
  * 小燈泡上網搜職缺（需要網路搜尋）與身分證辨識仍使用 Gemini。
  * 預設 GPT-6 Luna，出錯或沒有金鑰時會自動退回 Gemini。
  */
-type Info = { provider: 'gemini' | 'openai'; openAiModel: string; hasOpenAiKey: boolean; forced: string | null; lastOpenAiError: string | null };
-type TestResult = { ok: boolean; engine: string; ms: number; sample: string; output: string | null; openAiError: string | null };
+type Effort = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
+type Info = { provider: 'gemini' | 'openai'; effort: Effort; effortForced: string | null; openAiModel: string; hasOpenAiKey: boolean; forced: string | null; lastOpenAiError: string | null };
+type TestResult = { ok: boolean; engine: string; effort: Effort | null; ms: number; sample: string; output: string | null; openAiError: string | null };
 
 const api = async (path: string, init?: RequestInit) => {
   const headers = await getAuthHeaders();
@@ -30,6 +31,24 @@ export const AdminAiProviderCard: React.FC = () => {
     try { setInfo(await api('/api/admin/ai-provider')); setErr(''); } catch (e: any) { setErr(e?.message || '讀取失敗'); }
   };
   useEffect(() => { void load(); }, []);
+
+  const EFFORTS: Array<{ id: Effort; name: string; desc: string }> = [
+    { id: 'none', name: '關閉', desc: '最快，不推理' },
+    { id: 'low', name: '低', desc: '快，基本推理' },
+    { id: 'medium', name: '中（建議）', desc: '速度與準確兼顧' },
+    { id: 'high', name: '高', desc: '更準，慢幾秒' },
+    { id: 'xhigh', name: '很高', desc: '最準，最慢最貴' },
+  ];
+  const chooseEffort = async (effort: Effort) => {
+    if (!info || info.effort === effort) return;
+    setSaving(true);
+    try {
+      await api('/api/admin/ai-provider', { method: 'POST', body: JSON.stringify({ effort }) });
+      await load();
+      setTest(null);
+    } catch (e: any) { setErr(e?.message || '儲存失敗'); }
+    setSaving(false);
+  };
 
   const choose = async (provider: 'gemini' | 'openai') => {
     if (!info || info.provider === provider) return;
@@ -96,6 +115,34 @@ export const AdminAiProviderCard: React.FC = () => {
             })}
           </div>
 
+          {info.provider === 'openai' && (
+            <div className="space-y-1.5">
+              <div className="text-xs font-black text-stone-800">推理等級（GPT-6 Luna）</div>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="推理等級">
+                {EFFORTS.map((e) => {
+                  const active = info.effort === e.id;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      disabled={saving || Boolean(info.effortForced)}
+                      onClick={() => chooseEffort(e.id)}
+                      title={e.desc}
+                      className={`px-2.5 py-1.5 rounded-lg border text-left cursor-pointer disabled:cursor-not-allowed transition-all ${active ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-200 text-stone-700 hover:border-stone-400'}`}
+                    >
+                      <div className="text-[11px] font-black">{e.name}</div>
+                      <div className={`text-[10px] ${active ? 'text-stone-300' : 'text-stone-400'}`}>{e.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-stone-500">等級越高越會想、轉換條件越準，但回覆越慢、推理用的 token 也算錢。逾時會自動退回 Gemini。</p>
+              {info.effortForced && <p className="text-[11px] text-amber-800">已用環境變數 AI_REASONING_EFFORT={info.effortForced} 固定，後台切換不會生效。</p>}
+            </div>
+          )}
+
           {info.forced && <p className="text-[11px] text-amber-800">已用環境變數 AI_PROVIDER={info.forced} 固定，後台切換不會生效。</p>}
           {info.provider === 'openai' && !info.hasOpenAiKey && (
             <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-1.5">
@@ -119,7 +166,7 @@ export const AdminAiProviderCard: React.FC = () => {
             <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-1.5 text-[11px]">
               <div className="flex items-center gap-1.5 font-black text-stone-900">
                 {test.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
-                {test.ok ? `回覆來自：${test.engine}・${(test.ms / 1000).toFixed(1)} 秒` : '兩個模型都沒有回覆'}
+                {test.ok ? `回覆來自：${test.engine}${test.effort && !test.engine.startsWith('Gemini') ? `（推理：${test.effort}）` : ''}・${(test.ms / 1000).toFixed(1)} 秒` : '兩個模型都沒有回覆'}
               </div>
               <div className="text-stone-500">測試句：「{test.sample}」</div>
               {test.openAiError && <div className="text-rose-700">OpenAI 錯誤：{test.openAiError}</div>}

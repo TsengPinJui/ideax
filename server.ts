@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import { OPENAI_MODEL, getAiProvider, getLastOpenAiError, hasOpenAiKey, openAiGenerate, setAiProvider, shouldUseOpenAi, type AiProvider } from './server/llm';
+import { OPENAI_MODEL, REASONING_EFFORTS, getAiProvider, getLastOpenAiError, getReasoningEffort, hasOpenAiKey, openAiGenerate, setAiProvider, setReasoningEffort, shouldUseOpenAi } from './server/llm';
 import { GoogleGenAI, Type } from '@google/genai';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
@@ -3902,7 +3902,7 @@ async function parseJobIntakeWithGemini(params: {
   const notes: string[] = [];
   // 使用 GPT-6 Luna：先用 OpenAI，失敗再用 Gemini
   if (await shouldUseOpenAi()) {
-    const text = await openAiGenerate({ prompt, json: true, timeoutMs: 15000, effort: 'low' });
+    const text = await openAiGenerate({ prompt, json: true }); // 推理等級與等待時間依後台設定
     const parsed = text ? extractJsonFromText(text) : null;
     if (parsed && typeof parsed === 'object') {
       finalizeIntake(parsed);
@@ -4037,14 +4037,17 @@ const requireAdmin = async (req: Request, res: Response) => {
 app.get('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, provider: await getAiProvider(), openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+  res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || '').trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
 });
 app.post('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
-  const provider: AiProvider = req.body?.provider === 'openai' ? 'openai' : 'gemini';
   try {
-    await setAiProvider(provider);
-    res.json({ ok: true, provider });
+    if (req.body?.provider) await setAiProvider(req.body.provider === 'openai' ? 'openai' : 'gemini');
+    if (req.body?.effort) {
+      if (!REASONING_EFFORTS.includes(req.body.effort)) return res.status(400).json({ ok: false, error: '推理等級不正確' });
+      await setReasoningEffort(req.body.effort);
+    }
+    res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort() });
   } catch {
     res.status(500).json({ ok: false, error: '儲存失敗，請稍後再試' });
   }
@@ -4059,14 +4062,14 @@ app.post('/api/admin/ai-provider/test', async (req: Request, res: Response) => {
   let text: string | null = null;
   let engine = '';
   if (useOpenAi) {
-    text = await openAiGenerate({ prompt, json: true, timeoutMs: 20000 });
+    text = await openAiGenerate({ prompt, json: true });
     engine = text ? OPENAI_MODEL : '';
   }
   if (!text) {
     text = await generateRawTextWithGemini(prompt, '你是求職條件整理助手，只輸出 JSON。');
     engine = text ? `Gemini${useOpenAi ? '（OpenAI 失敗，自動退回）' : ''}` : '';
   }
-  res.json({ ok: Boolean(text), engine, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
+  res.json({ ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
 });
 
 // 首頁創點子播放區（預留）：管理員選擇播放來源，由伺服器確認管理員後寫入
