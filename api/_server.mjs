@@ -1311,8 +1311,8 @@ var require_node = __commonJS({
           break;
         case "PIPE":
         case "TCP":
-          var net = __require("net");
-          stream2 = new net.Socket({
+          var net2 = __require("net");
+          stream2 = new net2.Socket({
             fd: fd2,
             readable: false,
             writable: true
@@ -14051,7 +14051,7 @@ var require_mime_types = __commonJS({
     exports.contentType = contentType;
     exports.extension = extension2;
     exports.extensions = /* @__PURE__ */ Object.create(null);
-    exports.lookup = lookup;
+    exports.lookup = lookup2;
     exports.types = /* @__PURE__ */ Object.create(null);
     populateMaps(exports.extensions, exports.types);
     function charset(type) {
@@ -14093,7 +14093,7 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path4) {
+    function lookup2(path4) {
       if (!path4 || typeof path4 !== "string") {
         return false;
       }
@@ -18549,7 +18549,7 @@ var require_view = __commonJS({
       this.engine = opts.engines[this.ext];
       this.path = this.lookup(fileName);
     }
-    View2.prototype.lookup = function lookup(name4) {
+    View2.prototype.lookup = function lookup2(name4) {
       var path5;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name4);
@@ -24663,7 +24663,7 @@ var require_dist = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Agent = void 0;
-    var net = __importStar(__require("net"));
+    var net2 = __importStar(__require("net"));
     var http3 = __importStar(__require("http"));
     var https_1 = __require("https");
     __exportStar(require_helpers(), exports);
@@ -24703,7 +24703,7 @@ var require_dist = __commonJS({
         if (!this.sockets[name4]) {
           this.sockets[name4] = [];
         }
-        const fakeSocket = new net.Socket({ writable: false });
+        const fakeSocket = new net2.Socket({ writable: false });
         this.sockets[name4].push(fakeSocket);
         this.totalSocketCount++;
         return fakeSocket;
@@ -24915,7 +24915,7 @@ var require_dist2 = __commonJS({
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.HttpsProxyAgent = void 0;
-    var net = __importStar(__require("net"));
+    var net2 = __importStar(__require("net"));
     var tls = __importStar(__require("tls"));
     var assert_1 = __importDefault(__require("assert"));
     var debug_1 = __importDefault(require_src2());
@@ -24924,7 +24924,7 @@ var require_dist2 = __commonJS({
     var parse_proxy_response_1 = require_parse_proxy_response();
     var debug = (0, debug_1.default)("https-proxy-agent");
     var setServernameFromNonIpHost = (options2) => {
-      if (options2.servername === void 0 && options2.host && !net.isIP(options2.host)) {
+      if (options2.servername === void 0 && options2.host && !net2.isIP(options2.host)) {
         return {
           ...options2,
           servername: options2.host
@@ -24964,10 +24964,10 @@ var require_dist2 = __commonJS({
           socket = tls.connect(setServernameFromNonIpHost(this.connectOpts));
         } else {
           debug("Creating `net.Socket`: %o", this.connectOpts);
-          socket = net.connect(this.connectOpts);
+          socket = net2.connect(this.connectOpts);
         }
         const headers = typeof this.proxyHeaders === "function" ? this.proxyHeaders() : { ...this.proxyHeaders };
-        const host = net.isIPv6(opts.host) ? `[${opts.host}]` : opts.host;
+        const host = net2.isIPv6(opts.host) ? `[${opts.host}]` : opts.host;
         let payload = `CONNECT ${host}:${opts.port} HTTP/1.1\r
 `;
         if (proxy.username || proxy.password) {
@@ -25000,7 +25000,7 @@ var require_dist2 = __commonJS({
           return socket;
         }
         socket.destroy();
-        const fakeSocket = new net.Socket({ writable: false });
+        const fakeSocket = new net2.Socket({ writable: false });
         fakeSocket.readable = true;
         req.once("socket", (s2) => {
           debug("Replaying proxy buffer for failed request");
@@ -34482,12 +34482,12 @@ var require_base64_js = __commonJS({
     exports.byteLength = byteLength;
     exports.toByteArray = toByteArray;
     exports.fromByteArray = fromByteArray;
-    var lookup = [];
+    var lookup2 = [];
     var revLookup = [];
     var Arr = typeof Uint8Array !== "undefined" ? Uint8Array : Array;
     var code = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     for (i2 = 0, len = code.length; i2 < len; ++i2) {
-      lookup[i2] = code[i2];
+      lookup2[i2] = code[i2];
       revLookup[code.charCodeAt(i2)] = i2;
     }
     var i2;
@@ -34540,7 +34540,7 @@ var require_base64_js = __commonJS({
       return arr;
     }
     function tripletToBase64(num) {
-      return lookup[num >> 18 & 63] + lookup[num >> 12 & 63] + lookup[num >> 6 & 63] + lookup[num & 63];
+      return lookup2[num >> 18 & 63] + lookup2[num >> 12 & 63] + lookup2[num >> 6 & 63] + lookup2[num & 63];
     }
     function encodeChunk(uint8, start, end) {
       var tmp;
@@ -34563,12 +34563,12 @@ var require_base64_js = __commonJS({
       if (extraBytes === 1) {
         tmp = uint8[len2 - 1];
         parts.push(
-          lookup[tmp >> 2] + lookup[tmp << 4 & 63] + "=="
+          lookup2[tmp >> 2] + lookup2[tmp << 4 & 63] + "=="
         );
       } else if (extraBytes === 2) {
         tmp = (uint8[len2 - 2] << 8) + uint8[len2 - 1];
         parts.push(
-          lookup[tmp >> 10] + lookup[tmp >> 4 & 63] + lookup[tmp << 2 & 63] + "="
+          lookup2[tmp >> 10] + lookup2[tmp >> 4 & 63] + lookup2[tmp << 2 & 63] + "="
         );
       }
       return parts.join("");
@@ -43888,7 +43888,7 @@ var require_websocket = __commonJS({
     var EventEmitter = __require("events");
     var https2 = __require("https");
     var http3 = __require("http");
-    var net = __require("net");
+    var net2 = __require("net");
     var tls = __require("tls");
     var { randomBytes: randomBytes3, createHash } = __require("crypto");
     var { Duplex, Readable: Readable2 } = __require("stream");
@@ -44632,12 +44632,12 @@ var require_websocket = __commonJS({
     }
     function netConnect(options2) {
       options2.path = options2.socketPath;
-      return net.connect(options2);
+      return net2.connect(options2);
     }
     function tlsConnect(options2) {
       options2.path = void 0;
       if (!options2.servername && options2.servername !== "") {
-        options2.servername = net.isIP(options2.host) ? "" : options2.host;
+        options2.servername = net2.isIP(options2.host) ? "" : options2.host;
       }
       return tls.connect(options2);
     }
@@ -78781,7 +78781,7 @@ var require_namespace = __commonJS({
       });
       return this;
     };
-    Namespace.prototype.lookup = function lookup(path4, filterTypes, parentAlreadyChecked) {
+    Namespace.prototype.lookup = function lookup2(path4, filterTypes, parentAlreadyChecked) {
       if (typeof filterTypes === "boolean") {
         parentAlreadyChecked = filterTypes;
         filterTypes = void 0;
@@ -78816,7 +78816,7 @@ var require_namespace = __commonJS({
       }
       return null;
     };
-    Namespace.prototype._lookupImpl = function lookup(path4, flatPath) {
+    Namespace.prototype._lookupImpl = function lookup2(path4, flatPath) {
       if (Object.prototype.hasOwnProperty.call(this._lookupCache, flatPath)) {
         return this._lookupCache[flatPath];
       }
@@ -86922,7 +86922,7 @@ var require_transport = __commonJS({
     var resolver_1 = require_resolver();
     var subchannel_address_1 = require_subchannel_address();
     var uri_parser_1 = require_uri_parser();
-    var net = __require("net");
+    var net2 = __require("net");
     var subchannel_call_1 = require_subchannel_call();
     var call_number_1 = require_call_number();
     var TRACER_NAME = "transport";
@@ -87317,7 +87317,7 @@ var require_transport = __commonJS({
               if (proxyConnectionResult.socket) {
                 return proxyConnectionResult.socket;
               } else {
-                return net.connect(address);
+                return net2.connect(address);
               }
             };
           }
@@ -158853,6 +158853,65 @@ ${getSiteUrl()}`;
   return { subject, html, text };
 }
 
+// src/utils/embedPlatforms.ts
+var isStreamlitHost = (host) => host === "streamlit.app" || host.endsWith(".streamlit.app") || host === "share.streamlit.io";
+var isHfSpaceHost = (host) => host.endsWith(".hf.space");
+function isKnownEmbeddableHost(host) {
+  const h2 = host.toLowerCase();
+  return h2 !== "share.streamlit.io" && isStreamlitHost(h2) || isHfSpaceHost(h2);
+}
+
+// server/safeFetch.ts
+import { lookup } from "node:dns/promises";
+import net from "node:net";
+function isPrivateIPv4(ip) {
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4 || p.some((n) => Number.isNaN(n))) return true;
+  const [a, b] = p;
+  return a === 0 || a === 10 || a === 127 || a === 100 && b >= 64 && b <= 127 || // CGNAT
+  a === 169 && b === 254 || // link-local / 雲端中繼資料
+  a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 192 && b === 0 || a === 198 && (b === 18 || b === 19) || a >= 224;
+}
+function isPrivateIP(ip) {
+  if (net.isIPv4(ip)) return isPrivateIPv4(ip);
+  const v = ip.toLowerCase();
+  if (v.startsWith("::ffff:")) return isPrivateIPv4(v.slice(7));
+  return v === "::" || v === "::1" || v.startsWith("fc") || v.startsWith("fd") || // ULA
+  v.startsWith("fe8") || v.startsWith("fe9") || v.startsWith("fea") || v.startsWith("feb") || // link-local
+  v.startsWith("ff");
+}
+async function assertPublicUrl(raw) {
+  const u = new URL(raw);
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("blocked-protocol");
+  if (u.username || u.password) throw new Error("blocked-credentials");
+  if (u.port && !["80", "443", "8080", "8443"].includes(u.port)) throw new Error("blocked-port");
+  const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal") || host.endsWith(".local")) {
+    throw new Error("blocked-host");
+  }
+  if (net.isIP(host)) {
+    if (isPrivateIP(host)) throw new Error("blocked-ip");
+    return u;
+  }
+  const addrs = await lookup(host, { all: true });
+  if (!addrs.length || addrs.some((a) => isPrivateIP(a.address))) throw new Error("blocked-ip");
+  return u;
+}
+async function safeFetch(raw, init = {}, maxRedirects = 5) {
+  let current = raw;
+  for (let i2 = 0; i2 <= maxRedirects; i2++) {
+    const u = await assertPublicUrl(current);
+    const r2 = await fetch(u.toString(), { ...init, redirect: "manual" });
+    if (r2.status >= 300 && r2.status < 400 && r2.headers.get("location")) {
+      current = new URL(r2.headers.get("location"), u).toString();
+      continue;
+    }
+    Object.defineProperty(r2, "url", { value: u.toString() });
+    return r2;
+  }
+  throw new Error("too-many-redirects");
+}
+
 // server/competitionRoutes.ts
 var router = (0, import_express.Router)();
 async function requireAdmin(req, res) {
@@ -158935,28 +158994,21 @@ router.get("/check-embed", async (req, res) => {
   if (host.endsWith(".demo.ideax.tw") || host.endsWith(".example.com") || host === "example.com") {
     return res.json({ canEmbed: false, reason: "demo-placeholder" });
   }
+  if (isKnownEmbeddableHost(host)) {
+    return res.json({ canEmbed: true, finalUrl: parsed.toString(), platform: "known" });
+  }
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5e3);
     let response;
     try {
-      response = await fetch(parsed.toString(), {
-        method: "HEAD",
-        redirect: "follow",
+      const init = {
         signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)"
-        }
-      });
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)" }
+      };
+      response = await safeFetch(parsed.toString(), { ...init, method: "HEAD" });
       if (response.status === 405 || response.status === 403) {
-        response = await fetch(parsed.toString(), {
-          method: "GET",
-          redirect: "follow",
-          signal: controller.signal,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)"
-          }
-        });
+        response = await safeFetch(parsed.toString(), { ...init, method: "GET" });
       }
     } finally {
       clearTimeout(timer);
@@ -158978,7 +159030,9 @@ router.get("/check-embed", async (req, res) => {
     }
     return res.json({ canEmbed: true, finalUrl: response.url || parsed.toString() });
   } catch (err) {
-    return res.json({ canEmbed: false, reason: "unreachable", detail: err?.message || "timeout" });
+    const msg = String(err?.message || "");
+    if (msg.startsWith("blocked-")) return res.json({ canEmbed: false, reason: "blocked-host" });
+    return res.json({ canEmbed: false, reason: "unreachable" });
   }
 });
 router.get("/config", (req, res) => {
@@ -160458,7 +160512,7 @@ async function applyPointsOpWith(deps, auth, input) {
       const feeRate = feeRateOf(String(snap.get("subscriptionTier") || "free"));
       const fee = feeRate > 0 ? Math.round(amount * feeRate) : 0;
       const bonus = feeRate < 0 ? Math.round(amount * Math.abs(feeRate)) : 0;
-      const net = amount - fee + bonus;
+      const net2 = amount - fee + bonus;
       tx.update(userRef, { tipReceivablesPoints: nextTips, bountyReceivablesPoints: nextEarnings });
       const now = (/* @__PURE__ */ new Date()).toISOString();
       tx.set(db.collection("payout_requests").doc(), {
@@ -160470,7 +160524,7 @@ async function applyPointsOpWith(deps, auth, input) {
         feeRate,
         fee,
         bonus,
-        netAmount: net,
+        netAmount: net2,
         status: "pending",
         note: String(input.note || "").slice(0, 300),
         createdAt: now
@@ -160482,7 +160536,7 @@ async function applyPointsOpWith(deps, auth, input) {
         receivableDelta: -amount,
         tipsAfter: nextTips,
         earningsAfter: nextEarnings,
-        netAmount: net,
+        netAmount: net2,
         note: String(input.note || "").slice(0, 200),
         createdAt: now
       });
@@ -160492,7 +160546,7 @@ async function applyPointsOpWith(deps, auth, input) {
         withheldPoints: Number(snap.get("withheldPoints")) || 0,
         tipReceivablesPoints: nextTips,
         bountyReceivablesPoints: nextEarnings,
-        netAmount: net
+        netAmount: net2
       };
     });
   }

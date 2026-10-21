@@ -45,6 +45,8 @@ import {
   recordRealPresenceHeartbeat,
 } from './competitionService';
 import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_COMPETITION_SCHEDULE } from '../src/types/competition';
+import { isKnownEmbeddableHost } from '../src/utils/embedPlatforms';
+import { safeFetch } from './safeFetch';
 
 const router = Router();
 
@@ -116,28 +118,24 @@ router.get('/check-embed', async (req: Request, res: Response) => {
     return res.json({ canEmbed: false, reason: 'demo-placeholder' });
   }
 
+  // Streamlit Community Cloud、Hugging Face Spaces 官方支援內嵌，但會先轉址到登入／喚醒頁，標頭檢查不準，直接放行
+  if (isKnownEmbeddableHost(host)) {
+    return res.json({ canEmbed: true, finalUrl: parsed.toString(), platform: 'known' });
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     let response: globalThis.Response;
     try {
-      response = await fetch(parsed.toString(), {
-        method: 'HEAD',
-        redirect: 'follow',
+      const init = {
         signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
-        },
-      });
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)' },
+      };
+      // safeFetch：擋內網／本機位址，轉址逐跳檢查（防 SSRF）
+      response = await safeFetch(parsed.toString(), { ...init, method: 'HEAD' });
       if (response.status === 405 || response.status === 403) {
-        response = await fetch(parsed.toString(), {
-          method: 'GET',
-          redirect: 'follow',
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
-          },
-        });
+        response = await safeFetch(parsed.toString(), { ...init, method: 'GET' });
       }
     } finally {
       clearTimeout(timer);
@@ -166,7 +164,9 @@ router.get('/check-embed', async (req: Request, res: Response) => {
 
     return res.json({ canEmbed: true, finalUrl: response.url || parsed.toString() });
   } catch (err: any) {
-    return res.json({ canEmbed: false, reason: 'unreachable', detail: err?.message || 'timeout' });
+    const msg = String(err?.message || '');
+    if (msg.startsWith('blocked-')) return res.json({ canEmbed: false, reason: 'blocked-host' });
+    return res.json({ canEmbed: false, reason: 'unreachable' });
   }
 });
 

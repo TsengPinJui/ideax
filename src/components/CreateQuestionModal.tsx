@@ -1624,9 +1624,12 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                       type="url"
                       value={demoUrl}
                       onChange={(e) => setDemoUrl(e.target.value)}
-                      placeholder="例如：https://my-vibecoding-app.vercel.app 或專屬作品網站連結"
+                      placeholder="例如：https://my-app.vercel.app、https://my-app.streamlit.app"
                       className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
                     />
+                    <p className="mt-1 text-[10px] text-stone-500">
+                      支援 Streamlit（*.streamlit.app）與 Hugging Face Spaces 互動預覽，貼上 App 網址即可，系統會自動轉成嵌入模式。
+                    </p>
                   </div>
 
                   <label className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 cursor-pointer transition-colors select-none">
