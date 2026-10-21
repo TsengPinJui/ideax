@@ -1464,6 +1464,7 @@ export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false
 export const HOME_SHOWCASE_MAX_CUSTOM = 30;
 
 export interface PublicMetricsConfig {
+  showPublicMetrics?: boolean;     // 統一開關：關閉時首頁不顯示任何公開數據（沒設定過視為開啟）
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數
   showTotalBounty: boolean;        // 累計懸賞金額
   showAvgResponseSpeed: boolean;   // 平均回覆速度
@@ -1482,6 +1483,14 @@ export interface PublicMetricsConfig {
   showTotalDeals?: boolean;        // 已成交方案
   showTotalGMV?: boolean;          // 平台總交易額
 }
+
+/** 各項公開數據的開關（不含統一開關），計算「已公開 N / M 項」用 */
+export const PUBLIC_METRIC_TOGGLE_KEYS: Array<keyof PublicMetricsConfig> = [
+  'showTotalViews', 'showUniqueVisitors', 'showTodayVisitors', 'showOnlineUsers', 'showTotalMembers', 'showNewMembers7d', 'showVerifiedSolvers',
+  'showQuestionsCount', 'showProposalsCount', 'showJobsUsers', 'showSolvedCount', 'showTotalBounty', 'showHighestBounty', 'showTotalDeals',
+  'showAvgResponseSpeed', 'showSatisfactionRate', 'showTotalGMV',
+];
+export const countPublicMetrics = (c: PublicMetricsConfig) => PUBLIC_METRIC_TOGGLE_KEYS.filter((k) => c[k] === true).length;
 
 // =========================================================================
 // AI 客服與智慧工單 / FAQ 體系 (AI Customer Support & FAQ Suite)
