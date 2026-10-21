@@ -2259,7 +2259,7 @@ function MainContent() {
                       <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-1.5 animate-in fade-in duration-150">
                         <p className="text-xs font-medium text-stone-700 leading-relaxed">
                           {isRaceMode
-                            ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
+                            ? "匯集真實生活與產業未解痛點，開放給創星季參賽團隊作為解題題目與共創解方。"
                             : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"}
                         </p>
                         <div className="flex items-center gap-2 text-[11px] text-rose-800 font-bold pt-0.5">
