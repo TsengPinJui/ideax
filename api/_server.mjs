@@ -162054,7 +162054,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.6";
+var APP_VERSION = "3.3.7";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165080,7 +165080,7 @@ function extractRolesFromText(text) {
   for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
     cleanedForRole = cleanedForRole.replace(lm.pattern, " ");
   }
-  cleanedForRole = cleanedForRole.replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim();
+  cleanedForRole = cleanedForRole.replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/職務(?:（複選）)?[：:]/g, " ").replace(/或是|或者|以及|還有|另外|加上|再加|也想看|也想找|也想|也可以|都可以|都行|順便|改找|改成|換成|換找|想看|或|和|跟|也/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim();
   const cue = text.match(/(?:招募|招聘|徵求|應徵|申請|擔任|職位|職缺|職稱|想當|想做)[：:\s]*(?:的)?[「『"“]?([^\s，。,、；;！!？?「」『』"“”]{2,14}?)(?:[」』"”]|一職|職位|職缺|的工作|的職缺|，|。|,|、|；|$)/);
   const cueRole = cue && !/(機會|團隊|貴公司|公司|人才|夥伴|中)$/.test(cue[1]) ? cue[1].replace(/^(一位|一名|新的)/, "") : "";
   const SENTENCE_NOISE = /[我您你他她貴想]|榮幸|非常|深信|相信|過往|過去|之前|以前|做過|轉行|轉職|推薦|因此|所以|希望|感謝|謝謝|能夠|能有|機會|自薦|履歷|理念|認同|關注|一直|以來|領域|經驗|對接|需求|主動|投遞/;
@@ -165101,7 +165101,9 @@ function buildJobConditionSummary(text, ctx) {
   if (campus) {
     lines.push(`\u5730\u5340\uFF1A${campus.label}`);
   } else if (cities && cities.length) {
-    lines.push(`\u5730\u5340\uFF1A${uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : /[市縣]$/.test(c) ? c : c)).join("\u3001")}`);
+    const CITY_SUFFIX = { \u53F0\u5317: "\u53F0\u5317\u5E02", \u65B0\u5317: "\u65B0\u5317\u5E02", \u57FA\u9686: "\u57FA\u9686\u5E02", \u6843\u5712: "\u6843\u5712\u5E02", \u53F0\u4E2D: "\u53F0\u4E2D\u5E02", \u53F0\u5357: "\u53F0\u5357\u5E02", \u9AD8\u96C4: "\u9AD8\u96C4\u5E02", \u82D7\u6817: "\u82D7\u6817\u7E23", \u5F70\u5316: "\u5F70\u5316\u7E23", \u5357\u6295: "\u5357\u6295\u7E23", \u96F2\u6797: "\u96F2\u6797\u7E23", \u5C4F\u6771: "\u5C4F\u6771\u7E23", \u5B9C\u862D: "\u5B9C\u862D\u7E23", \u82B1\u84EE: "\u82B1\u84EE\u7E23", \u53F0\u6771: "\u53F0\u6771\u7E23", \u6F8E\u6E56: "\u6F8E\u6E56\u7E23", \u91D1\u9580: "\u91D1\u9580\u7E23" };
+    const full = uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : CITY_SUFFIX[c] || c));
+    lines.push(`\u5730\u5340\uFF1A${full.filter((c) => !(c.length === 2 && full.some((x2) => x2 !== c && x2.startsWith(c)))).join("\u3001")}`);
   } else if (ctx.isTaiwanWide) {
     lines.push("\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09");
   } else if (ctx.mentionsAbroad) {
@@ -165124,7 +165126,7 @@ function buildJobConditionSummary(text, ctx) {
     else if (/^(不限|不拘|無)$/.test(c)) lines.push("\u76EE\u6A19\u516C\u53F8\uFF1A\u4E0D\u62D8");
   }
   const role = extractRolesFromText(text);
-  if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 3).join("\u3001")}`);
+  if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 5).join("\u3001")}`);
   for (const pf of extractPreferencesFromText(text)) lines.push(`${pf.label}\uFF1A${pf.value}`);
   const si = ctx.salaryInfo;
   const foreign = text.match(/薪水：([^、]+)/);
@@ -165163,6 +165165,27 @@ app.get("/api/fx", async (_req, res) => {
   return res.json({ base: "USD", rates: FALLBACK_USD_RATES, updatedAt: "", source: "fallback" });
 });
 var lastIntakeAiNote = "";
+var ROLE_ALSO_RE = /也|還有|或是|或者|或|另外|加上|再加|一起|都可以|都行|順便|以及/;
+var ROLE_REPLACE_RE = /改找|改成|換成|換找|不要.{0,8}了|不找.{0,8}了|不想.{0,8}了/;
+function mergeIntakeRoles(intake, previousRoles) {
+  const now = Array.isArray(intake.roles) ? intake.roles.map((r2) => String(r2 || "").trim()).filter(Boolean) : [];
+  const merged = Array.from(/* @__PURE__ */ new Set([...previousRoles, ...now]));
+  if (merged.length === now.length) {
+    intake.newRoleDifferentFromPrevious = false;
+    return;
+  }
+  intake.roles = merged;
+  intake.newRoleDifferentFromPrevious = false;
+  const line = `\u8077\u52D9\uFF1A${merged.join("\u3001")}`;
+  if (Array.isArray(intake.summaryLines)) {
+    const i2 = intake.summaryLines.findIndex((l) => /^\s*職務/.test(String(l)));
+    if (i2 >= 0) intake.summaryLines[i2] = line;
+    else intake.summaryLines.unshift(line);
+  }
+  const brief = String(intake.confirmedBrief || "");
+  const missing = previousRoles.filter((r2) => !brief.includes(r2));
+  if (missing.length) intake.confirmedBrief = brief ? `${brief}\u3001\u8077\u52D9\uFF08\u8907\u9078\uFF09\uFF1A${merged.join("\u3001")}` : line;
+}
 var NOT_A_ROLE_RE = /大眾交通|大眾運輸|交通|捷運|公車|至少|最少|最低|起碼|週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
 var INTAKE_PREF_LABELS = {
   industry: "\u7522\u696D",
@@ -165283,9 +165306,11 @@ async function parseJobIntakeWithGemini(params) {
      {"dimension": "industry" | "schedule" | "workMode" | "benefits" | "environment" | "skills" | "background" | "other", "label": "\u7522\u696D" | "\u73ED\u5225\u5DE5\u6642" | "\u5DE5\u4F5C\u65B9\u5F0F" | "\u798F\u5229" | "\u5DE5\u4F5C\u74B0\u5883" | "\u6280\u80FD\u8B49\u7167" | "\u500B\u4EBA\u80CC\u666F" | "\u5176\u4ED6\u504F\u597D", "value": "\u4F7F\u7528\u8005\u7684\u689D\u4EF6\uFF08\u7C21\u77ED\uFF09"}
    - \u540C\u4E00\u500B\u9762\u5411\u6709\u591A\u500B\u689D\u4EF6\u5C31\u7528\u300C\u3001\u300D\u5408\u4F75\u6210\u4E00\u7B46\uFF0C\u4F8B\u5982 {"dimension":"schedule","label":"\u73ED\u5225\u5DE5\u6642","value":"\u9031\u4F11\u4E8C\u65E5\u3001\u4E0D\u8F2A\u73ED"}\u3002
    - preferences \u88E1\u7684\u689D\u4EF6\u4E5F\u8981\u5BEB\u9032 summaryLines\uFF08\u4F8B\u5982 "\u73ED\u5225\u5DE5\u6642\uFF1A\u9031\u4F11\u4E8C\u65E5\u3001\u4E0D\u8F2A\u73ED"\uFF09\u548C confirmedBrief\u3002
-9. \u3010\u63DB\u4E86\u4E0D\u540C\u8077\u52D9 (newRoleDifferentFromPrevious)\u3011\uFF1A
-   - \u5148\u524D\u7D2F\u7A4D\u689D\u4EF6\u88E1\u5DF2\u7D93\u6709\u8077\u52D9\uFF0C\u800C\u6700\u65B0\u8F38\u5165\u63D0\u5230\u7684\u662F\u300C\u53E6\u4E00\u500B\u4E0D\u540C\u7684\u8077\u52D9\u300D\uFF08\u4E0D\u662F\u88DC\u5145\u540C\u4E00\u500B\u8077\u52D9\u7684\u7D30\u7BC0\uFF09\u6642\uFF0C\u586B true\uFF1B\u5176\u4ED6\u60C5\u6CC1\u586B false\u3002
-   - \u9019\u6642 roles \u53EA\u653E\u6700\u65B0\u8F38\u5165\u7684\u8077\u52D9\uFF0C\u4E0D\u8981\u548C\u5148\u524D\u7684\u8077\u52D9\u6DF7\u5728\u4E00\u8D77\u3002
+9. \u3010\u8077\u52D9\u53EF\u4EE5\u8907\u9078\uFF1B\u63DB\u4E86\u4E0D\u540C\u8077\u52D9 (newRoleDifferentFromPrevious)\u3011\uFF1A
+   - \u8077\u52D9\u53EF\u4EE5\u8907\u9078\u3002\u4F7F\u7528\u8005\u4E00\u6B21\u8B1B\u597D\u5E7E\u500B\u8077\u52D9\uFF08\u300C\u670D\u52D9\u751F\u6216\u5EDA\u623F\u52A9\u624B\u300D\u300C\u884C\u653F\u3001\u6AC3\u53F0\u90FD\u53EF\u4EE5\u300D\uFF09\u6642\uFF0Croles \u5168\u90E8\u5217\u51FA\u3002
+   - \u5148\u524D\u5DF2\u7D93\u6709\u8077\u52D9\uFF0C\u6700\u65B0\u8F38\u5165\u7528\u300C\u4E5F\u300D\u300C\u9084\u6709\u300D\u300C\u6216\u300D\u300C\u53E6\u5916\u300D\u300C\u52A0\u4E0A\u300D\u300C\u518D\u52A0\u300D\u300C\u4E00\u8D77\u300D\u300C\u90FD\u53EF\u4EE5\u300D\u300C\u9806\u4FBF\u300D\u7B49\u8AAA\u6CD5\u88DC\u5145\u53E6\u4E00\u500B\u8077\u52D9\u6642\uFF0C\u662F\u8077\u52D9\u8907\u9078\uFF1Aroles \u653E\u300C\u5148\u524D\u7684\u8077\u52D9\uFF0B\u65B0\u8077\u52D9\u300D\uFF0CnewRoleDifferentFromPrevious \u586B false\uFF1BsummaryLines \u5BEB\u300C\u8077\u52D9\uFF1A\u5148\u524D\u8077\u52D9\u3001\u65B0\u8077\u52D9\u300D\u3002
+   - \u53EA\u6709\u76F4\u63A5\u63DB\u6210\u53E6\u4E00\u500B\u4E0D\u540C\u7684\u8077\u52D9\uFF08\u6C92\u6709\u4E0A\u8FF0\u88DC\u5145\u8AAA\u6CD5\uFF0C\u6216\u660E\u8AAA\u300C\u6539\u627E\u300D\u300C\u63DB\u6210\u300D\u300C\u4E0D\u8981\u2026\u4E86\u300D\uFF09\u6642\u624D\u586B true\uFF1B\u9019\u6642 roles \u53EA\u653E\u6700\u65B0\u8F38\u5165\u7684\u8077\u52D9\u3002
+   - \u53EA\u662F\u88DC\u5145\u540C\u4E00\u500B\u8077\u52D9\u7684\u7D30\u7BC0\uFF0C\u586B false\u3002
 10. \u3010\u689D\u5217\u6458\u8981 (summaryLines)\u3011\uFF1A
    - \u8ACB\u8F38\u51FA\u7C21\u6F54\u4E14\u9AD8\u6C34\u6E96\u7684\u689D\u5217\u6E05\u55AE\uFF08\u53EA\u5217\u51FA\u76EE\u524D\u5DF2\u78BA\u5B9A\u7684\u689D\u4EF6\uFF09\uFF0C\u4F8B\u5982\uFF1A
      - "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077"
@@ -165602,6 +165627,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 600);
     const filters = req.body?.filters || {};
     const previousBrief = String(req.body?.previousBrief || "").trim().slice(0, 600);
+    const previousRoles = Array.isArray(req.body?.previousRoles) ? Array.from(new Set(req.body.previousRoles.map((s2) => String(s2 || "").trim().slice(0, 40)).filter(Boolean))).slice(0, 8) : [];
     const conversationHistory = Array.isArray(req.body?.conversationHistory) ? req.body.conversationHistory.map((s2) => String(s2 || "").trim()).filter(Boolean) : [];
     const skippedDimensionsInput = Array.isArray(req.body?.skippedDimensions) ? req.body.skippedDimensions.map((s2) => String(s2 || "").trim()).filter(Boolean) : [];
     const userBaseCity = String(filters.userBaseCity || "\u53F0\u5317\u5E02").trim();
@@ -165617,9 +165643,12 @@ app.post("/api/job-explorer/intake", async (req, res) => {
       userBaseCity
     });
     if (geminiIntake) {
+      if (geminiIntake.newRoleDifferentFromPrevious === true && previousRoles.length && ROLE_ALSO_RE.test(rawMessage) && !ROLE_REPLACE_RE.test(rawMessage)) {
+        mergeIntakeRoles(geminiIntake, previousRoles);
+      }
       const summaryText2 = Array.isArray(geminiIntake.summaryLines) && geminiIntake.summaryLines.length > 0 ? geminiIntake.summaryLines.map((l) => `\u2022 ${l}`).join("\n") : "";
       const questionText = geminiIntake.clarificationQuestion || "\u8ACB\u554F\u60A8\u671F\u671B\u627E\u6B63\u8077\u9084\u662F\u517C\u8077\uFF1F";
-      const roleSwitchTip = geminiIntake.newRoleDifferentFromPrevious === true ? "\n\u{1F4A1} \u8981\u641C\u5C0B\u4E0D\u540C\u7684\u8077\u52D9\uFF0C\u5EFA\u8B70\u5148\u6309\u4E0B\u65B9\u300C\u6E05\u9664\u5C0D\u8A71\u300D\u91CD\u65B0\u958B\u59CB\uFF0C\u689D\u4EF6\u624D\u4E0D\u6703\u6DF7\u5728\u4E00\u8D77\u3002" : "";
+      const roleSwitchTip = geminiIntake.newRoleDifferentFromPrevious === true ? "\n\u{1F4A1} \u4F60\u63DB\u4E86\u4E00\u500B\u4E0D\u540C\u7684\u8077\u52D9\u3002\u8077\u52D9\u53EF\u4EE5\u8907\u9078\uFF1A\u53EF\u4EE5\u548C\u4E4B\u524D\u7684\u8077\u52D9\u4E00\u8D77\u641C\uFF0C\u6216\u6E05\u9664\u5C0D\u8A71\u53EA\u641C\u65B0\u7684\u3002" : "";
       const resolvedReply2 = (summaryText2 ? `\u5DF2\u8A18\u9304\uFF1A
 ${summaryText2}
 ${questionText}` : questionText) + roleSwitchTip;
@@ -165666,8 +165695,12 @@ ${questionText}` : questionText) + roleSwitchTip;
         roleSwitched: geminiIntake.newRoleDifferentFromPrevious === true
       });
     }
-    const allSegments = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" \u3001 "))).split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
-    const fullText = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" "))).toLowerCase();
+    const rulesReplaceRole = previousRoles.length > 0 && ROLE_REPLACE_RE.test(rawMessage);
+    const stripPrevRoles = (s2) => rulesReplaceRole ? previousRoles.reduce((acc, r2) => acc.split(r2).join(" "), s2.replace(/職務(?:（複選）)?[：:][^、,，\n]*(?:[、,，][^、,，\n：:]*)*/g, " ")) : s2;
+    const rulesHistory = conversationHistory.map(stripPrevRoles);
+    const rulesPrevBrief = stripPrevRoles(previousBrief);
+    const allSegments = expandRegionAliases(normalizeChineseAmounts([...rulesHistory, rulesPrevBrief, rawMessage].join(" \u3001 "))).split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
+    const fullText = expandRegionAliases(normalizeChineseAmounts([...rulesHistory, rulesPrevBrief, rawMessage].join(" "))).toLowerCase();
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
     const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
     const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|國立大學|公立頂大|技職科大|私立大學|碩士|博士|專科|高中職/i;
