@@ -47,6 +47,16 @@ function pageHtml(item) {
   h = setTag(h, /<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${esc(item.description)}" />`, 'og:description');
   h = setTag(h, /<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${esc(item.title)}" />`, 'twitter:title');
   h = setTag(h, /<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${esc(item.description)}" />`, 'twitter:description');
+  if (item.image) {
+    // 這一頁有自己的分享預覽圖
+    const img = `${SITE}${item.image.url}`;
+    h = setTag(h, /<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(img)}" />`, 'og:image');
+    h = setTag(h, /<meta property="og:image:secure_url" content="[^"]*"\s*\/?>/, `<meta property="og:image:secure_url" content="${esc(img)}" />`, 'og:image:secure_url');
+    h = setTag(h, /<meta property="og:image:type" content="[^"]*"\s*\/?>/, `<meta property="og:image:type" content="${esc(item.image.type)}" />`, 'og:image:type');
+    h = setTag(h, /<meta property="og:image:width" content="[^"]*"\s*\/?>/, `<meta property="og:image:width" content="${item.image.width}" />`, 'og:image:width');
+    h = setTag(h, /<meta property="og:image:height" content="[^"]*"\s*\/?>/, `<meta property="og:image:height" content="${item.image.height}" />`, 'og:image:height');
+    h = setTag(h, /<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(img)}" />`, 'twitter:image');
+  }
   return h;
 }
 
