@@ -3575,7 +3575,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                     <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
-                      已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 13 項指標
+                      已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 14 項指標
                     </span>
                     <button
                       type="button"
@@ -3596,7 +3596,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-extrabold text-xs text-stone-900">網站總瀏覽量</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">總瀏覽與造訪</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">瀏覽次數</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">進入網站與存取頁面的總瀏覽次數</p>
                     </div>
@@ -3610,6 +3610,31 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     >
                       <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                         publicMetricsConfig.showTotalViews ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 1b: 造訪用戶（和總瀏覽量分開開關） */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showUniqueVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">造訪用戶</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">不重複人數</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">來過網站的不重複裝置數（同一裝置只算一次）</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showUniqueVisitors: !publicMetricsConfig.showUniqueVisitors })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showUniqueVisitors ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showUniqueVisitors ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showUniqueVisitors ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
                   </div>

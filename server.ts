@@ -3800,7 +3800,7 @@ app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
 // 首頁公開數據開關：由伺服器確認是管理員後寫入（不受前端連線／登入狀態影響）
 const PUBLIC_METRIC_KEYS = [
   'showSolvedCount', 'showTotalBounty', 'showAvgResponseSpeed', 'showSatisfactionRate', 'showHighestBounty',
-  'showTotalViews', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
+  'showTotalViews', 'showUniqueVisitors', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
   'showProposalsCount', 'showTotalDeals', 'showTotalGMV',
 ];
 app.post('/api/admin/public-metrics-config', async (req: Request, res: Response) => {
