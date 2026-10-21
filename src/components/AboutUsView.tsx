@@ -1104,7 +1104,9 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           {/* 客服核心行動卡片 (直接套用線上客服與爭議仲裁窗口) */}
           <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
-              <div>
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <img src="/agents/duohui/support.webp" alt="官方客服 Agent 多慧" className="w-20 h-20 sm:w-24 sm:h-24 object-contain shrink-0 drop-shadow-sm" />
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
                     <Headphones className="w-3 h-3 text-emerald-600" />
@@ -1117,6 +1119,10 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <p className="text-xs text-stone-500 mt-0.5">
                   點擊立即開啟標準客服與爭議仲裁申訴窗口，由專員直接受理與保全調查。
                 </p>
+                <p className="text-xs font-bold text-emerald-800 mt-1.5">
+                  🦉 由官方客服 Agent 多慧接待：有任何問題都可以先找多慧！
+                </p>
+              </div>
               </div>
 
               {/* 客服與回報按鈕 */}
@@ -1125,8 +1131,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 onClick={() => openCustomerService({ subject: '來自平台資訊之客服與回報' })}
                 className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
               >
-                <MessageSquare className="w-4 h-4 text-amber-400" />
-                <span>客服與回報</span>
+                <img src="/agents/duohui/happy.webp" alt="" className="w-6 h-6 rounded-full bg-emerald-50 object-contain shrink-0" />
+                <span>找多慧・客服與回報</span>
               </button>
             </div>
           </div>
@@ -1220,8 +1226,9 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-stone-700" />
+                <img src="/agents/duohui/guide.webp" alt="" className="w-10 h-10 object-contain shrink-0 -my-2" />
                 <span>常見問題 FAQ ({platformFaqs.length})</span>
+                <span className="hidden sm:inline text-[11px] font-bold text-emerald-700">多慧幫你整理好了</span>
               </h3>
               <span className="text-[10px] font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
                 AI 客服智庫即時同步
@@ -1269,8 +1276,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                             onClick={() => openCustomerService({ message: `我想深入諮詢常見問題：【${faq.question}】` })}
                             className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100/90 active:scale-95 px-3 py-1.5 rounded-xl border border-amber-200/90 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
                           >
-                            <Bot className="w-3.5 h-3.5 text-amber-700" />
-                            <span>🤖 讓 24hr AI 客服 Agent 深入解答</span>
+                            <img src="/agents/duohui/happy.webp" alt="" className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 object-contain shrink-0" />
+                            <span>讓多慧深入解答</span>
                           </button>
                         </div>
                       </div>

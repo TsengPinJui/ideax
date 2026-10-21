@@ -439,7 +439,7 @@ export const CustomerServiceModal: React.FC = () => {
                 : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-100'
             }`}
           >
-            <Bot className="w-3.5 h-3.5" />
+            <img src="/agents/duohui/happy.webp" alt="" className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 object-contain shrink-0" />
             <span>24hr 智能客服</span>
           </button>
 
@@ -657,7 +657,7 @@ export const CustomerServiceModal: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>找不到想查的問題？讓 24hr AI 客服 Agent 即時解答</span>
+                  <span>找不到想查的問題？讓多慧即時解答</span>
                 </span>
                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
                   ⚡ Dify Live Agent
@@ -679,12 +679,12 @@ export const CustomerServiceModal: React.FC = () => {
                   {isConsultingCustom ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>AI解答中...</span>
+                      <span>多慧解答中…</span>
                     </>
                   ) : (
                     <>
-                      <Bot className="w-3.5 h-3.5" />
-                      <span>問問 Agent</span>
+                      <img src="/agents/duohui/happy.webp" alt="" className="w-5 h-5 rounded-full bg-emerald-50 object-contain shrink-0" />
+                      <span>問多慧</span>
                     </>
                   )}
                 </button>
@@ -799,12 +799,12 @@ export const CustomerServiceModal: React.FC = () => {
                                 {isConsultingThis ? (
                                   <>
                                     <RefreshCw className="w-3 h-3 animate-spin text-amber-700" />
-                                    <span>AI 客服 Agent 正在即時深度調閱智庫...</span>
+                                    <span>多慧正在翻資料…</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Bot className="w-3.5 h-3.5 text-amber-700" />
-                                    <span>🤖 讓 AI 客服 Agent 深入解答此問題</span>
+                                    <img src="/agents/duohui/happy.webp" alt="" className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 object-contain shrink-0" />
+                                    <span>讓多慧深入解答此問題</span>
                                   </>
                                 )}
                               </button>
