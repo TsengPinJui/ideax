@@ -27,7 +27,7 @@ export const GuestBoardGateBlurOverlay: React.FC<GuestBoardGateBlurOverlayProps>
         className="filter blur-[6px] opacity-85 pointer-events-none select-none max-h-[320px] overflow-hidden transition-opacity"
       >
         {blurredPreviewChildren || (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
