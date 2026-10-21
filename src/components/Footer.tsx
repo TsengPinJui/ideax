@@ -26,6 +26,13 @@ interface FooterProps {
   onStartOnboarding?: () => void;
 }
 
+/** 真正的 <a href> 連結（Google 靠它發現各分頁），一般點擊仍用站內切換不重新載入 */
+const spaClick = (action: () => void) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  action();
+};
+
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
   const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts, isRaceMode } = useApp();
   const [isPointsGuideOpen, setIsPointsGuideOpen] = useState(false);
@@ -79,14 +86,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">平台導覽</h4>
             <ul className="space-y-1.5 text-stone-400">
               <li>
-                <button
-                  type="button"
-                  onClick={() => onNavClick('star_season')}
+                <a
+                  href="/challenge"
+                  onClick={spaClick(() => onNavClick('star_season'))}
                   className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span>創星季挑戰賽</span>
-                </button>
+                </a>
               </li>
               <li>
                 <button
@@ -105,28 +112,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => onNavClick('explore')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
+                <a href="/explore" onClick={spaClick(() => onNavClick('explore'))} className="hover:text-white transition-colors cursor-pointer text-left">
                   探索問題市場
-                </button>
+                </a>
               </li>
               <li>
-                <button
-                  onClick={onPostClick}
-                  className="hover:text-white transition-colors text-left cursor-pointer"
-                >
+                <a href="/create" onClick={spaClick(onPostClick)} className="hover:text-white transition-colors text-left cursor-pointer">
                   發布問題需求
-                </button>
+                </a>
               </li>
               <li>
-                <button
-                  onClick={() => onNavClick('solvers')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
+                <a href="/solvers" onClick={spaClick(() => onNavClick('solvers'))} className="hover:text-white transition-colors cursor-pointer text-left">
                   認證專家智庫
-                </button>
+                </a>
+              </li>
+              <li>
+                <a href="/jobs" onClick={spaClick(() => onNavClick('job_explorer'))} className="hover:text-white transition-colors cursor-pointer text-left">
+                  匯職缺・AI 找工作
+                </a>
               </li>
               <li>
                 <button
