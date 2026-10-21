@@ -2489,7 +2489,7 @@ function MainContent() {
                     {showL0Help && (
                       <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-1.5 animate-in fade-in duration-150">
                         <p className="text-xs font-medium text-stone-700 leading-relaxed">
-                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。
+                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助，適合社群激盪與早期方向探索。
                         </p>
                         <div className="flex items-center gap-2 text-[11px] text-sky-800 font-bold pt-0.5">
                           <span>0 門檻自由交流 · 社群觀點激盪</span>

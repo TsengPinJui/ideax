@@ -423,7 +423,7 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     path: '/l0-discussion',
     queryParam: '?zone=l0_discussion',
     title: 'L0 討論區 — IdeaX 創點子 免懸賞自由交流、日常觀點碰撞與社群討論',
-    description: '無門檻日常交流、閒聊討論、觀點碰撞與輕量求助專區。完全免費公開，適合社群激盪與早期方向探索。',
+    description: '無門檻日常交流、閒聊討論、觀點碰撞與輕量求助專區，適合社群激盪與早期方向探索。',
     keywords: ['L0討論區', 'L0 討論', '免懸賞討論', '自由交流', '閒聊討論', '觀點碰撞', 'IdeaX 討論區'],
     icon: 'MessageCircle',
   },

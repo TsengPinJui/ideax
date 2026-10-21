@@ -7,7 +7,7 @@ export const LEVEL_CONFIGS: Record<ProblemLevel, LevelConfig> = {
     name: '免費交流',
     description: '完全公開的社群交流與經驗碰撞，適合開放性回饋與跨領域腦力激盪。',
     example: '一般交流 / 觀點碰撞 / 閒聊討論',
-    rangeText: '0 點（免費公開）',
+    rangeText: '0 點（公開討論）',
     minPrice: 0,
     maxPrice: 0,
     badgeClass: 'bg-stone-100 text-stone-700 border-stone-200',

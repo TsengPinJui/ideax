@@ -301,7 +301,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
                       {relatedQ?.title || '懸賞問題方案'}
                     </div>
                     <div className="text-[11px] text-stone-500 mt-0.5 line-clamp-1">
-                      交付類別：{ans.deliveryType} • {ans.isPaid ? `付費方案 NT$ ${ans.price}` : '免費公開'}
+                      交付類別：{ans.deliveryType} • {ans.isPaid ? `付費方案 NT$ ${ans.price}` : '公開方案'}
                     </div>
                   </div>
                 );
