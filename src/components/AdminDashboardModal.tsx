@@ -862,7 +862,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">提案數量</span>
+                  <span className="font-extrabold text-xs text-stone-900">提案總數</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
                 </div>
                 <p className="text-[11px] text-stone-500 mt-0.5">各領域專家提交之專業解題方案總數</p>

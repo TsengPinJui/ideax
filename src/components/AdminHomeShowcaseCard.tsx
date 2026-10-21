@@ -126,7 +126,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[]; customIds?: string[]; includeSimulated?: boolean }) => {
+  const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[]; customIds?: string[]; includeSimulated?: boolean; hideHeroTitles?: boolean }) => {
     setSaving(true);
     const ok = await updateHomeShowcaseConfig(patch);
     setSaving(false);
@@ -198,6 +198,24 @@ export const AdminHomeShowcaseCard: React.FC = () => {
           );
         })}
       </div>
+
+      {/* 首頁大標題、小標題：可以隱藏，讓播放區更突出 */}
+      <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
+        <span className="min-w-0">
+          <span className="block text-xs font-black text-sky-950">隱藏首頁大標題與小標題</span>
+          <span className="block text-[11px] text-stone-500">「一個問題，找到更多可能。」和「痛點許願 · 創新提案 · 專家懸賞」不顯示（搜尋引擎仍讀得到大標題）。</span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={Boolean(homeShowcaseConfig.hideHeroTitles)}
+          disabled={saving}
+          onClick={() => save({ hideHeroTitles: !homeShowcaseConfig.hideHeroTitles })}
+          className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${homeShowcaseConfig.hideHeroTitles ? 'bg-sky-500' : 'bg-stone-300'}`}
+        >
+          <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${homeShowcaseConfig.hideHeroTitles ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
+      </label>
 
       {/* 虛擬卡片：真實作品還不多時先打開，讓播放區有內容 */}
       <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
