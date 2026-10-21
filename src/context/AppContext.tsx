@@ -140,6 +140,7 @@ import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
+import { isAuthorizedForAccount, isLocalDevHost } from '../services/accountGuard';
 import { consumeSocialRedirectResult, type SocialRedirectOutcome } from '../services/firebaseAuth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
@@ -547,7 +548,8 @@ interface AppContextType {
 
   // Device Logged-In Accounts Management (本裝置曾經登錄的帳號)
   deviceAccounts: DeviceAccount[];
-  switchAccount: (userId: string) => boolean;
+  /** authenticatedUid：登入流程剛用密碼／簡訊／社群驗證過的 Firebase UID（必須等於目前真正登入的帳號） */
+  switchAccount: (userId: string, opts?: { authenticatedUid?: string }) => boolean;
   logoutAccount: (userId?: string) => void;
   removeDeviceAccount: (userId: string) => boolean;
   addDeviceAccount: (userId: string) => boolean;
@@ -1294,8 +1296,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(parsed) && parsed.length > 0) {
           // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號，並去除別名重複
           const seenIds = new Set<string>();
+          // 內建的管理員／測試帳號不放進「本裝置已登錄帳號」（以前會被自動補進來）
+          const builtInIds = new Set([...CORE_TEST_ACCOUNTS, ...DEMO_CORE_TEST_USERS, ...CLEAN_CORE_USERS].flatMap((u) => [u.id, USER_ALIAS_MAP[u.id]]).filter(Boolean) as string[]);
           const cleaned = parsed.filter((a: any) => {
             if (!a || !a.userId || a.userId === 'user-guest') return false;
+            if (builtInIds.has(a.userId) && !isLocalDevHost()) return false;
             const aliasId = USER_ALIAS_MAP[a.userId];
             if (seenIds.has(a.userId) || (aliasId && seenIds.has(aliasId))) return false;
             seenIds.add(a.userId);
@@ -1321,6 +1326,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!currentUser || currentUser.id === 'user-guest') return;
+    // 只有真的登入（Firebase 帳號對得上）的身分才記進「本裝置已登錄帳號」
+    if (!isAuthorizedForAccount(currentUser, firebaseAuthInstance.currentUser)) return;
     setDeviceAccounts((prev) => {
       const aliasId = USER_ALIAS_MAP[currentUser.id];
       const idx = prev.findIndex((a) => a.userId === currentUser.id || (aliasId && a.userId === aliasId));
@@ -2358,6 +2365,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     updateAuthUidDirectory(availableUsers);
   }, [availableUsers]);
+
+  // 安全：網站記住的身分（localStorage）必須和 Firebase 真正登入的帳號一致；
+  // 不一致（被竄改、或 Firebase 已登出）就回到訪客，避免冒用別人或管理員身分
+  useEffect(() => {
+    if (isLocalDevHost()) return;
+    const unsub = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
+      setCurrentUser((prev) => {
+        if (!prev?.id || prev.id === 'user-guest') return prev;
+        if (isAuthorizedForAccount(prev, fbUser)) return prev;
+        try {
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}user`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+        } catch {}
+        // 冒用的身分也從「本裝置已登錄帳號」拿掉
+        setDeviceAccounts((list) => list.filter((a) => a.userId !== prev.id));
+        return GUEST_USER;
+      });
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 登入 Firebase 後，把 Firebase UID 記在自己的會員資料上，讓別人傳訊時找得到
   useEffect(() => {
@@ -4621,7 +4651,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const switchAccount = (userId: string): boolean => {
+  const switchAccount = (userId: string, opts?: { authenticatedUid?: string }): boolean => {
     // 支援別名映射 (例如 user-questioner <-> c100000001, user-admin <-> a000000001, solver-2 <-> c200000002, solver-1 <-> c100000003)
     const aliasMap: Record<string, string> = {
       'user-admin': 'a000000001',
@@ -4658,6 +4688,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     if (!target) return false;
+
+    // 安全：只能切換成「目前真的用 Firebase 登入的帳號」，不能點一下就變成別人或管理員
+    const fbNow = firebaseAuthInstance.currentUser;
+    // 登入流程剛驗證過的帳號：UID 要等於目前真正登入的 Firebase 帳號（管理員一律走白名單檢查）
+    const justAuthenticated = !!opts?.authenticatedUid && !!fbNow && opts.authenticatedUid === fbNow.uid && target.role !== 'admin';
+    if (!justAuthenticated && !isAuthorizedForAccount(target, fbNow)) {
+      alert('為了帳號安全，切換到其他帳號需要重新登入：請先登出，再用該帳號的 Email 與密碼登入。');
+      return false;
+    }
+    // 剛驗證過的舊帳號還沒記 Firebase UID：現在記上，之後重新整理才認得是本人
+    if (justAuthenticated && fbNow && target.authUid !== fbNow.uid) target = { ...target, authUid: fbNow.uid };
 
     // 檢查是否有註銷猶豫期狀態：只要這 7 日內有再登入這個帳號，就自動視為取消註銷！
     const { canLogin, restoredUser, wasInGracePeriod, errorReason } = checkUserDeactivationStatus(target);
