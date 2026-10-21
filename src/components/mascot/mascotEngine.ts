@@ -14,7 +14,7 @@ export interface MascotEngineOptions {
   tuning?: Partial<MascotTuning>; bubbleDefault?: string;
   getInsets?: () => { bottom: number; right: number };
   /** impact 會帶撞擊速度（px/s）；scared 進入驚嚇；zap 驚嚇中燈光閃一下 */
-  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow' | 'scared' | 'calm' | 'zap' | 'impact', data?: number) => void;
+  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow' | 'scared' | 'calm' | 'zap' | 'impact' | 'dance', data?: number) => void;
 }
 export interface MascotStage { x: number; y: number; lean?: number; look?: 'around' }
 export interface MascotEngine {
@@ -814,6 +814,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       S.waveDanceStart = now; S.waveDanceUntil = now + ms; S.danceHopAt = now + DANCE_BEAT;
       setMood('happy', ms);
       S.pose = 'idle'; // 手的動作交給波浪舞
+      emit('dance', ms); // 外層播放跳舞音樂
       say(text || '～♪ 來跟我一起跳波浪舞！～♬', ms);
     },
     poke: () => { const a = (Math.random() - 0.5) * 1.4; poke(new THREE.Vector3(Math.sin(a) * 0.95, 0.95 + 1.35 + Math.random() * 0.4, Math.cos(a) * 0.95), 4.2); },

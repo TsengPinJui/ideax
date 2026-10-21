@@ -3,7 +3,7 @@ import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
-import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
+import { playBabble, playClank, playDanceMusic, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, stopDanceMusic, unlockMascotAudio } from './mascotSound';
 import { unlockAgentVoices } from '../agents/agentVoices';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
@@ -67,7 +67,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const sendingRef = useRef(false);
   const waitTimer = useRef(0);
   const revealTimer = useRef(0);
-  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); stopCurrent(); }, []);
+  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); stopCurrent(); stopDanceMusic(); }, []);
   const [grips, setGrips] = useState<Array<{ dir: 'left' | 'top'; left: number; top: number }>>([]);
   const [liveText, setLiveText] = useState('');
   const chatRef = useRef<HTMLElement>(null);
@@ -183,6 +183,9 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
         getInsets: measureInsets,
         onEvent: (type, data) => {
           // 音效事件（後台「音效」開關控制）：撞擊哐當、驚嚇觸電、閃爍滋滋
+          // 跳波浪舞：配上跟舞步同拍的小曲；被拖走就停
+          if (type === 'dance') { if (configRef.current.soundEnabled) playDanceMusic(data || 6000); return; }
+          if (type === 'drag') stopDanceMusic();
           if (type === 'impact' || type === 'scared' || type === 'calm' || type === 'zap') {
             if (type === 'calm') { stopCurrent(); return; }
             if (configRef.current.soundEnabled) {
@@ -416,6 +419,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const collapse = (e: React.MouseEvent) => {
     e.stopPropagation();
     markActive();
+    stopDanceMusic();
     trackMascotEvent('collapse');
     setChatOpen(false);
     setCollapsed(true);
