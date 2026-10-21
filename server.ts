@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import { OPENAI_MODEL, REASONING_EFFORTS, getAiProvider, getLastOpenAiError, getReasoningEffort, hasOpenAiKey, openAiGenerate, setAiProvider, setReasoningEffort, shouldUseOpenAi } from './server/llm';
+import { AI_PROVIDERS, EFFORT_OPTIONS, MODEL_OF, anthropicGenerate, externalGenerate, geminiThinkingFor, getAiProvider, getAllEfforts, getLastProviderError, hasProviderKey, openAiGenerate, setAiProvider, setEffort, shouldUseExternal, type AiProvider } from './server/llm';
 import { GoogleGenAI, Type } from '@google/genai';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
@@ -278,7 +278,7 @@ async function pingGemini(): Promise<{ ok: boolean; ms: number; model: string; t
   if (!ai) return { ok: false, ms: 0, model, error: '無法建立 Gemini 連線' };
   try {
     const r: any = await Promise.race([
-      ai.models.generateContent({ model, contents: '只回覆兩個字：正常' }),
+      ai.models.generateContent({ model, contents: '只回覆兩個字：正常', config: { ...(await geminiThinkingFor(model)) } }),
       new Promise((_, rej) => setTimeout(() => rej(new Error('逾時 15 秒')), 15000)),
     ]);
     const text = String(r?.text || '').trim();
@@ -303,12 +303,10 @@ function isGeminiAuthError(err: any): boolean {
 }
 
 async function generateWithGeminiFallback(prompt: string, schema: any) {
-  // 使用 GPT-6 Luna：先用 OpenAI（把結構描述附在提示詞裡），失敗再用 Gemini
-  if (await shouldUseOpenAi()) {
-    const text = await openAiGenerate({ prompt: `${prompt}\n\n請只輸出一個 JSON 物件，結構如下：\n${JSON.stringify(schema)}`, json: true });
-    const parsed = text ? extractJsonFromText(text) : null;
-    if (parsed) return parsed;
-  }
+  // 使用中的是 GPT-6 Luna 或 Claude Haiku：先用它（把結構描述附在提示詞裡），失敗再用 Gemini
+  const ext = await externalGenerate({ prompt: `${prompt}\n\n請只輸出一個 JSON 物件，結構如下：\n${JSON.stringify(schema)}`, json: true });
+  const extParsed = ext ? extractJsonFromText(ext.text) : null;
+  if (extParsed) return extParsed;
   if (isGeminiAuthDisabled) return null;
   const ai = getGeminiClient();
   if (!ai) return null;
@@ -322,6 +320,7 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
           config: {
             responseMimeType: 'application/json',
             responseSchema: schema,
+            ...(await geminiThinkingFor(model)),
           },
         });
 
@@ -354,13 +353,12 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
 
 // Helper to generate open-ended or JSON raw text via Gemini fallback
 async function generateRawTextWithGemini(prompt: string, systemInstruction?: string): Promise<string | null> {
-  if (await shouldUseOpenAi()) {
-    const text = await openAiGenerate({
-      prompt,
-      system: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
-    });
-    if (text) return text;
-  }
+  // 使用中的是 GPT-6 Luna 或 Claude Haiku：先用它，失敗再用 Gemini
+  const ext = await externalGenerate({
+    prompt,
+    system: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
+  });
+  if (ext) return ext.text;
   if (!isGeminiAuthDisabled) {
     const ai = getGeminiClient();
     if (ai) {
@@ -372,6 +370,7 @@ async function generateRawTextWithGemini(prompt: string, systemInstruction?: str
               contents: prompt,
               config: {
                 systemInstruction: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
+                ...(await geminiThinkingFor(model)),
               },
             });
 
@@ -3934,23 +3933,24 @@ async function parseJobIntakeWithGemini(params: {
   };
 
   const notes: string[] = [];
-  // 使用 GPT-6 Luna：先用 OpenAI，失敗再用 Gemini
-  if (await shouldUseOpenAi()) {
-    const text = await openAiGenerate({ prompt, json: true }); // 推理等級與等待時間依後台設定
-    const parsed = text ? extractJsonFromText(text) : null;
+  // 使用中的是 GPT-6 Luna 或 Claude Haiku：先用它（推理強度與等待時間依後台設定），失敗再用 Gemini
+  if (await shouldUseExternal()) {
+    const active = await getAiProvider();
+    const ext = await externalGenerate({ prompt, json: true });
+    const parsed = ext ? extractJsonFromText(ext.text) : null;
     if (parsed && typeof parsed === 'object') {
       finalizeIntake(parsed);
-      parsed.__engine = OPENAI_MODEL;
+      parsed.__engine = ext!.engine;
       return parsed;
     }
-    notes.push(`${OPENAI_MODEL}: ${getLastOpenAiError() || '回覆不是 JSON'}`);
+    notes.push(`${MODEL_OF[active]}: ${getLastProviderError(active) || '回覆不是 JSON'}`);
   }
   if (!ai) { lastIntakeAiNote = [...notes, '伺服器沒有設定 Gemini 金鑰'].join('；'); return null; }
 
   // flash-lite 先試；不行再用 3.8-flash（思考程度調低，回得比較快）
   const modelsToTry: Array<{ model: string; timeoutMs: number; thinking?: any }> = [
     { model: 'gemini-3.1-flash-lite', timeoutMs: 10000 },
-    { model: 'gemini-3.8-flash', timeoutMs: 12000, thinking: { thinkingLevel: 'LOW' } },
+    { model: 'gemini-3.8-flash', timeoutMs: 20000, thinking: (await geminiThinkingFor('gemini-3.8-flash')).thinkingConfig }, // 思考強度依後台設定
   ];
   for (const { model, timeoutMs, thinking } of modelsToTry) {
     try {
@@ -4062,7 +4062,7 @@ app.post('/api/admin/public-metrics-config', async (req: Request, res: Response)
   }
 });
 
-// 內建 AI 模型切換（GPT-6 Luna ／ Gemini）：只有管理員能看與切換；金鑰不會回傳
+// 內建 AI 模型（GPT-6 Luna／Claude Haiku 5.5／Gemini 3.8 Flash）：只有管理員能看與切換；金鑰不會回傳
 const requireAdmin = async (req: Request, res: Response) => {
   const au = await verifyAuthToken(req.headers.authorization as string | undefined);
   if (!au) { res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' }); return null; }
@@ -4071,41 +4071,75 @@ const requireAdmin = async (req: Request, res: Response) => {
 };
 app.get('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
+  const efforts = await getAllEfforts();
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, hasGeminiKey: Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY), geminiAuthDisabled: isGeminiAuthDisabled, lastGeminiError: lastGeminiError || null, lastGeminiErrorAt: lastGeminiErrorAt || null, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || '').trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+  res.json({
+    ok: true,
+    provider: await getAiProvider(),
+    forced: (process.env.AI_PROVIDER || '').trim() || null,
+    geminiAuthDisabled: isGeminiAuthDisabled,
+    providers: AI_PROVIDERS.map((p) => ({
+      id: p,
+      model: MODEL_OF[p],
+      hasKey: hasProviderKey(p),
+      effort: efforts[p],
+      effortOptions: EFFORT_OPTIONS[p],
+      lastError: (p === 'gemini' ? lastGeminiError : getLastProviderError(p)) || null,
+      lastErrorAt: p === 'gemini' ? lastGeminiErrorAt || null : null,
+    })),
+  });
 });
 app.post('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
   try {
-    if (req.body?.provider) await setAiProvider(req.body.provider === 'openai' ? 'openai' : 'gemini');
-    if (req.body?.effort) {
-      if (!REASONING_EFFORTS.includes(req.body.effort)) return res.status(400).json({ ok: false, error: '推理等級不正確' });
-      await setReasoningEffort(req.body.effort);
+    const p = req.body?.provider;
+    if (p) {
+      if (!AI_PROVIDERS.includes(p)) return res.status(400).json({ ok: false, error: '模型不正確' });
+      await setAiProvider(p);
     }
-    res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort() });
+    const ep = req.body?.effortFor;
+    if (ep) {
+      if (!AI_PROVIDERS.includes(ep) || !EFFORT_OPTIONS[ep as AiProvider].includes(req.body?.effort)) return res.status(400).json({ ok: false, error: '推理強度不正確' });
+      await setEffort(ep, req.body.effort);
+    }
+    res.json({ ok: true });
   } catch {
     res.status(500).json({ ok: false, error: '儲存失敗，請稍後再試' });
   }
 });
-// 測試目前的模型：用一句口語求職需求，看它轉成條件的結果與花費時間
+// 直接測某一個模型（不管目前使用中的是哪個）：用一句口語求職需求，看整理出的條件與花費時間
 app.post('/api/admin/ai-provider/test', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
+  const p: AiProvider = AI_PROVIDERS.includes(req.body?.provider) ? req.body.provider : await getAiProvider();
   const sample = String(req.body?.message || '想在台北端盤子，不要太累，下午要接小孩，月薪三萬五').slice(0, 200);
   const prompt = `把這句求職需求整理成 JSON 物件，欄位：roles（正式職稱陣列）、location、salaryText、preferences（[{label, value}]）。口語要轉成具體條件，例如「端盤子」→「服務生（外場）」。\n需求：「${sample}」`;
+  const effort = (await getAllEfforts())[p];
   const t0 = Date.now();
-  const useOpenAi = await shouldUseOpenAi();
   let text: string | null = null;
-  let engine = '';
-  if (useOpenAi) {
+  let error = '';
+  if (!hasProviderKey(p)) {
+    error = p === 'openai' ? '沒有設定 OPENAI_API_KEY' : p === 'anthropic' ? '沒有設定 ANTHROPIC_API_KEY' : '沒有設定 GEMINI_API_KEY';
+  } else if (p === 'openai') {
     text = await openAiGenerate({ prompt, json: true });
-    engine = text ? OPENAI_MODEL : '';
+    if (!text) error = getLastProviderError('openai');
+  } else if (p === 'anthropic') {
+    text = await anthropicGenerate({ prompt, json: true });
+    if (!text) error = getLastProviderError('anthropic');
+  } else {
+    const ai = getGeminiClient();
+    try {
+      const r: any = await Promise.race([
+        ai!.models.generateContent({ model: MODEL_OF.gemini, contents: prompt, config: { responseMimeType: 'application/json', ...(await geminiThinkingFor(MODEL_OF.gemini)) } }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('逾時 45 秒')), 45000)),
+      ]);
+      text = String(r?.text || '').trim() || null;
+      if (!text) error = '回覆是空的';
+    } catch (err: any) {
+      noteGeminiError(MODEL_OF.gemini, err);
+      error = lastGeminiError;
+    }
   }
-  if (!text) {
-    text = await generateRawTextWithGemini(prompt, '你是求職條件整理助手，只輸出 JSON。');
-    engine = text ? `Gemini${useOpenAi ? '（OpenAI 失敗，自動退回）' : ''}` : '';
-  }
-  const gemini = await pingGemini();
-  res.json({ gemini, ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
+  res.json({ ok: Boolean(text), provider: p, model: MODEL_OF[p], effort, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, error: error || null });
 });
 
 // 首頁創點子播放區（預留）：管理員選擇播放來源，由伺服器確認管理員後寫入
