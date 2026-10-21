@@ -13,7 +13,7 @@ import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
-import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_REFER_007_REPLY, MASCOT_REFER_007_ACTIONS, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
 import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
@@ -3249,6 +3249,10 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
       void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: plan.by });
     }
+    if (plan.agent === 'refer_007') {
+      void recordMascotEvent({ type: 'ask' }).catch(() => {});
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_REFER_007_REPLY, actions: MASCOT_REFER_007_ACTIONS, referredTo: 'aicrm', routedBy: plan.by });
+    }
     if (plan.agent === 'mascot') {
       return res.json({ success: true, agent: 'mascot', agentLabel: '小燈泡', escalateTo: plan.escalateTo, routedBy: plan.by, available: true });
     }
@@ -5049,6 +5053,7 @@ app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => 
     const plan = await planMascotRoute(message, generateRawTextWithGemini);
     const by = plan.by;
     if (plan.agent === 'none') return res.json({ success: true, agent: 'none', label: '（不轉接，回覆暫時無法回答）', routedBy: by });
+    if (plan.agent === 'refer_007') return res.json({ success: true, agent: 'mascot', label: '小燈泡介紹 007，帶到 AI-CRM 頁', routedBy: by, answer: MASCOT_REFER_007_REPLY, actions: MASCOT_REFER_007_ACTIONS });
     let agent: MascotAgent;
     if (plan.agent === 'mascot') {
       const t0 = Date.now();

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { playSousouSound, sousouWhoosh, sousouWindStart, sousouWindStop, sousouZip, sousouAha } from './sousouSound';
+import { playSousouSound, sousouWindStop, sousouAha } from './sousouSound';
 
 /**
  * 匯職缺的探索者「搜搜」
@@ -50,7 +50,14 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
 
   const ahaAt = useRef(0);
   // 剛喊完「啊哈！」時不再疊上叮叮聲，聽起來比較乾淨
-  const sound = (name: string) => { if (!soundRef.current || (name === 'found' && Date.now() - ahaAt.current < 1500)) return; playSousouSound(name); };
+  // 角色音效只在重要提示時出聲：搜搜只在「找到職缺」時出聲（起飛、風聲、瞬移等過場音效不播）
+  const lastFound = useRef(0);
+  const sound = (name: string) => {
+    if (!soundRef.current || name !== 'found') return;
+    if (Date.now() - ahaAt.current < 1500 || Date.now() - lastFound.current < 8000) return;
+    lastFound.current = Date.now();
+    playSousouSound(name);
+  };
   const aha = () => { ahaAt.current = Date.now(); if (soundRef.current) sousouAha(); };
   const later = (fn: () => void, ms: number) => { state.current.timers.push(window.setTimeout(fn, ms)); };
 
@@ -60,7 +67,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
     S.dash = { x0: S.x, y0: S.y, x1, y1, t: 0, dur: 0.34, toDock, done };
     S.trail.push({ x: S.x + S.size / 2, y: S.y + S.size * 0.66, t: performance.now() });
     S.mode = 'dashing';
-    if (soundRef.current) sousouZip();
+    // 瞬移不出聲（過場）
   };
 
   // 左下角停靠點（避開手機版底部選單）
@@ -190,7 +197,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       drawTrail(now);
       engineRef.current?.setHeading(S.mode === 'parked' ? 0 : heading);
       if (S.mode === 'flying' && Math.sign(heading) !== Math.sign(S.lastHeading) && Math.abs(heading) > 0.5) {
-        if (soundRef.current) sousouWhoosh(0.5);
+        // 起飛不出聲（過場）
         S.lastHeading = heading;
       }
       // 飛回停靠點了
@@ -215,7 +222,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       S.launched = true;
       engineRef.current?.play('takeoff');
       later(() => {
-        if (soundRef.current) sousouWindStart();
+        // 飛行風聲不播（過場）
         if (reduceMotion) return;
         // 起飛：「咻」一下衝到畫面上方，接著開始巡航
         const W = window.innerWidth, H = window.innerHeight;

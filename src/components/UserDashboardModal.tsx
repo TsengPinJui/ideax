@@ -142,6 +142,7 @@ import {
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
+import { DuohuiPeek } from './agents/DuohuiPeek';
 import { AdminSettingsSearch } from './AdminSettingsSearch';
 import { AiCrmView } from './AiCrmView';
 
@@ -4525,6 +4526,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
 
         {/* TAB 1: 點數 & 收支中心 (順序：點數、應收帳款、交易紀錄) */}
+        {activeTab === 'points_receivables' && currentUser.role !== 'admin' && (
+          <DuohuiPeek pageKey="points_receivables" message="點數、託管或撥款看不懂嗎？交給我！" />
+        )}
         {activeTab === 'points_receivables' && (
           currentUser.role === 'admin' ? (
             <AdminPointsReceivablesTab />

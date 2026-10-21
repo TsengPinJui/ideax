@@ -13,6 +13,7 @@ import { JobExplorerView } from './components/JobExplorerView';
 import { MechanismView } from './components/MechanismView';
 import { AboutUsView } from './components/AboutUsView';
 import { BaiMiaoZoneWalker } from './components/baimiao/BaiMiaoZoneWalker';
+import { DuohuiPeek } from './components/agents/DuohuiPeek';
 import { AboutUsModal } from './components/AboutUsModal';
 import { AuthModal } from './components/AuthModal';
 import { CustomerServiceModal } from './components/CustomerServiceModal';
@@ -3292,6 +3293,13 @@ function MainContent() {
         )}
 
         {/* 11. 會員方案與點數儲值獨立頁面 (/membership, /topup) */}
+        {/* 官方客服多慧：在儲值、方案、驗收這些容易卡住的頁面探頭一次 */}
+        {(activeTab === 'membership' || activeTab === 'topup') && (
+          <DuohuiPeek key="peek-pay" pageKey="membership_topup" message="儲值或會員方案有問題嗎？交給我！" />
+        )}
+        {activeTab === 'my_projects' && currentUser.id !== 'user-guest' && (
+          <DuohuiPeek key="peek-projects" pageKey="my_projects" message="驗收、撥款卡住了嗎？交給我！" />
+        )}
         {(activeTab === 'membership' || activeTab === 'topup') && (
           <MembershipAndTopupFullPage
             initialTab={activeTab === 'topup' ? 'topup' : 'membership'}

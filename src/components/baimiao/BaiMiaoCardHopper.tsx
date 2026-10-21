@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BaiMiao, BaiMiaoAction, BaiMiaoBubble } from './BaiMiao';
+import { useApp } from '../../context/AppContext';
+import { meow } from '../agents/agentVoices';
 
 /**
  * 提案編輯頁的白喵：在表單的各個字卡（欄位區塊）之間跳來跳去，停在字卡左右邊緣陪你寫。
@@ -30,6 +32,22 @@ export const BaiMiaoCardHopper: React.FC<Props> = ({ cardsSelector, status }) =>
   // 白喵太靠近外框上緣時，訊息框改放旁邊（不然會被切掉）
   const [nearTop, setNearTop] = useState(false);
   const S = useRef({ x: 0, y: 0, idx: -1, side: 1, hopping: false, placed: false });
+  const { mascotConfig } = useApp();
+  const soundOnRef = useRef(mascotConfig?.soundEnabled !== false);
+  soundOnRef.current = mascotConfig?.soundEnabled !== false;
+  // 任務做完（分類貼標籤、發布）是重要提示：白喵喵一聲，分類完成時提醒檢查一下；平常的寫作小提示不出聲
+  const prevStatus = useRef<string | null | undefined>(status);
+  useEffect(() => {
+    const prev = prevStatus.current;
+    prevStatus.current = status;
+    if (!prev || status) return;
+    if (soundOnRef.current) meow();
+    if (/分類|標籤/.test(prev)) {
+      setTip('分類和標籤整理好了，看一下對不對喵～');
+      const t = window.setTimeout(() => setTip(null), 5000);
+      return () => window.clearTimeout(t);
+    }
+  }, [status]);
   const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {

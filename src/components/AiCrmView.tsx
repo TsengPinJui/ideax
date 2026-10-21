@@ -5,6 +5,8 @@ import { AiCrmLead, AssistantScheduledTask, DEFAULT_ASSISTANT_24HR_CONFIG, Bidir
 import { getHandshakesForSolver, getStoredHandshakeMatches } from '../services/bidirectionalMatchService';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
+import { Agent007Avatar, Agent007Console, Agent007Toolkit, type Bot007Mood, type Bot007Tool } from './agents/Agent007';
+import { robotBoot, robotFound, robotPing, robotSpeak } from './agents/agentVoices';
 import {
   Crown,
   Sparkles,
@@ -72,6 +74,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     startDirectChat,
     aiCrmConfig,
     updateAssistant24hrConfig,
+    mascotConfig,
   } = useApp();
 
   const userTier = currentUser?.subscriptionTier || 'free';
@@ -230,15 +233,65 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     }
   }, [currentUser.assistant24hrConfig?.isEnabled]);
 
+  // ── 007：AI CRM Agent（機器人口吻；只有操作確認與發現機會這類重要提示才出聲）──
+  const [bot, setBot] = useState<{ text: string; mood: Bot007Mood; nonce: number }>(() => ({
+    text: isRadarActive ? '嗶—007 上線。雷達巡航中，軍師與特助待命。' : '嗶—007 上線。雷達待機中，可隨時下達啟動指令。',
+    mood: 'hello',
+    nonce: 0,
+  }));
+  const soundOn = mascotConfig?.soundEnabled !== false;
+  const say007 = (text: string, mood: Bot007Mood, sound?: 'speak' | 'boot' | 'found') => {
+    setBot((b) => ({ text, mood, nonce: b.nonce + 1 }));
+    if (!soundOn || !sound) return;
+    if (sound === 'boot') { robotBoot(); window.setTimeout(() => robotPing(), 520); }
+    else if (sound === 'found') robotFound();
+    else robotSpeak(text);
+  };
+  // 打完招呼後回到工作表情；伺服器巡檢找到新機會時回報一次
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setBot((b) => (b.nonce === 0 ? { ...b, mood: isRadarActive ? 'analyze' : 'think' } : b)), 2600);
+    const n = currentUser?.aiCrmLastScanMatches ?? 0;
+    const at = currentUser?.aiCrmLastScanAt ? String(currentUser.aiCrmLastScanAt) : '';
+    let t2 = 0;
+    if (n > 0 && at) {
+      const key = `ideax_007_seen_scan_${currentUser?.id || 'guest'}`;
+      let seen = '';
+      try { seen = localStorage.getItem(key) || ''; } catch {}
+      if (seen !== at) {
+        t2 = window.setTimeout(() => {
+          try { localStorage.setItem(key, at); } catch {}
+          say007(`嗶嗶—偵測到 ${n} 個潛在機會。請檢視雷達清單。`, 'surprise', 'found');
+        }, 2200);
+      }
+    }
+    return () => { window.clearTimeout(t1); if (t2) window.clearTimeout(t2); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick007Tool = (tool: Bot007Tool) => {
+    const tab = tool === 'radar' ? 'leads' : tool === 'strategist' ? 'analytics' : 'assistant';
+    setActiveTab(tab);
+    say007(
+      tool === 'radar' ? '載入模組：雷達。顯示目前掃描到的潛在案件。'
+        : tool === 'strategist' ? '載入模組：軍師。顯示成案轉化分析。'
+        : '載入模組：特助。顯示排程中的跟進任務。',
+      tool === 'radar' ? 'analyze' : tool === 'strategist' ? 'think' : 'run'
+    );
+    window.setTimeout(() => document.getElementById('ai-crm-demo-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
   const handleToggleRadar = () => {
     const next = !isRadarActive;
     setIsRadarActive(next);
     showToast(next ? '🟢 24hr巡航雷達已啟動' : '⚪ 24hr巡航雷達已暫停');
+    if (next) say007('指令確認：雷達巡航啟動。發現目標將立即回報。', 'analyze', 'boot');
+    else say007('收到。雷達巡航暫停，切換待機模式。', 'think', 'speak');
   };
 
   const handleToggleAssistant = () => {
     const next = !isAssistantActive;
     setIsAssistantActive(next);
+    if (next) say007('特助模組連線：依排程代發提案、追蹤跟進任務。', 'run', 'speak');
+    else say007('特助模組休眠。待命中。', 'think', 'speak');
     const currConf = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
     const updated = { ...currConf, isEnabled: next };
     updateAssistant24hrConfig(updated);
@@ -549,7 +602,9 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       {/* Executive Hero Banner (電腦寬版/手機緊湊) */}
       <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-4 sm:p-6 rounded-3xl text-white shadow-sm border border-stone-800 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+          <Agent007Avatar mood={bot.mood} scanning={isRadarActive} className="w-16 h-16 sm:w-24 sm:h-24" />
+          <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-amber-400" />
@@ -587,6 +642,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 <span>開啟 AICRM 24hr Agent (Web 對話視窗)</span>
               </a>
             </div>
+          </div>
           </div>
 
           {/* 雷達與特助連線狀態 ＋ 開關控制區 (整合面板) */}
@@ -673,6 +729,9 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
           </div>
         </div>
 
+        {/* 007 回報列（機器人口吻） */}
+        <Agent007Console text={bot.text} nonce={bot.nonce} />
+
         {/* Status Bar */}
         <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-stone-400">
           <div className="flex items-center gap-2 flex-wrap">
@@ -690,6 +749,9 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 007 的三件法寶：點一下切到對應功能 */}
+      <Agent007Toolkit onPick={pick007Tool} />
 
       {/* Non-subscribed User Feature Sample Showcase Banner */}
       {!isAuthorityOrAbove && (

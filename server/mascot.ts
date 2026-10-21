@@ -67,6 +67,10 @@ function parseAgent(text: string | null | undefined): MascotAgent | 'none' | nul
 
 /** 三位助理都不負責的問題：固定回覆，不讓任何 AI 隨意作答 */
 export const MASCOT_OUT_OF_SCOPE_REPLY = '這個問題我還暫時無法回答喔~小燈泡將持續學習！';
+
+/** 客戶管理、找案子這類問題：小燈泡介紹 007 並帶路到 AI-CRM 頁（只介紹與帶路，不透過對話框啟動付費功能） */
+export const MASCOT_REFER_007_REPLY = '這題要找我們的 007！🤖 他是 AI CRM Agent，身上有雷達、軍師、特助三件法寶：巡航找案子、分析成案意向、幫你管理跟進任務。點下面的按鈕，我帶你去 007 的基地～';
+export const MASCOT_REFER_007_ACTIONS = [{ label: '帶我去找 007', to: 'ai_crm' }];
 /** 等了很久、小燈泡也無法代答時的道歉文字 */
 export const MASCOT_APOLOGY_REPLY = '這個問題小燈泡還要回去研究研究！很抱歉讓你都那麼久~';
 /** 等助理多久後改由小燈泡代答（前端提示的時間點要一致） */
@@ -184,8 +188,10 @@ const CHAT_RE = /^(你好|您好|妳好|嗨|哈囉|安安|hi|hello|hey|yo|早安
 export async function planMascotRoute(
   message: string,
   generateText: (prompt: string, system?: string) => Promise<string | null>
-): Promise<{ agent: 'mascot' | 'market_advisor' | 'none'; escalateTo: 'cs' | null; by: string }> {
+): Promise<{ agent: 'mascot' | 'market_advisor' | 'none' | 'refer_007'; escalateTo: 'cs' | null; by: string }> {
   const hits = keywordMatches(message);
+  // 只命中業務類（找案子、成案意向、跟進…）：小燈泡介紹 007，帶到 AI-CRM 頁自己操作
+  if (hits.length === 1 && hits[0] === 'aicrm') return { agent: 'refer_007', escalateTo: null, by: 'keyword' };
   if (!hits.length && CHAT_RE.test(message)) return { agent: 'mascot', escalateTo: null, by: 'keyword' };
   if (hits.length === 1 && hits[0] === 'market_advisor') return { agent: 'market_advisor', escalateTo: null, by: 'keyword' };
   // 只有客服類關鍵字：小燈泡先試，答不了再轉客服；同時碰到市場顧問的關鍵字才交給 AI 判斷
