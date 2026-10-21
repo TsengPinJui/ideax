@@ -7595,27 +7595,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div className={`xl:col-span-7 space-y-6 ${profileSubTab === 'basic' ? 'block' : 'hidden xl:block'}`}>
                 {/* 1. 基本帳號資訊 */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
-                  {/* 會員專屬唯一編號 (User ID / UID) 卡片 */}
-                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs shrink-0">
-                        UID
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h5 className="text-xs font-black text-stone-900">會員專屬 ID (Unique User ID)</h5>
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-200/80 text-amber-900 border border-amber-300">
-                            雲端唯一識別碼
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          註冊時系統自動賦予且獨一無二存於雲端資料庫。可用於客服諮詢、交易對帳與好友邀請。
-                        </p>
-                      </div>
-                    </div>
-                    <div className="shrink-0 self-stretch sm:self-auto flex items-center justify-end">
-                      <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-xs px-3 py-1.5 bg-white hover:bg-stone-50 border-amber-300/90 text-stone-900 shadow-2xs" />
-                    </div>
+                  {/* 會員 ID */}
+                  <div className="flex items-center">
+                    <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-xs px-3 py-1.5 bg-white hover:bg-stone-50 border-stone-200 text-stone-900 shadow-2xs" />
                   </div>
 
                   {/* 個人頭像照片上傳 */}

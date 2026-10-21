@@ -417,7 +417,7 @@ export const CustomerServiceModal: React.FC = () => {
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
                 <span>交易安全託管・專屬資料庫查詢・爭議調處</span>
                 {currentUser && (
-                  <CopyableUserId userId={currentUser.id} prefix="UID: " className="text-[9.5px] py-0 px-1 bg-stone-100" />
+                  <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-[9.5px] py-0 px-1 bg-stone-100" />
                 )}
               </div>
             </div>
