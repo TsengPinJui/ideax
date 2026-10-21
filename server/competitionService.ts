@@ -2415,6 +2415,8 @@ export interface RealSiteTrafficStats {
   /** 每日／每時造訪用戶數（同一裝置當天只算一次） */
   visitorsDaily: Record<string, number>;
   visitorsHourly: Record<string, number>;
+  /** 每日「第一次來」的新訪客（v3.3.9 起記錄；累計不重複訪客的趨勢用） */
+  newVisitorsDaily: Record<string, number>;
 }
 
 /** 瀏覽量自此數字起算（2026/10/18 依營運需求調整） */
@@ -2511,6 +2513,7 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
   const daily = readCountMap(raw?.daily);
   const visitorsDaily = readCountMap(raw?.visitorsDaily);
   const visitorsHourly = readCountMap(raw?.visitorsHourly);
+  const newVisitorsDaily = readCountMap(raw?.newVisitorsDaily);
 
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
@@ -2543,6 +2546,7 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
     uniqueVisitorsTotal: Number(raw?.uniqueVisitorsTotal) || 0,
     visitorsDaily,
     visitorsHourly,
+    newVisitorsDaily,
   };
 }
 
@@ -2572,7 +2576,7 @@ export async function recordRealSiteVisit(
               visitorsDaily: { [nowParts.dateKey]: clientIncrement(1) },
             }
           : {}),
-        ...(visitor.newEver ? { uniqueVisitorsTotal: clientIncrement(1) } : {}),
+        ...(visitor.newEver ? { uniqueVisitorsTotal: clientIncrement(1), newVisitorsDaily: { [nowParts.dateKey]: clientIncrement(1) } } : {}),
         lastUpdatedUtc8: nowParts.fullDateTime,
       },
       { merge: true }
