@@ -496,13 +496,15 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                   /* VibeCoding 軟體與網站作品牆 視覺大卡 */
                   <div className="max-w-md mx-auto bg-white rounded-3xl border-2 border-indigo-200 hover:border-indigo-400 shadow-md overflow-hidden transition-all duration-300">
                     {/* Card Cover */}
-                    <div className="relative h-48 sm:h-52 bg-gradient-to-tr from-indigo-950 via-indigo-800 to-purple-800 overflow-hidden">
-                      {coverImage ? (
+                    <div className="relative aspect-video bg-gradient-to-tr from-indigo-950 via-indigo-800 to-purple-800 overflow-hidden">
+                      {coverImage ? (<>
+                        <img src={coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
                         <img
                           src={coverImage}
                           alt={displayTitle}
-                          className="w-full h-full object-cover"
+                          className="relative w-full h-full object-contain"
                         />
+                      </>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-white/90 p-4 text-center">
                           <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 shadow-xs border border-white/20">
@@ -657,11 +659,12 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                   /* 創點子 (創新提案) 專區焦點卡片 */
                   <div className="max-w-lg mx-auto bg-white rounded-3xl border-2 border-emerald-200 hover:border-emerald-400 shadow-md overflow-hidden transition-all duration-300">
                     {coverImage && (
-                      <div className="relative h-44 bg-stone-900 overflow-hidden border-b border-emerald-100">
+                      <div className="relative aspect-video bg-stone-900 overflow-hidden border-b border-emerald-100">
+                        <img src={coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
                         <img
                           src={coverImage}
                           alt={displayTitle}
-                          className="w-full h-full object-cover"
+                          className="relative w-full h-full object-contain"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         <span className="absolute bottom-2.5 left-3 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">

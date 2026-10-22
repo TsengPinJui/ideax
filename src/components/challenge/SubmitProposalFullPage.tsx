@@ -1430,7 +1430,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                       <span>在卡片模式顯示展示照片（勾選啟用）</span>
                     </label>
                     <span className="text-[11px] text-stone-500">
-                      {showCardImage ? '已啟用：可於下方點選 1 張作為卡片展示封面' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
+                      {showCardImage ? '已啟用：可於下方點選 1 張作為卡片展示封面（卡片是 16:9，建議 1280×720 px；其他比例會完整顯示不裁切）' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
                     </span>
                   </div>
 

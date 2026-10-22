@@ -1298,6 +1298,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     支援 JPG / PNG / WebP · 單張檔案大小上限 {MAX_IMAGE_FILE_SIZE_MB}MB
                   </span>
                 </div>
+                <p className="mb-1.5 text-[11.5px] text-stone-500">建議 16:9，例如 1280×720 或 1920×1080 px；其他比例也會完整顯示，兩側以模糊底補滿。下方預覽就是卡片上的樣子。</p>
 
                 {!coverImage.trim() ? (
                   <label
@@ -1321,8 +1322,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     />
                   </label>
                 ) : (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-stone-300 bg-stone-900 group">
-                    <img src={coverImage} alt="封面預覽" className="w-full h-full object-cover" />
+                  <div className="relative w-full max-w-md aspect-video rounded-xl overflow-hidden border border-stone-300 bg-stone-900 group">
+                    <img src={coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
+                    <img src={coverImage} alt="封面預覽" className="relative w-full h-full object-contain" />
                     <span className="absolute bottom-2 left-2 bg-black/70 text-white px-2.5 py-0.5 rounded-lg text-[10px] font-bold">
                       封面大圖預覽
                     </span>
@@ -1435,7 +1437,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     <span>在卡片上顯示圖片（勾選啟用）</span>
                   </label>
                   <span className="text-[11px] text-stone-500">
-                    {showCardImage ? '已啟用：可於下方點擊選定 1 張作為卡片展示封面' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
+                    {showCardImage ? '已啟用：可於下方點擊選定 1 張作為卡片展示封面（卡片是 16:9，建議 1280×720 px；其他比例會完整顯示不裁切）' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
                   </span>
                 </div>
 

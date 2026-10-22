@@ -26,7 +26,7 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
   onFallbackErrorImage,
   title,
   isHovered,
-  heightClass = 'h-40 sm:h-48',
+  heightClass = 'aspect-video',
   children,
 }) => {
   const videoId = extractYoutubeVideoId(youtubeUrl);
@@ -140,10 +140,19 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
         </div>
       ) : (
         <>
+          {/* 自訂封面：整張圖完整顯示（不裁切），比例不同時用同一張圖的模糊放大版補滿兩側 */}
+          {!useYoutubeAsCover && (
+            <img
+              src={displayedImageSrc}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70 pointer-events-none"
+            />
+          )}
           <img
             src={displayedImageSrc}
             alt={title}
-            className="w-full h-full object-cover group-hover/img:scale-105 transition-all duration-500"
+            className={`relative w-full h-full ${useYoutubeAsCover ? 'object-cover' : 'object-contain'} group-hover/img:scale-[1.03] transition-transform duration-500`}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (useYoutubeAsCover && videoId && target.src.includes('maxresdefault')) {

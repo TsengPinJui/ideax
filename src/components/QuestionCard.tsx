@@ -293,7 +293,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
             title={question.title}
             isHovered={isHovered}
-            heightClass="h-28 sm:h-34"
+            heightClass="aspect-video"
           >
             <div className="absolute top-2 left-2 flex items-center gap-1 flex-wrap pointer-events-none z-10">
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
@@ -853,7 +853,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
             title={question.title}
             isHovered={isHovered}
-            heightClass="h-40 sm:h-48"
+            heightClass="aspect-video"
           >
             {/* 左上角標籤：領域分類 */}
             <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap pointer-events-none z-10">
