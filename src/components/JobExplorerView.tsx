@@ -35,13 +35,11 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
-import { useApp } from '../context/AppContext';
 import { CityMultiSelect, CategoryMultiSelect } from './jobExplorer/CityMultiSelect';
 import { ChipMultiSelect } from './jobExplorer/ChipMultiSelect';
 import { JobsInstallPrompt } from './jobExplorer/JobsInstallPrompt';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
-import { seenJobBefore } from '../utils/jobDedupe';
-import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
+import { accompanyDuringSearch } from './mascot/mascotConfig';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
 export type JobSortKey =
@@ -82,46 +80,54 @@ export interface JobListing {
   postedAtText?: string; // 刊登時間顯示文字（如：今日、3天前、10/18）
 }
 
+interface JobSearchSourceLink {
+  id: string;
+  site: string;
+  url: string;
+  actionLabel: string;
+  destination: 'platform' | 'web-search';
+}
+
 const EXPLORER_QUICK_PRESETS = [
   {
     badge: '💬 口語情境',
     label: '台南餐飲門市 (32K+ / 排班環境)',
-    query: '我想在台南市東區找一份連鎖餐飲或零售門市正職人員工作，月薪希望在 32,000 元以上，我很在意店內工作環境與是否有好的排班制度，有哪些現正招募中的真實職缺？',
+    query: '我想在台南市東區找連鎖餐飲或零售門市正職，月薪希望 32,000 元以上，在意工作環境與排班制度。',
   },
   {
     badge: '🌐 跨平台來源',
     label: '跨平台求職 (Yes123 / Cake / 1111 / 104)',
-    query: '請幫我全網搜尋「數位行銷企劃」或「前端工程師」真實職缺。來源平台要求多元化：請列出來自 Yes123、Cake、Yourator、1111人力銀行、104 等各大求職站當下開放應徵的職缺，附上真實直接連結。',
+    query: '請找台北市或新北市的數位行銷企劃或前端工程師，全職，優先看 Yes123、Cake、Yourator、1111、104。',
   },
   {
     badge: '🎯 嚴格門檻',
-    label: '雙北雲端架構師 (90K+ / 5年+ / 嚴禁已下架)',
-    query: '請搜尋台北市或新北市的「資深雲端架構師／DevOps 工程師」真實職缺。嚴格條件：月薪 90,000 元以上、經歷 5 年以上、具備 Kubernetes 與 AWS。嚴厲要求：絕對不可包含已關閉或已下架職缺，並列出各大求職網真實網址。',
+    label: '雙北雲端架構師（90K+／5年以上）',
+    query: '請找台北市或新北市的資深雲端架構師或 DevOps 工程師，月薪 90,000 元以上、5 年以上經驗，熟悉 Kubernetes 與 AWS。',
   },
   {
     badge: '🌱 新鮮人友善',
     label: '新鮮人友善 (無經驗可 / 不拘學歷 / 今日刊登)',
-    query: '全台灣地區皆可，搜尋適合社會新鮮人、無經驗可、學歷不拘的行政助理或客服人員職缺，月薪 30,000 元以上，請列出當下開放應徵中的最新職缺。',
+    query: '全台灣皆可，找適合社會新鮮人的行政助理或客服工作，無經驗可、學歷不拘，月薪 30,000 元以上。',
   },
   {
     badge: '🌫️ 模糊探索',
     label: '內向文職探索 (不面對客人 / 安靜資料整理)',
-    query: '我個性比較內向，不想要一直面對陌生客人或打電話業務，想在台中找安靜整理資料、後台打字或系統處理的正職工作，有什麼適合我且現在正在招募的職缺？',
+    query: '我個性比較內向，不想面對陌生客人或做電話業務，想在台中找安靜整理資料、後台打字或系統處理的正職工作。',
   },
   {
     badge: '💰 薪資非面議',
     label: '桃竹倉儲主管 (45K~65K / 拒絕純面議)',
-    query: '搜尋桃園市或新竹縣的倉儲物流主管或供應鏈管理職缺。薪資嚴格限制：必須有明確公開之月薪數字，且月薪介於 45,000 至 65,000 元之間，請勿列出僅標示「待遇面議」而無具體金額的職缺。',
+    query: '找桃園市或新竹縣的倉儲物流主管或供應鏈管理工作，月薪 45,000 至 65,000 元，希望薪資有明確標示。',
   },
   {
     badge: '⏰ 彈性工讀',
     label: '台南門市彈性兼職 (時薪200+ / 學生或二度就業)',
-    query: '搜尋台南市東區或中西區的餐飲或超商門市兼職／工讀人員職缺。條件：時薪 200 元以上、排班彈性、歡迎學生或二度就業。請列出當下正在開放應徵中的真實職缺，包含 Yes123 或 518 等平台真實網址。',
+    query: '找台南市東區或中西區餐飲或超商門市兼職／工讀，時薪 200 元以上、排班彈性，優先看 Yes123 或 518。',
   },
   {
     badge: '📍 籠統位置排查',
     label: '附近工作 (籠統位置向用戶確認)',
-    query: '我想要找我家附近的工作，請推薦現正招募中的熱門職缺。',
+    query: '我想找家附近的工作，請先問我希望的縣市或行政區。',
   },
   {
     badge: '🎓 籠統指涉排查',
@@ -181,7 +187,7 @@ const countriesInContext = (m: { selectedCountries?: string[]; baseBrief?: strin
   m.selectedCountries && m.selectedCountries.length ? m.selectedCountries : JOB_COUNTRIES.filter((c) => `${m.baseBrief || ''} ${m.pendingBrief || ''}`.includes(c));
 const regionIncludesAbroad = (v?: string) => v === REGION_ABROAD_VALUE || v === REGION_BOTH_VALUE;
 
-/** 匯職缺會搜尋的平台（說明面板用；和後端搜尋分組一致） */
+/** 匯職缺會提供搜尋入口的平台（說明面板用；和後端搜尋分組一致） */
 const JOB_SOURCE_GROUPS: Array<{ title: string; sites: string }> = [
   { title: '人力銀行', sites: '104人力銀行、1111人力銀行、Yes123、518熊班' },
   { title: '新創與外商平台', sites: 'Cake、Yourator、Meet.jobs、Glints、LinkedIn、Indeed' },
@@ -367,11 +373,6 @@ const SEARCH_ACTION_LABEL: Record<SearchActionKey, string> = {
   retry: '重新搜尋',
   dismiss: '先不用',
 };
-/** 搜搜（Dify）等多久沒消息就問使用者、等多久就暫停 */
-const DIFY_ASK_MS = 50000;
-const DIFY_PAUSE_MS = 80000;
-const MAX_JOBS = 100;
-
 /**
  * 從「工作型態：正職、兼職、地區：台北市、新北市、職務：服務生」這種條件文字裡，
  * 取出某個欄位的值：一直取到下一個「xx：」之前（所以「台北市、新北市」兩個都會留下）
@@ -742,6 +743,11 @@ export const JobExplorerView: React.FC = () => {
     }
     if (regionFilter === '國外') { if (abroadSalaryFilter) parts.push(abroadSalaryFilter); }
     else if (isHourlyFilter && minSalaryFilter > 0) parts.push(`薪水：時薪 ${minSalaryFilter} 元以上`);
+    if (maxExpFilter !== 'all') parts.push(maxExpFilter === 0 ? '經驗不拘' : `年資：${maxExpFilter} 年以下`);
+    if (maxEduFilter !== 'all') {
+      const educationLabel = maxEduFilter <= 2 ? '高中職以下' : maxEduFilter === 3 ? '專科以下' : maxEduFilter === 4 ? '大學以下' : '碩士以下';
+      parts.push(`學歷：${educationLabel}`);
+    }
     if (companyFilter.trim()) parts.push(`目標公司：${companyFilter.trim()}`);
     if (isSiteFiltered) parts.push(`求職網：${chosenSites.join('、')}`);
     return parts;
@@ -768,9 +774,9 @@ export const JobExplorerView: React.FC = () => {
 
   // 真實搜尋職缺結果（不預載任何模擬假職缺）
   const [jobs, setJobs] = useState<JobListing[]>([]);
+  const [searchSourceLinks, setSearchSourceLinks] = useState<JobSearchSourceLink[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [isGeminiFallbackSearching, setIsGeminiFallbackSearching] = useState(false);
   const [isRegulating, setIsRegulating] = useState(false);
   const [difyConvId, setDifyConvId] = useState<string>('');
   const [pendingConfirmedBrief, setPendingConfirmedBrief] = useState<string>('');
@@ -786,30 +792,9 @@ export const JobExplorerView: React.FC = () => {
   // 自然語言對話（僅在對話進行時展開，可隨時收合）
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // 管理員：職缺卡片上多一顆「檢查連結」，看這個連結每一步的檢查結果
-  const { currentUser: appUser } = useApp();
-  const isAdminViewer = appUser?.role === 'admin' || appUser?.id === 'user-admin';
-  const checkLinkButton = (job: JobListing) =>
-    isAdminViewer && job.url ? (
-      <span
-        role="button"
-        tabIndex={0}
-        title="（管理員）檢查這個連結為什麼會被選中"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const q = new URLSearchParams({ url: job.url, title: job.title || '', company: job.company || '' });
-          window.open(`/api/job-explorer/check-link?${q.toString()}`, '_blank', 'noopener');
-        }}
-        className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer"
-      >
-        檢查連結
-      </span>
-    ) : null;
-
   // ─── 保留這次的搜尋結果：離開匯職缺頁（換到網站其他頁、關閉、重新整理）5 分鐘內回來，結果和條件還在；
   //     超過 5 分鐘就一律重新設定條件。停在匯職缺頁上（包含點職缺連結到新分頁看）不會過期。 ───
-  const PERSIST_KEY = 'ideax_job_explorer_session_v1';
+  const PERSIST_KEY = 'ideax_job_explorer_session_v2';
   const PERSIST_TTL = 5 * 60 * 1000;
   /** 離開的時間：明確離開 > 最後一次切到背景（手機直接關掉 APP 時記不到離開） > 最後一次存檔 */
   const leftAtOf = (saved: any) => Number(saved?.leftAt || saved?.hiddenAt || saved?.at || 0);
@@ -817,19 +802,21 @@ export const JobExplorerView: React.FC = () => {
   const restoreScrollRef = useRef<number | null>(null);
   useEffect(() => {
     try {
+      // 清除舊版保存的第三方職缺明細；新版本只保留來源搜尋入口。
+      localStorage.removeItem('ideax_job_explorer_session_v1');
       const raw = localStorage.getItem(PERSIST_KEY);
       const saved = raw ? JSON.parse(raw) : null;
       if (saved && Date.now() - leftAtOf(saved) >= PERSIST_TTL) localStorage.removeItem(PERSIST_KEY);
-      else if (saved && (saved.jobs?.length || saved.messages?.length)) {
+      else if (saved && saved.schemaVersion === 2 && (saved.sources?.length || saved.messages?.length)) {
         // 上次還在搜尋中就離開了：結果保留，訊息改成可以重新搜尋
         const msgs: ChatMessage[] = (saved.messages || []).map((m: ChatMessage) =>
           m.id === saved.searchingMsgId
-            ? { ...m, text: saved.jobs?.length ? `上次的搜尋在找到 ${saved.jobs.length} 筆後中斷了，結果都保留著。` : '上次的搜尋中斷了，要再搜一次嗎？', searchActions: saved.searchingBrief ? ['retry'] : undefined, retryBrief: saved.searchingBrief || undefined }
+            ? { ...m, text: saved.sources?.length ? `上次的搜尋已整理 ${saved.sources.length} 個來源入口。` : '上次的搜尋中斷了，要再搜一次嗎？', searchActions: saved.searchingBrief ? ['retry'] : undefined, retryBrief: saved.searchingBrief || undefined }
             : { ...m, searchActions: m.searchActions?.filter((a) => a === 'retry') }
         );
         setMessages(msgs);
-        if (Array.isArray(saved.jobs)) setJobs(saved.jobs);
-        setHasSearched(Boolean(saved.hasSearched || saved.jobs?.length));
+        if (Array.isArray(saved.sources)) setSearchSourceLinks(saved.sources);
+        setHasSearched(Boolean(saved.hasSearched || saved.sources?.length));
         if (typeof saved.keyword === 'string') setKeyword(saved.keyword);
         if (Array.isArray(saved.selectedCities)) setSelectedCities(saved.selectedCities.filter((c: unknown) => typeof c === 'string'));
         else if (saved.selectedCity && saved.selectedCity !== '全部') setSelectedCities(String(saved.selectedCity).split('、').filter(Boolean));
@@ -1001,14 +988,15 @@ export const JobExplorerView: React.FC = () => {
     if (!restoredRef.current) return;
     const t = window.setTimeout(() => {
       try {
-        if (!messages.length && !jobs.length) { localStorage.removeItem(PERSIST_KEY); return; }
+        if (!messages.length && !searchSourceLinks.length) { localStorage.removeItem(PERSIST_KEY); return; }
         const sess = searchSessionRef.current;
         localStorage.setItem(PERSIST_KEY, JSON.stringify({
+          schemaVersion: 2,
           at: Date.now(),
           leftAt: null,
           hiddenAt: document.visibilityState === 'hidden' ? Date.now() : null,
           messages: messages.slice(-40),
-          jobs: jobs.slice(0, 100),
+          sources: searchSourceLinks.slice(0, 24),
           hasSearched,
           keyword, selectedCity, selectedCities, selectedCategory, selectedCategories, sortBy, sortOrder, userCarePoints,
           searchingMsgId: isSearching && sess ? sess.botMsgId : null,
@@ -1018,7 +1006,7 @@ export const JobExplorerView: React.FC = () => {
       } catch {}
     }, 500);
     return () => window.clearTimeout(t);
-  }, [messages, jobs, hasSearched, keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messages, searchSourceLinks, hasSearched, keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 記下離開時間與捲動位置：切到背景只記「最後在背景的時間」（回來就清掉），真正離開匯職缺頁或關閉才算離開
   useEffect(() => {
@@ -1287,125 +1275,73 @@ export const JobExplorerView: React.FC = () => {
     );
   };
 
-  // Stage 2：確認需求後轉交「探險家(搜搜)」Agent 搜尋真實職缺；若斷線或超過 2 分鐘無反應則提示改由內建 Gemini（小燈泡）接手
+  // 確認需求後只整理來源網站搜尋入口；IdeaX 不擷取或保存職缺內容。
   const handleForwardToExplorerAgent = async (
     confirmedBriefToUse?: string,
     msgIdToMark?: string,
     useGeminiFallback = false
   ) => {
+    void useGeminiFallback;
     const rawBrief = (
-      confirmedBriefToUse ||
-      pendingFallbackBrief ||
-      pendingConfirmedBrief ||
-      keyword.trim() ||
+      confirmedBriefToUse || pendingFallbackBrief || pendingConfirmedBrief || keyword.trim() ||
       `${selectedCity !== '全部' ? selectedCity : ''}${selectedCategory !== '全部' ? selectedCategory : ''}職缺`
     ).trim();
     if (!rawBrief) return;
-    // 篩選裡設定的正職／兼職、台灣／國外，對話裡沒提到的話一併帶入
-    const extra = filterBriefParts().filter((p) => {
-      const key = p.split('：')[0];
-      return !rawBrief.includes(key);
-    });
+    const extra = filterBriefParts().filter((part) => !rawBrief.includes(part.split('：')[0]));
     let brief = [rawBrief, ...extra].join('、');
-
-    // 當用戶並未特別說要國外或是某個台灣以外的國家時才預設台灣去搜索
     const mentionsAbroad = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|美國|紐約|矽谷|舊金山|西雅圖|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/i.test(brief);
     const mentionsTaiwan = /台灣|臺灣|全台|台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江/i.test(brief);
-    if (!mentionsAbroad && !mentionsTaiwan && regionFilter !== '國外' && regionFilter !== '台灣與國外') {
-      brief = `${brief}（台灣）`;
-    }
-
-    // 同步確定的條件至篩選面板，並確保搜尋過後仍可在篩選或標籤中修改再次搜尋
+    if (!mentionsAbroad && !mentionsTaiwan && regionFilter !== '國外' && regionFilter !== '台灣與國外') brief = `${brief}（台灣）`;
     syncConditionsToFilters(parseConditionTags(brief));
-
-    if (msgIdToMark) {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === msgIdToMark ? { ...m, confirmed: true, activeConditionKey: null } : m))
-      );
-    }
+    if (msgIdToMark) setMessages((prev) => prev.map((m) => (m.id === msgIdToMark ? { ...m, confirmed: true, activeConditionKey: null } : m)));
 
     setIsSearching(true);
-    setIsGeminiFallbackSearching(useGeminiFallback);
     setHasSearched(true);
-    setSearchProgressText('正在啟動全網分批即時檢索...');
+    setShowSavedOnly(false);
+    setSearchSourceLinks([]);
+    setJobs([]);
+    setReadyToSort(false);
+    setArrivalOrder(false);
+    setSearchProgressText('正在整理來源網站搜尋入口…');
     setStreamingBatchCount(0);
+    accompanyDuringSearch('正在依照你的條件整理求職網站入口。');
 
-    // 在工作搜索過程，讓右下角小燈泡自動出來陪伴（想看跳舞可以點小燈泡訊息框裡的跳舞鍵）
-    accompanyDuringSearch('搜搜正在幫你找好工作，先來跟我玩吧 !');
-
-    const botMsgId = `exp-stream-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: botMsgId,
-        role: 'bot',
-        text: useGeminiFallback ? '小燈泡出發去全網找職缺了，找到就會陸續送上來…' : '已確認您的條件！搜搜駕著筋斗雲出發了，找到的職缺會每 4 筆陸續送上來…',
-        confirmed: true,
-      },
-    ]);
+    const botMsgId = `exp-links-${Date.now()}`;
+    setMessages((prev) => [...prev, {
+      id: botMsgId,
+      role: 'bot',
+      text: '已確認搜尋條件，正在整理求職網站搜尋入口…',
+      confirmed: true,
+    }]);
     setPendingConfirmedBrief('');
     setPendingFallbackBrief('');
-
     startSearchSession({
       brief,
       botMsgId,
-      startWith: useGeminiFallback ? 'gemini' : 'dify',
       filters: {
-        keyword: keyword.trim(),
-        city: selectedCity,
-        userBaseCity,
-        category: selectedCategory,
+        keyword: [keyword.trim(), companyFilter.trim()].filter(Boolean).join(' '),
+        city: selectedCities.length ? selectedCities.join(' ') : selectedCity,
+        category: selectedCategories.length ? selectedCategories.join(' ') : selectedCategory,
+        jobType: jobTypes.join(' '),
         minSalary: isHourlyFilter || regionFilter === '國外' ? 0 : minSalaryFilter,
-        maxExperienceYears: maxExpFilter,
-        maxEducationLevel: maxEduFilter,
-        carePoints: userCarePoints,
-        // 全選時不限制（搜最廣）；有取消勾選才只搜選到的求職網
+        region: regionFilter,
+        countries: countryFilter,
         sites: isSiteFiltered ? chosenSites : [],
       },
     });
   };
 
-  // ─── 搜尋流程：先派搜搜（Dify）；50 秒沒消息就問要繼續等還是派小燈泡（本地 Gemini）；80 秒還沒消息就暫停 ───
   type SearchSession = {
     id: number;
     brief: string;
     botMsgId: string;
-    filters: any;
-    jobs: JobListing[];
-    seen: Set<string>;
-    controllers: AbortController[];
-    timers: number[];
-    difyGot: boolean;
-    difyDone: boolean;
-    difyRunning: boolean;
-    geminiStarted: boolean;
-    geminiDone: boolean;
-    paused: boolean;
-    finished: boolean;
-    /** 各自找到幾筆（去掉重複後） */
-    found: { dify: number; gemini: number };
+    filters: Record<string, unknown>;
+    controller: AbortController;
   };
   const searchSessionRef = useRef<SearchSession | null>(null);
-  const [arrivalOrder, setArrivalOrder] = useState(false); // 搜尋中照抵達順序顯示，全部跑完再排序
-  // 搜尋中使用者已經在看結果（捲動、收藏、點職缺、自己選排序）：跑完就不自動重排，改成讓他自己點
+  const [arrivalOrder, setArrivalOrder] = useState(false);
   const userBrowsingRef = useRef(false);
   const [readyToSort, setReadyToSort] = useState(false);
-  useEffect(() => {
-    if (!arrivalOrder) return;
-    const mark = () => { if (searchSessionRef.current && searchSessionRef.current.jobs.length > 0) userBrowsingRef.current = true; };
-    const onKey = (e: KeyboardEvent) => { if (/^(PageDown|PageUp|ArrowDown|ArrowUp|End|Home| )$/.test(e.key)) mark(); };
-    const onDown = (e: PointerEvent) => { if ((e.target as HTMLElement | null)?.closest?.('a[href^="http"]')) mark(); };
-    window.addEventListener('wheel', mark, { passive: true });
-    window.addEventListener('touchmove', mark, { passive: true });
-    window.addEventListener('keydown', onKey);
-    document.addEventListener('pointerdown', onDown, true);
-    return () => {
-      window.removeEventListener('wheel', mark);
-      window.removeEventListener('touchmove', mark);
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('pointerdown', onDown, true);
-    };
-  }, [arrivalOrder]);
   const applyFinalSort = () => {
     setArrivalOrder(false);
     setReadyToSort(false);
@@ -1414,213 +1350,58 @@ export const JobExplorerView: React.FC = () => {
   };
 
   const updateBotMsg = (sess: SearchSession, patch: Partial<ChatMessage>) => {
-    // 之後又改了文字（重新搜尋等）就不再顯示「以下為您精選」
-    const p2 = patch.text !== undefined && patch.showPicked === undefined ? { ...patch, showPicked: false } : patch;
-    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...p2 } : m)));
+    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...patch } : m)));
   };
-
   const stopSearchSession = (sess: SearchSession | null) => {
-    if (!sess) return;
-    sess.timers.forEach((t) => window.clearTimeout(t));
-    sess.timers = [];
-    sess.controllers.forEach((c) => { try { c.abort(); } catch {} });
-    sess.controllers = [];
+    if (sess) sess.controller.abort();
   };
   useEffect(() => () => stopSearchSession(searchSessionRef.current), []);
 
-  /** 「搜搜找到 8 筆、小燈泡找到 4 筆職缺」 */
-  const foundSummary = (sess: SearchSession) => {
-    const parts: string[] = [];
-    if (sess.found.dify > 0) parts.push(`搜搜找到 ${sess.found.dify} 筆`);
-    if (sess.found.gemini > 0) parts.push(`小燈泡找到 ${sess.found.gemini} 筆`);
-    return parts.length ? `${parts.join('、')}職缺` : `找到 ${sess.jobs.length} 筆職缺`;
-  };
-
-  const finishSearchSession = (sess: SearchSession, note?: string) => {
-    if (sess.finished) return;
-    sess.finished = true;
-    sess.timers.forEach((t) => window.clearTimeout(t));
-    // 全部跑完：使用者還沒動就直接整理排序；已經在看了就不打斷，讓他自己點「依推薦排序」
-    if (!userBrowsingRef.current || sess.jobs.length === 0) applyFinalSort();
-    else setReadyToSort(true);
-    setIsSearching(false);
-    setIsGeminiFallbackSearching(false);
-    const n = sess.jobs.length;
-    setSearchProgressText(n ? `${foundSummary(sess)}，共 ${n} 筆` : '');
-    if (note !== undefined) updateBotMsg(sess, { text: note });
-    else if (n) updateBotMsg(sess, { text: userBrowsingRef.current ? '' : '已依推薦程度排序。', showPicked: true, searchActions: undefined });
-    window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
-  };
-
-  /** 兩邊都跑完了嗎（搜搜結束或暫停，小燈泡沒派或也跑完） */
-  const maybeFinish = (sess: SearchSession) => {
-    if (sess.finished || searchSessionRef.current !== sess) return;
-    const difySettled = sess.difyDone || sess.paused;
-    const geminiSettled = !sess.geminiStarted || sess.geminiDone;
-    if (!difySettled || !geminiSettled) return;
-    if (sess.jobs.length > 0) { finishSearchSession(sess); return; }
-    // 沒找到：小燈泡也去過了就結束；還沒派過就問要不要派
-    if (sess.geminiStarted) {
-      finishSearchSession(sess, '這次沒有找到符合條件、正在招募的職缺，可以放寬一些條件再試試。');
-    } else if (!sess.paused) {
-      sess.finished = true;
-      setIsSearching(false);
-      setArrivalOrder(false);
-      updateBotMsg(sess, { text: '搜搜這趟沒帶回符合條件的職缺，要派小燈泡去看看嗎？', searchActions: ['bulb', 'dismiss'] });
-    }
-  };
-
-  const addSessionJobs = (sess: SearchSession, list: JobListing[], src: 'dify' | 'gemini') => {
-    if (searchSessionRef.current !== sess) return;
-    const fresh: JobListing[] = [];
-    for (const j of list) {
-      if (sess.jobs.length + fresh.length >= MAX_JOBS) break;
-      // 搜搜和小燈泡找到同一筆（網址相同，或公司＋職稱整理後相同）就只留一筆
-      if (seenJobBefore(sess.seen, j)) continue;
-      fresh.push(j);
-    }
-    if (!fresh.length) return;
-    if (src === 'dify') sess.difyGot = true;
-    sess.jobs = [...sess.jobs, ...fresh];
-    sess.found[src] += fresh.length;
-    setJobs([...sess.jobs]);
-    setStreamingBatchCount((c) => c + 1);
-    const who = src === 'dify' ? '搜搜' : '小燈泡';
-    setSearchProgressText(`${who}又帶回 ${fresh.length} 筆（${foundSummary(sess)}）…`);
-    // 有消息了：收起「要不要繼續等」的詢問
-    updateBotMsg(sess, { text: `${foundSummary(sess)}，還在繼續找…`, searchActions: undefined });
-  };
-
-  const runSearchStream = async (sess: SearchSession, src: 'dify' | 'gemini') => {
-    const controller = new AbortController();
-    sess.controllers.push(controller);
-    const safety = window.setTimeout(() => controller.abort(), 150000);
-    let difyUnavailable = false;
-    try {
-      const res = await fetch('/api/job-explorer/search-stream', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: sess.brief, filters: sess.filters, source: src }),
-      });
-      if (res.ok && res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() || '';
-          for (const part of parts) {
-            const trimmed = part.trim();
-            if (!trimmed.startsWith('data: ')) continue;
-            try {
-              const ev = JSON.parse(trimmed.slice(6));
-              if (ev.type === 'batch' && Array.isArray(ev.jobs)) {
-                addSessionJobs(sess, ev.jobs, src);
-                if (Array.isArray(ev.carePoints) && ev.carePoints.length > 0) setUserCarePoints(ev.carePoints);
-              } else if (ev.type === 'done' && ev.difyUnavailable) {
-                difyUnavailable = true;
-              }
-            } catch (parseError) {
-              console.warn('[SSE Parse Error]', parseError);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      if ((err as any)?.name !== 'AbortError') console.warn('[Stream Error]', err);
-    } finally {
-      window.clearTimeout(safety);
-    }
-    if (searchSessionRef.current !== sess) return;
-    if (src === 'dify') {
-      sess.difyDone = true;
-      sess.difyRunning = false;
-      // 搜搜沒開（沒設定）：直接改派小燈泡，不用讓使用者等
-      if (difyUnavailable && !sess.geminiStarted && !sess.finished) { dispatchBulb(sess, '搜搜今天不在，小燈泡代班出發去找了！'); return; }
-    } else {
-      sess.geminiDone = true;
-    }
-    maybeFinish(sess);
-  };
-
-  const dispatchBulb = (sess: SearchSession, text = '小燈泡出發去看看了！找到的職缺會每 2 筆陸續送上來…') => {
-    if (sess.geminiStarted) return;
-    sess.geminiStarted = true;
-    sess.finished = false;
-    setIsSearching(true);
-    setIsGeminiFallbackSearching(true);
-    setArrivalOrder(true);
-    cheerMascot('小燈泡出發！');
-    updateBotMsg(sess, { text, searchActions: undefined });
-    void runSearchStream(sess, 'gemini');
-  };
-
-  const startSearchSession = (opts: { brief: string; botMsgId: string; filters: any; startWith: 'dify' | 'gemini' }) => {
+  const startSearchSession = (opts: { brief: string; botMsgId: string; filters: Record<string, unknown> }) => {
     stopSearchSession(searchSessionRef.current);
-    const sess: SearchSession = {
-      id: Date.now(), brief: opts.brief, botMsgId: opts.botMsgId, filters: opts.filters,
-      jobs: [], seen: new Set(), controllers: [], timers: [],
-      difyGot: false, difyDone: false, difyRunning: false, geminiStarted: false, geminiDone: false, paused: false, finished: false,
-      found: { dify: 0, gemini: 0 },
-    };
+    const sess: SearchSession = { id: Date.now(), brief: opts.brief, botMsgId: opts.botMsgId, filters: opts.filters, controller: new AbortController() };
     searchSessionRef.current = sess;
     userBrowsingRef.current = false;
-    setReadyToSort(false);
-    setJobs([]);
-    setStreamingBatchCount(0);
-    setArrivalOrder(true);
-    if (opts.startWith === 'gemini') {
-      sess.difyDone = true; // 使用者直接指定小燈泡：不派搜搜
-      dispatchBulb(sess, '小燈泡出發去全網找職缺了，找到就會每 2 筆陸續送上來…');
-      return;
-    }
-    sess.difyRunning = true;
-    void runSearchStream(sess, 'dify');
-    // 50 秒都沒有任何職缺：問使用者要繼續等，還是派小燈泡
-    sess.timers.push(window.setTimeout(() => {
-      if (searchSessionRef.current !== sess || sess.difyGot || sess.difyDone || sess.geminiStarted) return;
-      updateBotMsg(sess, { text: '搜搜似乎正經歷九九八十一難，是否繼續等待？或是派小燈泡前去看看？', searchActions: ['wait', 'bulb'] });
-      setSearchProgressText('搜搜還在路上…');
-    }, DIFY_ASK_MS));
-    // 80 秒還是沒消息（也沒派小燈泡）：主動暫停這次任務
-    sess.timers.push(window.setTimeout(() => {
-      if (searchSessionRef.current !== sess || sess.difyGot || sess.difyDone || sess.geminiStarted) return;
-      sess.paused = true;
-      sess.controllers.forEach((c) => { try { c.abort(); } catch {} });
-      sess.finished = true;
-      setIsSearching(false);
-      setArrivalOrder(false);
-      setSearchProgressText('');
-      updateBotMsg(sess, { text: '搜搜這趟遲遲沒有回音，這次任務先暫停了。要重新搜尋，或派小燈泡去看看？', searchActions: ['retry', 'bulb'], retryBrief: sess.brief });
-    }, DIFY_PAUSE_MS));
+    void (async () => {
+      try {
+        const response = await fetch('/api/job-explorer/search', {
+          method: 'POST',
+          signal: sess.controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: sess.brief, filters: sess.filters }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.success) throw new Error(data?.error || '整理搜尋入口失敗');
+        if (searchSessionRef.current !== sess) return;
+        const sources = Array.isArray(data.sources) ? data.sources.filter((source: any) => source && typeof source.url === 'string' && /^https:\/\//.test(source.url)) : [];
+        setSearchSourceLinks(sources);
+        setSearchProgressText(sources.length ? `已整理 ${sources.length} 個來源網站搜尋入口。` : '沒有可用的來源網站入口，請調整條件後再試。');
+        updateBotMsg(sess, {
+          text: sources.length
+            ? `已整理 ${sources.length} 個求職網站搜尋入口。點選後會前往來源網站查看職缺內容、薪資與最新招募狀態。IdeaX 不會匯入或保存職缺明細。`
+            : '這次沒有可用的來源網站入口，請調整搜尋條件或選擇其他求職網站再試。',
+          searchActions: undefined,
+          showPicked: false,
+        });
+      } catch (error: any) {
+        if (error?.name === 'AbortError' || searchSessionRef.current !== sess) return;
+        console.warn('[Job Search Links]', error);
+        setSearchSourceLinks([]);
+        setSearchProgressText('');
+        updateBotMsg(sess, { text: error?.message || '整理來源網站搜尋入口時發生錯誤，請稍後再試。', searchActions: undefined, showPicked: false });
+      } finally {
+        if (searchSessionRef.current === sess) {
+          setIsSearching(false);
+        }
+      }
+    })();
   };
 
   const handleSearchAction = (msgId: string, action: SearchActionKey) => {
-    const sess = searchSessionRef.current;
-    if (!sess || sess.botMsgId !== msgId) {
-      // 舊的訊息（例如頁面重開後）：只能重新搜尋
-      const msg = messages.find((m) => m.id === msgId);
-      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, searchActions: undefined } : m)));
-      if (action === 'retry' && msg?.retryBrief) void handleForwardToExplorerAgent(msg.retryBrief);
-      return;
-    }
-    if (action === 'wait') {
-      updateBotMsg(sess, { text: '好，繼續等搜搜回來…', searchActions: undefined });
-      setSearchProgressText('繼續等搜搜…');
-    } else if (action === 'bulb') {
-      dispatchBulb(sess);
-    } else if (action === 'retry') {
-      updateBotMsg(sess, { searchActions: undefined });
-      void handleForwardToExplorerAgent(sess.brief);
-    } else {
-      updateBotMsg(sess, { text: '好的，可以調整條件後再搜尋一次。', searchActions: undefined });
-    }
+    const msg = messages.find((item) => item.id === msgId);
+    setMessages((prev) => prev.map((item) => (item.id === msgId ? { ...item, searchActions: undefined } : item)));
+    if (action === 'retry' && msg?.retryBrief) void handleForwardToExplorerAgent(msg.retryBrief);
   };
-
   // Stage 1：自然語言輸入先經系統調節器詢問與收集各維度條件（地點、職務/專業、大學/學歷、年資、性格/環境、薪資），亦支援隨時略過問題直接搜尋
   const handleSendInput = async (customText?: string, newlySkippedDim?: string) => {
     const queryText = (customText !== undefined ? customText : chatInput).trim();
@@ -1816,17 +1597,19 @@ export const JobExplorerView: React.FC = () => {
     }
   };
 
-  // 上傳履歷／求職需求（PDF、Word）：AI 讀完後整理成一句求職需求，再走原本的條件整理流程
+  // 上傳履歷／求職需求（PDF、Word、常見圖檔）：檔案本體只送本次記憶體分析，不寫入 IdeaX 資料庫。
   const docInputRef = useRef<HTMLInputElement>(null);
   const [isReadingDoc, setIsReadingDoc] = useState(false);
   const handleUploadDoc = async (file: File) => {
-    const name = file.name.slice(0, 80);
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const isImage = /^(png|jpe?g|webp)$/.test(extension);
+    const uploadLabel = isImage ? '🖼️ 上傳圖片' : '📎 上傳求職檔案';
     const pushBot = (text: string) =>
       setMessages((prev) => [...prev, { id: `doc-bot-${Date.now()}`, role: 'bot', text }]);
     setIsChatCollapsed(false);
-    setMessages((prev) => [...prev, { id: `doc-user-${Date.now()}`, role: 'user', text: `📄 上傳檔案：${name}` }]);
-    if (!/\.(pdf|docx?)$/i.test(file.name)) {
-      pushBot('目前只支援 PDF 或 Word（.docx）檔，請換個檔案再試一次。');
+    setMessages((prev) => [...prev, { id: `doc-user-${Date.now()}`, role: 'user', text: uploadLabel }]);
+    if (!/\.(pdf|docx?|png|jpe?g|webp)$/i.test(file.name)) {
+      pushBot('目前支援 PDF、Word（.docx）、PNG、JPG／JPEG、WebP，請換個檔案再試一次。');
       return;
     }
     if (/\.doc$/i.test(file.name)) {
@@ -1842,7 +1625,7 @@ export const JobExplorerView: React.FC = () => {
     try {
       const res = await fetch('/api/job-explorer/parse-document', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(name) },
+        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(`upload.${extension}`) },
         body: file,
       });
       const data = await res.json().catch(() => null);
@@ -1855,7 +1638,7 @@ export const JobExplorerView: React.FC = () => {
         return;
       }
       const lines = [
-        `已讀完《${name}》${data.docType && data.docType !== '其他' ? `（${data.docType}）` : ''}${data.summary ? `：${data.summary}` : ''}`,
+        `已讀完這份${isImage ? '圖片' : '檔案'}${data.docType && data.docType !== '其他' ? `（${data.docType}）` : ''}${data.summary ? `：${data.summary}` : ''}`,
         data.roles?.length ? `・推薦職務：${data.roles.join('、')}` : '',
         data.regions?.length ? `・希望地區：${data.regions.join('、')}` : '',
         data.education ? `・學歷：${data.education}` : '',
@@ -2137,7 +1920,7 @@ export const JobExplorerView: React.FC = () => {
               <input
                 ref={docInputRef}
                 type="file"
-                accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -2148,8 +1931,8 @@ export const JobExplorerView: React.FC = () => {
                 type="button"
                 onClick={() => docInputRef.current?.click()}
                 disabled={isSearching || isRegulating || isReadingDoc}
-                title="上傳履歷或求職需求（PDF、Word），AI 幫你整理成搜尋條件"
-                aria-label="上傳履歷或求職需求檔案"
+                title="上傳履歷或求職需求（PDF、Word、PNG、JPG、WebP），AI 幫你整理成搜尋條件；檔案不存入資料庫"
+                aria-label="上傳履歷、求職需求檔案或圖片"
                 className="p-2 rounded-xl bg-white hover:bg-blue-50 disabled:opacity-40 text-[#1e3a8a] border border-stone-200 shrink-0 transition-colors cursor-pointer"
               >
                 {isReadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
@@ -2223,10 +2006,14 @@ export const JobExplorerView: React.FC = () => {
             </div>
           </div>
 
+          <p className="px-1 text-[10px] sm:text-[11px] text-stone-500">
+            上傳支援 PDF、DOCX、PNG、JPG／JPEG、WebP（4MB 內）；檔案會送至 Gemini 整理條件，不寫入 IdeaX 資料庫。
+          </p>
+
           {isHelpOpen && (
             <div className="pt-2.5 border-t border-stone-100 text-xs text-stone-700 leading-relaxed space-y-2.5">
               <p>
-                <span className="font-black text-[#1e3a8a]">匯職缺</span>：一鍵彙集跨海內外全網所有職缺。直接輸入想找的職位、地點、薪水，已經講清楚的條件不會再問；沒講的才會請你補充。
+                <span className="font-black text-[#1e3a8a]">匯職缺</span>：直接輸入想找的職位、地點、薪水，已經講清楚的條件不會再問；沒講的才會請你補充。確認後會提供各求職網站的搜尋入口，由你在來源網站查看職缺。
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {JOB_SOURCE_GROUPS.map((g) => (
@@ -2237,7 +2024,7 @@ export const JobExplorerView: React.FC = () => {
                 ))}
               </div>
               <p className="text-[11px] text-stone-500">
-                職缺會盡量直接連到該職缺的頁面；標示「搜尋職缺」的是暫時確認不了的職缺，會帶你到該平台的搜尋結果。已關閉或下架的職缺不會顯示。
+                IdeaX 不擷取或保存第三方職缺明細。上傳 PDF、DOCX、PNG、JPG／JPEG 或 WebP（單檔 4MB 內）後，檔案會送至 Gemini 供本次條件整理，不寫入 IdeaX 資料庫。
               </p>
             </div>
           )}
@@ -2542,12 +2329,12 @@ export const JobExplorerView: React.FC = () => {
             </div>
           )}
 
-          {/* 3. 分批即時檢索中進度條 */}
+          {/* 3. 整理來源搜尋入口中 */}
           {isSearching && (
             <div className="p-3 rounded-2xl bg-gradient-to-r from-[#1e3a8a] via-[#1e40af] to-[#1e3a8a] text-white text-xs flex items-center justify-between gap-3 shadow-sm border border-blue-400/40 animate-pulse">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
-                <span className="font-bold">{searchProgressText || '正在分批檢索全網在招真實職缺...'}</span>
+                <span className="font-bold">{searchProgressText || '正在整理來源網站搜尋入口…'}</span>
               </div>
               {streamingBatchCount > 0 && (
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black">
@@ -3144,6 +2931,7 @@ export const JobExplorerView: React.FC = () => {
         {jobs.length > 0 && <JobsInstallPrompt />}
 
         {/* 排序列 ＆ 大卡片／條列式／小卡片切換（手機橫向滑動不擁擠） */}
+        {(searchSourceLinks.length === 0 || showSavedOnly) && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
             {(
@@ -3229,14 +3017,15 @@ export const JobExplorerView: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
 
-        {/* 分批串流進度提示橫幅（當已有首批職缺送達且仍在背景接收後續批次時顯示） */}
+        {/* 搜尋入口整理中 */}
         {isSearching && filteredAndSortedJobs.length > 0 && (
           <div className="p-3 rounded-2xl bg-gradient-to-r from-[#1e3a8a] to-indigo-900 text-white text-xs flex items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-amber-300 shrink-0" />
               <span className="font-bold">
-                {searchProgressText || '正在持續分批檢索並統一整合更多跨平台真實職缺...'}
+                {searchProgressText || '正在整理來源網站搜尋入口…'}
               </span>
             </div>
             <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black shrink-0">
@@ -3260,24 +3049,49 @@ export const JobExplorerView: React.FC = () => {
           </button>
         )}
 
-        {/* 提示：部分求職網沒辦法附上正確網址 */}
+        {/* 使用者自行收藏的舊職缺提醒 */}
         {filteredAndSortedJobs.length > 0 && !showSavedOnly && (
           <div role="note" className="flex items-start gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3">
             <span className="shrink-0 w-7 h-7 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center">
               <Info className="w-4 h-4 stroke-[2.5]" />
             </span>
             <p className="text-xs sm:text-sm leading-relaxed text-amber-950">
-              <span className="font-medium">部分求職網站無法附上正確網址，建議用關鍵字到該網站再搜尋一次，應該就能找到該職缺了 !</span>
+              <span className="font-medium">此處保留的是您先前收藏的職缺；請前往來源網站確認內容及招募狀態。</span>
             </p>
           </div>
         )}
 
-        {/* 職缺列表區 */}
-        {isSearching && filteredAndSortedJobs.length === 0 ? (
+        {/* 搜尋結果只提供來源網站入口，不匯入職缺明細 */}
+        {searchSourceLinks.length > 0 && !showSavedOnly ? (
+          <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+            <div className="space-y-1">
+              <h2 className="text-base font-bold text-[#1e3a8a]">求職網站搜尋入口</h2>
+              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">選擇一個網站，在來源網站查看最新職缺、薪資、條件與招募狀態。</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {searchSourceLinks.map((source) => (
+                <a
+                  key={source.id}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 hover:border-[#1e3a8a]/40 hover:bg-blue-50/50 transition-colors"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-stone-800 truncate">{source.site}</span>
+                    <span className="block mt-0.5 text-[11px] text-stone-500">{source.actionLabel}</span>
+                  </span>
+                  <ExternalLink className="w-4 h-4 shrink-0 text-[#1e3a8a] group-hover:translate-x-0.5 transition-transform" />
+                </a>
+              ))}
+            </div>
+            <p className="text-[11px] text-stone-500 border-t border-stone-100 pt-3">IdeaX 只整理搜尋連結，不擷取、不暫存或保存第三方職缺明細；職缺資訊以來源網站為準。</p>
+          </section>
+        ) : isSearching && filteredAndSortedJobs.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200/90 py-16 text-center space-y-2.5">
             <Loader2 className="w-6 h-6 text-[#1e3a8a] animate-spin mx-auto" />
             <p className="text-xs sm:text-sm font-bold text-[#1e3a8a]">
-              {searchProgressText || '【IdeaX創點子】全網分批找工作中... 首批真實職缺即將送達'}
+              {searchProgressText || '【IdeaX創點子】正在整理來源網站搜尋入口…'}
             </p>
           </div>
         ) : filteredAndSortedJobs.length === 0 ? (
@@ -3326,14 +3140,13 @@ export const JobExplorerView: React.FC = () => {
                         {job.sourcePlatform || '全網求職'}
                       </span>
                       {!job.fullMatch && job.missed.length > 0 && <MissedBadge missed={job.missed}  inCardHeader />}
-                      {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 flex items-center gap-0.5" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
                           搜尋職缺
                         </span>
                       ) : (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-0.5">
-                          在招中
+                          需確認招募狀態
                         </span>
                       )}
                     </div>
@@ -3413,14 +3226,13 @@ export const JobExplorerView: React.FC = () => {
                         {job.sourcePlatform || '全網求職'}
                       </span>
                       {!job.fullMatch && job.missed.length > 0 && <MissedBadge missed={job.missed}  inCardHeader />}
-                      {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
                           搜尋職缺
                         </span>
                       ) : (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          在招中
+                          需確認招募狀態
                         </span>
                       )}
                     </div>

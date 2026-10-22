@@ -1,6 +1,6 @@
 /**
- * 上傳文件（PDF / Word）轉成可給 AI 分析的內容。
- * - PDF：直接交給 Gemini 讀（掃描檔也看得懂），這裡只驗證檔頭
+ * 上傳文件（PDF / Word / 常見圖檔）轉成可給 AI 分析的內容。
+ * - PDF 與 PNG / JPEG / WebP：直接交給 Gemini 讀（掃描檔也看得懂），這裡只驗證檔頭
  * - Word（.docx）：解壓縮後取出內文文字
  * 檔案只在記憶體中處理，不寫入硬碟或資料庫。
  */
@@ -8,16 +8,26 @@ import JSZip from 'jszip';
 
 export const MAX_DOC_BYTES = 4 * 1024 * 1024; // Vercel 單次請求上限約 4.5MB
 
-export type DocKind = 'pdf' | 'docx';
+export type DocKind = 'pdf' | 'docx' | 'image-png' | 'image-jpeg' | 'image-webp';
 
 export function detectDocKind(buf: Buffer, fileName = ''): DocKind | 'doc' | null {
   if (buf.length >= 5 && buf.subarray(0, 5).toString('latin1') === '%PDF-') return 'pdf';
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image-png';
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image-jpeg';
+  if (buf.length >= 12 && buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') return 'image-webp';
   // docx 是 zip（PK\x03\x04）
   if (buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04) return 'docx';
   // 舊版 .doc（OLE 檔頭 D0 CF 11 E0）
   if (buf.length >= 4 && buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0) return 'doc';
   if (/\.pdf$/i.test(fileName)) return null;
   return null;
+}
+
+export function docKindMimeType(kind: DocKind): string {
+  if (kind === 'image-png') return 'image/png';
+  if (kind === 'image-jpeg') return 'image/jpeg';
+  if (kind === 'image-webp') return 'image/webp';
+  return 'application/pdf';
 }
 
 const decodeXml = (t: string) =>

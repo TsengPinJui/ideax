@@ -18,11 +18,10 @@ import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMasco
 import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
 import { recordFeatureUse, getFeatureUsage, getPublicFeatureTotals } from './server/featureUsage';
 import { ALL_REPAIR_CATEGORIES, runDataRepair } from './server/dataRepair';
-import { buildJobDocResult, detectDocKind, extractDocxText, MAX_DOC_BYTES } from './server/docText';
-import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
-import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
+import { buildJobDocResult, detectDocKind, docKindMimeType, extractDocxText, MAX_DOC_BYTES } from './server/docText';
+import { buildJobSearchLinks } from './server/jobSearchLinks';
+import { MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
-import { seenJobBefore } from './src/utils/jobDedupe';
 import { APP_VERSION } from './src/data/versionData';
 /** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
 const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
@@ -1432,6 +1431,9 @@ function extractJsonFromText(text: string): any {
 // ==========================================
 app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
   const { agentType, query, inputs, customKey } = req.body;
+  if (agentType === 'explorer_agent') {
+    return res.status(410).json({ success: false, error: '匯職缺已改為來源網站搜尋連結，不再呼叫職缺搜尋 Agent。' });
+  }
 
   let apiKey = String(customKey || '').trim();
   if (!apiKey) {
@@ -3297,6 +3299,14 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, actions: guard.actions });
     }
+    if (/匯職缺|全網搜職|探險家|找工作|找職缺|職缺搜尋|求職網站/i.test(guard.message)) {
+      return res.json({
+        success: true,
+        outOfScope: true,
+        reply: '我可以帶你到「匯職缺」整理條件，再前往求職網站查看職缺最新資訊。',
+        actions: [{ label: '前往匯職缺', to: 'job_explorer' }],
+      });
+    }
     // 小燈泡先判斷：聊天與簡單問題自己回答；需要專業處理的才轉接
     const plan = await planMascotRoute(guard.message, generateRawTextWithGemini);
     if (plan.agent === 'none') {
@@ -3359,6 +3369,17 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: routed.by });
+    }
+    if (routed.agent === 'explorer') {
+      void recordMascotEvent({ type: 'ask', agent: 'explorer' }).catch(() => {});
+      return res.json({
+        success: true,
+        reply: '我可以帶你到「匯職缺」整理條件，再前往求職網站查看職缺最新資訊。',
+        agentLabel: '小燈泡',
+        source: 'mascot_self',
+        actions: [{ label: '前往匯職缺', to: 'job_explorer' }],
+        handler: 'mascot',
+      });
     }
     const { agent, by } = routed as { agent: MascotAgent; by: string };
     const meta = MASCOT_AGENTS[agent];
@@ -4080,14 +4101,10 @@ async function parseJobIntakeWithGemini(params: {
   return null;
 }
 
-// 職缺連結檢查：回報「連結錯誤」時，打開 /api/job-explorer/check-link?url=…&title=…&company=… 看每一步的結果
-app.get('/api/job-explorer/check-link', async (req: Request, res: Response) => {
-  const url = String(req.query.url || '').slice(0, 500);
-  const title = String(req.query.title || '').slice(0, 80);
-  const company = String(req.query.company || '').slice(0, 80);
-  if (!url) return res.status(400).json({ ok: false, error: '請帶上 url' });
+// 舊版職缺連結驗證端點已停用：IdeaX 不再代替使用者請求或解析第三方職缺頁。
+app.get('/api/job-explorer/check-link', (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json(await diagnoseJobUrl(url, title, company));
+  res.status(410).json({ ok: false, error: '職缺連結驗證已停用，請直接到來源網站確認。' });
 });
 
 // ─── 會員「最近上線時間」：存在獨立的 user_activity，不寫進大家都在即時監聽的會員資料（不然每寫一次，所有在線的人都要重讀一次） ───
@@ -4283,9 +4300,10 @@ app.get('/api/version', (_req: Request, res: Response) => {
   res.json({ version: APP_VERSION });
 });
 
-// 匯職缺：上傳履歷／求職需求文件（PDF、Word），由 AI 整理成搜尋條件。
-// 檔案只在記憶體中分析，不儲存；回傳內容不含姓名、電話、Email、地址、身分證字號等個資。
-const JOB_DOC_PROMPT = `你是「IdeaX創點子」匯職缺的求職條件整理助理。使用者上傳了一份文件（可能是履歷、自傳、求職需求說明，或一則想找類似工作的職缺說明）。
+// 匯職缺：上傳履歷／求職需求文件或圖片（PDF、Word、PNG、JPEG、WebP），由 AI 整理成搜尋條件。
+// 上傳內容只存在本次請求的記憶體並送至 Gemini 分析，不寫入 IdeaX 資料庫或檔案儲存。
+// 回傳內容不含姓名、電話、Email、地址、身分證字號等個資。
+const JOB_DOC_PROMPT = `你是「IdeaX創點子」匯職缺的求職條件整理助理。使用者上傳了一份文件或圖片（可能是履歷、自傳、求職需求說明，或一則想找類似工作的職缺說明）。
 請只依文件內容，整理出「要幫他找什麼工作」的搜尋條件，以 JSON 回覆，欄位如下：
 {
   "isJobRelated": true/false,            // 文件跟求職、履歷、職缺無關時填 false
@@ -4322,7 +4340,7 @@ app.post(
 
       const kind = detectDocKind(buf, fileName);
       if (kind === 'doc') return res.status(415).json({ ok: false, error: '舊版 Word（.doc）無法讀取，請另存為 .docx 或 PDF 再上傳' });
-      if (!kind) return res.status(415).json({ ok: false, error: '只支援 PDF 或 Word（.docx）檔' });
+      if (!kind) return res.status(415).json({ ok: false, error: '只支援 PDF、Word（.docx）、PNG、JPG／JPEG 或 WebP 檔' });
 
       const ai = getGeminiClient();
       if (!ai) return res.status(503).json({ ok: false, error: 'AI 分析暫時無法使用，請改用文字輸入條件' });
@@ -4337,7 +4355,7 @@ app.post(
         contents = [{
           role: 'user',
           parts: [
-            { inlineData: { mimeType: 'application/pdf', data: buf.toString('base64') } },
+            { inlineData: { mimeType: docKindMimeType(kind), data: buf.toString('base64') } },
             { text: JOB_DOC_PROMPT },
           ],
         }];
@@ -4849,747 +4867,43 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   }
 });
 
-function normalizeJobItem(
-  j: any,
-  idx: number,
-  groundingChunksMap: Array<{ title: string; uri: string }>,
-  groundingUrls: string[],
-  filters: any
-) {
-  const title = String(j.title || '').trim();
-  const company = String(j.company || '').trim();
-  const encodedKw = encodeURIComponent(`${company} ${title}`);
-  const rawUrl = String(j.url || '').trim();
-
-  let detectedPlatform = String(j.sourcePlatform || '').trim();
-  const lowerUrl = rawUrl.toLowerCase();
-  if (lowerUrl.includes('yes123.com.tw')) {
-    detectedPlatform = 'Yes123';
-  } else if (lowerUrl.includes('104.com.tw')) {
-    detectedPlatform = '104人力銀行';
-  } else if (lowerUrl.includes('1111.com.tw')) {
-    detectedPlatform = '1111人力銀行';
-  } else if (lowerUrl.includes('cake.me') || lowerUrl.includes('cakeresume.com')) {
-    detectedPlatform = 'Cake';
-  } else if (lowerUrl.includes('yourator.co')) {
-    detectedPlatform = 'Yourator';
-  } else if (lowerUrl.includes('518.com.tw')) {
-    detectedPlatform = '518熊班';
-  } else if (lowerUrl.includes('linkedin.com')) {
-    detectedPlatform = 'LinkedIn';
-  } else if (lowerUrl.includes('vertexaisearch.cloud.google.com')) {
-    const matchedChunk = groundingChunksMap.find((c) => c.uri === rawUrl);
-    if (matchedChunk) {
-      const t = matchedChunk.title.toLowerCase();
-      if (t.includes('yes123')) detectedPlatform = 'Yes123';
-      else if (t.includes('104')) detectedPlatform = '104人力銀行';
-      else if (t.includes('1111')) detectedPlatform = '1111人力銀行';
-      else if (t.includes('cake')) detectedPlatform = 'Cake';
-      else if (t.includes('yourator')) detectedPlatform = 'Yourator';
-      else if (t.includes('518')) detectedPlatform = '518熊班';
-      else if (t.includes('linkedin')) detectedPlatform = 'LinkedIn';
-      else if (!detectedPlatform) detectedPlatform = matchedChunk.title.slice(0, 15);
-    }
-  }
-
-  if (!detectedPlatform || detectedPlatform === 'undefined') {
-    detectedPlatform = '全網真實求職';
-  }
-
-  const isVertexRedirect = rawUrl.includes('vertexaisearch.cloud.google.com');
-  const isLegitDirectUrl =
-    rawUrl.startsWith('http') &&
-    !rawUrl.includes('/job/...') &&
-    !rawUrl.endsWith('/job/') &&
-    !rawUrl.includes('example.com') &&
-    !rawUrl.includes('placeholder');
-
-  let validUrl = '';
-  if (isVertexRedirect || isLegitDirectUrl) {
-    validUrl = rawUrl;
-  } else if (groundingUrls.length > 0) {
-    const matched =
-      groundingUrls.find((u) => u.toLowerCase().includes(company.toLowerCase())) ||
-      groundingUrls[idx % groundingUrls.length];
-    validUrl = matched || '';
-  }
-  
-  if (!validUrl) {
-    if (detectedPlatform === 'Cake') {
-      validUrl = `https://www.cake.me/jobs?q=${encodedKw}`;
-    } else if (detectedPlatform === 'Yes123') {
-      validUrl = `https://www.yes123.com.tw/admin/job_refer_comp_job.asp?key_word=${encodedKw}`;
-    } else if (detectedPlatform === '1111人力銀行') {
-      validUrl = `https://www.1111.com.tw/search/job?ks=${encodedKw}`;
-    } else if (detectedPlatform === 'Yourator') {
-      validUrl = `https://www.yourator.co/jobs?term=${encodedKw}`;
-    } else if (detectedPlatform === '518熊班') {
-      validUrl = `https://www.518.com.tw/job-index.html?key=${encodedKw}`;
-    } else if (detectedPlatform === '104人力銀行') {
-      validUrl = `https://www.104.com.tw/jobs/search/?keyword=${encodedKw}`;
-    } else {
-      validUrl = `https://www.google.com/search?q=${encodedKw}+職缺+徵才`;
-    }
-  }
-
-  const loc = String(j.location || (filters.city && filters.city !== '全部' ? filters.city : ''));
-  const city = String(j.city || (loc ? loc.slice(0, 3) : ''));
-
-  return {
-    id: String(j.id || `job-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`),
-    title,
-    company,
-    location: loc,
-    city,
-    distanceKm: typeof j.distanceKm === 'number' && j.distanceKm > 0 ? j.distanceKm : 0,
-    experience: String(j.experience || '經歷不拘'),
-    experienceYears: typeof j.experienceYears === 'number' ? j.experienceYears : 0,
-    education: String(j.education || '學歷不拘'),
-    educationLevel: typeof j.educationLevel === 'number' ? j.educationLevel : 1,
-    salaryText: String(j.salaryText || '待遇面議'),
-    salaryMin: Number(j.salaryMin) || 0,
-    salaryMax: Number(j.salaryMax) || Number(j.salaryMin) || 0,
-    industry: String(j.industry || ''),
-    category: String(j.category || ''),
-    workEnvironment: String(j.workEnvironment || ''),
-    benefits: String(j.benefits || ''),
-    description: String(j.description || ''),
-    sourcePlatform: detectedPlatform,
-    url: validUrl,
-    aiScore: typeof j.aiScore === 'number' ? j.aiScore : Math.max(70, 98 - idx * 1),
-    postedAt: j.postedAt || new Date(Date.now() - idx * 3600000 * 3).toISOString(),
-    postedAtText: String(j.postedAtText || (idx === 0 ? '今日刊登' : idx <= 2 ? `${idx}天前` : '近期刊登')),
-  };
-}
-
-/** 各國家／地區常用的求職平台 */
-const COUNTRY_JOB_PLATFORMS: Array<[RegExp, string, string]> = [
-  [/日本|東京|大阪/, '日本', 'doda、リクナビNEXT、Indeed Japan、Daijob、GaijinPot Jobs'],
-  [/新加坡/, '新加坡', 'MyCareersFuture、JobStreet Singapore、LinkedIn'],
-  [/香港|澳門/, '香港', 'JobsDB Hong Kong、CTgoodjobs'],
-  [/中國大陸|大陸|上海|北京|深圳|廣州/, '中國大陸', 'BOSS直聘、智聯招聘、前程無憂（51job）'],
-  [/韓國|首爾/, '韓國', 'Saramin、JobKorea'],
-  [/馬來西亞|吉隆坡/, '馬來西亞', 'JobStreet Malaysia、Hiredly'],
-  [/越南/, '越南', 'VietnamWorks、TopCV'],
-  [/澳洲|雪梨|墨爾本/, '澳洲', 'SEEK、Indeed Australia'],
-  [/紐西蘭/, '紐西蘭', 'SEEK NZ、Trade Me Jobs'],
-  [/美國|紐約|矽谷/, '美國', 'LinkedIn、Indeed、Glassdoor'],
-  [/加拿大|溫哥華|多倫多/, '加拿大', 'Job Bank、Indeed Canada、LinkedIn'],
-  [/英國|倫敦/, '英國', 'Reed、Totaljobs、Indeed UK'],
-  [/德國|柏林/, '德國', 'StepStone、XING、LinkedIn'],
-  [/全球遠端/, '全球遠端', 'We Work Remotely、Remote OK、LinkedIn'],
-];
-
-/** 找國外（或台灣＋國外）的工作時，告訴搜尋要用國際與當地的求職平台 */
-function regionHint(query: string): string {
-  const both = /台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(query);
-  const countries = COUNTRY_JOB_PLATFORMS.filter(([re]) => re.test(query));
-  const abroad = both || countries.length > 0 || /國外|海外|出國|外派|歐洲|北美|東南亞/.test(query);
-  if (!abroad) return '';
-  const scope = both ? '台灣與國外的職缺都要找' : '本次要找國外的職缺，不要只搜尋台灣的求職網站';
-  const where = countries.length
-    ? countries.map(([, name, sites]) => `${name}：${sites}`).join('；')
-    : 'LinkedIn、Indeed、Glassdoor，以及職缺所在國家的主要求職網站';
-  return `\n【地區範圍】${scope}。請檢索國際與當地求職平台（${where}${both ? '；台灣則用 104、1111、Cake、Yourator 等' : ''}），location 請寫「國家／城市」，薪資照原幣別寫。`;
-}
-
-/** 找兼職時，加上台灣兼職／打工平台 */
-function partTimeHint(query: string): string {
-  if (!/兼職|工讀|打工|計時|part[\s-]?time/i.test(query)) return '';
-  return '\n【本次是找兼職】請優先檢索台灣兼職／打工平台：小雞上工（chickpt.com.tw）、Worky（worky.com.tw）、518熊班、Yes123 打工、1111 兼職，再補充其他求職網站的兼職職缺；薪資請盡量寫時薪。';
-}
-
-/** 職缺網址驗證後再輸出：確認不了的改給搜尋連結（urlKind = 'search'），確定已下架的不顯示，已確認的排前面 */
-async function finalizeJobs(rawJobs: any[], g: GroundingInfo | GroundingInfo[] | null, filters: any, startIdx: number) {
-  const checks = await verifyJobUrls(
-    rawJobs.map((j) => ({ title: String(j.title || ''), company: String(j.company || ''), url: String(j.url || ''), sourcePlatform: String(j.sourcePlatform || '') })),
-    g
-  );
-  const kept = rawJobs.map((j, i) => ({ j, v: checks[i] })).filter((x) => !x.v.drop);
-  kept.sort((a, b) => Number(b.v.urlKind === 'direct') - Number(a.v.urlKind === 'direct'));
-  return kept.map(({ j, v }, i) => {
-    const n = normalizeJobItem(j, startIdx + i, [], [], filters);
-    return { ...n, url: v.url, urlKind: v.urlKind, urlVerified: v.verified, sourcePlatform: v.platform || n.sourcePlatform };
-  });
-}
-
-const closedPatternGlobal = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
-const isJobActive = (j: any): boolean => {
-  if (!j || !j.title || !j.company) return false;
-  const combined = `${j.title} ${j.company} ${j.description || ''} ${j.salaryText || ''} ${j.postedAtText || ''}`;
-  return !closedPatternGlobal.test(combined);
-};
-
-// 匯職缺分批串流端點：分開回傳多次（Batch 1 首發、Batch 2 擴充），前端逐批整合呈現，零等待、絕不超過長度上限！
-/**
- * 從還在串流中的 JSON 文字裡，取出「jobs」陣列中已經完整的職缺物件（後面還沒傳完的先不管）。
- * 搜搜（Dify）邊搜邊回覆時，就能每湊滿幾筆先送到前端。
- */
-/** 每次派搜搜（Dify）都附上的來源規定：不然搜尋結果幾乎都是 104，也常有舊職缺 */
-const DIFY_SOURCE_RULES = `【搜尋規定】
-同一個網站最多列 20 筆，同一家公司最多 3 筆。盡量列20筆以上，從符合所以條件的開始搜，若沒有了可以用僅符合部分條件的逐步遞減條件合格率湊滿20筆不同的職缺
-只要近 60 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
-url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。
-【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
-
-/** 使用者在篩選裡只勾了部分求職網：交代搜搜只能從這些網站找（不然它照樣找 104，被篩掉後就一筆都沒有） */
-function difyRulesFor(chosenSites: string[]): string {
-  if (!chosenSites.length) return DIFY_SOURCE_RULES;
-  const names = chosenSites.map((x) => (x === COMPANY_SITE ? '各公司官網的徵才頁' : x)).join('、');
-  return `【搜尋規定】
-只能從這些網站找：${names}。不要列出其他網站（例如沒勾選的 104、LinkedIn）的職缺；sourcePlatform 填職缺實際所在的網站名稱。
-同一個網站最多列 20 筆，同一家公司最多 3 筆。盡量列20筆以上，從符合所以條件的開始搜，若沒有了可以用僅符合部分條件的逐步遞減條件合格率湊滿20筆不同的職缺
-只要近 60 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
-url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。
-【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
-}
-
-function extractCompletedJobObjects(text: string): any[] {
-  const k = text.indexOf('"jobs"');
-  if (k < 0) return [];
-  const start = text.indexOf('[', k);
-  if (start < 0) return [];
-  const out: any[] = [];
-  let depth = 0, inStr = false, esc = false, objStart = -1;
-  for (let i = start + 1; i < text.length; i++) {
-    const c = text[i];
-    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
-    if (c === '"') { inStr = true; continue; }
-    if (c === '{') { if (depth === 0) objStart = i; depth++; }
-    else if (c === '}') { depth--; if (depth === 0 && objStart >= 0) { try { out.push(JSON.parse(text.slice(objStart, i + 1))); } catch {} objStart = -1; } }
-    else if (c === ']' && depth === 0) break;
-  }
-  return out;
-}
-
+// 匯職缺搜尋只產生來源網站搜尋入口，不擷取、驗證或保存第三方職缺資料。
 app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) => {
-  const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
-  const filters = req.body?.filters || {};
-  // dify：只派搜搜（Dify）；gemini：只派小燈泡（本地 Gemini）；both：兩邊同時（舊版前端）
-  const source: 'dify' | 'gemini' | 'both' = req.body?.source === 'dify' || req.body?.source === 'gemini' ? req.body.source : 'both';
-  const MAX_JOBS = 100;
-
-  if (!rawQuery) {
-    return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
-  }
-
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-
-  const sendEvent = (payload: any) => {
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    (res as any).flush?.();
-  };
-  // 等搜搜回覆時每 15 秒送一次心跳，避免連線被當成閒置而中斷
-  const sseHeartbeat = setInterval(() => {
-    try {
-      if (!res.writableEnded) res.write(': ping\n\n');
-    } catch {}
-  }, 15000);
-  // 使用者暫停或離開頁面：停止搜搜那邊的連線，也不再送資料
-  const clientGone = new AbortController();
-  res.on('close', () => { clearInterval(sseHeartbeat); clientGone.abort(); });
-
-  const ai = getGeminiClient();
-  const filterContext = [
-    filters.city && filters.city !== '全部' ? `地區：${filters.city}` : '',
-    filters.category && filters.category !== '全部' ? `類別：${filters.category}` : '',
-    filters.minSalary ? `最低月薪：${filters.minSalary}元以上` : '',
-  ]
-    .filter(Boolean)
-    .join('、');
-
-  const globalSeen = new Set<string>();
-  let totalYielded = 0;
-  const explorerKey = mascotAgentKey('explorer');
-
-
   try {
-    // ─── 多組來源同時搜尋（各自完成就先回傳），盡可能找到更多符合條件的職缺 ───
-    const JOB_JSON_SPEC = `只輸出 JSON：
-{
-  "jobs": [
-    {
-      "title": "真實職缺名稱",
-      "company": "真實公司名稱",
-      "location": "工作地點",
-      "city": "縣市或城市",
-      "experience": "經歷要求",
-      "education": "學歷要求",
-      "salaryText": "薪資待遇",
-      "salaryMin": 32000,
-      "sourcePlatform": "來源平台",
-      "url": "職缺頁網址",
-      "description": "工作摘要（30 字內）"
-    }
-  ]
-}`;
-    const isPartTime = Boolean(partTimeHint(rawQuery));
-    const isAbroad = Boolean(regionHint(rawQuery));
-    // 使用者指定了求職網：只搜這些網站（每 3 個一組同時搜尋）
-    const chosenSites: string[] = Array.isArray(filters.sites)
-      ? Array.from(new Set(filters.sites.map((x: any) => String(x || '').trim()).filter((x: string) => ALL_JOB_SITES.includes(x)))).slice(0, 24) as string[]
-      : [];
-    // 只找國外時，不用搜台灣在地的人力銀行與公部門
-    const abroadOnly = isAbroad && !/台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(rawQuery);
-    const groups: Array<{ label: string; focus: string; count: string }> = [];
-    if (!abroadOnly) {
-      groups.push(
-        // 104 單獨一組，其他人力銀行另一組：不然幾乎都只找到 104
-        { label: '104人力銀行', focus: '只能從 104人力銀行（104.com.tw）找', count: '8 ~ 10' },
-        { label: '1111／Yes123／518', focus: '只能從 1111人力銀行、Yes123、518熊班 找（不要列 104 的職缺）', count: '10 ~ 12' },
-        { label: '新創與外商平台', focus: 'Cake、Yourator、Meet.jobs、Glints、LinkedIn、Indeed 台灣', count: '12 ~ 15' },
-        { label: '企業官網', focus: '各公司官網的徵才頁（careers／人才招募頁），包含上市櫃公司、外商與中小企業', count: '10 ~ 15' },
-        { label: '公部門與產業平台', focus: '台灣就業通、事求人（公職）、國營事業招考、各縣市就業服務站，以及這個職務所屬產業的專業求職網站或公會徵才', count: '8 ~ 12' },
-      );
-    }
-    groups.push({ label: '相近職稱', focus: '把條件裡的職稱換成相近或同義的職稱（例如「門市人員」也找「門市專員、店員、儲備幹部」），在各大求職網站搜尋', count: '10 ~ 15' });
-    if (isPartTime) groups.push({ label: '兼職平台', focus: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職、Tasker 出任務（接案）', count: '12 ~ 15' });
-    if (chosenSites.length) {
-      groups.length = 0;
-      for (let i = 0; i < chosenSites.length && groups.length < 8; i += 3) {
-        const sites = chosenSites.slice(i, i + 3);
-        groups.push({
-          label: sites.join('、'),
-          focus: `只能從這些網站找：${sites.map((x) => (x === COMPANY_SITE ? '各公司官網的徵才頁' : x)).join('、')}（不要列出其他網站的職缺）`,
-          count: sites.length >= 3 ? '12 ~ 15' : '10 ~ 12',
-        });
-      }
-    } else if (isAbroad) {
-      groups.push({ label: '國外求職平台', focus: 'LinkedIn、Indeed、Glassdoor 與職缺所在國家的主要求職網站', count: '12 ~ 15' });
-      groups.push({ label: '國外在地平台', focus: '職缺所在國家或城市的在地求職網站（例如日本 doda、Green、Daijob；香港 JobsDB、CTgoodjobs；新加坡 MyCareersFuture；遠端 We Work Remotely、Remote OK）與企業官網', count: '10 ~ 15' });
-    }
-
-    let batchNo = 0;
-    let idxCursor = 0;
-    const runGroup = async (g: { label: string; focus: string; count: string }) => {
-      if (!ai || clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
-      try {
-        const prompt = `你是「IdeaX創點子」平台的匯職缺系統。請使用 Google Search 搜尋符合以下條件、而且目前仍在招募的真實公開職缺。
-條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
-這次請以這些來源為主：${g.focus}。
-
-規定：
-1. 盡量列出 ${g.count} 筆不同公司或不同職缺，越多越好，但每一筆都必須真的符合條件。
-2. 不可包含已關閉、已下架或過期的職缺，不可虛構公司或職缺。
-3. "url" 必須是「單一職缺」的內頁網址（例如 104.com.tw/job/xxxx、1111.com.tw/job/123456、linkedin.com/jobs/view/123456），直接照搜尋結果裡的網址填，不要填搜尋結果頁、職缺列表頁或公司首頁；找不到該職缺內頁時留空字串，不要自己編網址。
-4. "sourcePlatform" 寫職缺實際所在的網站名稱（例如 104人力銀行、LinkedIn、公司官網）。
-5. 每筆摘要 30 字內。
-6. 只要「近 60 天內仍在刊登」的職缺；看到刊登或更新日期太舊、或頁面寫已截止的，不要列。
-7. 同一個網站最多列 5 筆，盡量分散在不同網站與不同公司。
-${JOB_JSON_SPEC}`;
-        const r = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-          config: { tools: [{ googleSearch: {} }], temperature: 0.2 },
-        });
-        const parsed = extractJsonFromText(String(r.text || ''));
-        if (!Array.isArray(parsed?.jobs) || parsed.jobs.length === 0) return;
-        // 去重複：比對網址與整理過的公司＋職稱
-        const fresh = parsed.jobs.filter(isJobActive).filter((j: any) => !seenJobBefore(globalSeen, j));
-        if (fresh.length === 0) return;
-        // 分批回傳：小燈泡（本地 Gemini）每 2 筆一批同時驗證網址，哪一批先驗證好就先送到前端
-        const grounding = groundingFrom(r);
-        const chunks: any[][] = [];
-        for (let i = 0; i < fresh.length; i += 2) chunks.push(fresh.slice(i, i + 2));
-        await Promise.all(
-          chunks.map(async (chunk) => {
-            // 先保留編號範圍，同時進行的幾批職缺 id 才不會重複
-            const startIdx = idxCursor; idxCursor += chunk.length;
-            let mapped = await finalizeJobs(chunk, grounding, filters, startIdx);
-            // 有指定求職網：確認是其他網站的職缺就不顯示（企業官網、認不出平台的保留給「企業官網」）
-            if (chosenSites.length) {
-              mapped = mapped.filter((m: any) => {
-                const p = platformOf(String(m.url || ''))?.name;
-                if (p) return chosenSites.includes(p);
-                return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
-              });
-            }
-            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
-            if (mapped.length === 0 || clientGone.signal.aborted) return;
-            totalYielded += mapped.length;
-            batchNo += 1;
-            sendEvent({
-              type: 'batch',
-              source: 'gemini',
-              batchIndex: batchNo,
-              isFirstBatch: batchNo === 1,
-              jobs: mapped,
-              reply: `小燈泡從${g.label}帶回 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續找…`,
-            });
-          })
-        );
-      } catch (eg) {
-        console.warn(`[Search Stream ${g.label} Error]`, eg);
-      }
-    };
-    const runGemini = async () => { await Promise.all(groups.map(runGroup)); };
-
-    // ─── 搜搜（Dify）：邊搜邊回覆，每湊滿 4 筆完整職缺就先驗證網址、送到前端 ───
-    let difyUnavailable = false;
-    const runDify = async () => {
-      if (!explorerKey) { difyUnavailable = true; return; }
-      const pending: any[] = [];
-      let parsedCount = 0;
-      let chain: Promise<void> = Promise.resolve();
-      const take = (list: any[]) => {
-        for (const j of list.filter(isJobActive)) {
-          if (seenJobBefore(globalSeen, j)) continue;
-          pending.push(j);
-        }
-      };
-      const flush = (force: boolean) => {
-        while (pending.length >= 4 || (force && pending.length > 0)) {
-          const batch = pending.splice(0, 4);
-          const startIdx = idxCursor; idxCursor += batch.length;
-          chain = chain.then(async () => {
-            if (clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
-            let mapped = await finalizeJobs(batch, null, filters, startIdx);
-            if (chosenSites.length) {
-              mapped = mapped.filter((m: any) => {
-                const p = platformOf(String(m.url || ''))?.name;
-                if (p) return chosenSites.includes(p);
-                return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
-              });
-            }
-            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
-            if (mapped.length === 0 || clientGone.signal.aborted) return;
-            totalYielded += mapped.length;
-            batchNo += 1;
-            sendEvent({
-              type: 'batch',
-              source: 'dify',
-              batchIndex: batchNo,
-              isFirstBatch: batchNo === 1,
-              jobs: mapped,
-              reply: `搜搜帶回 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續找…`,
-            });
-          }).catch((e) => console.warn('[Dify batch]', e));
-        }
-      };
-      const out = await callDifyStreamingAgent({
-        apiKey: explorerKey,
-        query: `${rawQuery}（請盡量列出 20 筆以上不同的職缺，先列符合所有條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${difyRulesFor(chosenSites)}`,
-        inputs: {},
-        user: 'job_explorer_stream',
-        // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
-        timeoutMs: 120000,
-        signal: clientGone.signal,
-        onText: (acc) => {
-          const objs = extractCompletedJobObjects(acc);
-          if (objs.length > parsedCount) { take(objs.slice(parsedCount)); parsedCount = objs.length; flush(false); }
-        },
-      }).catch(() => null);
-      // 收尾：整段回覆再解析一次，補上串流時沒抓到的
-      if (out?.text) {
-        const all = extractJsonFromText(out.text);
-        if (Array.isArray(all?.jobs)) take(all.jobs);
-      }
-      flush(true);
-      await chain;
-    };
-
-    if (source === 'dify') await runDify();
-    else if (source === 'gemini') await runGemini();
-    else await Promise.all([runGemini(), runDify()]);
-
-    // 發送完成事件
-    sendEvent({
-      type: 'done',
-      source,
-      totalYielded,
-      difyUnavailable,
-      reply: totalYielded > 0 ? `搜尋完成，共找到 ${totalYielded} 筆符合條件的職缺。` : '這次沒有找到符合條件的職缺，可以放寬一些條件再試試。',
-    });
+    const query = String(req.body?.query || '').trim().slice(0, 600);
+    if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+    const sources = buildJobSearchLinks(query, req.body?.filters);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`data: ${JSON.stringify({ type: 'sources', sources, reply: `已整理 ${sources.length} 個求職網站搜尋入口。` })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', totalSources: sources.length })}\n\n`);
     res.end();
   } catch (err: any) {
-    sendEvent({
-      type: 'done',
-      totalYielded,
-    });
-    res.end();
+    console.error('[Job Explorer Search Links]', err?.message || err);
+    if (!res.headersSent) res.status(500).json({ success: false, error: '整理搜尋入口時發生錯誤，請稍後再試' });
+    else res.end();
   }
 });
 
-// 匯職缺 Stage 2：常規完整 JSON 檢索端點（保證真實直達網址與多平台來源）
-app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
-  const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
-  const filters = req.body?.filters || {};
-  const convId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : undefined;
-  const useGeminiFallback = Boolean(req.body?.useGeminiFallback);
-
-  if (!rawQuery) {
-    return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
-  }
-
+app.post('/api/job-explorer/search', (req: Request, res: Response) => {
   try {
-    const explorerKey = mascotAgentKey('explorer');
-    let difyReply = '';
-    let difyObsText = '';
-    let nextConvId = convId;
-
-    const filterContext = [
-      filters.city && filters.city !== '全部' ? `地區：${filters.city}` : '',
-      filters.category && filters.category !== '全部' ? `類別：${filters.category}` : '',
-      filters.minSalary ? `最低月薪：${filters.minSalary}元以上` : '',
-    ]
-      .filter(Boolean)
-      .join('、');
-
-    const ai = getGeminiClient();
-
-    // 在背景同步啟動真實求職網多平台即時檢索（不限定 104，包含 Yes123、1111、Cake、Yourator、518、LinkedIn、官網等）
-    let preFetchedParsed: any = null;
-    let groundingChunksMap: Array<{ title: string; uri: string }> = [];
-    let groundingUrls: string[] = [];
-    const groundingInfos: GroundingInfo[] = [];
-
-    const bgSearchPrompt = `請使用 Google Search 即時檢索台灣主流求職網站（包含 104人力銀行、1111人力銀行、Cake、Yourator、Yes123、518熊班、LinkedIn 或各大企業官方招募官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
-搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
-
-【最高嚴格規定（違反即視為無效）】：
-1. **來源平台多元化（不限 104）**：請廣泛檢索台灣各大求職管道，包含 Yes123、1111人力銀行、Cake (CakeResume)、Yourator、518熊班、LinkedIn 或企業官方徵才官網，不可只局限單一網站！
-2. **絕對禁止已關閉／下架／過期職缺**：絕對不可使用已關閉、已結束、已下架、停止徵才、已額滿或頁面不存在的過期職缺！每一筆都必須是當下有效、正在招募中的最新職缺。
-3. **真實企業與有效直接網址**：只能列出真實存在的企業與當下存在的職缺，絕不可虛構假職缺。"url" 必須是 Google Search 檢索到的該職缺直接網址或 Grounding 網址，絕對不可自行填寫臆測的假 ID 或 placeholder。
-4. **數量要求**：請盡可能列出 6 ~ 25 個不同的真實有效職缺（最少 3 個以上，最多可達 100 個）。
-5. 只輸出合法的 JSON 物件（不要 markdown 符號），格式如下：
-{
-  "reply": "用一句親切熱情的話（35字內）說明為用戶搜尋到的成果與亮點",
-  "carePoints": ["workEnvironment", "benefits", "industry", "salary"],
-  "jobs": [
-    {
-      "id": "唯一ID",
-      "title": "真實職缺名稱",
-      "company": "真實公司名稱",
-      "location": "縣市與行政區（如：台南市東區）",
-      "city": "縣市名稱（如：台南市）",
-      "distanceKm": 2.5,
-      "experience": "經歷要求（如：經歷不拘、1年以上）",
-      "experienceYears": 1,
-      "education": "學歷要求（如：專科、大學、高中職、學歷不拘）",
-      "educationLevel": 3,
-      "salaryText": "薪資待遇（如：月薪32,000~42,000元 或 待遇面議）",
-      "salaryMin": 32000,
-      "salaryMax": 42000,
-      "industry": "行業類別",
-      "category": "職務分類",
-      "workEnvironment": "工作環境與排班描述",
-      "benefits": "福利與待遇描述",
-      "description": "工作內容重點摘要",
-      "sourcePlatform": "來源平台（如：Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班 或 企業官網）",
-      "url": "真實外部求職網職缺直接網址",
-      "aiScore": 95,
-      "postedAt": "2026-10-19",
-      "postedAtText": "今日刊登"
-    }
-  ]
-}`;
-
-    const bgGoogleSearchPromise = ai
-      ? ai.models
-          .generateContent({
-            model: 'gemini-3.8-flash',
-            contents: bgSearchPrompt,
-            config: {
-              tools: [{ googleSearch: {} }],
-              temperature: 0.2,
-            },
-          })
-          .then((response) => {
-            groundingInfos.push(groundingFrom(response));
-            const chunks = (response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-            if (Array.isArray(chunks)) {
-              groundingChunksMap = chunks
-                .map((c: any) => ({
-                  title: String(c?.web?.title || ''),
-                  uri: String(c?.web?.uri || ''),
-                }))
-                .filter((item) => item.uri.startsWith('http'));
-              groundingUrls = groundingChunksMap.map((item) => item.uri);
-            }
-            const rawText = String(response.text || '').trim();
-            const parsed = extractJsonFromText(rawText);
-            if (parsed && Array.isArray(parsed.jobs)) {
-              preFetchedParsed = parsed;
-            }
-          })
-          .catch((err) => {
-            console.warn('[Job Explorer Google Search Error]', err);
-          })
-      : Promise.resolve();
-
-    // 先並行交由找工作 Dify Agent「搜搜」處理（設定 18 秒保護超時，若搜搜報錯或逾時不中斷，由即時全網檢索平滑接棒）
-    let difyPromise: Promise<any> = Promise.resolve(null);
-    if (!useGeminiFallback && explorerKey) {
-      difyPromise = callDifyStreamingAgent({
-        apiKey: explorerKey,
-        query: `${rawQuery}（請精簡列出 3 ~ 6 筆真實職缺重點，每筆摘要控制於 45 字內，避免超出長度限制）`,
-        inputs: {},
-        user: 'job_explorer_user',
-        conversationId: convId,
-        timeoutMs: 100000,
-      }).catch((e) => {
-        console.warn('[Job Explorer Dify Error]', e?.message || e);
-        return null;
-      });
-    }
-
-    const [difyRes] = await Promise.all([
-      difyPromise,
-      bgGoogleSearchPromise,
-    ]);
-
-    if (difyRes && difyRes.text && difyRes.text.trim()) {
-      difyReply = difyRes.text.trim();
-      if (Array.isArray(difyRes.observations) && difyRes.observations.length > 0) {
-        difyObsText = difyRes.observations.join('\n').slice(0, 3000);
-      }
-      nextConvId = difyRes.conversationId || convId;
-    }
-
-    let difyParsedJobs: any[] = [];
-    if (difyReply) {
-      // 1. 若「搜搜」已直接回傳純 JSON 格式，立即就地解析
-      const directJson = extractJsonFromText(difyReply);
-      if (Array.isArray(directJson?.jobs) && directJson.jobs.length > 0) {
-        difyParsedJobs = directJson.jobs;
-      } else if (ai) {
-        // 2. 若為自然語言文字，由 Gemini 結構化提取真實職缺
-        try {
-          const extractPrompt = `請從以下「搜搜」Agent 回傳的求職搜尋結果中，提取出所有提到的真實有效職缺並轉為 JSON 陣列（嚴格剔除任何標示為已關閉、已結束、已下架或不存在的職缺；不要虛構，不要輸出 markdown）：
-【搜搜回覆】：
-${difyReply}
-${difyObsText ? `\n【搜尋原始連結資料】：\n${difyObsText}` : ''}
-
-輸出格式：
-{
-  "jobs": [
-    {
-      "id": "dify-job-1",
-      "title": "職缺名稱",
-      "company": "公司名稱",
-      "location": "縣市與行政區",
-      "city": "縣市名稱",
-      "distanceKm": 2.0,
-      "experience": "經歷要求",
-      "experienceYears": 0,
-      "education": "學歷要求",
-      "educationLevel": 2,
-      "salaryText": "薪資待遇文字",
-      "salaryMin": 30000,
-      "salaryMax": 38000,
-      "industry": "行業類別",
-      "category": "職務分類",
-      "workEnvironment": "工作環境描述",
-      "benefits": "待遇福利描述",
-      "description": "工作重點摘要",
-      "sourcePlatform": "來源平台",
-      "url": "職缺直接連結（若無則留空字串）",
-      "aiScore": 98,
-      "postedAt": "2026-10-19",
-      "postedAtText": "今日刊登"
-    }
-  ]
-}`;
-          const fastRes = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: extractPrompt,
-            config: { responseMimeType: 'application/json', temperature: 0.1 },
-          });
-          const fastJson = extractJsonFromText(String(fastRes.text || '{}'));
-          if (Array.isArray(fastJson?.jobs)) {
-            difyParsedJobs = fastJson.jobs;
-          }
-        } catch (extractErr) {
-          console.warn('[Dify Job Extraction Error]', extractErr);
-        }
-      }
-    }
-
-    // 過濾任何包含「已關閉、已結束、已下架、停止徵才、職缺不存在、已過期」字樣的無效職缺
-    const closedPattern = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
-    const isValidActiveJob = (j: any): boolean => {
-      if (!j || !j.title || !j.company) return false;
-      const combinedText = `${j.title} ${j.company} ${j.description || ''} ${j.salaryText || ''} ${j.postedAtText || ''}`;
-      return !closedPattern.test(combinedText);
-    };
-
-    const combinedRawJobs = [
-      ...difyParsedJobs.filter(isValidActiveJob),
-      ...(Array.isArray(preFetchedParsed?.jobs) ? preFetchedParsed.jobs.filter(isValidActiveJob) : []),
-    ];
-
-    // 若真實搜尋合併後仍不足 3 筆，立即透過 Google Search 進行第二波擴大即時檢索（涵蓋 Yes123、1111、Cake、Yourator、104 等各大求職站）
-    if (combinedRawJobs.length < 3 && ai) {
-      try {
-        const expandRes = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: `請使用 Google Search 即時檢索 Yes123、1111人力銀行、Cake、Yourator、104人力銀行、518熊班 上與「${rawQuery}」相關且「當下正在開放招募中」的最新真實職缺（請至少列出 6 ~ 15 筆，來源平台多元化，絕不限單一網站，且絕對不可包含已關閉、已結束、已下架或不存在的職缺）。只輸出 JSON：{"jobs":[{"title":"...","company":"...","location":"...","city":"...","experience":"...","experienceYears":0,"education":"...","educationLevel":2,"salaryText":"...","salaryMin":32000,"salaryMax":50000,"industry":"...","category":"...","workEnvironment":"...","benefits":"...","description":"...","sourcePlatform":"Yes123 或 1111 或 Cake 或 104 或 518","url":"...","aiScore":92,"postedAtText":"今日刊登"}]}`,
-          config: {
-            tools: [{ googleSearch: {} }],
-            temperature: 0.2,
-          },
-        });
-        groundingInfos.push(groundingFrom(expandRes));
-        const expandChunks = (expandRes as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        if (Array.isArray(expandChunks)) {
-          const moreChunks = expandChunks
-            .map((c: any) => ({
-              title: String(c?.web?.title || ''),
-              uri: String(c?.web?.uri || ''),
-            }))
-            .filter((item) => item.uri.startsWith('http'));
-          groundingChunksMap.push(...moreChunks);
-          groundingUrls.push(...moreChunks.map((m) => m.uri));
-        }
-        const expandJson = extractJsonFromText(String(expandRes.text || ''));
-        if (Array.isArray(expandJson?.jobs)) {
-          combinedRawJobs.push(...expandJson.jobs.filter(isValidActiveJob));
-        }
-      } catch (expandErr) {
-        console.warn('[Job Explorer Expand Search Error]', expandErr);
-      }
-    }
-
-    const seenKeys = new Set<string>();
-    const dedupedRaw = combinedRawJobs
-      .filter((j: any) => {
-        if (!isValidActiveJob(j)) return false;
-        const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-        if (seenKeys.has(k)) return false;
-        seenKeys.add(k);
-        return true;
-      })
-      .slice(0, 40); // 每筆都要驗證網址，最多 40 筆
-    // 搜搜（Dify）的職缺沒有搜尋來源可對照，只驗證它自己給的網址；Google 搜尋的職缺可對照引用來源
-    const jobs = await finalizeJobs(dedupedRaw, groundingInfos, filters, 0);
-
-    const replyMsg =
-      difyReply ||
-      preFetchedParsed?.reply ||
-      `已為您從各大求職平台（Yes123、104、1111、Cake、Yourator 等）即時檢索出 ${jobs.length} 筆當下開放招募中的真實職缺！`;
-
-    return res.json({
+    const query = String(req.body?.query || '').trim().slice(0, 600);
+    if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+    const sources = buildJobSearchLinks(query, req.body?.filters);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
       success: true,
-      reply: replyMsg,
-      conversationId: nextConvId,
-      carePoints: Array.isArray(preFetchedParsed?.carePoints) && preFetchedParsed.carePoints.length > 0
-        ? preFetchedParsed.carePoints
-        : filters.carePoints || [],
-      jobs,
-    });
-  } catch (err: any) {
-    console.error('[Job Explorer Search]', err?.message || err);
-    return res.status(500).json({
-      success: false,
-      error: '搜尋忙碌中，請稍後再試',
+      mode: 'source-links-only',
+      reply: `已整理 ${sources.length} 個求職網站搜尋入口。點選後請至來源網站查看職缺內容與最新狀態。`,
+      sources,
       jobs: [],
     });
+  } catch (err: any) {
+    console.error('[Job Explorer Search Links]', err?.message || err);
+    res.status(500).json({ success: false, error: '整理搜尋入口時發生錯誤，請稍後再試', sources: [], jobs: [] });
   }
 });
-
 // 後台轉接檢查：三位助理各用哪個環境變數、對應 Dify 哪個應用、是否共用同一把金鑰（不回傳金鑰本身）
 app.get('/api/admin/mascot-agents', async (_req: Request, res: Response) => {
   try {
