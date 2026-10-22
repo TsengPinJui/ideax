@@ -1352,6 +1352,7 @@ export interface Transaction {
   fromUserId?: string;
   toUserName?: string;
   toUserId?: string;
+  userId?: string;
   solverId?: string;
   rating?: number; // 1~5 星評分
   reviewComment?: string; // 交易評價

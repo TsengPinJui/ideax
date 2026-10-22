@@ -1,7 +1,7 @@
 /**
  * 統一圖片上傳與檔案大小限制處理工具
- * - 提案圖片與封面單張上限：6 MB (支援 JPG / PNG / WebP / GIF)
- * - 內建 Canvas 智慧輕量化壓縮（最寬 1920px），確保本地與雲端儲存流暢不破表
+ * - 提案圖片與封面單張上限：6 MB (支援 JPG / PNG / WebP / GIF / BMP / JFIF / AVIF)
+ * - 內建 Canvas 智慧輕量化壓縮（最適寬高 1600px），確保本地與雲端儲存流暢且不超出 Firestore 1MB 上限
  */
 
 export const MAX_IMAGE_FILE_SIZE_MB = 6;
@@ -9,7 +9,9 @@ export const MAX_IMAGE_FILE_SIZE_BYTES = MAX_IMAGE_FILE_SIZE_MB * 1024 * 1024;
 
 export const MAX_AVATAR_FILE_SIZE_MB = 6;
 export const MAX_AVATAR_FILE_SIZE_BYTES = MAX_AVATAR_FILE_SIZE_MB * 1024 * 1024;
-export const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
+
+export const ACCEPTED_IMAGE_TYPES =
+  'image/jpeg,image/png,image/webp,image/gif,image/bmp,image/*,.jpg,.jpeg,.png,.webp,.gif,.jfif,.bmp,.avif';
 
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -21,10 +23,13 @@ export async function processUploadedImageFile(
   file: File,
   maxSizeMB: number = MAX_IMAGE_FILE_SIZE_MB
 ): Promise<{ ok: boolean; dataUrl?: string; error?: string; sizeText?: string }> {
-  if (!file.type.startsWith('image/')) {
+  // 兼顧 MIME 與副檔名判斷，避免某些作業系統或瀏覽器 MIME 為空導致上傳受阻
+  const isImageMime = Boolean(file.type && file.type.startsWith('image/'));
+  const isImageExt = /\.(jpe?g|png|webp|gif|jfif|bmp|svg|avif)$/i.test(file.name);
+  if (!isImageMime && !isImageExt) {
     return {
       ok: false,
-      error: `檔案「${file.name}」不是有效的圖片格式（僅支援 JPG、PNG、WebP、GIF）`,
+      error: `檔案「${file.name}」不是有效的圖片格式（支援 JPG、PNG、WebP、GIF、BMP）`,
     };
   }
 
@@ -32,7 +37,7 @@ export async function processUploadedImageFile(
   if (file.size > maxBytes) {
     return {
       ok: false,
-      error: `圖片「${file.name}」檔案大小為 ${formatFileSize(file.size)}，超過單張上限 ${maxSizeMB}MB，請壓縮或選擇較小的圖片！`,
+      error: `圖片「${file.name}」檔案大小為 ${formatFileSize(file.size)}，超過單張上限 ${maxSizeMB}MB，請選擇 ${maxSizeMB}MB 以內的圖片！`,
     };
   }
 
@@ -51,8 +56,9 @@ export async function processUploadedImageFile(
         return;
       }
 
-      // 若為 GIF 或小於 350KB，直接回傳原圖 DataURL
-      if (file.type === 'image/gif' || file.size <= 350 * 1024) {
+      // 檢查是否為 GIF 動態圖且體積適中（小於 800KB 直接保留）
+      const isGif = file.type === 'image/gif' || /\.gif$/i.test(file.name);
+      if (isGif && file.size <= 800 * 1024) {
         resolve({
           ok: true,
           dataUrl: rawDataUrl,
@@ -61,11 +67,11 @@ export async function processUploadedImageFile(
         return;
       }
 
-      // 針對較大靜態圖片進行適度尺寸最佳化（最大寬高 1440px）
+      // 針對所有靜態大圖（最大可達 6MB）進行高效 Canvas 縮放與最佳化（最寬高 1600px）
       const img = new Image();
       img.onload = () => {
         try {
-          const maxDim = 1440;
+          const maxDim = 1600;
           let { width, height } = img;
           if (width > maxDim || height > maxDim) {
             if (width >= height) {
@@ -76,20 +82,28 @@ export async function processUploadedImageFile(
               height = maxDim;
             }
           }
+
           const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = Math.max(32, width);
+          canvas.height = Math.max(32, height);
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             resolve({ ok: true, dataUrl: rawDataUrl, sizeText: formatFileSize(file.size) });
             return;
           }
+
+          // 保持白底背景，避免 PNG 轉 JPEG 時產生黑底
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          const compressedDataUrl = canvas.toDataURL(outputType, 0.86);
+          ctx.restore();
+
+          // 輸出高品質 JPEG 格式（品質 0.86），體積約 120KB~260KB，畫質極細緻且符合 Firestore 1MB 文件上限
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
           resolve({
             ok: true,
-            dataUrl: compressedDataUrl.length < rawDataUrl.length ? compressedDataUrl : rawDataUrl,
+            dataUrl: compressedDataUrl,
             sizeText: formatFileSize(file.size),
           });
         } catch {

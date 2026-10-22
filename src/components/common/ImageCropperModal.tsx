@@ -10,6 +10,9 @@ import {
   Eye,
   Info,
   CheckCircle2,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react';
 
 export type CropAspectRatio = '1:1' | '16:9' | '4:3' | '3:2' | '9:16' | '2:1' | 'free';
@@ -475,6 +478,179 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     }
   };
 
+  // 電腦與滑鼠支援：平滑縮放計算（以指定中心點或裁切框中心為錨點）
+  const applyZoomMultiplier = useCallback(
+    (factor: number, pivotX?: number, pivotY?: number) => {
+      if (displaySize.width <= 0 || displaySize.height <= 0) return;
+      const targetRatio = getRatioNumber(isAvatar ? '1:1' : aspectRatio);
+      const minSize = 36;
+      const maxW = displaySize.width;
+      const maxH = displaySize.height;
+
+      // 當前比例在容器下的最大允許寬高
+      let baseMaxW = maxW;
+      let baseMaxH = maxH;
+      if (targetRatio !== null) {
+        if (maxW / maxH > targetRatio) {
+          baseMaxW = maxH * targetRatio;
+          baseMaxH = maxH;
+        } else {
+          baseMaxW = maxW;
+          baseMaxH = maxW / targetRatio;
+        }
+      }
+
+      let newW = cropBox.width * factor;
+      let newH = cropBox.height * factor;
+
+      if (targetRatio !== null) {
+        newW = Math.max(minSize, Math.min(baseMaxW, newW));
+        newH = newW / targetRatio;
+        if (newH > baseMaxH) {
+          newH = baseMaxH;
+          newW = newH * targetRatio;
+        }
+      } else {
+        newW = Math.max(minSize, Math.min(baseMaxW, newW));
+        newH = Math.max(minSize, Math.min(baseMaxH, newH));
+      }
+
+      const px = pivotX !== undefined ? pivotX : cropBox.x + cropBox.width / 2;
+      const py = pivotY !== undefined ? pivotY : cropBox.y + cropBox.height / 2;
+
+      const ratioX = cropBox.width > 0 ? (px - cropBox.x) / cropBox.width : 0.5;
+      const ratioY = cropBox.height > 0 ? (py - cropBox.y) / cropBox.height : 0.5;
+
+      let newX = px - ratioX * newW;
+      let newY = py - ratioY * newH;
+
+      newX = Math.max(0, Math.min(maxW - newW, newX));
+      newY = Math.max(0, Math.min(maxH - newH, newY));
+
+      setCropBox({
+        x: Math.round(newX),
+        y: Math.round(newY),
+        width: Math.round(newW),
+        height: Math.round(newH),
+      });
+    },
+    [cropBox, displaySize, isAvatar, aspectRatio, getRatioNumber]
+  );
+
+  // 當前縮放倍率計算（1.0x 全景 ~ 4.0x 局部特寫）
+  const currentZoomRatio = useMemo(() => {
+    if (displaySize.width <= 0 || cropBox.width <= 0) return 1.0;
+    const targetRatio = getRatioNumber(isAvatar ? '1:1' : aspectRatio);
+    let baseMaxW = displaySize.width;
+    let baseMaxH = displaySize.height;
+    if (targetRatio !== null) {
+      if (displaySize.width / displaySize.height > targetRatio) {
+        baseMaxW = displaySize.height * targetRatio;
+      } else {
+        baseMaxW = displaySize.width;
+      }
+    }
+    const z = baseMaxW / cropBox.width;
+    return Math.max(1.0, Math.min(4.0, Number(z.toFixed(2))));
+  }, [cropBox.width, displaySize, isAvatar, aspectRatio, getRatioNumber]);
+
+  // 電腦滾輪縮放（向上滾動放大細節，向下滾動視野拉寬）
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (displaySize.width <= 0 || displaySize.height <= 0 || !containerRef.current) return;
+
+    // deltaY < 0 為向上滾動（放大特寫，框縮小），deltaY > 0 為向下滾動（視野拉遠，框放大）
+    const factor = e.deltaY < 0 ? 0.92 : 1.08;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const mouseInContainerX = e.clientX - containerRect.left;
+    const mouseInContainerY = e.clientY - containerRect.top;
+
+    const pivotX = Math.max(0, Math.min(displaySize.width, mouseInContainerX - displaySize.left));
+    const pivotY = Math.max(0, Math.min(displaySize.height, mouseInContainerY - displaySize.top));
+
+    applyZoomMultiplier(factor, pivotX, pivotY);
+  };
+
+  // 滑桿控制縮放倍率
+  const handleSliderZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const targetZoom = parseFloat(e.target.value);
+    if (isNaN(targetZoom) || targetZoom <= 0) return;
+    const targetRatio = getRatioNumber(isAvatar ? '1:1' : aspectRatio);
+
+    let baseMaxW = displaySize.width;
+    let baseMaxH = displaySize.height;
+    if (targetRatio !== null) {
+      if (displaySize.width / displaySize.height > targetRatio) {
+        baseMaxW = displaySize.height * targetRatio;
+        baseMaxH = displaySize.height;
+      } else {
+        baseMaxW = displaySize.width;
+        baseMaxH = displaySize.width / targetRatio;
+      }
+    }
+
+    const targetW = baseMaxW / targetZoom;
+    const targetH = targetRatio !== null ? targetW / targetRatio : baseMaxH / targetZoom;
+
+    const centerX = cropBox.x + cropBox.width / 2;
+    const centerY = cropBox.y + cropBox.height / 2;
+
+    let newX = centerX - targetW / 2;
+    let newY = centerY - targetH / 2;
+
+    newX = Math.max(0, Math.min(displaySize.width - targetW, newX));
+    newY = Math.max(0, Math.min(displaySize.height - targetH, newY));
+
+    setCropBox({
+      x: Math.round(newX),
+      y: Math.round(newY),
+      width: Math.round(targetW),
+      height: Math.round(targetH),
+    });
+  };
+
+  // 重設縮放回 1.0x 全景
+  const handleResetZoom = useCallback(() => {
+    if (displaySize.width > 0 && displaySize.height > 0) {
+      initCropBox(displaySize.width, displaySize.height, isAvatar ? '1:1' : aspectRatio);
+    }
+  }, [displaySize, isAvatar, aspectRatio, initCropBox]);
+
+  // 電腦鍵盤快捷鍵：+ / - 縮放、0 重設、方向鍵微調移動
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea') return;
+
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        applyZoomMultiplier(0.92);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        applyZoomMultiplier(1.08);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        handleResetZoom();
+      } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 18 : 6;
+        setCropBox((prev) => {
+          let { x, y } = prev;
+          if (e.key === 'ArrowLeft') x = Math.max(0, x - step);
+          if (e.key === 'ArrowRight') x = Math.min(displaySize.width - prev.width, x + step);
+          if (e.key === 'ArrowUp') y = Math.max(0, y - step);
+          if (e.key === 'ArrowDown') y = Math.min(displaySize.height - prev.height, y + step);
+          return { ...prev, x, y };
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, applyZoomMultiplier, handleResetZoom, displaySize]);
+
   // 匯出高解析度裁切圖片
   const handleConfirmCrop = () => {
     if (!imageRef.current) return;
@@ -518,13 +694,20 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     const octx = outCanvas.getContext('2d');
     if (!octx) return;
 
+    // 白底填充避免透明 PNG 轉 JPEG 時出現黑底
+    octx.fillStyle = '#ffffff';
+    octx.fillRect(0, 0, finalW, finalH);
+
     octx.imageSmoothingEnabled = true;
     octx.imageSmoothingQuality = 'high';
     octx.drawImage(fullCanvas, realCropX, realCropY, realCropW, realCropH, 0, 0, finalW, finalH);
 
     const isPng = imageSrc.startsWith('data:image/png');
-    const mime = isPng ? 'image/png' : 'image/jpeg';
-    const croppedDataUrl = outCanvas.toDataURL(mime, isPng ? undefined : outputQuality);
+    // 頭像若小於等於 512px 且原為 PNG 可保留 PNG，其他提案與封面一律轉高品質 JPEG，防止 base64 膨脹超過 Firestore 1MB / localStorage 配額
+    const usePng = isAvatar && isPng && finalW <= 512 && finalH <= 512;
+    const mime = usePng ? 'image/png' : 'image/jpeg';
+    const quality = usePng ? undefined : Math.min(outputQuality, 0.88);
+    const croppedDataUrl = outCanvas.toDataURL(mime, quality);
 
     onConfirm(croppedDataUrl);
   };
@@ -661,6 +844,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
+          onWheel={handleWheel}
           className="relative flex-1 min-h-[300px] sm:min-h-[360px] max-h-[52vh] w-full bg-stone-950 flex items-center justify-center overflow-hidden select-none touch-none"
         >
           {/* 隱藏的底圖用以獲取 naturalWidth/Height */}
@@ -753,46 +937,54 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                   <div />
                 </div>
 
-                {/* 縮放握把 */}
-                {(!isAvatar || !showCirclePreview) && (
+                {/* 4 個角隅縮放握把（支援所有模式，電腦滑鼠與手機均可輕鬆拖曳調整縮放） */}
+                <div
+                  onPointerDown={(e) => handlePointerDown(e, 'nw')}
+                  title="拖曳縮放（左上角）"
+                  className="absolute -top-2 -left-2 w-4.5 h-4.5 bg-amber-400 hover:bg-amber-300 border-2 border-stone-950 rounded-md cursor-nwse-resize shadow-lg transition-transform hover:scale-125 z-20 flex items-center justify-center"
+                >
+                  <div className="w-1.5 h-1.5 bg-stone-950 rounded-xs pointer-events-none" />
+                </div>
+                <div
+                  onPointerDown={(e) => handlePointerDown(e, 'ne')}
+                  title="拖曳縮放（右上角）"
+                  className="absolute -top-2 -right-2 w-4.5 h-4.5 bg-amber-400 hover:bg-amber-300 border-2 border-stone-950 rounded-md cursor-nesw-resize shadow-lg transition-transform hover:scale-125 z-20 flex items-center justify-center"
+                >
+                  <div className="w-1.5 h-1.5 bg-stone-950 rounded-xs pointer-events-none" />
+                </div>
+                <div
+                  onPointerDown={(e) => handlePointerDown(e, 'sw')}
+                  title="拖曳縮放（左下角）"
+                  className="absolute -bottom-2 -left-2 w-4.5 h-4.5 bg-amber-400 hover:bg-amber-300 border-2 border-stone-950 rounded-md cursor-nesw-resize shadow-lg transition-transform hover:scale-125 z-20 flex items-center justify-center"
+                >
+                  <div className="w-1.5 h-1.5 bg-stone-950 rounded-xs pointer-events-none" />
+                </div>
+                <div
+                  onPointerDown={(e) => handlePointerDown(e, 'se')}
+                  title="拖曳縮放（右下角）"
+                  className="absolute -bottom-2 -right-2 w-4.5 h-4.5 bg-amber-400 hover:bg-amber-300 border-2 border-stone-950 rounded-md cursor-nwse-resize shadow-lg transition-transform hover:scale-125 z-20 flex items-center justify-center"
+                >
+                  <div className="w-1.5 h-1.5 bg-stone-950 rounded-xs pointer-events-none" />
+                </div>
+
+                {aspectRatio === 'free' && !isAvatar && (
                   <>
                     <div
-                      onPointerDown={(e) => handlePointerDown(e, 'nw')}
-                      className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-amber-400 border border-stone-900 rounded-sm cursor-nwse-resize shadow-md"
+                      onPointerDown={(e) => handlePointerDown(e, 'n')}
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-8 h-3 bg-amber-400 hover:bg-amber-300 border border-stone-950 rounded-full cursor-ns-resize z-20 shadow-md"
                     />
                     <div
-                      onPointerDown={(e) => handlePointerDown(e, 'ne')}
-                      className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 border border-stone-900 rounded-sm cursor-nesw-resize shadow-md"
+                      onPointerDown={(e) => handlePointerDown(e, 's')}
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-3 bg-amber-400 hover:bg-amber-300 border border-stone-950 rounded-full cursor-ns-resize z-20 shadow-md"
                     />
                     <div
-                      onPointerDown={(e) => handlePointerDown(e, 'sw')}
-                      className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-amber-400 border border-stone-900 rounded-sm cursor-nesw-resize shadow-md"
+                      onPointerDown={(e) => handlePointerDown(e, 'w')}
+                      className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-8 w-3 bg-amber-400 hover:bg-amber-300 border border-stone-950 rounded-full cursor-ew-resize z-20 shadow-md"
                     />
                     <div
-                      onPointerDown={(e) => handlePointerDown(e, 'se')}
-                      className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 border border-stone-900 rounded-sm cursor-nwse-resize shadow-md"
+                      onPointerDown={(e) => handlePointerDown(e, 'e')}
+                      className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-8 w-3 bg-amber-400 hover:bg-amber-300 border border-stone-950 rounded-full cursor-ew-resize z-20 shadow-md"
                     />
-
-                    {aspectRatio === 'free' && !isAvatar && (
-                      <>
-                        <div
-                          onPointerDown={(e) => handlePointerDown(e, 'n')}
-                          className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-amber-400/80 rounded-full cursor-ns-resize"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown(e, 's')}
-                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-amber-400/80 rounded-full cursor-ns-resize"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown(e, 'w')}
-                          className="absolute -left-1 top-1/2 -translate-y-1/2 h-6 w-2 bg-amber-400/80 rounded-full cursor-ew-resize"
-                        />
-                        <div
-                          onPointerDown={(e) => handlePointerDown(e, 'e')}
-                          className="absolute -right-1 top-1/2 -translate-y-1/2 h-6 w-2 bg-amber-400/80 rounded-full cursor-ew-resize"
-                        />
-                      </>
-                    )}
                   </>
                 )}
               </div>
@@ -803,7 +995,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         {/* 底部控制工具列 */}
         <div className="px-4 sm:px-6 py-2.5 bg-stone-900 border-t border-stone-800 flex items-center justify-between gap-3 flex-wrap shrink-0">
           {/* 工具按鈕：旋轉、翻轉、重設 */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={handleRotate}
@@ -838,6 +1030,51 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>重設</span>
+            </button>
+          </div>
+
+          {/* 電腦桌面縮放控制列（滾輪 / 滑桿 / 快速按鈕） */}
+          <div className="flex items-center gap-2 bg-stone-950/80 px-2.5 py-1 rounded-xl border border-stone-800/80">
+            <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1">
+              縮放：
+            </span>
+            <button
+              type="button"
+              onClick={() => applyZoomMultiplier(1.1)}
+              title="縮小視野（亦可滾動滑鼠滾輪或按鍵盤 - 鍵）"
+              className="p-1 rounded-md text-stone-300 hover:text-white hover:bg-stone-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <input
+              type="range"
+              min="1.0"
+              max="4.0"
+              step="0.05"
+              value={currentZoomRatio}
+              onChange={handleSliderZoomChange}
+              className="w-20 sm:w-24 accent-amber-400 cursor-pointer h-1.5 bg-stone-700 rounded-lg"
+              title="滑動調整縮放（電腦支援滾動滑鼠滾輪縮放）"
+            />
+            <button
+              type="button"
+              onClick={() => applyZoomMultiplier(0.9)}
+              title="放大特寫（亦可滾動滑鼠滾輪或按鍵盤 + 鍵）"
+              className="p-1 rounded-md text-stone-300 hover:text-white hover:bg-stone-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[11px] font-mono text-amber-300 min-w-[2.2rem] text-right font-bold">
+              {currentZoomRatio.toFixed(1)}x
+            </span>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              title="重設縮放為 1.0x 全景（或按鍵盤 0 鍵）"
+              className="px-2 py-0.5 rounded text-[10px] font-bold text-stone-300 hover:text-white bg-stone-800 hover:bg-stone-700 transition-colors ml-0.5 cursor-pointer flex items-center gap-1"
+            >
+              <Maximize2 className="w-3 h-3" />
+              <span>全景</span>
             </button>
           </div>
 

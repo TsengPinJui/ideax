@@ -1726,39 +1726,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('keywords');
 
-  // 收藏問題狀態清單 (Bookmarked Questions)
+  // 收藏問題狀態清單 (Bookmarked Questions) — 新用戶預設為空清單，嚴禁預先塞入任何模擬題目
   const [bookmarkedQuestionIds, setBookmarkedQuestionIds] = useState<string[]>(() => {
-    const isDemo = getInitialIsDemoMode();
-    if (!isDemo) {
-      try {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}bookmarks`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed.filter((id: string) => !isMockQuestionId(id));
-          }
-        }
-      } catch {
-        // ignore
-      }
-      return [];
-    }
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}bookmarks`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const merged = [...parsed];
-          ['q-1', 'q-3'].forEach((id) => {
-            if (!merged.includes(id)) merged.push(id);
-          });
-          return merged;
+          return parsed.filter((id: string) => !isMockQuestionId(id) && id !== 'q-1' && id !== 'q-3');
         }
       }
     } catch {
       // ignore
     }
-    return ['q-1', 'q-3'];
+    return [];
   });
 
   // 痛點附議狀態 (+1)
@@ -2315,6 +2296,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableUsers, isRealPointsEconomy]);
+
+  // 監聽跨組件與管理員即時點數轉入事件，若受款人為當前登入者，立即同步點數餘額
+  useEffect(() => {
+    const handlePointsUpdated = (e: any) => {
+      const detail = e.detail;
+      if (!detail?.userId) return;
+      if (currentUser?.id === detail.userId && typeof detail.newBalance === 'number') {
+        setCurrentUser((prev) => ({ ...prev, balance: detail.newBalance }));
+      }
+    };
+    window.addEventListener('ideax_points_updated', handlePointsUpdated);
+    return () => window.removeEventListener('ideax_points_updated', handlePointsUpdated);
+  }, [currentUser?.id]);
+
   const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗', onFail?: () => void, onSuccess?: () => void) => {
     if (!isRealPointsEconomy) return;
     const myId = currentUser.id;
@@ -3447,59 +3442,130 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [questions, selectedQuestion?.id]);
 
-  // 登入帳號切換時，自 Firestore 載入該用戶之個人互動清單（收藏、附議、同問、按讚）
+  // 登入帳號切換時，自 Firestore 或該用戶專屬 local storage 載入該用戶之個人互動清單（收藏、附議、同問、按讚）
   useEffect(() => {
-    if (!currentUser?.id || currentUser.id === 'user-guest') return;
+    if (!currentUser?.id || currentUser.id === 'user-guest') {
+      // 訪客或未登入：清空個人互動狀態，避免顯示舊帳號遺留之收藏與點擊
+      setBookmarkedQuestionIds([]);
+      setSecondedQuestionIds([]);
+      setSameQuestionIds([]);
+      setLikedDiscussionAnswerIds([]);
+      setLikedQuestionIds([]);
+      return;
+    }
+
+    const uid = currentUser.id;
     let active = true;
-    loadUserInteractionsFromFirestore(currentUser.id).then((cloudInteractions) => {
-      if (!active || !cloudInteractions) return;
+
+    // 先以該用戶專屬快照重置或載入，絕不繼承前一個用戶的記憶體殘留
+    try {
+      const userBmRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}bookmarks_${uid}`);
+      if (userBmRaw) {
+        const parsed = JSON.parse(userBmRaw);
+        if (Array.isArray(parsed)) {
+          setBookmarkedQuestionIds(parsed.filter((id) => !isMockQuestionId(id) && id !== 'q-1' && id !== 'q-3'));
+        } else {
+          setBookmarkedQuestionIds([]);
+        }
+      } else {
+        setBookmarkedQuestionIds([]);
+      }
+
+      const userSecRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}seconded_${uid}`);
+      if (userSecRaw) {
+        const parsed = JSON.parse(userSecRaw);
+        if (Array.isArray(parsed)) {
+          setSecondedQuestionIds(parsed.filter((id) => !isMockQuestionId(id)));
+        } else {
+          setSecondedQuestionIds([]);
+        }
+      } else {
+        setSecondedQuestionIds([]);
+      }
+
+      const userSameRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}same_${uid}`);
+      if (userSameRaw) {
+        const parsed = JSON.parse(userSameRaw);
+        if (Array.isArray(parsed)) {
+          setSameQuestionIds(parsed.filter((id) => !isMockQuestionId(id)));
+        } else {
+          setSameQuestionIds([]);
+        }
+      } else {
+        setSameQuestionIds([]);
+      }
+
+      const userLikedQRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_questions_${uid}`);
+      if (userLikedQRaw) {
+        const parsed = JSON.parse(userLikedQRaw);
+        if (Array.isArray(parsed)) {
+          setLikedQuestionIds(parsed.filter((id) => !isMockQuestionId(id)));
+        } else {
+          setLikedQuestionIds([]);
+        }
+      } else {
+        setLikedQuestionIds([]);
+      }
+
+      const userLikedDRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_discussions_${uid}`);
+      if (userLikedDRaw) {
+        const parsed = JSON.parse(userLikedDRaw);
+        if (Array.isArray(parsed)) {
+          setLikedDiscussionAnswerIds(parsed);
+        } else {
+          setLikedDiscussionAnswerIds([]);
+        }
+      } else {
+        setLikedDiscussionAnswerIds([]);
+      }
+    } catch {
+      setBookmarkedQuestionIds([]);
+      setSecondedQuestionIds([]);
+      setSameQuestionIds([]);
+      setLikedDiscussionAnswerIds([]);
+      setLikedQuestionIds([]);
+    }
+
+    loadUserInteractionsFromFirestore(uid).then((cloudInteractions) => {
+      if (!active) return;
+      if (!cloudInteractions) return; // 新註冊用戶雲端為空，保持空陣列，絕不繼承舊用戶
       const cloudBmIds = (cloudInteractions as any).questionIds || cloudInteractions.bookmarkedQuestionIds;
       if (Array.isArray(cloudBmIds)) {
-        setBookmarkedQuestionIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudBmIds]));
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        const cleanBm = cloudBmIds.filter((id) => !isMockQuestionId(id) && id !== 'q-1' && id !== 'q-3');
+        setBookmarkedQuestionIds(cleanBm);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks_${uid}`, JSON.stringify(cleanBm));
+        } catch {}
       }
       if (Array.isArray(cloudInteractions.secondedQuestionIds)) {
-        setSecondedQuestionIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudInteractions.secondedQuestionIds!]));
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_questions`, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        const cleanSec = cloudInteractions.secondedQuestionIds.filter((id) => !isMockQuestionId(id));
+        setSecondedQuestionIds(cleanSec);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_${uid}`, JSON.stringify(cleanSec));
+        } catch {}
       }
       if (Array.isArray(cloudInteractions.sameQuestionIds)) {
-        setSameQuestionIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudInteractions.sameQuestionIds!]));
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}same_questions`, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        const cleanSame = cloudInteractions.sameQuestionIds.filter((id) => !isMockQuestionId(id));
+        setSameQuestionIds(cleanSame);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}same_${uid}`, JSON.stringify(cleanSame));
+        } catch {}
       }
       if (Array.isArray(cloudInteractions.likedDiscussionAnswerIds)) {
-        setLikedDiscussionAnswerIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudInteractions.likedDiscussionAnswerIds!]));
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions`, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        setLikedDiscussionAnswerIds(cloudInteractions.likedDiscussionAnswerIds);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions_${uid}`, JSON.stringify(cloudInteractions.likedDiscussionAnswerIds));
+        } catch {}
       }
       if (Array.isArray(cloudInteractions.likedQuestionIds)) {
-        setLikedQuestionIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudInteractions.likedQuestionIds!]));
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        const cleanLikedQ = cloudInteractions.likedQuestionIds.filter((id) => !isMockQuestionId(id));
+        setLikedQuestionIds(cleanLikedQ);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions_${uid}`, JSON.stringify(cleanLikedQ));
+        } catch {}
       }
     });
+
     return () => {
       active = false;
     };
@@ -4173,7 +4239,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    const target = availableUsers.find((u) => u.id === targetUserId);
+    const target = availableUsers.find(
+      (u) => u.id === targetUserId || u.username === targetUserId || u.email === targetUserId
+    );
     if (!target) {
       return { success: false, message: '查無此目標受款用戶！' };
     }
@@ -4188,16 +4256,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setAvailableUsers((prev) => {
-      const next = prev.map((u) => (u.id === targetUserId ? updatedUser : u));
+      const next = prev.map((u) => (u.id === target.id ? updatedUser : u));
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
       } catch (e) {}
       return next;
     });
 
-    if (currentUser.id === targetUserId) {
+    if (currentUser.id === target.id) {
       setCurrentUser(updatedUser);
     }
+
+    // 若本地 localStorage 存有該受款用戶之工作階段，同步寫入
+    try {
+      const savedUser = localStorage.getItem(`${STORAGE_KEY_PREFIX}user`);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.id === target.id) {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+        }
+      }
+      const savedCurrent = localStorage.getItem(`${STORAGE_KEY_PREFIX}current_user`);
+      if (savedCurrent) {
+        const parsed = JSON.parse(savedCurrent);
+        if (parsed?.id === target.id) {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+        }
+      }
+    } catch {}
 
     // 2. Update Admin Daily Quota
     const today = getAdminTodayDateStr();
@@ -4218,41 +4304,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Update admin currentUser balance to match remaining quota
     const newRemainingQuota = Math.max(0, DAILY_ADMIN_GRANT_QUOTA - newUsed);
-    setCurrentUser((prev) => ({
-      ...prev,
-      balance: newRemainingQuota,
-    }));
+    if (currentUser.id !== target.id) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        balance: newRemainingQuota,
+      }));
+    }
 
-    // 3. Create Immutable Ledger / Transaction Log
+    // 3. Create Immutable Ledger / Transaction Log with explicit user IDs
     const auditTx: Transaction = {
       id: `tx-admin-grant-${Date.now()}`,
       type: '管理員轉入點數',
       amount: cleanPoints,
       platformFee: 0,
       netAmount: cleanPoints,
+      fromUserId: currentUser.id,
       fromUserName: `官方管理團隊（${currentUser.name}）`,
+      toUserId: target.id,
       toUserName: target.name,
+      userId: target.id,
       status: '已完成',
       createdAt: new Date().toISOString(),
       note: `【管理員點數轉入】由管理員「${currentUser.name}」轉入 +${cleanPoints.toLocaleString()} 點至「${target.name}」。（事由：${cleanReason}｜當日配額已使用 ${newUsed.toLocaleString()} / 50,000 點）`,
     };
     setTransactions((prev) => [auditTx, ...prev]);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify([auditTx, ...transactions]));
+    } catch {}
 
     // 4. Send In-App Notification to Target User
     const notif: NotificationItem = {
       id: `notif-grant-${Date.now()}`,
+      userId: target.id,
       title: '🎁 官方管理團隊轉入點數通知',
       message: `官方管理團隊（${currentUser.name}）已向您的帳戶轉入 +${cleanPoints.toLocaleString()} 點！事由：${cleanReason}。您目前的可用點數餘額為 NT$ ${newTargetBalance.toLocaleString()}。`,
       type: 'system',
+      category: 'personal',
       createdAt: new Date().toISOString(),
       read: false,
     };
     setNotifications((prev) => [notif, ...prev]);
 
+    // 5. 即時同步至雲端 Firestore（確保目標用戶在任一瀏覽器登入均能即時收到點數與帳目）
+    syncUserToFirestore(updatedUser);
+    syncTransactionsToFirestore([auditTx]);
+    syncNotificationsToFirestore([notif]);
+
+    // 6. 呼叫伺服器點數帳本 (server pointsLedger)，確保 /api/points/op 雲端帳本與用戶餘額同步增加
+    pointsOp({
+      op: 'admin_adjust',
+      userId: target.id,
+      delta: cleanPoints,
+      note: `【管理員點數轉入】${cleanReason}`,
+    }).catch((err) => console.warn('Server admin_adjust notice:', err));
+
+    // 7. 發送廣播事件通知同視窗中的其他組件即時更新點數狀態
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('ideax_points_updated', {
+          detail: { userId: target.id, newBalance: newTargetBalance, delta: cleanPoints },
+        })
+      );
+    }
+
     const newRemaining = Math.max(0, DAILY_ADMIN_GRANT_QUOTA - newUsed);
     return {
       success: true,
-      message: `🎉 成功轉入 ${cleanPoints.toLocaleString()} 點至「${target.name}」！您今日剩餘可轉額度為 ${newRemaining.toLocaleString()} 點。`,
+      message: `🎉 成功轉入 ${cleanPoints.toLocaleString()} 點至「${target.name}」！受款用戶最新餘額為 NT$ ${newTargetBalance.toLocaleString()}。您今日剩餘可轉額度為 ${newRemaining.toLocaleString()} 點。`,
       remainingQuota: newRemaining,
     };
   };
@@ -8265,36 +8383,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
-    // 點擊 +1 附議時，同步收錄至「我的按讚收藏」
-    if (nextState) {
-      setBookmarkedQuestionIds((prev) => {
-        if (!prev.includes(questionId)) {
-          const nextBm = [...prev, questionId];
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
-          } catch {}
-          if (currentUser?.id && currentUser.id !== 'user-guest') {
-            syncBookmarksToFirestore(currentUser.id, nextBm);
-          }
-          return nextBm;
-        }
-        return prev;
-      });
-
-      if (targetQ) {
-        setNotifications((prev) => [
-          {
-            id: `notif-sec-${Date.now()}`,
-            title: '已附議並收錄至我的按讚收藏',
-            message: `您已對「${targetQ.title}」完成 +1 附議，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
-            type: 'system',
-            createdAt: '剛剛',
-            read: false,
-            linkQuestionId: questionId,
-          },
-          ...prev,
-        ]);
-      }
+    // 點擊 +1 附議僅記錄附議/愛心計數，不自動加入收藏清單
+    if (nextState && targetQ) {
+      setNotifications((prev) => [
+        {
+          id: `notif-sec-${Date.now()}`,
+          userId: currentUser?.id,
+          title: '已完成 +1 附議',
+          message: `您已對「${targetQ.title}」完成 +1 附議。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+          linkQuestionId: questionId,
+        },
+        ...prev,
+      ]);
     }
 
     return { isSeconded: nextState, count: newCount };
@@ -8327,22 +8430,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return updated;
     });
-
-    if (liked) {
-      setBookmarkedQuestionIds((prev) => {
-        if (!prev.includes(questionId)) {
-          const nextBm = [...prev, questionId];
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
-          } catch {}
-          if (currentUser?.id && currentUser.id !== 'user-guest') {
-            syncBookmarksToFirestore(currentUser.id, nextBm);
-          }
-          return nextBm;
-        }
-        return prev;
-      });
-    }
 
     setQuestions((prev) => {
       let syncedQ: Question | null = null;
@@ -8421,36 +8508,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
-    // 點擊同問時，同步收錄至「我的按讚收藏」
-    if (nextState) {
-      setBookmarkedQuestionIds((prev) => {
-        if (!prev.includes(questionId)) {
-          const nextBm = [...prev, questionId];
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
-          } catch {}
-          if (currentUser?.id && currentUser.id !== 'user-guest') {
-            syncBookmarksToFirestore(currentUser.id, nextBm);
-          }
-          return nextBm;
-        }
-        return prev;
-      });
-
-      if (targetQ) {
-        setNotifications((prev) => [
-          {
-            id: `notif-same-${Date.now()}`,
-            title: '已同問並收錄至我的按讚收藏',
-            message: `您已對「${targetQ.title}」發起同問，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
-            type: 'system',
-            createdAt: '剛剛',
-            read: false,
-            linkQuestionId: questionId,
-          },
-          ...prev,
-        ]);
-      }
+    // 點擊同問僅記錄同問狀態，不自動加入收藏清單
+    if (nextState && targetQ) {
+      setNotifications((prev) => [
+        {
+          id: `notif-same-${Date.now()}`,
+          userId: currentUser?.id,
+          title: '已完成同問',
+          message: `您已對「${targetQ.title}」發起同問。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+          linkQuestionId: questionId,
+        },
+        ...prev,
+      ]);
     }
 
     return { isSameQuestion: nextState, count: newCount };
@@ -8509,22 +8581,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
-    if (nextState && targetA?.questionId) {
-      setBookmarkedQuestionIds((prev) => {
-        if (!prev.includes(targetA.questionId)) {
-          const nextBm = [...prev, targetA.questionId];
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
-          } catch {}
-          if (currentUser?.id && currentUser.id !== 'user-guest') {
-            syncBookmarksToFirestore(currentUser.id, nextBm);
-          }
-          return nextBm;
-        }
-        return prev;
-      });
-    }
-
     return { isLiked: nextState, count: newCount };
   };
 
@@ -8582,36 +8638,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
-    // 點擊按讚時，同步收錄至「我的按讚收藏」
-    if (nextState) {
-      setBookmarkedQuestionIds((prev) => {
-        if (!prev.includes(questionId)) {
-          const nextBm = [...prev, questionId];
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
-          } catch {}
-          if (currentUser?.id && currentUser.id !== 'user-guest') {
-            syncBookmarksToFirestore(currentUser.id, nextBm);
-          }
-          return nextBm;
-        }
-        return prev;
-      });
-
-      if (targetQ) {
-        setNotifications((prev) => [
-          {
-            id: `notif-like-${Date.now()}`,
-            title: '已按讚並收錄至我的按讚收藏',
-            message: `您已為「${targetQ.title}」按讚，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
-            type: 'system',
-            createdAt: '剛剛',
-            read: false,
-            linkQuestionId: questionId,
-          },
-          ...prev,
-        ]);
-      }
+    // 點擊按讚僅記錄按讚狀態，不自動加入收藏清單
+    if (nextState && targetQ) {
+      setNotifications((prev) => [
+        {
+          id: `notif-like-${Date.now()}`,
+          userId: currentUser?.id,
+          title: '已成功按讚',
+          message: `您已為「${targetQ.title}」按讚。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+          linkQuestionId: questionId,
+        },
+        ...prev,
+      ]);
     }
 
     return { isLiked: nextState, count: newCount };
@@ -9444,14 +9485,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAvailableUsers((prev) => {
         const custom = prev.filter((u) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
         return [...MOCK_USERS, ...custom];
-      });
-      setBookmarkedQuestionIds((prev) => {
-        const mockBookmarks = ['q-1', 'q-3'];
-        const merged = [...prev];
-        mockBookmarks.forEach((id) => {
-          if (!merged.includes(id)) merged.push(id);
-        });
-        return merged;
       });
     } else {
       // 關閉測試環境 ➔ 若目前不是無金流模式，則切換至正式營運模式 (NORM)

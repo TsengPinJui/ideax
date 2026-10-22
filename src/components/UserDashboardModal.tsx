@@ -486,13 +486,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminCompletedSubscriptionDealsCount = adminSubscriptionDeals.length;
   const adminSubscriptionTotalRevenue = adminSubscriptionDeals.reduce((sum, t) => sum + (t.amount || 0), 0);
 
-  // 個人專屬交易與帳目過濾：一般用戶僅能檢視與自身 ID 或帳號名稱相關之交易流水，絕不外洩其他用戶或全站模擬帳目
+  // 個人專屬交易與帳目過濾：僅檢視與自身 ID 或帳號名稱相關之個人真實交易流水，徹底排除全站模擬與假資料帳目
   const userFilteredTransactions = useMemo(() => {
-    if (currentUser.role === 'admin') {
-      return transactions || [];
-    }
     return (transactions || []).filter((tx) => {
+      // 排除全站假資料 / 模擬資料 (如 tx-101, tx-102 等)
+      if (isMockTransactionId(tx.id)) return false;
+
+      // 嚴格比對是否屬於當前登入用戶
       const isRelated =
+        tx.userId === currentUser.id ||
         tx.fromUserId === currentUser.id ||
         tx.toUserId === currentUser.id ||
         tx.solverId === currentUser.id ||
@@ -500,7 +502,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         (Boolean(tx.toUserName) && tx.toUserName === currentUser.name);
       return isRelated;
     });
-  }, [transactions, currentUser.id, currentUser.name, currentUser.role]);
+  }, [transactions, currentUser.id, currentUser.name]);
 
   // 全站市場案件成交數（懸賞解決與客製委託採納結案）
   const adminCompletedCasesCount = useMemo(() => {

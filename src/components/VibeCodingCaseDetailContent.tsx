@@ -785,13 +785,6 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
           <button
             type="button"
-            onClick={() => openAboutModal('disclaimer')}
-            className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100/70 text-amber-900 text-[11px] font-bold transition-colors cursor-pointer"
-          >
-            責任劃分與免責聲明
-          </button>
-          <button
-            type="button"
             onClick={() => {
               if (onOpenReportModal) {
                 onOpenReportModal();
