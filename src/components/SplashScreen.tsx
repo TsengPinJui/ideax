@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, CheckCircle2 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { useApp } from '../context/AppContext';
+import { APP_VERSION } from '../data/versionData';
 
 interface SplashScreenProps {
   onDismiss?: () => void;
@@ -23,8 +24,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   onDismiss,
 }) => {
   const {
-    questions,
-    solvers,
+    onlineUsersCount,
     initialBootProgress,
     initialBootStatusText,
     isInitialBootComplete,
@@ -173,7 +173,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
 
         <div className="mt-1 text-[11px] font-medium text-stone-400">
-          已同步 {questions.length} 則難題 • {solvers.length} 位認證專家
+          v{APP_VERSION} • {Math.max(1, onlineUsersCount || 1)}
         </div>
       </div>
     </div>
