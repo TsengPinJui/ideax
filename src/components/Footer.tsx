@@ -34,7 +34,7 @@ const spaClick = (action: () => void) => (e: React.MouseEvent<HTMLAnchorElement>
 };
 
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
-  const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts, isRaceMode } = useApp();
+  const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts, isRaceMode, currentUser } = useApp();
   const [isPointsGuideOpen, setIsPointsGuideOpen] = useState(false);
 
   const handleTagClick = (tagWithHash: string) => {
@@ -255,7 +255,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           </div>
 
           <div className="font-mono text-[10px] text-stone-600 select-none">
-            v{APP_VERSION} ({APP_RELEASE_DATE}) · {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+            v{APP_VERSION} ({APP_RELEASE_DATE})
+            {/* 環境代碼只給管理員看 */}
+            {currentUser?.role === 'admin' && <> · {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}</>}
           </div>
         </div>
       </div>
