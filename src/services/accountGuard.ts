@@ -19,12 +19,33 @@ export const isLocalDevHost = (): boolean =>
 
 type AccountLike = { id: string; authUid?: string; email?: string; role?: string };
 
+/**
+ * 示範測試帳號：只有「已登入且 Email 已驗證的白名單管理員」可以不用密碼直接切換過去檢視與測試，
+ * 其他人一律要用該帳號自己的 Email 與密碼登入。
+ */
+export const DEMO_ACCOUNTS: Array<{ id: string; aliases: string[]; label: string }> = [
+  { id: 'c200000002', aliases: ['solver-2'], label: '認證專家' },
+  { id: 'c100000001', aliases: ['user-questioner'], label: '提問者' },
+  { id: 'b100000001', aliases: [], label: '企業' },
+];
+export const isDemoAccountId = (id?: string): boolean =>
+  !!id && DEMO_ACCOUNTS.some((d) => d.id === id || d.aliases.includes(id));
+
+/** 目前 Firebase 登入的是白名單管理員（Email 已驗證） */
+export const isVerifiedAdminFirebaseUser = (fbUser: FbUser | null | undefined): boolean =>
+  !!fbUser && fbUser.emailVerified === true && !!fbUser.email && isAllowlistedAdminEmail(fbUser.email);
+
+/** 管理員切到示範帳號前的管理員帳號編號（用來「回到管理員」） */
+export const ADMIN_RETURN_KEY = 'ideax_admin_demo_return_id';
+
 /** 目前登入的 Firebase 帳號，能不能以這個站內帳號的身分使用網站 */
 export function isAuthorizedForAccount(target: AccountLike | null | undefined, fbUser: FbUser | null | undefined): boolean {
   if (!target) return false;
   if (target.id === 'user-guest') return true;
   if (isLocalDevHost()) return true;
   if (!fbUser) return false;
+  // 管理員可以直接使用示範測試帳號（其他人不行）
+  if (isDemoAccountId(target.id) && isVerifiedAdminFirebaseUser(fbUser)) return true;
   if (target.authUid && target.authUid === fbUser.uid) return true;
   if (target.id === fbUser.uid) return true;
   const email = String(fbUser.email || '').toLowerCase();
