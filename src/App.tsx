@@ -16,6 +16,7 @@ import { BaiMiaoZoneWalker } from './components/baimiao/BaiMiaoZoneWalker';
 import { DuohuiPeek } from './components/agents/DuohuiPeek';
 import { AboutUsModal } from './components/AboutUsModal';
 import { AuthModal } from './components/AuthModal';
+import { DemoAccountBanner } from './components/DemoAccountBanner';
 import { CustomerServiceModal } from './components/CustomerServiceModal';
 import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverlay';
 import { isGuestUser } from './utils/userDisplay';
@@ -3354,6 +3355,9 @@ function MainContent() {
         onClose={closeAboutModal}
         initialSection={aboutModalInitialSection}
       />
+
+      {/* 管理員使用示範帳號時的提示與「回到管理員」 */}
+      <DemoAccountBanner />
 
       {/* 全域 登入 / 註冊彈窗（含創星季獨立站與舊站） */}
       <AuthModal

@@ -150,6 +150,7 @@ import { CORE_TEST_ACCOUNTS } from '../data/mockData';
 import { DuohuiPeek } from './agents/DuohuiPeek';
 import { AdminHomeShowcaseCard } from './AdminHomeShowcaseCard';
 import { AdminSettingsSearch } from './AdminSettingsSearch';
+import { DEMO_ACCOUNTS } from '../services/accountGuard';
 import { AiCrmView } from './AiCrmView';
 
 export type UserDashboardTab =
@@ -2170,6 +2171,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       ],
     },
     {
+      title: '示範帳號（直接切換）',
+      items: DEMO_ACCOUNTS.map((d) => {
+        const u = availableUsers.find((x) => x.id === d.id || d.aliases.includes(x.id));
+        return {
+          key: `demo-${d.id}`,
+          label: u?.name ? `${u.name}` : d.label,
+          icon: d.id.startsWith('b') ? Building2 : d.id.startsWith('c2') ? ShieldCheck : UserIcon,
+          trailing: d.label,
+          onSelect: () => {
+            setMobileMenuOpen(false);
+            if (switchAccount(d.id)) {
+              setActiveTab('overview');
+              if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+            }
+          },
+        } as UserNavItem;
+      }),
+    },
+    {
       title: '',
       items: [
         { key: 'switch', label: '切換帳號', icon: Users, onSelect: () => { openAuthModal('login'); setMobileMenuOpen(false); } },
@@ -2253,7 +2273,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       {it.dot && <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500" />}
                     </span>
                     <span className="flex-1 min-w-0 truncate">{it.label}</span>
-                    {it.trailing && ['proposals', 'questions', 'notifications', 'mail'].includes(it.key) && (
+                    {it.trailing && (['proposals', 'questions', 'notifications', 'mail'].includes(it.key) || it.key.startsWith('demo-')) && (
                       <span className="shrink-0 text-[12px] text-stone-400 tabular-nums">{it.trailing}</span>
                     )}
                   </button>

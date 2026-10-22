@@ -140,7 +140,7 @@ import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
-import { isAuthorizedForAccount, isLocalDevHost } from '../services/accountGuard';
+import { isAuthorizedForAccount, isLocalDevHost, isDemoAccountId, ADMIN_RETURN_KEY } from '../services/accountGuard';
 import { consumeSocialRedirectResult, type SocialRedirectOutcome } from '../services/firebaseAuth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
@@ -1328,6 +1328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!currentUser || currentUser.id === 'user-guest') return;
+    // 管理員暫時切過去的示範帳號不記進「本裝置已登錄帳號」
+    if (isDemoAccountId(currentUser.id)) return;
     // 只有真的登入（Firebase 帳號對得上）的身分才記進「本裝置已登錄帳號」
     if (!isAuthorizedForAccount(currentUser, firebaseAuthInstance.currentUser)) return;
     setDeviceAccounts((prev) => {
@@ -4719,6 +4721,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deactivationScheduledPurgeAt: undefined,
       deactivationReason: undefined,
     });
+
+    // 管理員切到示範帳號：記下原本的管理員帳號，之後可以一鍵回去
+    try {
+      if (isDemoAccountId(effectiveUser.id)) {
+        if (currentUser?.role === 'admin') localStorage.setItem(ADMIN_RETURN_KEY, currentUser.id);
+      } else {
+        localStorage.removeItem(ADMIN_RETURN_KEY);
+      }
+    } catch {}
 
     setCurrentUser(effectiveUser);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
