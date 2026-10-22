@@ -6,7 +6,7 @@ import { AI_PROVIDERS, EFFORT_OPTIONS, MODEL_OF, anthropicGenerate, externalGene
 import { GoogleGenAI, Type } from '@google/genai';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
-import { rateLimit, requireAdminMiddleware } from './server/security';
+import { rateLimit, requireAdminMiddleware, requireSignedInForAi } from './server/security';
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
@@ -50,6 +50,9 @@ app.use(express.json());
 // - AI 端點：每個 IP 每 10 分鐘最多 40 次
 // - 寄送驗證碼：每個 IP 每 10 分鐘最多 5 次
 app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40, name: 'ai' }));
+// 安全性：AI 端點需要登入（客服對話除外）；客戶分析只給管理員
+app.use(['/api/ai', '/api/agent'], requireSignedInForAi);
+app.use('/api/ai/customer-analytics', requireAdminMiddleware);
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
 app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
 app.use('/api/answers', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'answers' }));

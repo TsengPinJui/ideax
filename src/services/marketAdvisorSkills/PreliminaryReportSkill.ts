@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../authHeader';
 import { IAgentSkill, PreliminaryReportInput, PreliminaryReportOutput } from './types';
 import { generatePreliminaryReportWithAI } from '../aiService';
 
@@ -16,7 +17,7 @@ export class PreliminaryReportSkill implements IAgentSkill<PreliminaryReportInpu
     try {
       const res = await fetch('/api/agent/market-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'preliminary_report',
           payload: {

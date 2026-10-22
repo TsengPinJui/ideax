@@ -64,3 +64,21 @@ export async function requireAdminMiddleware(req: Request, res: Response, next: 
     return res.status(403).json({ success: false, error: '未授權：僅限認證管理員' });
   }
 }
+
+/**
+ * 需要登入的 AI 端點：要有有效的 Firebase 登入憑證（訪客不能直接呼叫，避免被拿去免費使用付費 AI 功能或灌爆用量）。
+ * 客服對話與常見問題（訪客也要能問）不在此限。
+ */
+const PUBLIC_AI_PATHS = new Set(['/api/ai/customer-support-chat', '/api/ai/faq-agent-consult']);
+export async function requireSignedInForAi(req: Request, res: Response, next: NextFunction) {
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  if (PUBLIC_AI_PATHS.has(path)) return next();
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請先登入再使用 AI 功能' });
+    (req as any).authUser = authUser;
+    next();
+  } catch {
+    return res.status(401).json({ success: false, error: '請先登入再使用 AI 功能' });
+  }
+}

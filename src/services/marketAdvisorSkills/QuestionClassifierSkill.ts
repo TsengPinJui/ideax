@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../authHeader';
 import { IAgentSkill, QuestionClassifierInput, QuestionClassifierOutput } from './types';
 import { analyzeQuestionWithAI } from '../aiService';
 
@@ -15,7 +16,7 @@ export class QuestionClassifierSkill implements IAgentSkill<QuestionClassifierIn
     try {
       const res = await fetch('/api/agent/market-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'classify_and_tag',
           payload: { title, description },

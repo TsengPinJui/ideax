@@ -303,7 +303,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     try {
       const res = await fetch('/api/agent/aicrm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'radar_scan',
           payload: {
@@ -624,7 +624,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       try {
         const res = await fetch('/api/ai/draft-crm-proposal', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             solverDomain: crmDomain,
             solverSkills: ['AI', '架構', '商業', '行銷'],
@@ -699,7 +699,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       try {
         const res = await fetch('/api/agent/market-advisor', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             mode: 'mediate_dispute',
             payload: {
@@ -747,7 +747,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       try {
         const res = await fetch('/api/agent/market-advisor', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             mode: 'classify_and_tag',
             payload: {
@@ -2045,11 +2045,11 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                 <div className="text-right">
                                   <span className="text-[11px] text-stone-400 block font-bold">成案意向指數</span>
                                   <span className="text-xs font-semibold text-amber-300">
-                                    {(parsed.intentScore || 88) >= 80 ? ' 極高成案率' : ' 具潛力意向'}
+                                    {parsed.intentScore == null ? '尚未評分' : parsed.intentScore >= 80 ? ' 極高成案率' : ' 具潛力意向'}
                                   </span>
                                 </div>
                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex flex-col items-center justify-center font-semibold shadow-sm">
-                                  <span className="text-sm leading-none">{parsed.intentScore || 88}</span>
+                                  <span className="text-sm leading-none">{parsed.intentScore ?? '—'}</span>
                                   <span className="text-[10.5px] font-bold opacity-80">%</span>
                                 </div>
                               </div>
