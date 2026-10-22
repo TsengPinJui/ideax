@@ -72,7 +72,7 @@ const ComboChart: React.FC<{ daily: Point[]; cumulative: Point[]; barColor: stri
     <div>
       <div className="flex items-center justify-between gap-2 flex-wrap text-[11px] text-stone-600 mb-1 min-h-4">
         <span>
-          <span className="font-mono">{d.date}</span>：
+          <span className="tabular-nums">{d.date}</span>：
           <span className="inline-block w-2 h-2 rounded-sm align-middle mr-0.5" style={{ background: barColor }} />{dailyLabel} <b className="text-stone-900">{d.value.toLocaleString()}</b>
           <span className="mx-1.5 text-stone-300">｜</span>
           <span className="inline-block w-3 h-0.5 align-middle mr-0.5" style={{ background: lineColor }} />{cumLabel} <b className="text-stone-900">{c.value.toLocaleString()}</b>
@@ -103,7 +103,7 @@ const ComboChart: React.FC<{ daily: Point[]; cumulative: Point[]; barColor: stri
             onMouseEnter={() => setHover(k)} onTouchStart={() => setHover(k)} />
         ))}
       </svg>
-      <div className="flex items-center gap-3 text-[10px] text-stone-500">
+      <div className="flex items-center gap-3 text-[11px] text-stone-500">
         <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: barColor, opacity: 0.6 }} />{dailyLabel}（左軸）</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3.5 h-0.5" style={{ background: lineColor }} />{cumLabel}（右軸）</span>
       </div>
@@ -192,7 +192,7 @@ export const AdminGrowthTrendsCard: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0"><TrendingUp className="w-5 h-5" /></div>
           <div>
-            <h4 className="font-black text-sm sm:text-base text-stone-900">成長趨勢</h4>
+            <h4 className="font-semibold text-sm sm:text-base text-stone-900">成長趨勢</h4>
             <p className="text-xs text-stone-500 mt-0.5">註冊會員與不重複訪客，以日為單位（UTC+8）</p>
           </div>
         </div>
@@ -210,7 +210,7 @@ export const AdminGrowthTrendsCard: React.FC = () => {
         {/* 註冊會員 */}
         <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs font-black text-stone-900"><Users className="w-4 h-4 text-purple-600" />註冊會員</div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-900"><Users className="w-4 h-4 text-purple-600" />註冊會員</div>
           </div>
           <div className="flex gap-4 text-[11px] text-stone-600">
             <span>累計 <b className="text-stone-900 text-sm">{members.total.toLocaleString()}</b> 位</span>
@@ -218,13 +218,13 @@ export const AdminGrowthTrendsCard: React.FC = () => {
             <span>近 30 天 +<b className="text-stone-900">{recent(memberDaily, 30)}</b></span>
           </div>
           <ComboChart daily={cut(memberDaily)} cumulative={cut(memberCumulative)} barColor="#a78bfa" lineColor="#6d28d9" dailyLabel="每日新註冊" cumLabel="累計會員" />
-          <p className="text-[10px] text-stone-400">依每位會員的註冊日期重建，和「註冊會員」總數一致（不含測試帳號）{members.undated ? `；${members.undated} 位沒有註冊日期，算在最早一天` : ''}。</p>
+          <p className="text-[11px] text-stone-400">依每位會員的註冊日期重建，和「註冊會員」總數一致（不含測試帳號）{members.undated ? `；${members.undated} 位沒有註冊日期，算在最早一天` : ''}。</p>
         </div>
 
         {/* 不重複訪客 */}
         <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs font-black text-stone-900"><Fingerprint className="w-4 h-4 text-amber-600" />不重複訪客</div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-900"><Fingerprint className="w-4 h-4 text-amber-600" />不重複訪客</div>
           </div>
           <div className="flex gap-4 text-[11px] text-stone-600">
             <span>累計 <b className="text-stone-900 text-sm">{visitors.total.toLocaleString()}</b> 位</span>
@@ -232,7 +232,7 @@ export const AdminGrowthTrendsCard: React.FC = () => {
             <span>近 7 天平均 <b className="text-stone-900">{Math.round(recent(visitors.daily, 7) / 7).toLocaleString()}</b>／日</span>
           </div>
           <ComboChart daily={cut(visitors.daily)} cumulative={cut(visitors.cumulative)} barColor="#f59e0b" lineColor="#b45309" dailyLabel="每日訪客" cumLabel="累計訪客" />
-          <p className="text-[10px] text-stone-400">
+          <p className="text-[11px] text-stone-400">
             {`每日訪客：${visitors.firstTracked ? `${visitors.firstTracked} 起為實際記錄` : '尚無實際記錄'}，更早由瀏覽量換算；累計訪客：${visitors.firstNew ? `${visitors.firstNew} 起為實際記錄` : '從 v3.3.9 起實際記錄'}，更早按比例推算。淡色長條、虛線＝推估。`}
           </p>
         </div>

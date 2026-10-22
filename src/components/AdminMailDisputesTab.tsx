@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDateTime } from '../utils/formatDateTime';
 import { useApp } from '../context/AppContext';
 import {
   Question,
@@ -444,7 +445,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       const generated = await aggregateQuestionsWithAi(collectedQuestions);
       setDraftFaqs(getDraftFaqs());
       setCollectedQuestions(getCollectedQuestions());
-      showToast(`⚡ 成功由 AI 提煉出 ${generated.length} 條常見問題 (FAQ) 與預設回答！已匯入下方待審核清單。`);
+      showToast(` 成功由 AI 提煉出 ${generated.length} 條常見問題 (FAQ) 與預設回答！已匯入下方待審核清單。`);
     } catch (err) {
       console.warn('Aggregation error:', err);
       showToast('AI 彙整暫時發生狀況，已載入備援預設 FAQ 草稿。');
@@ -459,7 +460,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     if (approved) {
       setDraftFaqs(getDraftFaqs());
       setLiveFaqs(getPlatformFaqs());
-      showToast(`✅ 審核通過！「${approved.question}」已自動上架發布至平台官方 FAQ 區域！`);
+      showToast(` 審核通過！「${approved.question}」已自動上架發布至平台官方 FAQ 區域！`);
     }
   };
 
@@ -551,10 +552,10 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-stone-900">
+              <h2 className="text-sm sm:text-base font-semibold text-stone-900">
                 申訴與郵件
               </h2>
-              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+              <span className="text-[11px] font-bold px-2 py-0.2 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
                 管理員專用
               </span>
             </div>
@@ -566,14 +567,14 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
         <div className="flex items-center gap-2 text-xs font-bold shrink-0">
           <span className="text-[11px] text-stone-400">待辦總計：</span>
-          <span className="font-mono font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+          <span className="tabular-nums font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-stone-200">
             {pendingTicketsCount + pendingDisputesCount + pendingReportsCount} 件
           </span>
         </div>
       </div>
 
       {toastMsg && (
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+        <div className="p-3 rounded-xl bg-emerald-50 border border-stone-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMsg}</span>
         </div>
@@ -586,7 +587,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           onClick={() => setActiveSubTab('tickets')}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeSubTab === 'tickets'
-              ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
+              ? 'bg-amber-500 text-stone-950 font-semibold shadow-2xs'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
@@ -599,7 +600,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           onClick={() => setActiveSubTab('disputes')}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeSubTab === 'disputes'
-              ? 'bg-stone-900 text-white font-black'
+              ? 'bg-stone-900 text-white font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
@@ -612,7 +613,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           onClick={() => setActiveSubTab('ai_logs')}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeSubTab === 'ai_logs'
-              ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
+              ? 'bg-amber-500 text-stone-950 font-semibold shadow-2xs'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
@@ -627,7 +628,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           onClick={() => setActiveSubTab('reports')}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeSubTab === 'reports'
-              ? 'bg-stone-900 text-white font-black'
+              ? 'bg-stone-900 text-white font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
@@ -640,11 +641,11 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       {activeSubTab === 'tickets' && (
         <div className="space-y-3">
           {/* 橫幅說明 / 標題列 */}
-          <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-amber-50 via-stone-50 to-amber-50/40 border border-amber-200 text-xs">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-white border border-stone-200 text-xs">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Headphones className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="font-extrabold text-stone-900 text-xs sm:text-sm">
+                <span className="font-semibold text-stone-900 text-xs sm:text-sm">
                   客服工單受理
                 </span>
                 <button
@@ -653,7 +654,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                     showTicketInfo
                       ? 'bg-amber-500 text-white shadow-2xs scale-105'
-                      : 'bg-amber-100/90 text-amber-800 hover:bg-amber-200 hover:scale-110'
+                      : 'bg-stone-50 text-amber-800 hover:bg-amber-200 hover:scale-110'
                   }`}
                   title={showTicketInfo ? '隱藏工單說明' : '點擊查看工單說明'}
                 >
@@ -666,7 +667,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             </div>
 
             {showTicketInfo && (
-              <div className="mt-2.5 pt-2 border-t border-amber-200/60 text-[11px] text-stone-600 leading-relaxed animate-in fade-in duration-150">
+              <div className="mt-2.5 pt-2 border-t border-stone-200 text-[11px] text-stone-600 leading-relaxed animate-in fade-in duration-150">
                 用戶在前台「客服與回報」提報的所有專人工單（含 AI 自動升級工單），均已透過 Firestore 雲端即時同步至此。管理員可於此查看詳細事由、切換處理進度，並直接<strong>發送官方回覆通知</strong>給用戶。
               </div>
             )}
@@ -700,7 +701,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   onClick={() => setTicketFilterStatus(f.id)}
                   className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
                     ticketFilterStatus === f.id
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      ? 'bg-amber-100 text-amber-900 border border-stone-200'
                       : 'bg-white text-stone-500 border border-stone-200 hover:bg-stone-50'
                   }`}
                 >
@@ -739,37 +740,37 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                     key={ticket.id}
                     className={`p-4 rounded-2xl bg-white border transition-all ${
                       isPending
-                        ? 'border-amber-300 shadow-2xs'
+                        ? 'border-stone-200 shadow-2xs'
                         : ticket.status === 'in_progress'
-                        ? 'border-blue-200'
+                        ? 'border-stone-200'
                         : 'border-stone-200/80 opacity-90'
                     }`}
                   >
                     {/* 工單頂部標籤列 */}
                     <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-stone-100 text-xs">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-black text-xs text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                        <span className="tabular-nums font-semibold text-xs text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
                           #{ticket.id}
                         </span>
 
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-stone-100 text-stone-700">
                           {categoryLabels[ticket.category] || ticket.category}
                         </span>
 
                         {isUrgent && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-stone-200 animate-pulse flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />
                             <span>加急排查</span>
                           </span>
                         )}
 
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                             ticket.status === 'resolved'
                               ? 'bg-emerald-100 text-emerald-800'
                               : ticket.status === 'in_progress'
                               ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-900 font-black'
+                              : 'bg-amber-100 text-amber-900 font-semibold'
                           }`}
                         >
                           {ticket.status === 'resolved'
@@ -802,27 +803,27 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                       {ticket.userId && (
                         <div className="flex items-center gap-1">
-                          <CopyableUserId userId={ticket.userId} prefix="UID: " className="text-[10px] py-0 px-1.5 bg-stone-100" />
+                          <CopyableUserId userId={ticket.userId} prefix="UID: " className="text-[11px] py-0 px-1.5 bg-stone-100" />
                         </div>
                       )}
                     </div>
 
                     {/* 問題標題與說明 */}
                     <div className="bg-stone-50/80 p-3 rounded-xl border border-stone-200/80 space-y-1.5 my-2">
-                      <div className="font-black text-xs text-stone-900">
+                      <div className="font-semibold text-xs text-stone-900">
                         {ticket.title}
                       </div>
-                      <div className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed font-mono text-[11.5px]">
+                      <div className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed tabular-nums text-[11.5px]">
                         {ticket.description}
                       </div>
                     </div>
 
                     {/* 管理員歷史回覆紀錄 */}
                     {ticket.adminNote && (
-                      <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-2 my-2">
+                      <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-emerald-950 flex items-start gap-2 my-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-black block text-emerald-900">已發布官方回覆：</span>
+                          <span className="font-semibold block text-emerald-900">已發布官方回覆：</span>
                           <p className="text-[11.5px] leading-relaxed text-emerald-800 whitespace-pre-wrap mt-0.5">
                             {ticket.adminNote}
                           </p>
@@ -837,7 +838,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           <button
                             type="button"
                             onClick={() => handleUpdateTicketStatus(ticket.id, 'in_progress')}
-                            className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold border border-blue-200 cursor-pointer transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold border border-stone-200 cursor-pointer transition-colors"
                           >
                             標記為處理中
                           </button>
@@ -847,7 +848,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           <button
                             type="button"
                             onClick={() => handleUpdateTicketStatus(ticket.id, 'resolved')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 cursor-pointer transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-stone-200 cursor-pointer transition-colors"
                           >
                             直接標記結案
                           </button>
@@ -873,7 +874,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                     {/* 展開官方回覆輸入區 */}
                     {isSelected && (
-                      <div className="mt-3 p-3 rounded-xl bg-amber-50/50 border border-amber-200 space-y-2.5 animate-in fade-in">
+                      <div className="mt-3 p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-2.5 animate-in fade-in">
                         <div className="flex items-center justify-between text-xs font-bold text-amber-950">
                           <span className="flex items-center gap-1.5">
                             <CornerDownRight className="w-3.5 h-3.5 text-amber-600" />
@@ -900,7 +901,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           <button
                             type="button"
                             onClick={() => handleSendTicketReply(ticket)}
-                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
                           >
                             <Send className="w-3.5 h-3.5" />
                             <span>發布回覆並標記結案</span>
@@ -920,10 +921,10 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       {activeSubTab === 'disputes' && (
         <div className="space-y-3">
           {/* 自動派發罐頭文字說明橫幅 */}
-          <div className="p-3 rounded-xl bg-gradient-to-r from-purple-50 via-stone-50 to-purple-50/40 border border-purple-200 text-xs flex items-start gap-2.5">
+          <div className="p-3 rounded-xl bg-white border border-stone-200 text-xs flex items-start gap-2.5">
             <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-extrabold text-stone-900 block mb-0.5">
+              <span className="font-semibold text-stone-900 block mb-0.5">
                 平台官方郵件自動發布規範
               </span>
               <p className="text-[11px] text-stone-600 leading-relaxed">
@@ -984,12 +985,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">
+                      <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">
                         {item.category}
                       </span>
-                      <h4 className="font-black text-xs sm:text-sm text-stone-900">{item.title}</h4>
+                      <h4 className="font-semibold text-xs sm:text-sm text-stone-900">{item.title}</h4>
                       <span
-                        className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                        className={`text-[10.5px] font-semibold px-1.5 py-0.2 rounded-full ${
                           item.status === 'pending_review'
                             ? 'bg-rose-100 text-rose-800'
                             : 'bg-emerald-100 text-emerald-800'
@@ -1003,12 +1004,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                       <span>·</span>
                       <span>解答方：<strong>{item.solverName}</strong></span>
                       <span>·</span>
-                      <span>金額：<strong className="text-amber-800 font-mono">NT$ {item.bounty.toLocaleString()}</strong></span>
+                      <span>金額：<strong className="text-amber-800 tabular-nums">NT$ {item.bounty.toLocaleString()}</strong></span>
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-mono text-stone-400">
-                    {item.createdAt}
+                  <span className="text-[11px] tabular-nums text-stone-400">
+                    {formatDateTime(item.createdAt)}
                   </span>
                 </div>
 
@@ -1035,7 +1036,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                     <button
                       type="button"
                       onClick={() => handleOpenDisputeChat(item)}
-                      className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer py-1 px-2 rounded-md border border-purple-200/80 transition-colors"
+                      className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer py-1 px-2 rounded-md border border-stone-200 transition-colors"
                       title="直接前往此案件雙方存證聊天室"
                     >
                       <MessageSquare className="w-3 h-3 text-purple-600" />
@@ -1081,32 +1082,32 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           {/* Top Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             <div className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs">
-              <span className="text-[10px] text-stone-400 font-bold block">累計客服對話</span>
-              <span className="text-lg font-black text-stone-900 font-mono mt-0.5 block">
+              <span className="text-[11px] text-stone-400 font-bold block">累計客服對話</span>
+              <span className="text-lg font-semibold text-stone-900 tabular-nums mt-0.5 block">
                 {csConversations.length} 次
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 shadow-2xs">
-              <span className="text-[10px] text-amber-800 font-bold block">收集用戶發問</span>
-              <span className="text-lg font-black text-amber-950 font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 shadow-2xs">
+              <span className="text-[11px] text-amber-800 font-bold block">收集用戶發問</span>
+              <span className="text-lg font-semibold text-amber-950 tabular-nums mt-0.5 block">
                 {collectedQuestions.length} 則
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200 shadow-2xs">
-              <span className="text-[10px] text-purple-800 font-bold block">FAQ 待審核/編輯</span>
-              <span className="text-lg font-black text-purple-950 font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 shadow-2xs">
+              <span className="text-[11px] text-purple-800 font-bold block">FAQ 待審核/編輯</span>
+              <span className="text-lg font-semibold text-purple-950 tabular-nums mt-0.5 block">
                 {draftFaqs.filter((d) => d.status === 'pending_review').length} 條
               </span>
             </div>
-            <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 shadow-2xs">
-              <span className="text-[10px] text-emerald-800 font-bold block">平台已發布 FAQ</span>
-              <span className="text-lg font-black text-emerald-950 font-mono mt-0.5 block">
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 shadow-2xs">
+              <span className="text-[11px] text-emerald-800 font-bold block">平台已發布 FAQ</span>
+              <span className="text-lg font-semibold text-emerald-950 tabular-nums mt-0.5 block">
                 {liveFaqs.length} 條
               </span>
             </div>
             <div className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs col-span-2 sm:col-span-1">
-              <span className="text-[10px] text-stone-400 font-bold block">滿意度好評率</span>
-              <span className="text-lg font-black text-emerald-600 font-mono mt-0.5 block">
+              <span className="text-[11px] text-stone-400 font-bold block">滿意度好評率</span>
+              <span className="text-lg font-semibold text-emerald-600 tabular-nums mt-0.5 block">
                 {(() => {
                   const positive = csConversations.filter((c) => c.satisfaction === 'positive').length;
                   const total = csConversations.filter((c) => c.satisfaction).length;
@@ -1117,16 +1118,16 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           </div>
 
           {/* Section 1: 用戶諮詢問題收集池 (AI 回傳每次收集來的問題，紀錄在後台) & 一鍵 AI 智慧彙整 */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white border border-amber-300 space-y-3 shadow-2xs">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white border border-stone-200 space-y-3 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-black">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-semibold">
                     <Sparkles className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
+                  <h3 className="font-semibold text-sm text-stone-900 flex items-center gap-1.5">
                     <span>用戶諮詢問題收集池</span>
-                    <span className="text-xs font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full border border-amber-200">
+                    <span className="text-xs tabular-nums font-bold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full border border-stone-200">
                       共 {collectedQuestions.length} 則紀錄
                     </span>
                   </h3>
@@ -1142,7 +1143,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   type="button"
                   onClick={handleAggregateWithAi}
                   disabled={isAggregatingWithAi}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 font-black text-xs flex items-center gap-2 cursor-pointer shadow-md transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow-sm transition-all disabled:opacity-50"
                   title="由 AI 深度聚類分析用戶問題並提煉為常見問題與預設回答"
                 >
                   {isAggregatingWithAi ? (
@@ -1153,7 +1154,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 text-stone-950" />
-                      <span>⚡ 一鍵讓 AI 智慧彙整為 FAQ 與預設回答</span>
+                      <span> 一鍵讓 AI 智慧彙整為 FAQ 與預設回答</span>
                     </>
                   )}
                 </button>
@@ -1170,32 +1171,32 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                 collectedQuestions.map((q) => (
                   <div
                     key={q.id}
-                    className="p-2.5 rounded-xl bg-white border border-amber-200/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs hover:border-amber-400 transition-colors"
+                    className="p-2.5 rounded-xl bg-white border border-stone-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs hover:border-amber-400 transition-colors"
                   >
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-stone-200">
                           {q.category || '平台諮詢'}
                         </span>
-                        <span className="font-extrabold text-stone-900 line-clamp-1">{q.question}</span>
+                        <span className="font-semibold text-stone-900 line-clamp-1">{q.question}</span>
                         {q.status === 'aggregated' ? (
-                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-stone-200">
                             已彙整進 FAQ
                           </span>
                         ) : (
-                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                          <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
                             待彙整
                           </span>
                         )}
                       </div>
                       {q.aiAnswerSnippet && (
                         <p className="text-[11px] text-stone-500 line-clamp-1">
-                          💡 AI答覆摘要：{q.aiAnswerSnippet}
+                           AI答覆摘要：{q.aiAnswerSnippet}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 text-[10px] text-stone-400 shrink-0 self-end sm:self-center">
+                    <div className="flex items-center gap-3 text-[11px] text-stone-400 shrink-0 self-end sm:self-center">
                       <span>{q.userName}</span>
                       <span>{q.timestamp}</span>
                       <button
@@ -1218,7 +1219,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <ListChecks className="w-4 h-4 text-purple-700" />
-                <h3 className="font-black text-sm text-stone-900">
+                <h3 className="font-semibold text-sm text-stone-900">
                   FAQ 待審核與編輯清單 ({draftFaqs.length} 條)
                 </h3>
                 <span className="text-[10.5px] text-stone-500">
@@ -1243,7 +1244,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   <Bot className="w-8 h-8 text-amber-500 mx-auto" />
                   <p className="font-bold text-stone-700">目前尚無待審核的 FAQ 草稿</p>
                   <p className="text-[11px] text-stone-400">
-                    請點擊上方「⚡ 一鍵讓 AI 智慧彙整為 FAQ 與預設回答」按鈕，系統將自動分析收集池問題並匯入此處！
+                    請點擊上方「 一鍵讓 AI 智慧彙整為 FAQ 與預設回答」按鈕，系統將自動分析收集池問題並匯入此處！
                   </p>
                 </div>
               ) : (
@@ -1254,8 +1255,8 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                       key={draft.id}
                       className={`p-4 rounded-2xl border transition-all space-y-2.5 ${
                         isApproved
-                          ? 'bg-emerald-50/40 border-emerald-200'
-                          : 'bg-white border-stone-200 hover:border-amber-300 shadow-2xs'
+                          ? 'bg-stone-50 border-stone-200'
+                          : 'bg-white border-stone-200 hover:border-stone-200 shadow-2xs'
                       }`}
                     >
                       {/* Top Bar: Category, Tags, Status Badge */}
@@ -1265,7 +1266,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                             {draft.category || '一般諮詢'}
                           </span>
                           {draft.isAiGenerated && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200 flex items-center gap-1">
                               <Sparkles className="w-3 h-3 text-amber-600" />
                               <span>AI 智慧提煉</span>
                             </span>
@@ -1273,7 +1274,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           {draft.tags?.map((t, idx) => (
                             <span
                               key={idx}
-                              className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-stone-50 text-stone-500 border border-stone-200"
+                              className="text-[10.5px] tabular-nums px-1.5 py-0.2 rounded bg-stone-50 text-stone-500 border border-stone-200"
                             >
                               #{t}
                             </span>
@@ -1282,12 +1283,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                         <div>
                           {isApproved ? (
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               <span>已審核發布至平台</span>
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-mono">
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-stone-200 tabular-nums">
                               待管理員審核
                             </span>
                           )}
@@ -1295,7 +1296,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                       </div>
 
                       {/* Question Title */}
-                      <div className="text-xs sm:text-sm font-extrabold text-stone-900">
+                      <div className="text-xs sm:text-sm font-semibold text-stone-900">
                         {draft.question}
                       </div>
 
@@ -1340,7 +1341,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           <button
                             type="button"
                             onClick={() => handleApproveDraftFaq(draft.id)}
-                            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>審核通過並發布至平台</span>
@@ -1359,10 +1360,10 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-emerald-700" />
-                <h3 className="font-black text-sm text-stone-900">
+                <h3 className="font-semibold text-sm text-stone-900">
                   平台官方 FAQ 區域即時展示中 ({liveFaqs.length} 條)
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
                   前台與客服中心即時生效
                 </span>
               </div>
@@ -1380,13 +1381,13 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                 >
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-stone-400 text-[10.5px]">#{idx + 1}</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-200/80 text-stone-700">
+                      <span className="tabular-nums text-stone-400 text-[10.5px]">#{idx + 1}</span>
+                      <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-200/80 text-stone-700">
                         {faq.category || '一般諮詢'}
                       </span>
-                      <span className="font-extrabold text-stone-900">{faq.question}</span>
+                      <span className="font-semibold text-stone-900">{faq.question}</span>
                       {(faq.recommendedByAdmin || faq.source === 'auto_mined') && (
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
+                        <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-stone-200 flex items-center gap-0.5">
                           <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
                           <span>官方審核上線</span>
                         </span>
@@ -1416,7 +1417,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-amber-600" />
-                <h3 className="font-black text-sm text-stone-900">
+                <h3 className="font-semibold text-sm text-stone-900">
                   AI 客服交談歷程逐字稿回顧 ({csConversations.length} 輪)
                 </h3>
               </div>
@@ -1499,9 +1500,9 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                                 <CopyableUserId
                                   userId={conv.userId}
                                   prefix="UID: "
-                                  className="text-[9.5px] py-0 px-1 bg-stone-100"
+                                  className="text-[10.5px] py-0 px-1 bg-stone-100"
                                 />
-                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                                <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
                                   {conv.userRole}
                                 </span>
                               </div>
@@ -1513,12 +1514,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                           <div className="flex items-center gap-2 self-end sm:self-center">
                             {conv.status === 'escalated' ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-mono">
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200 flex items-center gap-1 tabular-nums">
                                 <span>已立案工單</span>
                                 {conv.ticketId && <span>#{conv.ticketId}</span>}
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 <span>已由AI解答</span>
                               </span>
@@ -1526,10 +1527,10 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                             {conv.satisfaction && (
                               <span
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                                className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
                                   conv.satisfaction === 'positive'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-stone-200'
+                                    : 'bg-rose-50 text-rose-700 border border-stone-200'
                                 }`}
                               >
                                 {conv.satisfaction === 'positive' ? (
@@ -1564,7 +1565,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                         {/* Expanded Transcript View */}
                         {isExpanded && (
                           <div className="pt-2 border-t border-stone-100 space-y-2 mt-2 bg-stone-50/70 p-3 rounded-xl max-h-80 overflow-y-auto">
-                            <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            <div className="text-[11px] font-bold text-stone-400 mb-1">
                               對話歷程逐字稿紀錄 (共 {conv.messages.length} 則)
                             </div>
                             {conv.messages.map((m, mIdx) => (
@@ -1582,13 +1583,13 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                                   }`}
                                 >
                                   {m.toolUsed && (
-                                    <div className="text-[9.5px] font-mono text-amber-700 font-bold mb-1">
+                                    <div className="text-[10.5px] tabular-nums text-amber-700 font-bold mb-1">
                                       [調用工具: {m.toolUsed}]
                                     </div>
                                   )}
                                   <div className="whitespace-pre-line">{m.text}</div>
                                 </div>
-                                <span className="text-[9.5px] text-stone-400 mt-0.5 px-1">
+                                <span className="text-[10.5px] text-stone-400 mt-0.5 px-1">
                                   {m.timestamp}
                                 </span>
                               </div>
@@ -1621,7 +1622,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   <Edit2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm sm:text-base text-stone-900">
+                  <h3 className="font-semibold text-sm sm:text-base text-stone-900">
                     編輯 FAQ 常見問題與標準回答
                   </h3>
                   <p className="text-[11px] text-stone-500">
@@ -1711,7 +1712,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
               <button
                 type="button"
                 onClick={handleSaveEditedDraft}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>儲存修改</span>
@@ -1734,7 +1735,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   <Plus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm sm:text-base text-stone-900">
+                  <h3 className="font-semibold text-sm sm:text-base text-stone-900">
                     手動新增 FAQ 常見問題草稿
                   </h3>
                   <p className="text-[11px] text-stone-500">
@@ -1814,7 +1815,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>新增至待審核清單</span>
@@ -1834,7 +1835,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   <Scale className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm sm:text-base text-stone-900">
+                  <h3 className="font-semibold text-sm sm:text-base text-stone-900">
                     執行案件仲裁裁定
                   </h3>
                   <p className="text-[11px] text-stone-500">
@@ -1854,8 +1855,8 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             {/* 案件摘要 */}
             <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-stone-900">{rulingModal.item.title}</span>
-                <span className="font-mono font-bold text-amber-800">
+                <span className="font-semibold text-stone-900">{rulingModal.item.title}</span>
+                <span className="tabular-nums font-bold text-amber-800">
                   NT$ {rulingModal.item.bounty.toLocaleString()}
                 </span>
               </div>
@@ -1878,22 +1879,22 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   <Mail className="w-3.5 h-3.5 text-purple-700" />
                   <span>系統將依照裁定結果自動發布之罐頭式官方文字：</span>
                 </label>
-                <span className="text-[10px] font-bold text-stone-400">自動廣播至提問方與解答方</span>
+                <span className="text-[11px] font-bold text-stone-400">自動廣播至提問方與解答方</span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200 space-y-2 text-xs">
-                <div className="pb-2 border-b border-purple-200/60 font-black text-purple-950 flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded bg-purple-200/80 text-[10px] text-purple-900 font-mono">平台官方郵件</span>
+              <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
+                <div className="pb-2 border-b border-stone-200 font-semibold text-purple-950 flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-purple-200/80 text-[11px] text-purple-900 tabular-nums">平台官方郵件</span>
                   <span>{getCannedRulingText(rulingModal.item, rulingModal.type).subject}</span>
                 </div>
-                <div className="text-[11px] text-stone-700 whitespace-pre-line leading-relaxed font-sans bg-white p-3 rounded-lg border border-purple-100 max-h-48 overflow-y-auto">
+                <div className="text-[11px] text-stone-700 whitespace-pre-line leading-relaxed font-sans bg-white p-3 rounded-lg border border-stone-200 max-h-48 overflow-y-auto">
                   {getCannedRulingText(rulingModal.item, rulingModal.type).body}
                 </div>
               </div>
             </div>
 
             <p className="text-[11px] text-stone-500 leading-normal">
-              ⚠️ 點擊確認後，款項將依照裁定自動自託管帳戶劃撥/退還，系統會自動發布上述罐頭式官方文字給相關用戶，並將本案件標記為已結案。
+               點擊確認後，款項將依照裁定自動自託管帳戶劃撥/退還，系統會自動發布上述罐頭式官方文字給相關用戶，並將本案件標記為已結案。
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
@@ -1907,7 +1908,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
               <button
                 type="button"
                 onClick={handleConfirmRuling}
-                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>確認裁定並自動派發官方郵件</span>
@@ -1920,7 +1921,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       {/* 爭議案件卷宗詳情彈窗 (Dispute Case Details Modal) */}
       {selectedCaseDetail && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
             {/* 標題列 */}
             <div className="flex items-start justify-between border-b border-stone-100 pb-3 gap-3">
               <div className="flex items-center gap-2.5">
@@ -1929,13 +1930,13 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
+                    <span className="text-[11px] tabular-nums font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
                       卷宗案號 #{selectedCaseDetail.id}
                     </span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                       selectedCaseDetail.status === 'resolved'
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                        ? 'bg-emerald-100 text-emerald-800 border border-stone-200'
+                        : 'bg-amber-100 text-amber-900 border border-stone-200 animate-pulse'
                     }`}>
                       {selectedCaseDetail.status === 'resolved' ? '已裁定結案' : '待仲裁委員裁定'}
                     </span>
@@ -1946,14 +1947,14 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                         setSelectedCaseDetail(null);
                         handleOpenDisputeChat(item);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-black border border-purple-300 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-[11px] font-semibold border border-stone-200 transition-colors cursor-pointer"
                       title="直接前往此案件雙方對話紀錄與官方存證聊天室"
                     >
                       <MessageSquare className="w-3 h-3 text-purple-700" />
                       <span>連結到該聊天室</span>
                     </button>
                   </div>
-                  <h3 className="font-extrabold text-base text-stone-900 mt-1 leading-snug">
+                  <h3 className="font-semibold text-base text-stone-900 mt-1 leading-snug">
                     {selectedCaseDetail.title}
                   </h3>
                 </div>
@@ -1970,12 +1971,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
             {/* 案件核心金流與雙方當事人卡片 */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-1">
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
                 <span className="text-[11px] font-bold text-amber-800">懸賞爭議金額（託管）</span>
-                <p className="text-lg font-black text-amber-900">
+                <p className="text-lg font-semibold text-amber-900">
                   NT$ {selectedCaseDetail.bounty?.toLocaleString?.() || selectedCaseDetail.bounty}
                 </p>
-                <span className="text-[10px] text-amber-700 block">平台官方金流安全託管中</span>
+                <span className="text-[11px] text-amber-700 block">平台官方金流安全託管中</span>
               </div>
 
               <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
@@ -1988,22 +1989,22 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                   )}
                   <span className="text-xs font-bold text-stone-800 truncate">{selectedCaseDetail.questionerName}</span>
                 </div>
-                <span className="text-[10px] text-stone-400 block">角色：需求發起者</span>
+                <span className="text-[11px] text-stone-400 block">角色：需求發起者</span>
               </div>
 
               <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
                 <span className="text-[11px] font-bold text-stone-500">解答專家方</span>
                 <div className="flex items-center gap-2 pt-0.5">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">專</span>
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-bold">專</span>
                   <span className="text-xs font-bold text-stone-800 truncate">{selectedCaseDetail.solverName}</span>
                 </div>
-                <span className="text-[10px] text-stone-400 block">角色：交付顧問專家</span>
+                <span className="text-[11px] text-stone-400 block">角色：交付顧問專家</span>
               </div>
             </div>
 
             {/* 申訴事由詳情 */}
-            <div className="p-3.5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-rose-800 text-xs font-extrabold">
+            <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-rose-800 text-xs font-semibold">
                 <AlertCircle className="w-4 h-4" />
                 <span>提問方提出之申訴事由與爭議原因：</span>
               </div>
@@ -2013,8 +2014,8 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
             </div>
 
             {/* 平台 AI 履約爭議研判與調解建議 */}
-            <div className="p-3.5 bg-purple-50/70 rounded-2xl border border-purple-200 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-purple-900 text-xs font-extrabold">
+            <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-purple-900 text-xs font-semibold">
                 <Sparkles className="w-4 h-4 text-purple-600" />
                 <span>平台 AI 履約爭議智能研判分析：</span>
               </div>
@@ -2034,7 +2035,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                     setSelectedCaseDetail(null);
                     handleOpenDisputeChat(item);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:scale-[1.02] active:scale-95"
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:scale-[1.02] active:scale-95"
                   title="直接前往此案件雙方對話紀錄與官方存證聊天室"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -2066,7 +2067,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                         setSelectedCaseDetail(null);
                         setRulingModal({ item: target, type: 'split' });
                       }}
-                      className="px-3.5 py-2 rounded-xl border border-blue-300 hover:bg-blue-50 text-blue-700 font-black text-xs cursor-pointer transition-all shadow-2xs"
+                      className="px-3.5 py-2 rounded-xl border border-stone-200 hover:bg-blue-50 text-blue-700 font-semibold text-xs cursor-pointer transition-all shadow-2xs"
                     >
                       50/50 和解劃撥
                     </button>
@@ -2077,7 +2078,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                         setSelectedCaseDetail(null);
                         setRulingModal({ item: target, type: 'full_refund' });
                       }}
-                      className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs cursor-pointer transition-all shadow-xs"
+                      className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer transition-all shadow-xs"
                     >
                       全額退款
                     </button>

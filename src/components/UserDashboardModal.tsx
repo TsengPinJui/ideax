@@ -524,11 +524,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminAvgResponseSpeed = useMemo(() => {
     const validDiffs: number[] = [];
 
-    (questions || []).forEach((q) => {
+    // 只算真實內容（模擬題目與模擬解答不列入）
+    (questions || []).filter((q) => !q.isSimulated).forEach((q) => {
       const qTime = new Date(q.createdAt).getTime();
       if (isNaN(qTime)) return;
 
-      const qAnswers = (answers || []).filter((a) => a.questionId === q.id);
+      const qAnswers = (answers || []).filter((a) => a.questionId === q.id && !a.isSimulated);
       if (qAnswers.length > 0) {
         let earliest = Infinity;
         qAnswers.forEach((a) => {
@@ -549,10 +550,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
     if (validDiffs.length === 0) {
       return {
-        value: '0',
-        unit: '小時',
-        badge: '即時響應',
-        desc: '全體專家諮詢方案平均首覆工時',
+        value: '—',
+        unit: '',
+        badge: '尚無資料',
+        desc: '還沒有真實題目收到回覆',
       };
     }
 
@@ -588,30 +589,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminSatisfactionStats = useMemo(() => {
     const allRatings: number[] = [];
 
-    // 1. 已評分之方案
+    // 只算真實的交付評分（模擬資料、專家名錄上的示範星等都不列入）
     (answers || []).forEach((a) => {
-      if (typeof a.rating === 'number' && a.rating > 0) {
+      if (!a.isSimulated && typeof a.rating === 'number' && a.rating > 0) {
         allRatings.push(a.rating);
-      }
-    });
-
-    // 2. 專家個人真實評分
-    (solvers || []).forEach((s) => {
-      if (typeof s.rating === 'number' && s.rating > 0) {
-        const count = Math.min(Math.max(s.reviewCount || 1, 1), 10);
-        for (let i = 0; i < count; i++) {
-          allRatings.push(s.rating);
-        }
       }
     });
 
     if (allRatings.length === 0) {
       return {
-        percentage: 100,
-        percentageFormatted: '100',
-        starsFormatted: '5.0',
-        badge: '全新上線',
-        desc: '全站尚無負評紀錄',
+        percentage: 0,
+        percentageFormatted: '—',
+        starsFormatted: '—',
+        badge: '尚無評價',
+        desc: '還沒有任何交付評價',
+        empty: true,
       };
     }
 
@@ -623,7 +615,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       percentageFormatted: percentage.toFixed(1),
       starsFormatted: avgRating.toFixed(1),
       badge: `${avgRating.toFixed(1)} ★ 好評`,
-      desc: `全站 ${allRatings.length} 筆交付評價與專家口碑`,
+      desc: `全站 ${allRatings.length} 筆交付評價`,
+      empty: false,
     };
   }, [answers, solvers]);
 
@@ -649,7 +642,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   // Sub tab for Questions Management
   const [questionSubTab, setQuestionSubTab] = useState<'my_questions' | 'bookmarked_questions' | 'client_questions'>('my_questions');
   // 一般會員：寬度 1024 以上用左側選單＋內容；以下用「選單 → 單一功能頁」。管理員維持 640。
-  const menuBreakpoint = currentUser.role === 'admin' ? 640 : 1024;
+  const menuBreakpoint = 1024;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= menuBreakpoint) return false;
     return !initialTab || initialTab === 'overview';
@@ -2124,10 +2117,81 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     },
   ];
 
+
+  // ── 管理員的功能選單：與一般會員共用同一個外框（左側欄＋手機分組清單） ──
+  const adminNavGroups: Array<{ title: string; items: UserNavItem[] }> = [
+    {
+      title: '',
+      items: [
+        { key: 'overview', label: '管理儀表板', icon: LayoutGrid, onSelect: openTab('overview'), active: activeTab === 'overview' },
+        {
+          key: 'mail', label: '申訴與郵件', icon: Mail, onSelect: openTab('admin_mail_disputes'), active: activeTab === 'admin_mail_disputes',
+          trailing: adminPendingDisputesCount > 0 ? String(adminPendingDisputesCount) : undefined, dot: adminPendingDisputesCount > 0,
+        },
+      ],
+    },
+    {
+      title: '金流與案件',
+      items: [
+        { key: 'points', label: '點數與收支', icon: Coins, onSelect: openTab('points_receivables', () => setPointsSubView('points')), active: activeTab === 'points_receivables' },
+        { key: 'transactions', label: '交易管理', icon: Clock, onSelect: openTab('transactions'), active: activeTab === 'transactions' },
+        { key: 'cases', label: '案件管理', icon: Briefcase, onSelect: openTab('admin_cases'), active: activeTab === 'admin_cases' },
+        { key: 'questions', label: '問題管理', icon: HelpCircle, onSelect: openTab('admin_questions'), active: activeTab === 'admin_questions' },
+      ],
+    },
+    {
+      title: '用戶與認證',
+      items: [
+        { key: 'users', label: '用戶管理', icon: UserCheck, onSelect: openTab('admin_user_management'), active: activeTab === 'admin_user_management' },
+        { key: 'certs', label: '受理認證', icon: BadgeCheck, onSelect: openTab('admin_certifications'), active: activeTab === 'admin_certifications' },
+        { key: 'analytics', label: '用戶分佈與習慣', icon: BarChart3, onSelect: openTab('admin_user_analytics'), active: activeTab === 'admin_user_analytics' },
+      ],
+    },
+    {
+      title: 'AI 與方案',
+      items: [
+        { key: 'aicrm', label: 'AI-CRM 與 Agent 測試', icon: Sparkles, onSelect: openTab('admin_aicrm'), active: activeTab === 'admin_aicrm' },
+        { key: 'plans', label: '會員方案與費率', icon: Crown, onSelect: openTab('subscriptions'), active: activeTab === 'subscriptions' },
+      ],
+    },
+    {
+      title: '平台',
+      items: [
+        { key: 'settings', label: '管理員設定', icon: SettingsIcon, onSelect: openTab('profile'), active: activeTab === 'profile' },
+        { key: 'manual', label: '平台內部清單', icon: Folder, onSelect: () => { setMobileMenuOpen(false); setIsPlatformManualModalOpen(true); } },
+        { key: 'marketing', label: '行銷素材庫', icon: Layers, onSelect: () => { setMobileMenuOpen(false); setIsMarketingAssetsModalOpen(true); } },
+        {
+          key: 'notifications', label: '通知', icon: Bell,
+          onSelect: () => { setMobileMenuOpen(false); setIsNotificationsSidebarOpen(true); },
+          trailing: displayBadgeCount > 0 ? (displayBadgeCount > 99 ? '99+' : String(displayBadgeCount)) : undefined,
+          dot: displayBadgeCount > 0,
+        },
+        { key: 'about', label: '關於 IdeaX', icon: Info, onSelect: openTab('about_and_support'), active: activeTab === 'about_and_support' },
+      ],
+    },
+    {
+      title: '',
+      items: [
+        { key: 'switch', label: '切換帳號', icon: Users, onSelect: () => { openAuthModal('login'); setMobileMenuOpen(false); } },
+        { key: 'logout', label: '登出', icon: LogOut, onSelect: () => { logoutAccount(currentUser.id); onClose(); }, danger: true },
+      ],
+    },
+  ];
+  const navGroups = isAdminUser ? adminNavGroups : userNavGroups;
+  const adminSearch = (className?: string) =>
+    isAdminUser ? (
+      <AdminSettingsSearch
+        activeTab={activeTab}
+        onNavigate={(t) => { setAdminCategoryFilter('all'); setActiveTab(t as any); setMobileMenuOpen(false); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); }}
+        className={className}
+      />
+    ) : null;
+
   /** 手機（與平板）的功能選單：像系統設定頁的分組清單 */
   const renderUserNavMenu = () => (
     <div className="space-y-5">
-      {userNavGroups.map((g, gi) => {
+      {adminSearch()}
+      {navGroups.map((g, gi) => {
         const items = g.items.filter((it) => !it.sidebarOnly);
         if (!items.length) return null;
         return (
@@ -2162,8 +2226,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   /** 電腦版左側欄 */
   const renderUserNavSidebar = () => (
-    <nav aria-label="個人中心" className="sticky top-20 py-4 px-3 space-y-4">
-      {userNavGroups.map((g, gi) => (
+    <nav aria-label={isAdminUser ? '管理員控制台' : '個人中心'} className="sticky top-20 py-4 px-3 space-y-4">
+      {adminSearch('px-0.5')}
+      {navGroups.map((g, gi) => (
         <div key={gi}>
           {g.title && <p className="px-3 mb-1 text-[11.5px] font-medium text-stone-400">{g.title}</p>}
           <ul className="space-y-0.5">
@@ -2188,7 +2253,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       {it.dot && <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500" />}
                     </span>
                     <span className="flex-1 min-w-0 truncate">{it.label}</span>
-                    {it.trailing && ['proposals', 'questions', 'notifications'].includes(it.key) && (
+                    {it.trailing && ['proposals', 'questions', 'notifications', 'mail'].includes(it.key) && (
                       <span className="shrink-0 text-[12px] text-stone-400 tabular-nums">{it.trailing}</span>
                     )}
                   </button>
@@ -2205,14 +2270,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     <div
       className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${
         isFullPage
-          ? isAdminUser
-            ? 'max-w-4xl mx-auto my-2'
-            : 'mx-auto my-2 lg:grid lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start'
+          ? 'mx-auto my-2 lg:grid lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start'
           : 'max-w-3xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'
       }`}
     >
-      {/* Header：一般會員用精簡版 */}
-      {!isAdminUser && (
+      {/* Header（管理員與一般會員共用） */}
+      {(
         <div className="lg:col-span-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-stone-200 flex items-center gap-3 bg-white rounded-t-2xl sm:rounded-t-3xl">
           {isFullPage && (
             <button
@@ -2245,12 +2308,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </p>
             <div className="mt-0.5 flex items-center gap-2 text-[12px] text-stone-500 min-w-0">
               <span className="truncate">
-                {currentUser.accountType === 'enterprise' || (currentUser.role as string) === 'enterprise' ? '企業會員' : myPlanName}
+                {isAdminUser ? '管理員' : currentUser.accountType === 'enterprise' || (currentUser.role as string) === 'enterprise' ? '企業會員' : myPlanName}
                 {currentUser.title ? ` · ${currentUser.title}` : ''}
               </span>
               <CopyableUserId userId={currentUser.id} prefix="ID " className="text-[10.5px] py-0 px-1.5 shrink-0" />
             </div>
           </div>
+          {isAdminUser && (
+            <button
+              type="button"
+              onClick={openTab('admin_mail_disputes')}
+              className={`relative p-2 rounded-lg transition-colors cursor-pointer shrink-0 ${activeTab === 'admin_mail_disputes' ? 'bg-stone-100 text-stone-900' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100'}`}
+              aria-label={`申訴與郵件，待處理 ${adminMailBadgeCount} 件`}
+              title={`申訴與郵件（待處理 ${adminMailBadgeCount} 件：客服工單 ${pendingTicketsCount}、案件申訴 ${pendingDisputesCount}、檢舉 ${pendingReportsCount}）`}
+            >
+              <Mail className="w-5 h-5" />
+              {adminPendingDisputesCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold tabular-nums flex items-center justify-center ring-2 ring-white">
+                  {adminPendingDisputesCount > 99 ? '99+' : adminPendingDisputesCount}
+                </span>
+              )}
+            </button>
+          )}
           {!isFullPage && (
             <button onClick={onClose} className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer shrink-0" aria-label="關閉">
               <X className="w-5 h-5" />
@@ -2258,622 +2337,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           )}
         </div>
       )}
-      {!isAdminUser && isFullPage && (
+      {isFullPage && (
         <aside className="hidden lg:block lg:col-start-1 lg:row-start-2 self-stretch border-r border-stone-200 bg-stone-50/40 rounded-bl-3xl">
           {renderUserNavSidebar()}
         </aside>
       )}
 
-      {/* Header */}
-      {isAdminUser && (
-      <div className="px-3 py-2 sm:p-6 border-b border-stone-200 flex items-center justify-between bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          {isFullPage && (
-            <button
-              onClick={onClose}
-              className="p-1.5 -ml-1 sm:p-2 sm:-ml-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
-              title="返回問題市場"
-            >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-              <span className="hidden sm:inline">返回問題市場</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('profile');
-              setMobileMenuOpen(false);
-            }}
-            className="flex items-center gap-2 sm:gap-3 text-left hover:opacity-85 transition-all cursor-pointer group shrink-0"
-            title="點擊前往帳號設定頁"
-          >
-            <img
-              src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={currentUser.name}
-              className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover ring-2 ring-stone-200 shrink-0 group-hover:ring-amber-500 transition-all"
-            />
-          </button>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('profile');
-                  setMobileMenuOpen(false);
-                }}
-                className="text-xs sm:text-base font-black text-stone-900 truncate max-w-[110px] sm:max-w-none hover:text-amber-600 transition-colors cursor-pointer text-left"
-                title="點擊前往帳號設定頁"
-              >
-                <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
-                  {resolveUserDisplayName(currentUser.id, currentUser.name)}
-                </span>
-                {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
-                  ? <span className="text-stone-500 font-normal"> · {currentUser.title}</span>
-                  : ''}
-              </button>
-
-              {/* 身份標籤 */}
-              <span
-                className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-md shrink-0 ${
-                  currentUser.role === 'admin'
-                    ? 'bg-purple-100 text-purple-800'
-                    : currentUser.role === 'solver'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-amber-100 text-amber-900'
-                }`}
-              >
-                {currentUser.role === 'admin'
-                  ? '管理員'
-                  : currentUser.accountType === 'enterprise' || (currentUser.role as string) === 'enterprise'
-                  ? '企業機構'
-                  : '一般用戶'}
-              </span>
-
-              {/* 會員專屬唯一編號 ID */}
-              <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-[9.5px] sm:text-[10px] py-0.2 px-1.5 shrink-0" />
-            </div>
-
-            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-              {currentUser.title && (
-                <p className="text-[10px] sm:text-[11px] text-stone-500 truncate">{currentUser.title}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0 ml-auto pl-2">
-          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) - 全模式同步可用 */}
-          {currentUser.role === 'admin' && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('admin_mail_disputes');
-                setMobileMenuOpen(false);
-              }}
-              className={`relative p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs ${
-                activeTab === 'admin_mail_disputes'
-                  ? 'bg-purple-700 text-white border-purple-800 shadow-md font-black'
-                  : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-200'
-              }`}
-              title={`申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）`}
-            >
-              <Mail className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
-              {adminPendingDisputesCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-amber-400 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-md animate-pulse font-mono">
-                  {adminPendingDisputesCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {!isFullPage && (
-            <button
-              onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer shrink-0 ml-1.5 sm:ml-2"
-            >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      )}
-
-      {/* Desktop Horizontal Navigation Bar */}
-      {currentUser.role === 'admin' ? (
-        <div className="hidden sm:block bg-stone-50 border-b border-stone-200 shrink-0">
-          {/* Top Category Filter & Quick Excel Action */}
-          <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
-            <div className="flex items-center gap-1.5 overflow-x-auto">
-              {[
-                { key: 'all', label: '全部功能', count: 12 },
-                { key: 'finance', label: '💰 金流與案件', count: 4 },
-                { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
-                { key: 'account', label: '⚙️ 帳號', count: 3 },
-              ].map((cat) => (
-                <button
-                  key={cat.key}
-                  type="button"
-                  onClick={() => setAdminCategoryFilter(cat.key as any)}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer whitespace-nowrap ${
-                    adminCategoryFilter === cat.key
-                      ? 'bg-purple-900 text-white shadow-2xs font-black'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200'
-                  }`}
-                >
-                  <span>{cat.label}</span>
-                </button>
-              ))}
-            </div>
-            {/* 管理員設定搜尋框 */}
-            <AdminSettingsSearch
-              activeTab={activeTab}
-              onNavigate={(t) => { setAdminCategoryFilter('all'); setActiveTab(t as any); setMobileMenuOpen(false); }}
-              className="w-72 shrink-0 ml-3"
-            />
-          </div>
-
-          {/* Filtered Admin Tabs */}
-          <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto text-xs font-bold">
-            {[
-              // 總覽與管理大盤 (置頂)
-              { id: 'overview', category: 'all', label: '管理儀表板', icon: LayoutGrid },
-
-              // 財務金流與案件 (全模式配置同步)
-              { id: 'points_receivables', category: 'finance', label: '點數 & 收支', icon: Coins },
-              { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
-              { id: 'admin_cases', category: 'finance', label: '案件管理', icon: Briefcase },
-              { id: 'admin_questions', category: 'finance', label: '問題管理', icon: HelpCircle },
-
-              // 用戶與審核認證
-              { id: 'admin_user_management', category: 'users', label: '用戶管理', icon: UserCheck },
-              { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
-              { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
-
-              // 會員方案與 AI-CRM
-              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM 與 Agent 測試', icon: Sparkles, badge: 'Agent' },
-              { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
-
-              // 帳號
-              { id: 'profile', category: 'account', label: '管理員設定', icon: SettingsIcon },
-              { id: 'about_and_support', category: 'account', label: '關於IdeaX', icon: Headphones },
-              { id: 'switch_account', category: 'account', label: '切換帳號', icon: ArrowLeftRight },
-            ]
-              .filter((tab) => adminCategoryFilter === 'all' || tab.category === adminCategoryFilter)
-              .map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      if (tab.id === 'switch_account') {
-                        openAuthModal('login');
-                        setMobileMenuOpen(false);
-                        return;
-                      }
-                      setActiveTab(tab.id as any);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                      isActive
-                        ? 'bg-purple-700 text-white shadow-2xs font-black'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/70'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-900'
-                        }`}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-          </div>
-        </div>
-      ) : null}
 
       {/* Mobile-only Home Menu */}
       {mobileMenuOpen && (
-        <div className={isAdminUser ? 'sm:hidden flex-1 overflow-y-auto bg-stone-50/90 p-2.5 space-y-2' : 'lg:hidden bg-stone-50 px-3 py-4 sm:px-5 rounded-b-2xl sm:rounded-b-3xl'}>
-          {currentUser.role === 'admin' ? (
-            <div className="space-y-3">
-              {/* 手機版選單：管理員設定搜尋框 */}
-              <AdminSettingsSearch
-                activeTab={activeTab}
-                onNavigate={(t) => { setActiveTab(t as any); setMobileMenuOpen(false); }}
-              />
-              {/* 分類 0: 📊 總覽與平台數據 (置頂) */}
-              <div className="bg-white rounded-xl border border-purple-200 p-1.5 space-y-0.5 shadow-2xs">
-                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between border-b border-purple-100/80 mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
-                    <span>總覽與平台數據</span>
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">2 項</span>
-                </p>
-
-                {/* 1. 管理儀表板 (整合大盤與數據指標) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('overview');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-purple-50/50 hover:bg-purple-100/70 active:bg-purple-100 text-left text-xs font-bold text-stone-900 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">管理儀表板</span>
-                      <span className="text-[10px] text-purple-700/80 font-normal">全站營運大盤、會員分佈與數據控制</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-              {/* 分類 1: 💰 金流與點數資產 */}
-              <div className="bg-white rounded-xl border border-amber-200/90 p-1.5 space-y-0.5 shadow-2xs">
-                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <Coins className="w-3.5 h-3.5 text-amber-600" />
-                    <span>金流與點數資產</span>
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    4 項
-                  </span>
-                </p>
-
-                {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('points_receivables');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Coins className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與帳務管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 2. 交易管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('transactions');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Clock className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 3. 案件管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_cases');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center shrink-0">
-                      <Briefcase className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-purple-800 transition-colors">案件管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 4. 問題管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_questions');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center shrink-0">
-                      <HelpCircle className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-purple-800 transition-colors">問題管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、下架審查與違規反饋</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-
-              {/* 分類 2: 👥 用戶管理與身分認證 */}
-              <div className="bg-white rounded-xl border border-blue-200/90 p-1.5 space-y-0.5 shadow-2xs">
-                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center justify-between border-b border-blue-100 mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-blue-700" />
-                    <span>用戶管理與身分認證</span>
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-900 font-bold border border-blue-200">3 項</span>
-                </p>
-
-                {/* 5. 用戶管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_user_management');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-blue-50/80 active:bg-blue-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 flex items-center justify-center shrink-0">
-                      <UserCheck className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-blue-800 transition-colors">用戶管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">會員名冊、帳號停權/解封與黑名單</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 6. 受理認證 (實名、專家) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_certifications');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-indigo-50/80 active:bg-indigo-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center justify-center shrink-0">
-                      <BadgeCheck className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-indigo-800 transition-colors">受理認證 (實名、專家)</span>
-                      <span className="text-[10px] text-stone-500 font-normal">審核通過或移除實名/專家大師身分</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 7. 用戶分佈與習慣統計 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_user_analytics');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-emerald-50/80 active:bg-emerald-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-stone-900 group-hover:text-emerald-800 transition-colors">用戶分佈與習慣統計</span>
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          個資與 Excel
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 font-normal">個資統計、調研問卷圖表與檔案匯出</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-
-              {/* 分類 3: 🤖 AI 智能與會員方案 (全模式配置同步) */}
-              <div className="bg-white rounded-xl border border-amber-200/90 p-1.5 space-y-0.5 shadow-2xs">
-                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    <span>AI 智能與會員方案</span>
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    2 項
-                  </span>
-                </p>
-
-                {/* AI功能設定與監控（小燈泡、AI-CRM 與 Agent） */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_aicrm');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-purple-700 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI功能設定與監控</span>
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">後台</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 font-normal">全站客服特助、拓客代操、爭議調解與 Agent 實測</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 會員方案與費率管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('subscriptions');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Crown className="w-3.5 h-3.5 text-amber-700" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-
-              {/* 分類 4: ⚙️ 帳號 */}
-              <div className="bg-white rounded-xl border border-stone-200/80 p-1.5 space-y-0.5 shadow-2xs">
-                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center justify-between border-b border-stone-100 mb-1">
-                  <span className="flex items-center gap-1">
-                    <SettingsIcon className="w-3 h-3 text-stone-500" />
-                    <span>帳號與平台資訊</span>
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">3 項</span>
-                </p>
-
-                {/* 13. 管理員帳號設定 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('profile');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-100 active:bg-stone-200 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-stone-100 text-stone-800 flex items-center justify-center shrink-0">
-                      <SettingsIcon className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900">管理員帳號設定</span>
-                      <span className="text-[10px] text-stone-500 font-normal">管理員席位資料與安全維護</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-
-                {/* 14. 關於IdeaX */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('about_and_support');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                      <Headphones className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900">關於IdeaX</span>
-                      <span className="text-[10px] text-stone-500 font-normal">平台介紹、客戶支援與條款規範</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-
-                {/* 15. 切換帳號 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    openAuthModal('login');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-100 active:bg-stone-200 text-left text-xs font-bold text-stone-700 flex items-center justify-between group cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0">
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900">切換帳號</span>
-                      <span className="text-[10px] text-stone-500 font-normal">本裝置已登錄身分快速切換</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                </button>
-
-                {/* 15. 登出管理員帳號 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    logoutAccount(currentUser.id);
-                    onClose();
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-rose-50 text-left text-xs font-bold text-rose-600 flex items-center justify-between group cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                      <LogOut className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="font-black text-rose-600">登出管理員帳號</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          ) : (
-            renderUserNavMenu()
-          )}
+        <div className="lg:hidden bg-stone-50 px-3 py-4 sm:px-5 rounded-b-2xl sm:rounded-b-3xl">
+          {renderUserNavMenu()}
         </div>
       )}
 
       {/* Body Content */}
-      <div data-admin-search-root className={`${isAdminUser ? 'p-2.5 sm:p-6 space-y-3.5 sm:space-y-6' : 'lg:col-start-2 lg:row-start-2 min-w-0 p-3 sm:p-5 lg:p-7 space-y-4 sm:space-y-6'} ${!isFullPage ? 'overflow-y-auto' : ''} ${
-        mobileMenuOpen ? (isAdminUser ? 'hidden sm:block' : 'hidden lg:block') : 'block'
+      <div data-admin-search-root className={`lg:col-start-2 lg:row-start-2 min-w-0 p-3 sm:p-5 lg:p-7 space-y-4 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''} ${
+        mobileMenuOpen ? 'hidden lg:block' : 'block'
       }`}>
         {/* Mobile Navigation Return Bar */}
-        {isAdminUser ? (
-        <div className="sm:hidden -mt-1 mb-2 flex items-center justify-between pb-2 border-b border-stone-200/80">
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-800 text-[11px] font-bold transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="w-3.5 h-3.5 text-stone-600" />
-            <span>返回選單</span>
-          </button>
-          <span className="text-[11px] font-extrabold text-stone-500">
-            {TAB_NAME_MAP[activeTab] || '功能分頁'}
-          </span>
-        </div>
-        ) : (
         <div className="lg:hidden -mx-3 sm:-mx-5 -mt-3 sm:-mt-5 mb-1 px-1.5 h-12 flex items-center border-b border-stone-100">
           <button
             type="button"
@@ -2887,15 +2369,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             {(profileSubTab === 'survey' && activeTab === 'profile') ? '用戶問卷' : (TAB_NAME_MAP[activeTab] || '個人中心')}
           </span>
         </div>
-        )}
-        {/* 手機版：管理員設定搜尋框 */}
-        {currentUser.role === 'admin' && (
-          <AdminSettingsSearch
-            activeTab={activeTab}
-            onNavigate={(t) => { setActiveTab(t as any); setMobileMenuOpen(false); }}
-            className="sm:hidden -mt-1"
-          />
-        )}
         {msg && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[150] px-5 py-2.5 rounded-full bg-stone-900/95 text-white text-xs font-black shadow-2xl backdrop-blur-md flex items-center gap-2 border border-stone-700/80 animate-in fade-in slide-in-from-top-4 duration-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -2907,23 +2380,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {activeTab === 'overview' && (
           currentUser.role === 'admin' ? (
             <div className="space-y-6 animate-in fade-in duration-200">
-              {/* Admin Command Center Banner (精簡大器，移除已刪除的按鈕) */}
-              <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-sm flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 rounded-full bg-purple-500/30 border border-purple-400/40 text-purple-300 text-[10px] font-mono font-black">
-                      ADMIN COMMAND CENTER
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      系統運行正常
-                    </span>
-                  </div>
-                  <h3 className="text-lg sm:text-2xl font-black text-white">創點子 IdeaX 管理儀表板</h3>
-                  <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 leading-relaxed">
-                    實時掌握全站會員總數、各方案人數與訂閱分佈、成交方案筆數、案件進展與金流分潤。
-                  </p>
-                </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold text-stone-900">管理儀表板</h2>
+                <p className="text-[13px] text-stone-500 mt-0.5">會員、瀏覽量、方案與金流的即時數字；只計真實資料，不含模擬帳號。</p>
               </div>
 
               {/* 核心營運大盤 KPI - 手機多格雙欄面板，全景一覽無遺 */}
@@ -2933,20 +2392,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 1. 網站總瀏覽量 */}
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">網站總瀏覽量</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">網站總瀏覽量</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                         <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {(totalViewsCount || 0).toLocaleString()} <span className="text-[10px] sm:text-xs font-bold text-stone-500">次</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {(totalViewsCount || 0).toLocaleString()} <span className="text-[11px] sm:text-xs font-bold text-stone-500">次</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-amber-700">
                         進入網站
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">進入網站的總造訪次數</span>
                     </div>
                   </div>
@@ -2955,7 +2414,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs sm:text-sm font-black text-stone-800">線上人數</span>
+                        <span className="text-xs sm:text-sm font-semibold text-stone-800">線上人數</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       </div>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
@@ -2963,14 +2422,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
-                        {liveOnlineUsersCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">位</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-emerald-950 tabular-nums tracking-tight">
+                        {liveOnlineUsersCount} <span className="text-[11px] sm:text-xs font-bold text-emerald-700">位</span>
                       </p>
-                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-stone-200">
                         即時在線
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">即時連線活躍人數</span>
                     </div>
                   </div>
@@ -3003,20 +2462,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">總註冊用戶</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">總註冊用戶</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {adminTotalRegisteredUsersCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">位</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {adminTotalRegisteredUsersCount} <span className="text-[11px] sm:text-xs font-bold text-stone-500">位</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
                         管理用戶 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span>提問 {adminQuestionersCount} 位</span>
                       <span className="text-stone-300">•</span>
                       <span>專家 {adminSolversCount} 位</span>
@@ -3030,20 +2489,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">認證專家</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">認證專家</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {solvers.length} <span className="text-[10px] sm:text-xs font-bold text-stone-500">位</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {solvers.length} <span className="text-[11px] sm:text-xs font-bold text-stone-500">位</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
                         審核認證 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">已認證 {adminVerifiedSolversCount} 位</span>
                     </div>
                   </button>
@@ -3058,20 +2517,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">問題數量</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">問題數量</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {questions.length} <span className="text-[10px] sm:text-xs font-bold text-stone-500">題</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {questions.length} <span className="text-[11px] sm:text-xs font-bold text-stone-500">題</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-blue-700 group-hover:translate-x-0.5 transition-transform">
                         審核問題 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span>徵答 {adminOpenCount}</span>
                       <span className="text-stone-300">•</span>
                       <span>結案 {adminSolvedCount}</span>
@@ -3085,20 +2544,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">提案數量</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">提案數量</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {totalProposalsCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">件</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {totalProposalsCount} <span className="text-[11px] sm:text-xs font-bold text-stone-500">件</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
                         案件管理 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">解法與客製提案交付</span>
                     </div>
                   </button>
@@ -3113,20 +2572,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">已解決題數</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">已解決題數</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
-                        {adminSolvedCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">題</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-emerald-950 tabular-nums tracking-tight">
+                        {adminSolvedCount} <span className="text-[11px] sm:text-xs font-bold text-emerald-700">題</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
                         已結案 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">已獲提問方採納驗收結案</span>
                     </div>
                   </button>
@@ -3138,20 +2597,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">已成交方案</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">已成交方案</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                         <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {adminTotalDealsCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">筆</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {adminTotalDealsCount} <span className="text-[11px] sm:text-xs font-bold text-stone-500">筆</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform">
                         交易明細 →
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">問題採納提案與聊天室自訂成案</span>
                     </div>
                   </button>
@@ -3162,20 +2621,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 9. 平均回覆速度 */}
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">平均回覆速度</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">平均回覆速度</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
                         <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        {adminAvgResponseSpeed.value} <span className="text-[10px] sm:text-xs font-bold text-stone-500">{adminAvgResponseSpeed.unit}</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
+                        {adminAvgResponseSpeed.value} <span className="text-[11px] sm:text-xs font-bold text-stone-500">{adminAvgResponseSpeed.unit}</span>
                       </p>
-                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-stone-200">
                         {adminAvgResponseSpeed.badge}
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">{adminAvgResponseSpeed.desc}</span>
                     </div>
                   </div>
@@ -3183,20 +2642,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 10. 滿意度 */}
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">滿意度</span>
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800">滿意度</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                         <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-400" />
                       </div>
                     </div>
                     <div className="flex items-baseline justify-between">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-950 font-mono tracking-tight">
-                        {adminSatisfactionStats.percentageFormatted} <span className="text-[10px] sm:text-xs font-bold text-amber-700">%</span>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-amber-950 tabular-nums tracking-tight">
+                        {adminSatisfactionStats.percentageFormatted} {!adminSatisfactionStats.empty && <span className="text-[11px] sm:text-xs font-bold text-amber-700">%</span>}
                       </p>
-                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                      <span className="text-[10.5px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
                         {adminSatisfactionStats.badge}
                       </span>
                     </div>
-                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
                       <span className="truncate">{adminSatisfactionStats.desc}</span>
                     </div>
                   </div>
@@ -3206,11 +2665,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {/* 平台獲利數據與即時運營總覽 */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
                     <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
                     <span>平台獲利數據與即時運營總覽</span>
                   </h4>
-                  <span className="text-[10px] text-stone-400 font-mono font-bold">即時統計</span>
+                  <span className="text-[11px] text-stone-400 tabular-nums font-bold">即時統計</span>
                 </div>
 
                 <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-2.5 sm:gap-3 text-center`}>
@@ -3218,38 +2677,38 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <>
                       <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
                         <span className="text-[11px] text-stone-500 font-bold block truncate">平台總交易額</span>
-                        <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
+                        <span className="text-xl sm:text-2xl font-semibold text-stone-900 tabular-nums mt-1 block">
                           NT$ {(adminTotalGMV || 0).toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-stone-400 mt-0.5 block truncate">全站媒合總額</span>
+                        <span className="text-[11px] text-stone-400 mt-0.5 block truncate">全站媒合總額</span>
                       </div>
 
-                      <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200 shadow-2xs">
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 shadow-2xs">
                         <span className="text-[11px] text-amber-800 font-bold block truncate">平台累計獲利 (淨抽成)</span>
-                        <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono mt-1 block">
+                        <span className="text-xl sm:text-2xl font-semibold text-amber-700 tabular-nums mt-1 block">
                           NT$ {(adminTotalPlatformFees || 0).toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-amber-600 mt-0.5 block truncate">平台實收服務費</span>
+                        <span className="text-[11px] text-amber-600 mt-0.5 block truncate">平台實收服務費</span>
                       </div>
                     </>
                   )}
 
                   <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
                     <span className="text-[11px] text-stone-500 font-bold block truncate">平均用戶交易額</span>
-                    <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
+                    <span className="text-xl sm:text-2xl font-semibold text-stone-900 tabular-nums mt-1 block">
                       NT$ {(adminAvgGMVPerUser || 0).toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
+                    <span className="text-[11px] text-stone-400 mt-0.5 block truncate">
                       全站會員平均交易貢獻
                     </span>
                   </div>
 
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 shadow-2xs">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 shadow-2xs">
                     <span className="text-[11px] text-emerald-800 font-bold block truncate">平均用戶收益</span>
-                    <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-1 block">
+                    <span className="text-xl sm:text-2xl font-semibold text-emerald-700 tabular-nums mt-1 block">
                       NT$ {(adminAvgPlatformFeePerUser || 0).toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-emerald-600/90 mt-0.5 block truncate" title="平台從每個客戶賺的錢">
+                    <span className="text-[11px] text-emerald-600/90 mt-0.5 block truncate" title="平台從每個客戶賺的錢">
                       平台從每個客戶賺的錢
                     </span>
                   </div>
@@ -3261,10 +2720,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Crown className="w-4 h-4 text-amber-500" />
-                    <h4 className="font-black text-stone-900 text-xs sm:text-sm">
+                    <h4 className="font-semibold text-stone-900 text-xs sm:text-sm">
                       用戶與方案會員分佈（各方案人數）
                     </h4>
-                    <span className="text-[10px] text-stone-500 font-normal px-2 py-0.5 rounded-full bg-stone-100">
+                    <span className="text-[11px] text-stone-500 font-normal px-2 py-0.5 rounded-full bg-stone-100">
                       總註冊用戶 {adminTotalRegisteredUsersCount} 位（一般用戶 {adminFreeUsersCount} 位 · 訂閱會員 {adminPaidMembersCount} 位）
                     </span>
                   </div>
@@ -3272,7 +2731,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('subscriptions')}
-                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[10px] sm:text-xs font-black border border-purple-200 flex items-center gap-1 transition-all cursor-pointer shrink-0 self-end sm:self-center"
+                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] sm:text-xs font-semibold border border-stone-200 flex items-center gap-1 transition-all cursor-pointer shrink-0 self-end sm:self-center"
                   >
                     <span>費率管理</span>
                     <ArrowRight className="w-3 h-3" />
@@ -3292,15 +2751,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           isFree
                             ? 'bg-stone-50/80 border-stone-200'
                             : isMaster
-                            ? 'bg-gradient-to-b from-purple-50/80 to-white border-purple-300 ring-1 ring-purple-200'
+                            ? 'bg-white border-stone-200 ring-1 ring-purple-200'
                             : isAuthority
-                            ? 'bg-gradient-to-b from-amber-50/60 to-white border-amber-300'
+                            ? 'bg-white border-stone-200'
                             : 'bg-white border-stone-200'
                         }`}
                       >
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-black text-xs text-stone-900 flex items-center gap-1 truncate">
+                            <span className="font-semibold text-xs text-stone-900 flex items-center gap-1 truncate">
                               {isFree ? (
                                 <Users className="w-3 h-3 text-stone-500 shrink-0" />
                               ) : isMaster ? (
@@ -3311,12 +2770,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                               <span className="truncate">{isFree ? '一般用戶 (免費)' : plan.name}</span>
                             </span>
                             <span
-                              className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold shrink-0 ${
+                              className={`text-[10.5px] tabular-nums px-1.5 py-0.2 rounded font-bold shrink-0 ${
                                 isFree
                                   ? 'bg-stone-200 text-stone-700'
                                   : isMaster
-                                  ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                  : 'bg-amber-100 text-amber-900 border border-amber-200'
+                                  ? 'bg-purple-100 text-purple-900 border border-stone-200'
+                                  : 'bg-amber-100 text-amber-900 border border-stone-200'
                               }`}
                             >
                               {plan.monthlyPrice === 0 ? '免月費' : `$${plan.monthlyPrice}`}
@@ -3325,12 +2784,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                           <div className="mt-1.5 flex items-baseline justify-between">
                             <div>
-                              <span className="text-lg sm:text-xl font-black text-stone-950 font-mono">
+                              <span className="text-lg sm:text-xl font-semibold text-stone-950 tabular-nums">
                                 {plan.userCount}
                               </span>
-                              <span className="text-[10px] text-stone-500 ml-0.5">人</span>
+                              <span className="text-[11px] text-stone-500 ml-0.5">人</span>
                             </div>
-                            <span className="text-[10px] font-bold text-stone-500">
+                            <span className="text-[11px] font-bold text-stone-500">
                               {plan.percentage}%
                             </span>
                           </div>
@@ -3352,9 +2811,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="mt-2 pt-1.5 border-t border-stone-100/90 text-[10px] flex items-center justify-between text-stone-600">
+                        <div className="mt-2 pt-1.5 border-t border-stone-100/90 text-[11px] flex items-center justify-between text-stone-600">
                           <span className="text-stone-400">{isFree ? '身分' : '成交'}</span>
-                          <span className={`font-bold font-mono ${isFree ? 'text-stone-600' : 'text-emerald-700'}`}>
+                          <span className={`font-bold tabular-nums ${isFree ? 'text-stone-600' : 'text-emerald-700'}`}>
                             {isFree ? '基礎註冊' : `${plan.dealsCount} 筆訂閱開通`}
                           </span>
                         </div>
@@ -3368,7 +2827,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <AdminHomeShowcaseCard />
 
               {/* 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據，可收合) */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3.5 shadow-2xs">
+              <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3.5 shadow-2xs">
                 <div
                   onClick={() => setIsPublicMetricsExpanded((prev) => !prev)}
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer select-none group"
@@ -3378,7 +2837,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <Sliders className="w-5 h-5 text-stone-950" />
                     </div>
                     <div>
-                      <h4 className="font-black text-sm sm:text-base text-amber-950 flex items-center gap-2">
+                      <h4 className="font-semibold text-sm sm:text-base text-amber-950 flex items-center gap-2">
                         <span>首頁公開運營數據展示控制（首頁看板開關）</span>
                       </h4>
                       <p className="text-xs text-amber-900/70 mt-0.5">
@@ -3389,9 +2848,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
 <div
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-amber-300 shadow-2xs"
+                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-stone-200 shadow-2xs"
                     >
-                      <span className="text-[11px] font-black text-amber-950">{(publicMetricsConfig.showPublicMetrics !== false) ? '首頁顯示中' : '首頁不顯示'}</span>
+                      <span className="text-[11px] font-semibold text-amber-950">{(publicMetricsConfig.showPublicMetrics !== false) ? '首頁顯示中' : '首頁不顯示'}</span>
                       <button
                         type="button"
                         role="switch"
@@ -3401,15 +2860,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${(publicMetricsConfig.showPublicMetrics !== false) ? 'bg-amber-500' : 'bg-stone-300'}`}
                         title={(publicMetricsConfig.showPublicMetrics !== false) ? '關閉：首頁不顯示任何公開數據' : '開啟：首頁顯示下面選好的數據'}
                       >
-                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${(publicMetricsConfig.showPublicMetrics !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${(publicMetricsConfig.showPublicMetrics !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
                       </button>
                     </div>
-                    <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-stone-200 w-fit">
                       已選 {countPublicMetrics(publicMetricsConfig)} / {PUBLIC_METRIC_TOGGLE_KEYS.length} 項指標
                     </span>
                     <button
                       type="button"
-                      className="px-2.5 py-1 rounded-xl bg-white/80 hover:bg-white text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1 rounded-xl bg-white/80 hover:bg-white text-amber-900 border border-stone-200 text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
                     >
                       <span>{isPublicMetricsExpanded ? '收合' : '展開'}</span>
                       {isPublicMetricsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -3418,18 +2877,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {publicMetricsConfig.showPublicMetrics === false && (
-                  <p className="text-xs font-bold text-amber-900 bg-white/70 border border-amber-200 rounded-xl px-3 py-2">統一開關關閉中：首頁目前不顯示任何公開數據。下面的選擇會保留，打開統一開關後才會顯示。</p>
+                  <p className="text-xs font-bold text-amber-900 bg-white/70 border border-stone-200 rounded-xl px-3 py-2">統一開關關閉中：首頁目前不顯示任何公開數據。下面的選擇會保留，打開統一開關後才會顯示。</p>
                 )}
                 {isPublicMetricsExpanded && (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200 ${publicMetricsConfig.showPublicMetrics === false ? 'opacity-60' : ''}`}>
                   {/* Metric 1: 網站總瀏覽量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTotalViews ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">網站總瀏覽量</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">瀏覽次數</span>
+                        <span className="font-semibold text-xs text-stone-900">網站總瀏覽量</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">瀏覽次數</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">進入網站與存取頁面的總瀏覽次數</p>
                     </div>
@@ -3441,7 +2900,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTotalViews ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTotalViews ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3449,12 +2908,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 1b: 不重複訪客（和總瀏覽量分開開關） */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showUniqueVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showUniqueVisitors ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">不重複訪客</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">不重複人數</span>
+                        <span className="font-semibold text-xs text-stone-900">不重複訪客</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">不重複人數</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">來過網站的不重複裝置數（同一裝置只算一次）</p>
                     </div>
@@ -3466,7 +2925,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showUniqueVisitors ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showUniqueVisitors ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3474,12 +2933,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 1b: 今日訪客 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTodayVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTodayVisitors ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">今日訪客</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">今日人數</span>
+                        <span className="font-semibold text-xs text-stone-900">今日訪客</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">今日人數</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">今天來過網站的不重複訪客（同一裝置當天只算一次）</p>
                     </div>
@@ -3491,7 +2950,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTodayVisitors ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTodayVisitors ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3499,12 +2958,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 1b: 近 7 天新會員 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showNewMembers7d ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showNewMembers7d ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">近 7 天新會員</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">成長</span>
+                        <span className="font-semibold text-xs text-stone-900">近 7 天新會員</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">成長</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">最近 7 天新註冊的會員人數（不含測試帳號）</p>
                     </div>
@@ -3516,7 +2975,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showNewMembers7d ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showNewMembers7d ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3524,12 +2983,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 1b: 匯職缺使用人次 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showJobsUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showJobsUsers ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">匯職缺使用人次</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">功能熱度</span>
+                        <span className="font-semibold text-xs text-stone-900">匯職缺使用人次</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">功能熱度</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">用過匯職缺的人次（每位訪客每天算一次，v3.4.0 起記錄）</p>
                     </div>
@@ -3541,7 +3000,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showJobsUsers ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showJobsUsers ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3549,12 +3008,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 2: 線上人數 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showOnlineUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showOnlineUsers ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">線上人數</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">即時在線</span>
+                        <span className="font-semibold text-xs text-stone-900">線上人數</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">即時在線</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">當前連線活躍瀏覽與互動人數</p>
                     </div>
@@ -3566,7 +3025,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showOnlineUsers ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showOnlineUsers ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3574,12 +3033,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 3: 總註冊用戶 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTotalMembers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTotalMembers ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">總註冊用戶</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">會員規模</span>
+                        <span className="font-semibold text-xs text-stone-900">總註冊用戶</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">會員規模</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站註冊會員總人數（提問方與專家）</p>
                     </div>
@@ -3591,7 +3050,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTotalMembers ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTotalMembers ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3599,12 +3058,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 4: 認證專家 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showVerifiedSolvers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showVerifiedSolvers ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">認證專家</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">智庫認證</span>
+                        <span className="font-semibold text-xs text-stone-900">認證專家</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">智庫認證</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">官方審核通過之認證專家智庫總數</p>
                     </div>
@@ -3616,7 +3075,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showVerifiedSolvers ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showVerifiedSolvers ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3624,12 +3083,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 5: 發布卡片 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showQuestionsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showQuestionsCount ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">發布卡片</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">單位：張</span>
+                        <span className="font-semibold text-xs text-stone-900">發布卡片</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">單位：張</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站公開發布的卡片數（問題、痛點、提案等）</p>
                     </div>
@@ -3641,7 +3100,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showQuestionsCount ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showQuestionsCount ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3649,12 +3108,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 6: 提案數量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showProposalsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showProposalsCount ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">提案總數</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
+                        <span className="font-semibold text-xs text-stone-900">提案總數</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">各領域專家提交之專業解題方案總數</p>
                     </div>
@@ -3666,7 +3125,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showProposalsCount ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showProposalsCount ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3674,12 +3133,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 7: 已解決題數 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showSolvedCount ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">已解決題數</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">結案題數</span>
+                        <span className="font-semibold text-xs text-stone-900">已解決題數</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">結案題數</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站已結案問題與專家已採納方案總數</p>
                     </div>
@@ -3691,7 +3150,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showSolvedCount ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showSolvedCount ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3699,12 +3158,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 8: 已成交方案 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTotalDeals ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTotalDeals ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">已成交方案</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
+                        <span className="font-semibold text-xs text-stone-900">已成交方案</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站問題提案採納與聊天室自訂提案成案總筆數</p>
                     </div>
@@ -3716,7 +3175,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTotalDeals ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTotalDeals ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3724,12 +3183,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 9: 平均回覆速度 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showAvgResponseSpeed ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">平均回覆速度</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">時效指標</span>
+                        <span className="font-semibold text-xs text-stone-900">平均回覆速度</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">時效指標</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全體專家諮詢方案平均回覆工時</p>
                     </div>
@@ -3741,7 +3200,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showAvgResponseSpeed ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showAvgResponseSpeed ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3749,12 +3208,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 10: 滿意度 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showSatisfactionRate ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">滿意度</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">% 滿意度</span>
+                        <span className="font-semibold text-xs text-stone-900">滿意度</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">% 滿意度</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">專家星級口碑與方案採納滿意回饋率</p>
                     </div>
@@ -3766,7 +3225,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showSatisfactionRate ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showSatisfactionRate ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3774,12 +3233,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 11: 平台總交易額 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTotalGMV ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTotalGMV ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">平台總交易額</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">全站流水</span>
+                        <span className="font-semibold text-xs text-stone-900">平台總交易額</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">全站流水</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站媒合交易與方案訂閱總流水</p>
                     </div>
@@ -3791,7 +3250,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTotalGMV ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTotalGMV ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3799,12 +3258,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 12: 累計懸賞金額 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showTotalBounty ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">累計懸賞金額</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">NT$ 即時統計</span>
+                        <span className="font-semibold text-xs text-stone-900">累計懸賞金額</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">NT$ 即時統計</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">全站已發布問題與已完成交易方案之懸賞總額</p>
                     </div>
@@ -3816,7 +3275,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showTotalBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showTotalBounty ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3824,12 +3283,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   {/* Metric 13: 當前最高賞金 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    publicMetricsConfig.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                    publicMetricsConfig.showHighestBounty ? 'bg-white border-stone-200 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">當前最高賞金</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">熱門導流</span>
+                        <span className="font-semibold text-xs text-stone-900">當前最高賞金</span>
+                        <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">熱門導流</span>
                       </div>
                       <p className="text-[11px] text-stone-500 mt-0.5">即時抓取全站最高單題懸賞金額並導流排行</p>
                     </div>
@@ -3841,7 +3300,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                       title={publicMetricsConfig.showHighestBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
                     >
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${
                         publicMetricsConfig.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
@@ -3858,7 +3317,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <Sliders className="w-3.5 h-3.5 text-amber-400" />
                     <span className="font-bold text-stone-200 text-xs">特殊環境開關控制</span>
                   </div>
-                  <span className="text-[10px] text-stone-400">
+                  <span className="text-[11px] text-stone-400">
                     運營模式全站生效 • 測試環境僅管理員視角
                   </span>
                 </div>
@@ -3867,13 +3326,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-stone-300">平台運營模式（四選一專屬模式切換）</span>
-                    <span className="text-[10px] text-amber-400 font-mono font-bold">
-                      {isRaceMode ? '🏎️ RACE (競賽專屬)' : isDemoMode ? '🧪 TEST (預設測試中)' : isNoPaymentMode ? '⚡ FREE (無金流)' : '🟢 NORM (正常營運)'}
+                    <span className="text-[11px] text-amber-400 tabular-nums font-bold">
+                      {isRaceMode ? ' RACE (競賽專屬)' : isDemoMode ? ' TEST (預設測試中)' : isNoPaymentMode ? ' FREE (無金流)' : ' NORM (正常營運)'}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
-                    {/* 🟢 正式營運模式 (NORM) */}
+                    {/*  正式營運模式 (NORM) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3883,16 +3342,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }}
                       className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         !isRaceMode && !isNoPaymentMode && !isDemoMode
-                          ? 'bg-emerald-500 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
+                          ? 'bg-emerald-500 text-stone-950 shadow-sm font-semibold ring-1 ring-emerald-300'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
                       title="切換至正常營運模式 (保留點數機制，純淨交易額)"
                     >
-                      <span>🟢 正常營運</span>
-                      <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
+                      <span> 正常營運</span>
+                      <span className="text-[10.5px] opacity-80 tabular-nums">(NORM)</span>
                     </button>
 
-                    {/* ⚡ 無金流模式 (FREE) */}
+                    {/*  無金流模式 (FREE) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3902,16 +3361,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }}
                       className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         !isRaceMode && isNoPaymentMode && !isDemoMode
-                          ? 'bg-rose-500 text-white shadow-md font-black ring-1 ring-rose-400'
+                          ? 'bg-rose-500 text-white shadow-sm font-semibold ring-1 ring-rose-400'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
                       title="切換至無金流模式 (全站免點數，隱藏金流)"
                     >
-                      <span>⚡ 無金流</span>
-                      <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+                      <span> 無金流</span>
+                      <span className="text-[10.5px] opacity-80 tabular-nums">(FREE)</span>
                     </button>
 
-                    {/* 🧪 測試環境 (TEST) */}
+                    {/*  測試環境 (TEST) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3921,16 +3380,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }}
                       className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         !isRaceMode && isDemoMode
-                          ? 'bg-amber-400 text-stone-950 shadow-md font-black ring-1 ring-amber-300'
+                          ? 'bg-amber-400 text-stone-950 shadow-sm font-semibold ring-1 ring-amber-300'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
                       title={isDemoMode ? '目前處於測試環境' : '切換至測試環境'}
                     >
-                      <span>🧪 測試環境</span>
-                      <span className="text-[9px] opacity-80 font-mono">(TEST)</span>
+                      <span> 測試環境</span>
+                      <span className="text-[10.5px] opacity-80 tabular-nums">(TEST)</span>
                     </button>
 
-                    {/* 🏎️ 競賽模式 (RACE) */}
+                    {/*  競賽模式 (RACE) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3940,13 +3399,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }}
                       className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         isRaceMode
-                          ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
+                          ? 'bg-emerald-400 text-stone-950 shadow-sm font-semibold ring-1 ring-emerald-300'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
                       title="切換至競賽模式 (舊站提供創星季、創點子/痛點集與L0討論區專屬入口捷徑、獨立方案卡片與專屬網址)"
                     >
-                      <span>🏎️ 競賽模式</span>
-                      <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
+                      <span> 競賽模式</span>
+                      <span className="text-[10.5px] opacity-80 tabular-nums">(RACE)</span>
                     </button>
                   </div>
                 </div>
@@ -3957,12 +3416,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
                     <div className="flex flex-col">
                       <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
-                      <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+                      <span className="text-[10.5px] text-stone-500">僅作用於管理員帳號</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
-                      className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                      className={`px-2 py-1 rounded text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                         isDemoMode
                           ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
                           : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
@@ -3976,12 +3435,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
                     <div className="flex flex-col">
                       <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
-                      <span className="text-[9px] text-stone-500">全站平台同步</span>
+                      <span className="text-[10.5px] text-stone-500">全站平台同步</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                      className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
+                      className={`px-2 py-1 rounded text-[11px] font-bold shrink-0 transition-all cursor-pointer tabular-nums ${
                         isHideTestAccounts
                           ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
                           : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
@@ -6064,7 +5523,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-amber-600" />
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-stone-900">切換帳號</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-stone-900">切換帳號</h3>
                   <p className="text-xs text-stone-500 mt-0.5">
                     平台支援即時切換不同角色的帳號，無縫體驗提問者、認證專家與管理員功能
                   </p>
@@ -6073,7 +5532,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
 
             {/* Google 1-Click Fast Login / Switch Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 via-white to-amber-50/50 border-2 border-stone-200 hover:border-blue-400 transition-all shadow-xs">
+            <div className="p-4 rounded-2xl bg-white border-2 border-stone-200 hover:border-blue-400 transition-all shadow-xs">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-white shadow-xs border border-stone-200 flex items-center justify-center shrink-0">
@@ -6085,9 +5544,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+                    <h4 className="text-sm font-semibold text-stone-900 flex items-center gap-1.5">
                       <span>使用 Google 帳號一鍵快速登入</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">官方推薦</span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">官方推薦</span>
                     </h4>
                     <p className="text-xs text-stone-500 mt-0.5">
                       串接 Firebase Google 授權，免輸入密碼即可安全完成身分登入或切換
@@ -6097,7 +5556,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => openAuthModal('login')}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2 shrink-0"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2 shrink-0"
                 >
                   <span>開啟 Google 一鍵登入</span>
                   <ArrowRight className="w-4 h-4" />
@@ -6106,7 +5565,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
 
             {/* Current Active Account Indicator */}
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-between gap-3 flex-wrap">
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3 flex-wrap">
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
@@ -6116,12 +5575,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <img src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={currentUser.name} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shrink-0 group-hover:ring-amber-500 transition-all" />
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-black text-stone-900 group-hover:text-amber-600 transition-colors">{currentUser.name}</span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <span className="text-sm font-semibold text-stone-900 group-hover:text-amber-600 transition-colors">{currentUser.name}</span>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-stone-200">
                       目前登入使用中
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                         currentUser.role === 'admin'
                           ? 'bg-purple-100 text-purple-800'
                           : currentUser.role === 'solver'
@@ -6142,7 +5601,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               {currentUser.role === 'admin' ? (
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 rounded-xl bg-purple-100 text-purple-900 border border-purple-200 text-xs font-black flex items-center gap-1.5">
+                  <span className="px-3 py-1.5 rounded-xl bg-purple-100 text-purple-900 border border-stone-200 text-xs font-semibold flex items-center gap-1.5">
                     <Shield className="w-3.5 h-3.5 text-purple-700" />
                     <span>管理員身分固定不可變換</span>
                   </span>
@@ -6150,18 +5609,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               ) : null}
             </div>
 
-            {/* 🧪 測試環境一鍵生成與添加測試帳號 (只有管理員帳號才可以新增) */}
+            {/*  測試環境一鍵生成與添加測試帳號 (只有管理員帳號才可以新增) */}
             {currentUser.role === 'admin' && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-purple-500/15 border-2 border-amber-400 shadow-xs space-y-3">
+              <div className="p-4 rounded-2xl bg-stone-50 border-2 border-amber-400 shadow-xs space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold shadow-2xs">
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
-                        <span>🧪 測試模式：一鍵添加測試帳號</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-200 text-amber-950 border border-amber-300">
+                      <h4 className="text-xs sm:text-sm font-semibold text-stone-900 flex items-center gap-1.5">
+                        <span> 測試模式：一鍵添加測試帳號</span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-200 text-amber-950 border border-stone-200">
                           管理員專屬 • 免註冊 • 即刻切換
                         </span>
                       </h4>
@@ -6200,13 +5659,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         verifiedExpert: true,
                       })
                     }
-                    className="p-3 rounded-xl bg-white border border-amber-300 hover:border-amber-500 hover:bg-amber-50/60 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
+                    className="p-3 rounded-xl bg-white border border-stone-200 hover:border-amber-500 hover:bg-stone-50 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
                   >
                     <div>
-                      <span className="font-black text-xs text-stone-900 block group-hover:text-amber-700">
+                      <span className="font-semibold text-xs text-stone-900 block group-hover:text-amber-700">
                         + 生成認證專家顧問
                       </span>
-                      <span className="text-[10px] text-stone-500 block">
+                      <span className="text-[11px] text-stone-500 block">
                         初始 NT$ 8,000 • 專家標章
                       </span>
                     </div>
@@ -6223,13 +5682,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         balance: 15000,
                       })
                     }
-                    className="p-3 rounded-xl bg-white border border-amber-300 hover:border-amber-500 hover:bg-amber-50/60 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
+                    className="p-3 rounded-xl bg-white border border-stone-200 hover:border-amber-500 hover:bg-stone-50 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
                   >
                     <div>
-                      <span className="font-black text-xs text-stone-900 block group-hover:text-amber-700">
+                      <span className="font-semibold text-xs text-stone-900 block group-hover:text-amber-700">
                         + 生成測試提問委託方
                       </span>
-                      <span className="text-[10px] text-stone-500 block">
+                      <span className="text-[11px] text-stone-500 block">
                         初始 NT$ 15,000 • 發案懸賞
                       </span>
                     </div>
@@ -6246,13 +5705,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         balance: 50000,
                       })
                     }
-                    className="p-3 rounded-xl bg-white border border-purple-300 hover:border-purple-500 hover:bg-purple-50/60 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
+                    className="p-3 rounded-xl bg-white border border-stone-200 hover:border-purple-500 hover:bg-stone-50 transition-all text-left flex items-center justify-between gap-2 shadow-2xs group cursor-pointer"
                   >
                     <div>
-                      <span className="font-black text-xs text-stone-900 block group-hover:text-purple-700">
+                      <span className="font-semibold text-xs text-stone-900 block group-hover:text-purple-700">
                         + 生成測試管理員
                       </span>
-                      <span className="text-[10px] text-stone-500 block">
+                      <span className="text-[11px] text-stone-500 block">
                         管理席位 • 審查與仲裁
                       </span>
                     </div>
@@ -6265,7 +5724,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             {/* Available Accounts Grid */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-stone-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-stone-900 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-600" />
                   <span>所有可切換帳號</span>
                 </h4>
@@ -6285,22 +5744,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                         isCurrent
-                          ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
-                          : 'bg-white border-stone-200 hover:border-amber-300 hover:bg-amber-50/40 shadow-2xs'
+                          ? 'bg-stone-50 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
+                          : 'bg-white border-stone-200 hover:border-stone-200 hover:bg-stone-50 shadow-2xs'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <img src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={u.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-black text-stone-900 truncate">{u.name}</span>
+                            <span className="text-xs font-semibold text-stone-900 truncate">{u.name}</span>
                             {isCurrent && (
-                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
                                 使用中
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-stone-500 mt-1">
+                          <div className="flex items-center gap-1.5 text-[11px] text-stone-500 mt-1">
                             <span
                               className={`px-1.5 py-0.2 rounded font-bold ${
                                 u.role === 'admin'
@@ -6319,7 +5778,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                       <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
                         <span className="text-stone-400">點數餘額 NT$ {(u.balance || 0).toLocaleString()}</span>
-                        <span className={`font-bold ${isCurrent ? 'text-amber-900 font-black' : 'text-amber-600'}`}>
+                        <span className={`font-bold ${isCurrent ? 'text-amber-900 font-semibold' : 'text-amber-600'}`}>
                           {isCurrent ? '當前帳號' : '切換此帳號 →'}
                         </span>
                       </div>
@@ -6330,14 +5789,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
 
             {/* Quick Register New Account */}
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3">
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold">
                     <UserPlus className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                    <h3 className="text-xs font-semibold text-stone-900">
                       註冊新帳號
                     </h3>
                     <p className="text-[11px] text-stone-500 mt-0.5">
@@ -6357,7 +5816,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
 
               {showAddUserForm && (
-                <div className="pt-3 border-t border-amber-200/80 space-y-3 animate-in fade-in duration-150">
+                <div className="pt-3 border-t border-stone-200 space-y-3 animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1">
@@ -6404,7 +5863,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRegisterNewUser}
-                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs transition-colors cursor-pointer shadow-xs"
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-semibold text-xs transition-colors cursor-pointer shadow-xs"
                     >
                       完成註冊並即刻切換登入
                     </button>
@@ -10353,53 +9812,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
       )}
 
-      {/* Footer（一般會員不顯示：左側選單已經有所有入口） */}
-      {isAdminUser && (
-      <div className="p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          <span className="text-xs text-stone-500 font-medium">
-            創點子 IdeaX • {currentUser.role === 'admin' ? '管理員控制台' : '個人中心'}
-          </span>
-          {currentUser.role === 'admin' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setIsPlatformManualModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
-                title="開啟平台內部清單與版本維護中心"
-              >
-                <Folder className="w-3.5 h-3.5 text-amber-700" />
-                <span>平台內部清單</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500 text-stone-950 font-black">
-                  v{APP_VERSION}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsMarketingAssetsModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-500 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
-                title="開啟行銷素材庫（宣傳文案與圖卡下載）"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>行銷素材庫</span>
-              </button>
-            </div>
-          )}
-        </div>
-        {!isFullPage && (
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-stone-900 text-white hover:bg-stone-800 text-xs font-semibold cursor-pointer"
-          >
-            關閉
-          </button>
-        )}
-      </div>
-      )}
 
       {/* 頁尾版本號（環境代碼只給管理員看） */}
-      <div className={`lg:col-span-2 py-2 text-center border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none ${isAdminUser ? 'bg-stone-50/70' : 'bg-white rounded-b-2xl sm:rounded-b-3xl'}`}>
+      <div className={`lg:col-span-2 py-2 text-center border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none bg-white rounded-b-2xl sm:rounded-b-3xl`}>
         v{APP_VERSION} • {APP_RELEASE_DATE}{isAdminUser ? ` • ${isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-${isHideTestAccounts ? 'HIDE' : 'SHOW'}` : ''}
       </div>
 
@@ -10787,7 +10202,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   );
 
   if (isFullPage) {
-    return <div className={`${isAdminUser ? 'max-w-4xl' : 'max-w-6xl'} mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8`}>{content}</div>;
+    return <div className={`max-w-6xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8`}>{content}</div>;
   }
 
   return (

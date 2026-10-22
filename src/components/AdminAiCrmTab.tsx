@@ -161,7 +161,7 @@ const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
     id: 'rule-board-push',
     name: '主題看板熱門題目專屬推播',
     category: 'system',
-    title: '📢 主題看板熱門難題加碼推播',
+    title: ' 主題看板熱門難題加碼推播',
     content: '您關注的主題看板新增高額懸賞難題，邀請各界專家好手前往解答破局！',
     triggerCondition: '提問者啟用置頂推播或熱門題目點擊數超過閥值時自動廣播擴散',
     targetAudience: '全體會員 (All)',
@@ -348,7 +348,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
           setLeadsPool(transformedLeads);
           setScanNotice(
-            `⚡ AICRM 巡航雷達即時探測完畢！由 Dify AICRM Agent 掃描全站 ${questions.length} 個題目，探測出 ${transformedLeads.length} 筆高價值客情！`
+            ` AICRM 巡航雷達即時探測完畢！由 Dify AICRM Agent 掃描全站 ${questions.length} 個題目，探測出 ${transformedLeads.length} 筆高價值客情！`
           );
           setTimeout(() => setScanNotice(null), 5000);
           return;
@@ -382,7 +382,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     try {
       // 若為搜職 Agent，先進行條件明確性排查（籠統提「附近」未指明位置、或「我的大學/專業/性格」未明說者主動向用戶確認）
       if (targetAgent === 'explorer_agent') {
-        setExplorerBatchProgressText('🔍 正在檢驗搜尋條件明確性（排查附近或我的...籠統條件）...');
+        setExplorerBatchProgressText(' 正在檢驗搜尋條件明確性（排查附近或我的...籠統條件）...');
         const intakeRes = await fetch('/api/job-explorer/intake', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -391,12 +391,12 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
         const intakeData = intakeRes ? await intakeRes.json().catch(() => null) : null;
         if (intakeData?.isAmbiguous) {
-          setExplorerBatchProgressText('⚠️ 條件尚不明確，已啟動用戶確認追問機制');
+          setExplorerBatchProgressText(' 條件尚不明確，已啟動用戶確認追問機制');
           setDifyLiveResponse({
             success: true,
             source: 'ambiguity-intake-guard',
             agentKey: 'Explorer Agent 需求釐清確認調節器 (Intake Regulator)',
-            notice: `⚠️ 系統成功攔截籠統條件！檢測到【${(intakeData.ambiguousTypes || []).join(', ')}】等不清不楚的條件（例如詢問附近但未指定確切位置、或提到我的大學/專業/性格但未明說）。已暫停直接搜尋，改為向用戶提出具體確認！`,
+            notice: ` 系統成功攔截籠統條件！檢測到【${(intakeData.ambiguousTypes || []).join(', ')}】等不清不楚的條件（例如詢問附近但未指定確切位置、或提到我的大學/專業/性格但未明說）。已暫停直接搜尋，改為向用戶提出具體確認！`,
             latencyMs: Date.now() - startTime,
             rawOutput: JSON.stringify(intakeData, null, 2),
             parsedJson: {
@@ -413,7 +413,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
       // 若為搜職 Agent 且開啟「分批多次串流整合模式」，直接呼叫多批次串流端點，前端即時聚合顯示！
       if (targetAgent === 'explorer_agent' && explorerMultiBatchMode) {
-        setExplorerBatchProgressText('🚀 正在啟動多批次串流分流檢索（防止單次輸出超長）...');
+        setExplorerBatchProgressText(' 正在啟動多批次串流分流檢索（防止單次輸出超長）...');
         try {
           const streamRes = await fetch('/api/job-explorer/search-stream', {
             method: 'POST',
@@ -455,7 +455,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       success: true,
                       source: 'multi-batch-stream',
                       agentKey: 'Explorer Multi-Batch Stream (零長度超限)',
-                      notice: `⚡ 已啟用「分批次多次串流整合」：後端分批即時檢索、前端逐批聚合，已整合第 ${event.batchIndex} 批（共 ${accumulatedJobs.length} 筆真實職缺），徹底避免長度超限！`,
+                      notice: ` 已啟用「分批次多次串流整合」：後端分批即時檢索、前端逐批聚合，已整合第 ${event.batchIndex} 批（共 ${accumulatedJobs.length} 筆真實職缺），徹底避免長度超限！`,
                       latencyMs: Date.now() - startTime,
                       rawOutput: JSON.stringify({ reply: lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
                       parsedJson: { reply: lastReply, jobs: accumulatedJobs },
@@ -466,7 +466,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       success: true,
                       source: 'multi-batch-stream',
                       agentKey: 'Explorer Multi-Batch Stream (整合完成)',
-                      notice: `🎉 多批次分開回傳與前端整合檢索完成！共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺（Yes123、Cake、1111、104等），無長度限制問題。`,
+                      notice: ` 多批次分開回傳與前端整合檢索完成！共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺（Yes123、Cake、1111、104等），無長度限制問題。`,
                       latencyMs: Date.now() - startTime,
                       rawOutput: JSON.stringify({ reply: event.reply || lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
                       parsedJson: { reply: event.reply || lastReply, jobs: accumulatedJobs },
@@ -502,7 +502,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
             ...directResult,
             source: 'dify-browser-direct',
             agentKey: directResult.agentKey,
-            notice: '🌐 成功透過瀏覽器 CORS 直連 Dify 官方 API！無經中繼代理，即時獲取真實串流運算成果（非任何模擬資料）。',
+            notice: ' 成功透過瀏覽器 CORS 直連 Dify 官方 API！無經中繼代理，即時獲取真實串流運算成果（非任何模擬資料）。',
           });
           directSuccess = true;
         }
@@ -545,7 +545,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
             source: 'dify-error',
             agentKey: targetAgent,
             latencyMs: Date.now() - startTime,
-            rawOutput: `⚠️ Dify Agent 連線失敗：${browserDirectErr?.message || '未知錯誤'}\n\n【排查指引】\n1. 您的網站部署在靜態環境（如 www.ideax.tw），因此系統直接使用瀏覽器對接 Dify 官方端點。\n2. 請確認目前金鑰是否正確（可點擊下方「⚙️ 金鑰與端點設定」檢視或更新金鑰）。\n3. 您可點擊上方「🔗 開啟 AICRM Web 介面」直接進入 Dify 官方網頁版對話視窗。`,
+            rawOutput: ` Dify Agent 連線失敗：${browserDirectErr?.message || '未知錯誤'}\n\n【排查指引】\n1. 您的網站部署在靜態環境（如 www.ideax.tw），因此系統直接使用瀏覽器對接 Dify 官方端點。\n2. 請確認目前金鑰是否正確（可點擊下方「 金鑰與端點設定」檢視或更新金鑰）。\n3. 您可點擊上方「 開啟 AICRM Web 介面」直接進入 Dify 官方網頁版對話視窗。`,
             parsedJson: null,
           });
         }
@@ -556,7 +556,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
         error: err?.message || '連線逾時',
         source: 'dify-error',
         latencyMs: Date.now() - startTime,
-        rawOutput: `⚠️ 連線異常：${err?.message || '請確認網路與金鑰狀態'}`,
+        rawOutput: ` 連線異常：${err?.message || '請確認網路與金鑰狀態'}`,
       });
     } finally {
       setDifyTesting(false);
@@ -851,107 +851,23 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      {/* 頂部 Hero 監控大盤 */}
-      <div className="bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 rounded-3xl p-5 sm:p-7 text-white border border-purple-900/50 shadow-lg space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-[11px] font-black flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span>小燈泡、AI-CRM 與 Agent 監控中心</span>
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold">
-                🟢 全站 Agent 引擎運作正常
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              AI功能設定與監控
-            </h2>
-            <p className="text-xs text-stone-300 max-w-2xl leading-relaxed">
-              網站吉祥物「小燈泡」的設定、轉接檢查與互動統計，以及客服特助、拓客代操、專家媒合、爭議調解與隱私防火牆等 AI Agent 的運作狀態與測試工具。
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto">
-            {onOpenAiCrm && (
-              <button
-                type="button"
-                onClick={onOpenAiCrm}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white transition-all cursor-pointer border border-white/15 flex items-center gap-1.5 shadow-2xs"
-              >
-                <Eye className="w-3.5 h-3.5 text-amber-300" />
-                <span>檢視專家視角 AI-CRM</span>
-              </button>
-            )}
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg sm:text-xl font-semibold text-stone-900">AI 功能設定與監控</h2>
+          <p className="text-[13px] text-stone-500 mt-0.5 max-w-2xl">
+            小燈泡的設定、轉接檢查與互動統計，以及客服特助、拓客代操、專家媒合、爭議調解等 AI Agent 的設定與測試工具。
+          </p>
         </div>
-
-        {/* 4 大 Agent 即時運行狀態指標卡 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-2">
-          {/* Agent 1: 官方客服特助 */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-black text-purple-200 flex items-center gap-1.5">
-                <Bot className="w-3.5 h-3.5 text-purple-400" />
-                <span>24hr 客服特助</span>
-              </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className="text-lg font-black font-mono text-white">152 次</span>
-              <span className="text-[10px] text-emerald-400 font-bold">延遲 380ms</span>
-            </div>
-            <p className="text-[10px] text-stone-400">今日全天候問答接待</p>
-          </div>
-
-          {/* Agent 2: 24hr巡航雷達代操 */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-black text-amber-200 flex items-center gap-1.5">
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>24hr巡航雷達代操</span>
-              </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className="text-lg font-black font-mono text-white">48 筆</span>
-              <span className="text-[10px] text-amber-400 font-bold">{timeSlotInfo.slotName}</span>
-            </div>
-            <p className="text-[10px] text-stone-400">猶豫期偵測與時段代發</p>
-          </div>
-
-          {/* Agent 3: 專家媒合 */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-black text-indigo-200 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-indigo-400" />
-                <span>專家智慧媒合</span>
-              </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className="text-lg font-black font-mono text-white">94.8%</span>
-              <span className="text-[10px] text-indigo-400 font-bold">命中率</span>
-            </div>
-            <p className="text-[10px] text-stone-400">題意維度與專家庫比對</p>
-          </div>
-
-          {/* Agent 4: 爭議調解 */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-black text-emerald-200 flex items-center gap-1.5">
-                <Scale className="w-3.5 h-3.5 text-emerald-400" />
-                <span>爭議調解報告</span>
-              </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className="text-lg font-black font-mono text-white">14 案</span>
-              <span className="text-[10px] text-emerald-400 font-bold">合約協議</span>
-            </div>
-            <p className="text-[10px] text-stone-400">雙軌和解書與履約分析</p>
-          </div>
-        </div>
+        {onOpenAiCrm && (
+          <button
+            type="button"
+            onClick={onOpenAiCrm}
+            className="h-9 px-3.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] font-medium text-stone-800 cursor-pointer flex items-center gap-1.5 shrink-0"
+          >
+            <Eye className="w-4 h-4 text-stone-500" />
+            檢視專家視角 AI-CRM
+          </button>
+        )}
       </div>
 
       {/* 小燈泡（網站吉祥物）：設定、轉接檢查與互動統計（預設收合） */}
@@ -965,12 +881,12 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           onClick={() => setActiveSubTab('agent_test_bench')}
           className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeSubTab === 'agent_test_bench'
-              ? 'bg-purple-900 text-white shadow-xs font-black'
+              ? 'bg-purple-900 text-white shadow-xs font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white'
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span>🤖 Agent 連線測試</span>
+          <span> Agent 連線測試</span>
         </button>
 
         <button
@@ -978,7 +894,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           onClick={() => setActiveSubTab('leads_pool')}
           className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeSubTab === 'leads_pool'
-              ? 'bg-purple-900 text-white shadow-xs font-black'
+              ? 'bg-purple-900 text-white shadow-xs font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white'
           }`}
         >
@@ -991,7 +907,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           onClick={() => setActiveSubTab('broadcast_center')}
           className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeSubTab === 'broadcast_center'
-              ? 'bg-purple-900 text-white shadow-xs font-black'
+              ? 'bg-purple-900 text-white shadow-xs font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white'
           }`}
         >
@@ -1004,7 +920,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           onClick={() => setActiveSubTab('settings')}
           className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeSubTab === 'settings'
-              ? 'bg-purple-900 text-white shadow-xs font-black'
+              ? 'bg-purple-900 text-white shadow-xs font-semibold'
               : 'text-stone-600 hover:text-stone-900 hover:bg-white'
           }`}
         >
@@ -1014,7 +930,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       </div>
 
       {/* ========================================================================= */}
-      {/* 頁籤 1: 🤖 Agent 運作實機測試台 (Agent Test Bench) */}
+      {/* 頁籤 1:  Agent 運作實機測試台 (Agent Test Bench) */}
       {/* ========================================================================= */}
       {activeSubTab === 'agent_test_bench' && (
         <div className="space-y-4 animate-in fade-in duration-150">
@@ -1025,7 +941,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               onClick={() => setActiveTesterId('dify_direct_console')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'dify_direct_console'
-                  ? 'bg-amber-100 text-amber-950 border border-amber-400 font-black shadow-2xs ring-2 ring-amber-300'
+                  ? 'bg-amber-100 text-amber-950 border border-amber-400 font-semibold shadow-2xs ring-2 ring-amber-300'
                   : 'text-stone-600 hover:bg-stone-50'
               }`}
             >
@@ -1038,7 +954,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               onClick={() => setActiveTesterId('mascot_route_check')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'mascot_route_check'
-                  ? 'bg-amber-100 text-amber-950 border border-amber-400 font-black shadow-2xs ring-2 ring-amber-300'
+                  ? 'bg-amber-100 text-amber-950 border border-amber-400 font-semibold shadow-2xs ring-2 ring-amber-300'
                   : 'text-stone-600 hover:bg-stone-50'
               }`}
             >
@@ -1051,7 +967,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               onClick={() => setActiveTesterId('matching_agent')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'matching_agent'
-                  ? 'bg-indigo-100 text-indigo-950 border border-indigo-300 font-black shadow-2xs'
+                  ? 'bg-indigo-100 text-indigo-950 border border-stone-200 font-semibold shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-50'
               }`}
             >
@@ -1064,7 +980,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               onClick={() => setActiveTesterId('safety_shield')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'safety_shield'
-                  ? 'bg-rose-100 text-rose-950 border border-rose-300 font-black shadow-2xs'
+                  ? 'bg-rose-100 text-rose-950 border border-stone-200 font-semibold shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-50'
               }`}
             >
@@ -1077,7 +993,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               onClick={() => setActiveTesterId('assistant_tick')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'assistant_tick'
-                  ? 'bg-violet-100 text-violet-950 border border-violet-300 font-black shadow-2xs'
+                  ? 'bg-violet-100 text-violet-950 border border-stone-200 font-semibold shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-50'
               }`}
             >
@@ -1088,10 +1004,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
           {/* 測試器：小燈泡轉接檢查 */}
           {activeTesterId === 'mascot_route_check' && (
-            <div className="bg-white rounded-3xl border border-amber-300/80 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-4">
               <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                     <Lightbulb className="w-5 h-5 text-amber-600" />
                     <span>首頁小燈泡 Agent 轉接檢查與測試</span>
                   </h3>
@@ -1107,15 +1023,15 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           {/* 測試器 3: AI 特助伺服器值班（手動執行一次） */}
           {activeTesterId === 'assistant_tick' && <AdminAssistantTickCard />}
 
-          {/* 測試器 0: ⚡ Dify API 直連即時實測台 */}
+          {/* 測試器 0:  Dify API 直連即時實測台 */}
           {activeTesterId === 'dify_direct_console' && (
-            <div className="bg-white rounded-3xl border border-amber-300/80 p-5 sm:p-7 shadow-xs space-y-5">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5">
               <div className="border-b border-stone-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-600" />
                     <span>Dify 連線測試</span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-stone-200">
                       LIVE 直連 Dify
                     </span>
                   </h3>
@@ -1129,7 +1045,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     href={difyConfig.aicrmWebUrl || 'https://udify.app/agent/BnAiF81AGw454x0u'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900 text-purple-100 hover:bg-purple-800 text-xs font-black shadow-xs transition-all border border-purple-700/60"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900 text-purple-100 hover:bg-purple-800 text-xs font-semibold shadow-xs transition-all border border-purple-700/60"
                   >
                     <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
                     <span>開啟 AICRM Web 介面</span>
@@ -1149,7 +1065,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     }`}
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
-                    <span>⚙️ 金鑰與端點配置</span>
+                    <span> 金鑰與端點配置</span>
                   </button>
 
                   <span className="text-xs font-bold text-stone-600 ml-1">測試通道：</span>
@@ -1168,7 +1084,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      💼 AICRM 三合一Agent(雷達&軍師&特助)
+                       AICRM 三合一Agent(雷達&軍師&特助)
                     </button>
                     <button
                       type="button"
@@ -1184,7 +1100,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      📊 市場顧問 Agent
+                       市場顧問 Agent
                     </button>
                     <button
                       type="button"
@@ -1200,7 +1116,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      🤖 官方客服 Agent
+                       官方客服 Agent
                     </button>
                     <button
                       type="button"
@@ -1216,7 +1132,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      🧭 匯職缺 Agent
+                       匯職缺 Agent
                     </button>
                   </div>
                 </div>
@@ -1224,13 +1140,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
               {/* 金鑰與端點配置抽屜面板 */}
               {showDifyConfigDrawer && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 text-stone-100 border border-amber-400/60 shadow-lg space-y-4 animate-in fade-in duration-150">
+                <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 text-stone-100 border border-amber-400/60 shadow-sm space-y-4 animate-in fade-in duration-150">
                   <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
                     <div className="flex items-center gap-2">
                       <KeyRound className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-black text-amber-300">Dify 官方 Agent 端點與金鑰配置庫</span>
+                      <span className="text-sm font-semibold text-amber-300">Dify 官方 Agent 端點與金鑰配置庫</span>
                     </div>
-                    <span className="text-[10px] text-stone-400">各金鑰均即時保存在瀏覽器端，支援免重新發布即時測試</span>
+                    <span className="text-[11px] text-stone-400">各金鑰均即時保存在瀏覽器端，支援免重新發布即時測試</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -1244,7 +1160,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.baseUrl}
                         onChange={(e) => setDifyForm({ ...difyForm, baseUrl: e.target.value })}
                         placeholder="https://api.dify.ai/v1"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1258,7 +1174,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.aicrmWebUrl}
                         onChange={(e) => setDifyForm({ ...difyForm, aicrmWebUrl: e.target.value })}
                         placeholder="https://udify.app/agent/BnAiF81AGw454x0u"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1272,7 +1188,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.aicrmKey}
                         onChange={(e) => setDifyForm({ ...difyForm, aicrmKey: e.target.value })}
                         placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1286,7 +1202,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.csKey}
                         onChange={(e) => setDifyForm({ ...difyForm, csKey: e.target.value })}
                         placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1300,7 +1216,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.marketAdvisorKey}
                         onChange={(e) => setDifyForm({ ...difyForm, marketAdvisorKey: e.target.value })}
                         placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1314,7 +1230,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.explorerWebUrl}
                         onChange={(e) => setDifyForm({ ...difyForm, explorerWebUrl: e.target.value })}
                         placeholder="https://udify.app/agent/bEV82Byu5zk9O4Q5"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
 
@@ -1328,7 +1244,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         value={difyForm.explorerKey}
                         onChange={(e) => setDifyForm({ ...difyForm, explorerKey: e.target.value })}
                         placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx 或留空使用上方 Web 端點"
-                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 tabular-nums text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
                   </div>
@@ -1363,7 +1279,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           setDifyConfigSavedNotice('金鑰設定已成功儲存至本機！');
                           setTimeout(() => setDifyConfigSavedNotice(null), 3000);
                         }}
-                        className="px-4 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs"
+                        className="px-4 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-semibold text-xs transition-all cursor-pointer shadow-xs"
                       >
                         儲存金鑰設定
                       </button>
@@ -1375,13 +1291,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               {/* 依當前通道專屬快速預設情境按鈕 */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-stone-800 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     <span>
-                      {difyTestAgentType === 'aicrm_agent' && '💼 AICRM 三合一Agent(雷達&軍師&特助) 實測 Prompt 範本：'}
-                      {difyTestAgentType === 'market_advisor' && '📊 市場顧問專屬實測 Prompt 範本（五大業務核心）：'}
-                      {difyTestAgentType === 'cs_agent' && '🤖 官方客服專屬實測 Prompt 範本（高頻 FAQ 與機制）：'}
-                      {difyTestAgentType === 'explorer_agent' && '🧭 匯職缺 Agent（搜搜）專屬實測 Prompt 範本（跨平台找工作）：'}
+                      {difyTestAgentType === 'aicrm_agent' && ' AICRM 三合一Agent(雷達&軍師&特助) 實測 Prompt 範本：'}
+                      {difyTestAgentType === 'market_advisor' && ' 市場顧問專屬實測 Prompt 範本（五大業務核心）：'}
+                      {difyTestAgentType === 'cs_agent' && ' 官方客服專屬實測 Prompt 範本（高頻 FAQ 與機制）：'}
+                      {difyTestAgentType === 'explorer_agent' && ' 匯職缺 Agent（搜搜）專屬實測 Prompt 範本（跨平台找工作）：'}
                     </span>
                   </span>
                   <span className="text-[11px] text-stone-400">點擊範本立即載入提示詞</span>
@@ -1392,31 +1308,31 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {[
                       {
                         badge: '模組 1',
-                        label: '📡 24hr 巡航雷達與意向指數',
+                        label: ' 24hr 巡航雷達與意向指數',
                         desc: '掃描 >3 天未採納題庫，剖析 Intent Score 與黃金時段',
                         query: '你是 AICRM Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段（上午黃金決策期 10:00~11:30 / 午後深度思考期 14:30~16:00 / 晚間沉澱期 19:30~21:00）。請以 JSON 輸出。',
                       },
                       {
                         badge: '模組 2',
-                        label: '💰 優質提案推薦與三階段破局方針',
+                        label: ' 優質提案推薦與三階段破局方針',
                         desc: '大師 98% / 權威 95% 淨利試算 vs 25% 抽成 & 破局藍圖',
                         query: '你是 AICRM Agent，請為「大師方案 (實收 98%)」專家計算高額懸賞案件（NT$ 10,000）扣除 2% 服務費後之實收淨利，並與 25% 傳統抽成對比。同時生成「AI 破局切入方針」（第一階段：關鍵痛點指標對焦、第二階段：核心架構藍圖與里程碑進度、第三階段：交付清單與驗收放款保證）。請以 JSON 輸出。',
                       },
                       {
                         badge: '模組 3',
-                        label: '🤖 24hr 特助代操與 3 款心理學破冰',
+                        label: ' 24hr 特助代操與 3 款心理學破冰',
                         desc: '沉穩顧問風 / 專業精闢風 / 熱情親和風話術與時程排定',
                         query: '你是 AICRM Agent，專家目前離線，請針對發案者在懸賞案件的猶豫期，依客戶心理學生成 3 款直擊痛點的破冰話術（沉穩顧問風 / 專業精闢風 / 熱情親和風），並排定最佳發送時間。請以 JSON 輸出。',
                       },
                       {
                         badge: '戰略分析',
-                        label: '📊 平台用戶畫像與 CSO 戰略行動',
+                        label: ' 平台用戶畫像與 CSO 戰略行動',
                         desc: '統計全站會員調研，產出高層決策 Cohort 與增長商機',
                         query: '你是「創點子 IdeaX」CSO 戰略顧問，請依據平台會員畫像（年薪百萬佔比 75%、資訊科技與新創高層為主力），產出總體客群分析、3 項用戶畫像洞察、3 項高價值增長商機與 3 項戰略行動方案。請以 JSON 輸出。',
                       },
                       {
                         badge: '商機洞察',
-                        label: '🎯 專家客製化開發信與痛點盲區',
+                        label: ' 專家客製化開發信與痛點盲區',
                         desc: '剖析客戶真實痛點盲區、最佳推進策略與專屬破冰信',
                         query: '你是 AICRM Agent，專家領域為「跨國跨境電商與架構顧問」，發案客戶提出「跨國電商退貨率高於 35%」，請產出客戶真正的痛點盲區、專家應採取的最佳推進策略與專屬開發破冰信。請以 JSON 輸出。',
                       },
@@ -1431,13 +1347,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           }}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-1 group shadow-2xs hover:shadow-xs ${
                             isSelected
-                              ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/40'
-                              : 'bg-amber-50/40 hover:bg-amber-100/60 border-amber-200/80'
+                              ? 'bg-stone-50 border-amber-400 ring-2 ring-amber-400/40'
+                              : 'bg-stone-50 hover:bg-stone-50 border-stone-200'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-black ${isSelected ? 'text-amber-950' : 'text-stone-900 group-hover:text-amber-900'}`}>{preset.label}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/80 text-amber-900">{preset.badge}</span>
+                            <span className={`text-xs font-semibold ${isSelected ? 'text-amber-950' : 'text-stone-900 group-hover:text-amber-900'}`}>{preset.label}</span>
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/80 text-amber-900">{preset.badge}</span>
                           </div>
                           <p className="text-[11px] text-stone-500 leading-tight">{preset.desc}</p>
                         </button>
@@ -1451,31 +1367,31 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {[
                       {
                         badge: '業務 1',
-                        label: '🎯 題目自動分類與標籤萃取',
+                        label: ' 題目自動分類與標籤萃取',
                         desc: '精準識別領域分類、子標籤、懸賞等級 (L0~L4) 與建議金額',
                         query: '你是市場顧問 Agent，請針對題目「跨國跨境電商如何透過 AI 生成多語系行銷文案並降低退貨率？」進行精確分類、萃取 5 個標籤並建議懸賞金額與難度等級。請以 JSON 輸出。',
                       },
                       {
                         badge: '業務 2',
-                        label: '🏆 智慧獵頭延攬與專家語意媒合',
+                        label: ' 智慧獵頭延攬與專家語意媒合',
                         desc: '比對題目需求與專家庫，輸出 0~100% 適合度與推薦理由',
                         query: '你是市場顧問 Agent，請針對題目「生醫檢測儀器技術選型與 FDA 法規認證規劃」在專家庫中進行語意媒合，輸出適合度 0~100% 的推薦清單與推薦理由。請以 JSON 輸出。',
                       },
                       {
                         badge: '業務 3',
-                        label: '📑 爭議仲裁調解與雙軌和解書',
+                        label: ' 爭議仲裁調解與雙軌和解書',
                         desc: '三方比對合約規格、交付物與對話日誌，生成雙軌和解協議',
                         query: '你是市場顧問 Agent，買方主張賣方交付缺少 FDA 規範章節要求退費，賣方主張已完成 70% 核心架構。請三方比對原始規格、交付檔案與對話紀錄，產出具法律衡平性之雙軌和解協議書（方案 A 比例折讓與方案 B 限期補正）。請以 JSON 輸出。',
                       },
                       {
                         badge: '業務 4',
-                        label: '📈 付費前期深度分析報告產出',
+                        label: ' 付費前期深度分析報告產出',
                         desc: '付費 30 點深度產出問題癥結解構、市場格局與建議路徑',
                         query: '你是市場顧問 Agent，請針對發案者題目「傳統實體零售如何以最小成本導入會員 D2C 數據中台」，產出付費深度前期分析報告（包含問題癥結解構、市場格局與建議解決路徑）。請以 JSON 輸出。',
                       },
                       {
                         badge: '業務 5',
-                        label: '🌐 Jina 即時網頁深度爬取與情報',
+                        label: ' Jina 即時網頁深度爬取與情報',
                         desc: '透過 Jina Reader 爬取外部最新市場資訊與法規結構化情報',
                         query: '你是市場顧問 Agent，請搜尋並爬取「2026 最新台灣新創跨境電商物流關稅新規範」，並總結出 3 個關鍵合規要點與實務影響。請以 JSON 輸出。',
                       },
@@ -1490,13 +1406,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           }}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-1 group shadow-2xs hover:shadow-xs ${
                             isSelected
-                              ? 'bg-purple-100/90 border-purple-400 ring-2 ring-purple-400/40'
-                              : 'bg-purple-50/40 hover:bg-purple-100/60 border-purple-200/80'
+                              ? 'bg-stone-50 border-purple-400 ring-2 ring-purple-400/40'
+                              : 'bg-stone-50 hover:bg-stone-50 border-stone-200'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-black ${isSelected ? 'text-purple-950' : 'text-stone-900 group-hover:text-purple-950'}`}>{preset.label}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-200/80 text-purple-900">{preset.badge}</span>
+                            <span className={`text-xs font-semibold ${isSelected ? 'text-purple-950' : 'text-stone-900 group-hover:text-purple-950'}`}>{preset.label}</span>
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-purple-200/80 text-purple-900">{preset.badge}</span>
                           </div>
                           <p className="text-[11px] text-stone-500 leading-tight">{preset.desc}</p>
                         </button>
@@ -1510,31 +1426,31 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {[
                       {
                         badge: '資金機制',
-                        label: '💬 平台點數託管與驗收撥款機制',
+                        label: ' 平台點數託管與驗收撥款機制',
                         desc: '資金信託安全、提問者發案託管與專家驗收自動撥款時程',
                         query: '請問在創點子 IdeaX 發布問題後，懸賞點數是如何託管保管的？如果解答者交付成果並經驗收，何時會自動撥款給解答者？',
                       },
                       {
                         badge: '爭議政策',
-                        label: '🛡️ 交付爭議調解與退款保障政策',
+                        label: ' 交付爭議調解與退款保障政策',
                         desc: '成果不符約定、AI 仲裁介入判定與退款放款規則說明',
                         query: '如果解答者交付的內容嚴重不符合原始發案約定，買方可以申請退款嗎？平台有提供什麼爭議仲裁與調解機制？',
                       },
                       {
                         badge: '會員方案',
-                        label: '👑 權威方案與大師方案權益說明',
+                        label: ' 權威方案與大師方案權益說明',
                         desc: '訂閱方案抽成減免（95%/98%）、AI-CRM 專家賦能與優先推播',
                         query: '請問「權威方案 (月繳)」與「大師方案 (年繳)」的差別是什麼？訂閱後平台服務費如何從 25% 降低至 5% 或 2%？',
                       },
                       {
                         badge: '認證申請',
-                        label: '📝 專家實名認證與技能審核流程',
+                        label: ' 專家實名認證與技能審核流程',
                         desc: '身分證字號與專業資格審查流程、隱私安全保護說明',
                         query: '我想成為平台的認證專家，需要提供哪些資料進行實名認證與專業資格審核？個資有受到怎樣的隱私保護？',
                       },
                       {
                         badge: '懸賞規範',
-                        label: '💰 懸賞金級別 (L0~L4) 與字數指南',
+                        label: ' 懸賞金級別 (L0~L4) 與字數指南',
                         desc: '閒聊 L0 免費到 L4 戰略級懸賞之字數門檻與定價建議',
                         query: '請問平台的懸賞級別 (L0~L4) 是如何劃分的？不同級別的標題與內文字數限制分別是多少？',
                       },
@@ -1549,13 +1465,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           }}
                           className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-1 group shadow-2xs hover:shadow-xs ${
                             isSelected
-                              ? 'bg-sky-100/90 border-sky-400 ring-2 ring-sky-400/40'
-                              : 'bg-sky-50/40 hover:bg-sky-100/60 border-sky-200/80'
+                              ? 'bg-stone-50 border-sky-400 ring-2 ring-sky-400/40'
+                              : 'bg-stone-50 hover:bg-stone-50 border-stone-200'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-black ${isSelected ? 'text-sky-950' : 'text-stone-900 group-hover:text-sky-950'}`}>{preset.label}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-200/80 text-sky-900">{preset.badge}</span>
+                            <span className={`text-xs font-semibold ${isSelected ? 'text-sky-950' : 'text-stone-900 group-hover:text-sky-950'}`}>{preset.label}</span>
+                            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-sky-200/80 text-sky-900">{preset.badge}</span>
                           </div>
                           <p className="text-[11px] text-stone-500 leading-tight">{preset.desc}</p>
                         </button>
@@ -1570,9 +1486,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       <span className="text-stone-500 font-medium mr-1">測試維度篩選：</span>
                       {[
                         { id: 'all', label: '全部維度 (12)' },
-                        { id: 'strictness', label: '🎯 需求嚴格程度 (4)' },
-                        { id: 'semantics', label: '💬 語意明確程度 (3)' },
-                        { id: 'parameters', label: '⚙️ Agent 關鍵參數 (5)' },
+                        { id: 'strictness', label: ' 需求嚴格程度 (4)' },
+                        { id: 'semantics', label: ' 語意明確程度 (3)' },
+                        { id: 'parameters', label: ' Agent 關鍵參數 (5)' },
                       ].map((dim) => (
                         <button
                           key={dim.id}
@@ -1580,7 +1496,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           onClick={() => setExplorerPresetCategory(dim.id as any)}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                             explorerPresetCategory === dim.id
-                              ? 'bg-blue-900 text-white shadow-2xs font-black'
+                              ? 'bg-blue-900 text-white shadow-2xs font-semibold'
                               : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
                           }`}
                         >
@@ -1595,8 +1511,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'strictness',
                           badge: '嚴苛高薪門檻',
-                          badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
-                          label: '🎯 雙北雲端架構師（多重硬性指標）',
+                          badgeColor: 'bg-rose-100 text-rose-800 border-stone-200',
+                          label: ' 雙北雲端架構師（多重硬性指標）',
                           desc: '月薪 90K+、經歷 5 年+、Kubernetes+AWS，嚴厲要求不可已下架',
                           query: '請幫我搜尋台北市或新北市的「資深雲端架構師／DevOps 工程師」真實職缺。嚴格條件：月薪 90,000 元以上、經歷要求 5 年以上、具備 Kubernetes 與 AWS 實務經驗。特別規定：絕對不行使用已關閉、已結束或已下架的職缺，並列出真實有效的求職網網址。',
                           paramsTag: '薪資≥90K / 經歷≥5年 / 嚴格在招',
@@ -1604,8 +1520,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'strictness',
                           badge: '寬鬆無門檻',
-                          badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-                          label: '🌱 全台無經驗友善（門檻極低寬鬆）',
+                          badgeColor: 'bg-emerald-100 text-emerald-800 border-stone-200',
+                          label: ' 全台無經驗友善（門檻極低寬鬆）',
                           desc: '全台不拘、無經驗可、學歷不拘、今日刊登，測試 Agent 對寬鬆條件的召回率',
                           query: '全台灣地區皆可，搜尋適合社會新鮮人、無經驗可、學歷不拘的行政助理或客服人員職缺，月薪 30,000 元以上，請列出至少 8 筆當下開放應徵中的最新職缺。',
                           paramsTag: '無經驗可 / 學歷不拘 / 今日刊登',
@@ -1613,8 +1529,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'strictness',
                           badge: '稀缺邊界條件',
-                          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
-                          label: '🏝️ 花東離島偏遠（冷門與相鄰擴展）',
+                          badgeColor: 'bg-amber-100 text-amber-800 border-stone-200',
+                          label: ' 花東離島偏遠（冷門與相鄰擴展）',
                           desc: '花東地區軟體/資訊維護職缺，考驗冷門條件與自動兜底檢索',
                           query: '請搜尋花蓮縣或台東地區的資訊工程師、系統維護或可全遠端工作的軟體職缺，待遇面議或 40,000 元以上。若該地區職缺稀少，請自動擴展相鄰縣市或完全遠端之當下有效職缺，至少提供 3 筆真實職缺。',
                           paramsTag: '偏遠地區 / 遠端兜底 / 最少3筆',
@@ -1622,7 +1538,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'strictness',
                           badge: '兼職彈性排班',
-                          badgeColor: 'bg-lime-100 text-lime-800 border-lime-300',
+                          badgeColor: 'bg-lime-100 text-lime-800 border-stone-200',
                           label: '⏰ 台南門市彈性兼職（時薪200+ / 學生與二度就業）',
                           desc: '時薪制、日班、自由排班、學生或二度就業友善',
                           query: '搜尋台南市東區或中西區的餐飲或超商門市兼職／工讀人員職缺。條件：時薪 200 元以上、排班彈性、歡迎學生或二度就業。請列出當下正在開放應徵中的真實職缺，包含 Yes123 或 518 等平台真實網址。',
@@ -1633,8 +1549,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'semantics',
                           badge: '高度明確結構',
-                          badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-                          label: '📐 台北前端工程師（結構化參數齊全）',
+                          badgeColor: 'bg-indigo-100 text-indigo-800 border-stone-200',
+                          label: ' 台北前端工程師（結構化參數齊全）',
                           desc: '規格、技術棧、薪資區間、在意項目全數指明，測試參數解析精準度',
                           query: '地區：台北市信義區或大安區\n職務：資深 React / TypeScript 前端工程師\n月薪期望：65,000 ~ 85,000 元\n工作經歷：2 ~ 4 年\n在意條件：重視團隊技術氛圍、彈性上下班、年終獎金\n請精確輸出符合上述各維度的當下開放招募職缺。',
                           paramsTag: '明確座標 / 具體技術棧 / 結構化輸入',
@@ -1642,8 +1558,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'semantics',
                           badge: '自然口語對話',
-                          badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
-                          label: '💬 南部轉職社群小編（日常對話式輸入）',
+                          badgeColor: 'bg-blue-100 text-blue-800 border-stone-200',
+                          label: ' 南部轉職社群小編（日常對話式輸入）',
                           desc: '使用日常自然口吻、無格式標籤，測試 Agent 對口語需求的情感與關鍵字提取',
                           query: '我想在高雄或台南找一份跟社群行銷或 IG 小編有關的正式工作，我剛從文組畢業想轉職，薪水希望不要太低至少能有 3 萬 5 以上，休假希望是見紅休，有哪幾家公司現在有開缺？',
                           paramsTag: '口語化敘述 / 軟性條件 / 轉職情境',
@@ -1651,8 +1567,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'semantics',
                           badge: '模糊語意探索',
-                          badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
-                          label: '🌫️ 個性內向文職探索（無具體職稱推薦）',
+                          badgeColor: 'bg-purple-100 text-purple-800 border-stone-200',
+                          label: ' 個性內向文職探索（無具體職稱推薦）',
                           desc: '缺乏明確職稱，僅描述個人特質與模糊方向，測試 Agent 職業推導與相近推薦',
                           query: '我最近想在台中找工作，但我個性比較內向，不想要一直面對陌生客人或打電話業務，比較喜歡安靜打字、整理資料或處理系統後台，有什麼適合我且現在正在找人的正職工作嗎？',
                           paramsTag: '無特定職稱 / 人格特質導向 / 語意推論',
@@ -1660,8 +1576,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'semantics',
                           badge: '籠統位置排查',
-                          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
-                          label: '📍 附近工作排查（未指明確切位置）',
+                          badgeColor: 'bg-amber-100 text-amber-800 border-stone-200',
+                          label: ' 附近工作排查（未指明確切位置）',
                           desc: '僅提到「附近」但未具體指定縣市行政區，測試系統是否主動追問確認確切位置',
                           query: '我家附近有什麼最新職缺推薦？我想找離家近一點的工作。',
                           paramsTag: '籠統位置 / 附近攔截 / 主動追問確認',
@@ -1669,8 +1585,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'semantics',
                           badge: '籠統指涉排查',
-                          badgeColor: 'bg-pink-100 text-pink-800 border-pink-300',
-                          label: '🎓 我的大學與專業（不清不楚向用戶確認）',
+                          badgeColor: 'bg-pink-100 text-pink-800 border-stone-200',
+                          label: ' 我的大學與專業（不清不楚向用戶確認）',
                           desc: '提到「我的大學、我的專業與性格」但完全未指明內容，測試系統是否主動向用戶確認具體資訊',
                           query: '我想依我的大學跟我的專業，找適合我的性格的工作，有什麼好推薦？',
                           paramsTag: '未明指涉 / 我的大學與專業 / 觸發確認機制',
@@ -1680,8 +1596,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'parameters',
                           badge: '跨平台來源',
-                          badgeColor: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300',
-                          label: '🌐 跨平台真實求職（Yes123 / Cake / 1111 / 104 / 518）',
+                          badgeColor: 'bg-fuchsia-100 text-fuchsia-800 border-stone-200',
+                          label: ' 跨平台真實求職（Yes123 / Cake / 1111 / 104 / 518）',
                           desc: '廣泛檢索全網各大求職站真實職缺，要求直接真實頁面網址，拒絕單一平台局限',
                           query: '請幫我全網搜尋新北市或台北市的「數位行銷企劃」或「專案經理 PM」真實職缺。來源平台要求多元化：請同時列出來自 Yes123、Cake、Yourator、1111人力銀行、104人力銀行 等各站當下開放應徵的職缺，每筆都必須是該站真實存在且有效的直接應徵連結。',
                           paramsTag: '多站來源 / Yes123+Cake+1111+104 / 跨站真實連結',
@@ -1689,8 +1605,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'parameters',
                           badge: '防下架檢驗',
-                          badgeColor: 'bg-red-100 text-red-800 border-red-300',
-                          label: '🛡️ 雙北 UI/UX 設計師（防過期/404下架過濾）',
+                          badgeColor: 'bg-red-100 text-red-800 border-stone-200',
+                          label: ' 雙北 UI/UX 設計師（防過期/404下架過濾）',
                           desc: '指定熱門職缺，嚴厲約束絕對不可包含停止徵才、已額滿或已關閉之過期職缺',
                           query: '請搜尋台北市與新北市「UI / UX 產品設計師」的真實職缺。特別檢驗約束：請逐筆驗證職缺連結與徵才狀態，絕對不可包含已額滿、停止招募、頁面 404 或已結束徵才的職缺！每一筆都必須保證當下可即刻投遞。',
                           paramsTag: '有效性校驗 / 嚴禁過期 / 即時開放中',
@@ -1698,8 +1614,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'parameters',
                           badge: '大數量提取',
-                          badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300',
-                          label: '📦 台北餐飲門市主管（3 ~ 100 筆批量壓力）',
+                          badgeColor: 'bg-cyan-100 text-cyan-800 border-stone-200',
+                          label: ' 台北餐飲門市主管（3 ~ 100 筆批量壓力）',
                           desc: '要求檢索 15 ~ 30 筆真實職缺，測試 Agent 提取數量上限與結構化能力',
                           query: '搜尋台北市各大知名連鎖餐飲品牌的門市主管、店長或儲備幹部職缺。請進行深度全網檢索，盡可能列出 15 ~ 30 筆不同的當下開放職缺，包含完整公司名稱、薪資待遇、經歷要求與真實連結。',
                           paramsTag: '批量檢索 (15~30筆) / 完整格式驗證',
@@ -1707,8 +1623,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'parameters',
                           badge: '多在意維度排序',
-                          badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
-                          label: '⚖️ 新竹軟體測試 QA（福利在意度權重評分）',
+                          badgeColor: 'bg-teal-100 text-teal-800 border-stone-200',
+                          label: ' 新竹軟體測試 QA（福利在意度權重評分）',
                           desc: '提供三種不同權重的在意指標，測試 Agent 職缺 aiScore 契合度評分演算法',
                           query: '新竹市或竹北地區的軟體測試工程師（QA / SDET），月薪 50,000 元以上。求職者在意權重排序：1. 工時正常不常態加班、2. 提供完整專業培訓、3. 辦公室交通便利好停車。請根據這三項在意條件在 JSON 中給出精準 aiScore 與推薦原因。',
                           paramsTag: '在意權重多指標 / aiScore 評分比對',
@@ -1716,8 +1632,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {
                           dim: 'parameters',
                           badge: '薪資數值敏感',
-                          badgeColor: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                          label: '💰 桃竹倉儲物流主管（拒絕面議、精確區間）',
+                          badgeColor: 'bg-yellow-100 text-yellow-800 border-stone-200',
+                          label: ' 桃竹倉儲物流主管（拒絕面議、精確區間）',
                           desc: '強制要求薪資必須有明確公開數字（不得僅填待遇面議），測試薪資解析器',
                           query: '搜尋桃園市或新竹縣的倉儲物流主管／供應鏈管理職缺。薪資嚴格限制：必須有明確公開之月薪數字，且月薪介於 45,000 至 65,000 元之間，請勿列出僅標示「待遇面議」而無具體金額的職缺。',
                           paramsTag: '明確薪資區間 / 排除純面議 / 數值解析',
@@ -1735,17 +1651,17 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                               }}
                               className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-1.5 group shadow-2xs hover:shadow-xs ${
                                 isSelected
-                                  ? 'bg-blue-100/90 border-blue-500 ring-2 ring-blue-500/30'
-                                  : 'bg-blue-50/40 hover:bg-blue-100/60 border-blue-200/80'
+                                  ? 'bg-stone-50 border-blue-500 ring-2 ring-blue-500/30'
+                                  : 'bg-stone-50 hover:bg-stone-50 border-stone-200'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-1">
-                                <span className={`text-xs font-black line-clamp-1 ${isSelected ? 'text-blue-950' : 'text-stone-900 group-hover:text-blue-900'}`}>{preset.label}</span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${preset.badgeColor}`}>{preset.badge}</span>
+                                <span className={`text-xs font-semibold line-clamp-1 ${isSelected ? 'text-blue-950' : 'text-stone-900 group-hover:text-blue-900'}`}>{preset.label}</span>
+                                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${preset.badgeColor}`}>{preset.badge}</span>
                               </div>
                               <p className="text-[11px] text-stone-500 leading-tight">{preset.desc}</p>
                               <div className="pt-1 flex items-center">
-                                <span className="text-[10px] font-mono text-stone-400 bg-white/80 px-1.5 py-0.5 rounded border border-stone-200/60">
+                                <span className="text-[11px] tabular-nums text-stone-400 bg-white/80 px-1.5 py-0.5 rounded border border-stone-200/60">
                                   {preset.paramsTag}
                                 </span>
                               </div>
@@ -1759,13 +1675,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
               {/* 搜職 Agent 專屬：分批多次串流整合開關與說明 */}
               {difyTestAgentType === 'explorer_agent' && (
-                <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                     <div className="space-y-0.5">
-                      <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-blue-950 flex items-center gap-1.5">
                         <span>分批多次回傳與前端整合模式 (Multi-Batch Progressive Integration)</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                        <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
                           推薦開啟
                         </span>
                       </span>
@@ -1774,7 +1690,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       </p>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-stone-800 cursor-pointer self-end sm:self-auto shrink-0 bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-2xs">
+                  <label className="flex items-center gap-2 text-xs font-bold text-stone-800 cursor-pointer self-end sm:self-auto shrink-0 bg-white px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
                     <input
                       type="checkbox"
                       checked={explorerMultiBatchMode}
@@ -1796,18 +1712,18 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                   value={difyTestQuery}
                   onChange={(e) => setDifyTestQuery(e.target.value)}
                   placeholder="輸入任意 Prompt 傳送給 Dify Agent..."
-                  className="w-full text-xs p-3 rounded-xl border border-stone-300 focus:border-amber-500 outline-none bg-stone-50 font-mono leading-relaxed"
+                  className="w-full text-xs p-3 rounded-xl border border-stone-300 focus:border-amber-500 outline-none bg-stone-50 tabular-nums leading-relaxed"
                 />
 
                 {/* 搜職條件確認卡片：先讓用戶確認以此條件搜尋再開始 */}
                 {difyTestAgentType === 'explorer_agent' && (
-                  <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300/90 text-stone-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+                  <div className="p-3 rounded-2xl bg-amber-50 border border-stone-200 text-stone-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
                     <div className="space-y-0.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-900">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>已就緒之測試條件（確認後啟動）：</span>
                       </div>
-                      <p className="text-[11px] text-stone-600 font-mono truncate pl-5">
+                      <p className="text-[11px] text-stone-600 tabular-nums truncate pl-5">
                         {difyTestQuery}
                       </p>
                     </div>
@@ -1816,7 +1732,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       type="button"
                       onClick={() => handleTestDirectDify()}
                       disabled={difyTesting || !difyTestQuery.trim()}
-                      className="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 active:scale-95 text-white font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
+                      className="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 active:scale-95 text-white font-semibold text-xs cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
                     >
                       {difyTesting ? (
                         <>
@@ -1844,7 +1760,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-stone-500">
                     目標 Agent 金鑰：
-                    <code className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-mono text-[10px] ml-1">
+                    <code className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 tabular-nums text-[11px] ml-1">
                       {difyTestAgentType === 'market_advisor'
                         ? 'Market Advisor Agent (市場顧問)'
                         : difyTestAgentType === 'aicrm_agent'
@@ -1859,7 +1775,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     type="button"
                     onClick={() => handleTestDirectDify()}
                     disabled={difyTesting || !difyTestQuery.trim()}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 disabled:opacity-50 text-stone-950 font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-md transition-all"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 disabled:opacity-50 text-stone-950 font-semibold text-xs cursor-pointer flex items-center gap-1.5 shadow-sm transition-all"
                   >
                     {difyTesting ? (
                       <>
@@ -1910,30 +1826,30 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 };
 
                 return (
-                  <div className="rounded-3xl bg-stone-900 text-stone-100 border border-amber-400/80 shadow-2xl overflow-hidden animate-in fade-in duration-200">
+                  <div className="rounded-2xl bg-stone-900 text-stone-100 border border-amber-400/80 shadow-2xl overflow-hidden animate-in fade-in duration-200">
                     {/* 頂部狀態列與切換分頁 */}
                     <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 border-b border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <span className={`w-2.5 h-2.5 rounded-full ${difyLiveResponse.source === 'gemini-fallback' ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
-                        <span className="text-xs font-black text-amber-300">
+                        <span className="text-xs font-semibold text-amber-300">
                           {difyLiveResponse.source === 'gemini-fallback'
-                            ? '⚡ 已自動切換 Gemini 智慧備援'
+                            ? ' 已自動切換 Gemini 智慧備援'
                             : difyLiveResponse.success
                             ? '✓ Dify API 直連呼叫成功'
                             : '✕ 調用失敗'}
                         </span>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                        <span className={`text-[11px] tabular-nums px-2 py-0.5 rounded font-bold border ${
                           difyLiveResponse.source === 'gemini-fallback'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                            ? 'bg-stone-50 text-amber-300 border-amber-400/40'
+                            : 'bg-stone-50 text-emerald-300 border-emerald-400/40'
                         }`}>
                           {difyLiveResponse.source === 'gemini-fallback' ? 'Gemini（備援）' : 'Dify Live API'}
                         </span>
                         <span className="text-xs text-stone-400">
-                          耗時：<strong className="text-amber-300 font-mono">{difyLiveResponse.latencyMs || 0} ms</strong>
+                          耗時：<strong className="text-amber-300 tabular-nums">{difyLiveResponse.latencyMs || 0} ms</strong>
                         </span>
                         <span className="text-xs text-stone-400">
-                          來源：<strong className="text-purple-300 font-mono">{difyLiveResponse.source || 'dify-api'}</strong>
+                          來源：<strong className="text-purple-300 tabular-nums">{difyLiveResponse.source || 'dify-api'}</strong>
                         </span>
                       </div>
 
@@ -1949,7 +1865,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           }`}
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>✨ 前端呈現(UI)</span>
+                          <span> 前端呈現(UI)</span>
                         </button>
                         <button
                           type="button"
@@ -1961,14 +1877,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           }`}
                         >
                           <Code2 className="w-3.5 h-3.5" />
-                          <span>📜 原始碼(RAW)</span>
+                          <span> 原始碼(RAW)</span>
                         </button>
                       </div>
                     </div>
 
                     {/* 備援提示橫幅 */}
                     {difyLiveResponse.notice && (
-                      <div className="mx-4 mt-3 sm:mx-6 sm:mt-4 p-3 rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs flex items-center gap-2">
+                      <div className="mx-4 mt-3 sm:mx-6 sm:mt-4 p-3 rounded-2xl bg-stone-50 border border-amber-400/40 text-amber-200 text-xs flex items-center gap-2">
                         <Zap className="w-4 h-4 text-amber-400 shrink-0" />
                         <span>{difyLiveResponse.notice}</span>
                       </div>
@@ -1982,14 +1898,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     )}
 
                     {/* ========================================================= */}
-                    {/* 視圖 1: ✨ 前台客戶實體卡片視圖 (Front-End Client View) */}
+                    {/* 視圖 1:  前台客戶實體卡片視圖 (Front-End Client View) */}
                     {/* ========================================================= */}
                     {difyViewMode === 'client_ui' && (
                       <div className="p-4 sm:p-6 space-y-5 bg-stone-950">
                         {/* 自然語言前言摘要區（若有） */}
                         {naturalLanguageIntro && (
                           <div className="p-4 rounded-2xl bg-stone-900 border border-amber-400/30 text-xs sm:text-sm text-stone-200 leading-relaxed space-y-1">
-                            <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>執行前言與背景說明：</span>
                             </div>
@@ -1999,21 +1915,21 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 1. 調研 / 合規情報報告 (如 report_title / key_compliance_points) */}
                         {parsed && (parsed.report_title || parsed.key_compliance_points || parsed.compliance_points || parsed.points) && (
-                          <div className="bg-stone-900 rounded-3xl border border-stone-800 p-5 sm:p-6 shadow-xl space-y-5">
+                          <div className="bg-stone-900 rounded-2xl border border-stone-800 p-5 sm:p-6 shadow-sm space-y-5">
                             {/* 報告頂部橫幅 */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-4">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                                    📑 智庫深度調研報告
+                                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                                     智庫深度調研報告
                                   </span>
                                   {parsed.report_date && (
-                                    <span className="text-[10px] font-mono text-stone-400">
+                                    <span className="text-[11px] tabular-nums text-stone-400">
                                       更新日期：{parsed.report_date}
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="text-base sm:text-lg font-black text-white leading-snug">
+                                <h4 className="text-base sm:text-lg font-semibold text-white leading-snug">
                                   {parsed.report_title || '市場情報與法規合規要點分析'}
                                 </h4>
                               </div>
@@ -2031,7 +1947,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                             {/* 關鍵合規要點卡片列表 (key_compliance_points) */}
                             {Array.isArray(parsed.key_compliance_points || parsed.compliance_points || parsed.points) && (
                               <div className="space-y-3">
-                                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                   <ShieldCheck className="w-4 h-4" />
                                   <span>三大核心合規要點與實務影響：</span>
                                 </span>
@@ -2045,11 +1961,11 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                     return (
                                       <div key={ptIdx} className="p-4 sm:p-5 rounded-2xl bg-stone-950 border border-stone-800 space-y-3 hover:border-amber-400/40 transition-all">
                                         <div className="flex items-start gap-3">
-                                          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 font-semibold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                                             {pt.point_number || ptIdx + 1}
                                           </span>
                                           <div className="space-y-1 flex-1">
-                                            <h5 className="text-sm font-black text-white">{ptTitle}</h5>
+                                            <h5 className="text-sm font-semibold text-white">{ptTitle}</h5>
                                             {ptSummary && (
                                               <p className="text-xs text-stone-300 leading-relaxed">{ptSummary}</p>
                                             )}
@@ -2060,13 +1976,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-stone-850 pl-9">
                                             {ptImpact && (
                                               <div className="p-2.5 rounded-xl bg-rose-950/30 border border-rose-900/40 text-xs text-rose-200">
-                                                <strong className="text-rose-300 block mb-0.5">⚠️ 實務影響：</strong>
+                                                <strong className="text-rose-300 block mb-0.5"> 實務影響：</strong>
                                                 <span className="leading-relaxed">{ptImpact}</span>
                                               </div>
                                             )}
                                             {ptAction && (
                                               <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-900/40 text-xs text-emerald-200">
-                                                <strong className="text-emerald-300 block mb-0.5">💡 應對方針：</strong>
+                                                <strong className="text-emerald-300 block mb-0.5"> 應對方針：</strong>
                                                 <span className="leading-relaxed">{ptAction}</span>
                                               </div>
                                             )}
@@ -2094,7 +2010,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                             {/* 建議行動方針 (recommendations) */}
                             {parsed.recommendations && Array.isArray(parsed.recommendations) && (
                               <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 space-y-2">
-                                <span className="text-xs font-black text-amber-300">專家建議實施路徑：</span>
+                                <span className="text-xs font-semibold text-amber-300">專家建議實施路徑：</span>
                                 <ul className="space-y-1 text-xs text-amber-100 list-disc pl-5 leading-relaxed">
                                   {parsed.recommendations.map((rec: any, rIdx: number) => (
                                     <li key={rIdx}>{typeof rec === 'string' ? rec : rec.text || JSON.stringify(rec)}</li>
@@ -2107,19 +2023,19 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 2. 巡航雷達 / 商機意向單筆卡片 (如 intentScore / corePainPoints / suggestedOfferType) */}
                         {parsed && (parsed.intentScore !== undefined || (parsed.corePainPoints && !parsed.report_title) || parsed.suggestedOfferType) && (
-                          <div className="bg-stone-900 rounded-3xl border border-stone-800 p-5 sm:p-6 shadow-xl space-y-5">
+                          <div className="bg-stone-900 rounded-2xl border border-stone-800 p-5 sm:p-6 shadow-sm space-y-5">
                             {/* 卡片標題與意向指數 */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-4">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/40">
                                     {parsed.leadId || 'LEAD_INTENT_OPPORTUNITY'}
                                   </span>
-                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-stone-50 text-purple-300 border border-purple-400/30">
                                     {parsed.clientStatus || '猶豫評估中'}
                                   </span>
                                 </div>
-                                <h4 className="text-base font-black text-white flex items-center gap-2">
+                                <h4 className="text-base font-semibold text-white flex items-center gap-2">
                                   <span>{parsed.suggestedOfferType || '高價值專案商機洞察'}</span>
                                 </h4>
                               </div>
@@ -2127,14 +2043,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                               {/* 意向指數徽章 */}
                               <div className="flex items-center gap-3 bg-stone-950 px-4 py-2.5 rounded-2xl border border-stone-800 self-start sm:self-auto">
                                 <div className="text-right">
-                                  <span className="text-[10px] text-stone-400 block font-bold">成案意向指數</span>
-                                  <span className="text-xs font-black text-amber-300">
-                                    {(parsed.intentScore || 88) >= 80 ? '🔥 極高成案率' : '⚡ 具潛力意向'}
+                                  <span className="text-[11px] text-stone-400 block font-bold">成案意向指數</span>
+                                  <span className="text-xs font-semibold text-amber-300">
+                                    {(parsed.intentScore || 88) >= 80 ? ' 極高成案率' : ' 具潛力意向'}
                                   </span>
                                 </div>
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex flex-col items-center justify-center font-black shadow-lg">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex flex-col items-center justify-center font-semibold shadow-sm">
                                   <span className="text-sm leading-none">{parsed.intentScore || 88}</span>
-                                  <span className="text-[9px] font-bold opacity-80">%</span>
+                                  <span className="text-[10.5px] font-bold opacity-80">%</span>
                                 </div>
                               </div>
                             </div>
@@ -2146,7 +2062,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                   <Clock className="w-3.5 h-3.5" />
                                   <span>最適跟進黃金時段</span>
                                 </div>
-                                <p className="text-sm font-black text-stone-100">
+                                <p className="text-sm font-semibold text-stone-100">
                                   {parsed.bestContactTime || parsed.recommendedTimeSlot?.timeRange || '平日晚間 19:30 ~ 21:00'}
                                 </p>
                               </div>
@@ -2156,7 +2072,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                   <Coins className="w-3.5 h-3.5" />
                                   <span>建議專案報價區間</span>
                                 </div>
-                                <p className="text-sm font-black text-stone-100">
+                                <p className="text-sm font-semibold text-stone-100">
                                   {parsed.suggestedPriceRange || (parsed.bounty ? `NT$ ${parsed.bounty.toLocaleString()}` : 'NT$ 18,000 ~ NT$ 36,000')}
                                 </p>
                               </div>
@@ -2172,7 +2088,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                 <div className="space-y-1.5">
                                   {(Array.isArray(parsed.corePainPoints) ? parsed.corePainPoints : [parsed.corePainPoints]).map((point: string, idx: number) => (
                                     <div key={idx} className="p-3 rounded-xl bg-stone-950/80 border border-rose-900/40 text-xs text-rose-200 flex items-start gap-2.5">
-                                      <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                      <span className="w-5 h-5 rounded-full bg-stone-50 text-rose-300 flex items-center justify-center font-bold text-[11px] shrink-0">
                                         {idx + 1}
                                       </span>
                                       <span className="leading-relaxed">{point}</span>
@@ -2218,7 +2134,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                       <div className="space-y-1">
                                         <div className="flex items-center justify-between">
                                           <span className="text-xs font-bold text-amber-300">{pitch.styleName || key}</span>
-                                          <span className="text-[10px] text-stone-400">{pitch.recommendedTime || ''}</span>
+                                          <span className="text-[11px] text-stone-400">{pitch.recommendedTime || ''}</span>
                                         </div>
                                         <p className="text-xs text-stone-300 leading-relaxed line-clamp-4">
                                           {pitch.message}
@@ -2244,15 +2160,15 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {parsed && parsed.leads && Array.isArray(parsed.leads) && (
                           <div className="space-y-3">
                             <div className="flex items-center justify-between text-xs font-bold text-stone-300">
-                              <span>📡 24hr 巡航雷達掃描結果（共 {parsed.leads.length} 筆潛在商機）：</span>
+                              <span> 24hr 巡航雷達掃描結果（共 {parsed.leads.length} 筆潛在商機）：</span>
                               <span className="text-amber-300">高意向：{parsed.highIntentCount || parsed.leads.length} 筆</span>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               {parsed.leads.map((lead: any, idx: number) => (
                                 <div key={idx} className="p-4 rounded-2xl bg-stone-900 border border-stone-800 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-xs font-black text-white">{lead.questionTitle || lead.clientName}</span>
-                                    <span className="text-xs font-black px-2 py-0.5 rounded-full bg-amber-400 text-stone-950">
+                                    <span className="text-xs font-semibold text-white">{lead.questionTitle || lead.clientName}</span>
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-400 text-stone-950">
                                       {lead.intentScore || 85}% 意向
                                     </span>
                                   </div>
@@ -2271,9 +2187,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 4. 三階段破局切入藍圖 (3-Stage Blueprint) */}
                         {parsed && (parsed.breakthroughBlueprint || parsed.stage1) && (
-                          <div className="bg-stone-900 rounded-3xl border border-stone-800 p-5 space-y-4">
+                          <div className="bg-stone-900 rounded-2xl border border-stone-800 p-5 space-y-4">
                             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-                              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                 <Layers className="w-4 h-4" />
                                 <span>AI 破局切入方針（三階段交付里程碑）：</span>
                               </span>
@@ -2306,8 +2222,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                               ].map((stage: any, sIdx: number) => (
                                 <div key={sIdx} className="p-3.5 rounded-2xl bg-stone-950 border border-stone-800 space-y-2">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-xs font-black text-amber-300">{stage.title}</span>
-                                    <span className="text-[10px] text-stone-400">{stage.estimatedDays}</span>
+                                    <span className="text-xs font-semibold text-amber-300">{stage.title}</span>
+                                    <span className="text-[11px] text-stone-400">{stage.estimatedDays}</span>
                                   </div>
                                   <p className="text-xs text-stone-300 leading-relaxed">{stage.focus}</p>
                                   <div className="pt-2 border-t border-stone-800 text-[11px] text-stone-400">
@@ -2321,14 +2237,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 4.4 模糊需求追問確認卡片 (parsed.isAmbiguous) */}
                         {parsed && parsed.isAmbiguous && (
-                          <div className="bg-amber-950/30 rounded-3xl border border-amber-500/50 p-5 space-y-4">
+                          <div className="bg-amber-950/30 rounded-2xl border border-amber-500/50 p-5 space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/30 pb-3">
-                              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                 <AlertCircle className="w-4 h-4 text-amber-400" />
                                 <span>需求條件尚不明確・已啟動用戶確認追問機制：</span>
                               </span>
                               {parsed.ambiguousTypes && (
-                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 self-start sm:self-auto">
+                                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 self-start sm:self-auto">
                                   待確認：{(parsed.ambiguousTypes as string[]).join(' / ')}
                                 </span>
                               )}
@@ -2346,7 +2262,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                             {Array.isArray(parsed.suggestedChips) && parsed.suggestedChips.length > 0 && (
                               <div className="space-y-2">
                                 <span className="text-[11px] font-bold text-stone-300">
-                                  💡 快捷補充選項（點選後直接填入測試輸入框）：
+                                   快捷補充選項（點選後直接填入測試輸入框）：
                                 </span>
                                 <div className="flex flex-wrap gap-2">
                                   {parsed.suggestedChips.map((chip: any, cIdx: number) => (
@@ -2372,7 +2288,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           <div className="space-y-3.5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
                               <div className="space-y-0.5">
-                                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                   <Briefcase className="w-4 h-4 text-amber-400" />
                                   <span>全網在招真實職缺（分批整合完成，共 {parsed.jobs.length} 筆）：</span>
                                 </span>
@@ -2401,17 +2317,17 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                 const is518 = platform.toLowerCase().includes('518');
 
                                 const badgeClass = isCake
-                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  ? 'bg-stone-50 text-emerald-300 border-emerald-500/40'
                                   : isYes123
-                                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                  ? 'bg-stone-50 text-blue-300 border-blue-500/40'
                                   : is1111
-                                  ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                                  ? 'bg-stone-50 text-orange-300 border-orange-500/40'
                                   : isYourator
-                                  ? 'bg-teal-500/20 text-teal-300 border-teal-500/40'
+                                  ? 'bg-stone-50 text-teal-300 border-teal-500/40'
                                   : is104
-                                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                                  ? 'bg-stone-50 text-sky-300 border-sky-500/40'
                                   : is518
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  ? 'bg-stone-50 text-amber-300 border-amber-500/40'
                                   : 'bg-stone-800 text-stone-300 border-stone-700';
 
                                 return (
@@ -2421,15 +2337,15 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                   >
                                     <div className="space-y-1.5">
                                       <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${badgeClass}`}>
+                                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${badgeClass}`}>
                                           {platform}
                                         </span>
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                        <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-stone-50 text-emerald-300">
                                           在招中
                                         </span>
                                       </div>
 
-                                      <h5 className="text-sm font-black text-white line-clamp-1">{job.title}</h5>
+                                      <h5 className="text-sm font-semibold text-white line-clamp-1">{job.title}</h5>
                                       <p className="text-xs text-amber-300/90 font-medium line-clamp-1">{job.company}</p>
 
                                       <div className="flex items-center gap-1.5 text-[11px] text-stone-400 pt-1">
@@ -2448,13 +2364,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                     </div>
 
                                     <div className="pt-2 border-t border-stone-800 flex items-center justify-between gap-2">
-                                      <span className="text-xs font-black text-amber-400">{job.salaryText || '待遇面議'}</span>
+                                      <span className="text-xs font-semibold text-amber-400">{job.salaryText || '待遇面議'}</span>
                                       {job.url && (
                                         <a
                                           href={job.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-[11px] flex items-center gap-1 transition-all shadow-xs"
+                                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-[11px] flex items-center gap-1 transition-all shadow-xs"
                                         >
                                           <span>直達職缺</span>
                                           <ExternalLink className="w-3 h-3" />
@@ -2470,14 +2386,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 5. 題目分類與標籤萃取 */}
                         {parsed && (parsed.category || parsed.tags || parsed.level) && (
-                          <div className="bg-stone-900 rounded-3xl border border-stone-800 p-5 space-y-4">
+                          <div className="bg-stone-900 rounded-2xl border border-stone-800 p-5 space-y-4">
                             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-                              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                 <Target className="w-4 h-4" />
                                 <span>題目智慧分類與標籤萃取：</span>
                               </span>
                               {parsed.level && (
-                                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-500/20 text-purple-300 border border-purple-400/40">
+                                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-50 text-purple-300 border border-purple-400/40">
                                   難度：{parsed.level}
                                 </span>
                               )}
@@ -2485,13 +2401,13 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className="p-3.5 rounded-2xl bg-stone-950 border border-stone-800 space-y-1">
                                 <span className="text-[11px] text-stone-400 block">領域分類 / 子分類</span>
-                                <span className="text-sm font-black text-stone-100">
+                                <span className="text-sm font-semibold text-stone-100">
                                   {parsed.category || '創新創業'} {parsed.subcategory ? `/ ${parsed.subcategory}` : ''}
                                 </span>
                               </div>
                               <div className="p-3.5 rounded-2xl bg-stone-950 border border-stone-800 space-y-1">
                                 <span className="text-[11px] text-stone-400 block">建議懸賞金額</span>
-                                <span className="text-sm font-black text-amber-300">
+                                <span className="text-sm font-semibold text-amber-300">
                                   {parsed.suggestedBounty ? `NT$ ${parsed.suggestedBounty.toLocaleString()}` : 'NT$ 2,500'}
                                 </span>
                               </div>
@@ -2513,9 +2429,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                         {/* 6. 若無特定結構 JSON，以純淨 Markdown 前台視圖呈現（絕不外露原始 ```json 代碼） */}
                         {!parsed && difyLiveResponse.rawOutput && (
-                          <div className="bg-stone-900 rounded-3xl border border-stone-800 p-5 sm:p-6 shadow-xl space-y-4">
+                          <div className="bg-stone-900 rounded-2xl border border-stone-800 p-5 sm:p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-                              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                                 <Sparkles className="w-4 h-4" />
                                 <span>Agent 官方智能生成解答（前端呈現(UI)）：</span>
                               </span>
@@ -2537,16 +2453,16 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     )}
 
                     {/* ========================================================= */}
-                    {/* 視圖 2: 📜 底層原始日誌 (Raw Output Stream & JSON) */}
+                    {/* 視圖 2:  底層原始日誌 (Raw Output Stream & JSON) */}
                     {/* ========================================================= */}
                     {difyViewMode === 'raw_log' && (
                       <div className="p-4 sm:p-5 space-y-4 bg-stone-950 border-t border-stone-800">
                         {difyLiveResponse.rawOutput && (
                           <div className="space-y-1.5">
                             <span className="text-xs font-bold text-amber-300 block">
-                              📜 Dify 串流原生回傳文字 (Raw Output Stream)：
+                               Dify 串流原生回傳文字 (Raw Output Stream)：
                             </span>
-                            <div className="p-3.5 bg-stone-900 rounded-xl border border-stone-800 text-stone-200 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                            <div className="p-3.5 bg-stone-900 rounded-xl border border-stone-800 text-stone-200 tabular-nums text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
                               {difyLiveResponse.rawOutput}
                             </div>
                           </div>
@@ -2555,9 +2471,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {difyLiveResponse.parsedJson && (
                           <div className="space-y-1.5">
                             <span className="text-xs font-bold text-emerald-400 block">
-                              🧩 自動結構化解析之 JSON 物件 (Parsed JSON Payload)：
+                               自動結構化解析之 JSON 物件 (Parsed JSON Payload)：
                             </span>
-                            <pre className="p-3.5 bg-stone-900 rounded-xl border border-emerald-500/40 text-emerald-300 font-mono text-xs leading-relaxed overflow-x-auto max-h-64">
+                            <pre className="p-3.5 bg-stone-900 rounded-xl border border-emerald-500/40 text-emerald-300 tabular-nums text-xs leading-relaxed overflow-x-auto max-h-64">
                               {JSON.stringify(difyLiveResponse.parsedJson, null, 2)}
                             </pre>
                           </div>
@@ -2572,10 +2488,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
           {/* 測試器 1: 專家媒合 Agent 測試 */}
           {activeTesterId === 'matching_agent' && (
-            <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5">
               <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                     <Target className="w-5 h-5 text-indigo-600" />
                     <span>AI 專家智慧媒合與難度分級 Agent 實測台</span>
                   </h3>
@@ -2583,7 +2499,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     輸入題目描述，測試 AI 語意剖析能力、L0~L4 分級建議與專家庫契合度比對演算法。
                   </p>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-200">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 border border-stone-200">
                   語意匹配模型
                 </span>
               </div>
@@ -2633,14 +2549,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
               {/* 媒合結果 */}
               {matchingAnalysisResult && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-4 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between border-b border-indigo-200/80 pb-2">
-                    <span className="text-xs font-black text-indigo-950">
-                      🎯 題意剖析：{matchingAnalysisResult.category} 領域 • 難度 {matchingAnalysisResult.level}
+                <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                    <span className="text-xs font-semibold text-indigo-950">
+                       題意剖析：{matchingAnalysisResult.category} 領域 • 難度 {matchingAnalysisResult.level}
                     </span>
                     <div className="flex gap-1">
                       {matchingAnalysisResult.tags?.map((t, idx) => (
-                        <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-900 font-bold">
+                        <span key={idx} className="text-[11px] px-2 py-0.5 rounded-md bg-white border border-stone-200 text-indigo-900 font-bold">
                           #{t}
                         </span>
                       ))}
@@ -2649,17 +2565,17 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-indigo-950">
-                      🏆 媒合推薦專家清單（契合度排序）：
+                       媒合推薦專家清單（契合度排序）：
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {matchingSolversResult.slice(0, 4).map((m, idx) => (
-                        <div key={idx} className="p-3 bg-white rounded-xl border border-indigo-100 flex items-center justify-between gap-2 shadow-2xs">
+                        <div key={idx} className="p-3 bg-white rounded-xl border border-stone-200 flex items-center justify-between gap-2 shadow-2xs">
                           <div className="min-w-0">
                             <span className="font-bold text-xs text-stone-900 block truncate">{m.solver.name}</span>
-                            <span className="text-[10px] text-stone-500 truncate block">{m.solver.title}</span>
+                            <span className="text-[11px] text-stone-500 truncate block">{m.solver.title}</span>
                           </div>
-                          <span className="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-900 font-black text-xs shrink-0">
+                          <span className="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-900 font-semibold text-xs shrink-0">
                             {m.matchScore}%
                           </span>
                         </div>
@@ -2673,10 +2589,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
           {/* 測試器 5: 隱私與安全防火牆測試 */}
           {activeTesterId === 'safety_shield' && (
-            <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5">
               <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-rose-600" />
                     <span>隱私過濾與 Prompt 注入安全防火牆實測台</span>
                   </h3>
@@ -2684,7 +2600,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     測試對身分證、電話、LINE 帳號、銀行帳戶及惡意 Prompt 注入攻擊之攔截與脫敏過濾。
                   </p>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-900 border border-rose-200">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-900 border border-stone-200">
                   全站安全守門員
                 </span>
               </div>
@@ -2698,7 +2614,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     value={safetyInputText}
                     onChange={(e) => setSafetyInputText(e.target.value)}
                     rows={3}
-                    className="w-full text-xs p-3 rounded-xl border border-stone-200 bg-stone-50 font-mono"
+                    className="w-full text-xs p-3 rounded-xl border border-stone-200 bg-stone-50 tabular-nums"
                   />
                 </div>
 
@@ -2716,28 +2632,28 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
               {/* 過濾結果 */}
               {safetyMaskedResult && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between border-b border-rose-200 pb-2">
-                    <span className="text-xs font-black text-rose-950 flex items-center gap-1.5">
+                <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                    <span className="text-xs font-semibold text-rose-950 flex items-center gap-1.5">
                       <ShieldAlert className="w-4 h-4 text-rose-600" />
                       <span>防火牆攔截與脫敏結果</span>
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-950">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-950">
                       偵測到 {safetyMaskedResult.detectedItems.length} 項安全風險
                     </span>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
                     {safetyMaskedResult.detectedItems.map((item, i) => (
-                      <span key={i} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-200 text-rose-950">
-                        🚨 {item}
+                      <span key={i} className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-200 text-rose-950">
+                         {item}
                       </span>
                     ))}
                   </div>
 
                   <div className="space-y-1 text-xs">
-                    <span className="font-bold text-stone-800">🛡️ 脫敏與淨化後之安全文字：</span>
-                    <div className="p-3 bg-white rounded-xl border border-rose-200 font-mono text-xs leading-relaxed text-stone-800">
+                    <span className="font-bold text-stone-800"> 脫敏與淨化後之安全文字：</span>
+                    <div className="p-3 bg-white rounded-xl border border-stone-200 tabular-nums text-xs leading-relaxed text-stone-800">
                       {safetyMaskedResult.sanitizedText}
                     </div>
                   </div>
@@ -2752,10 +2668,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       {/* 頁籤 2: 全站客情商機池監控 (Leads Pool) */}
       {/* ========================================================================= */}
       {activeSubTab === 'leads_pool' && (
-        <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5 animate-in fade-in duration-150">
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5 animate-in fade-in duration-150">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
             <div>
-              <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-purple-600" />
                 <span>全站即時客情商機池監控</span>
               </h3>
@@ -2776,7 +2692,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           </div>
 
           {scanNotice && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-stone-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{scanNotice}</span>
             </div>
@@ -2787,17 +2703,17 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               const score = lead.strategyBlueprint?.dealProbability || (lead.urgency === 'high' ? 95 : 82);
               const bestTime = lead.strategyBlueprint?.bestContactTime || '今日 15:30 (午後思考時段)';
               return (
-                <div key={lead.id} className="p-4 rounded-2xl border border-stone-200 bg-white space-y-2.5 shadow-2xs hover:border-purple-300 transition-all">
+                <div key={lead.id} className="p-4 rounded-2xl border border-stone-200 bg-white space-y-2.5 shadow-2xs hover:border-stone-200 transition-all">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-xs text-stone-900 line-clamp-1">{lead.questionTitle}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-200 text-stone-950 font-black text-[10px] shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-200 text-stone-950 font-semibold text-[11px] shrink-0">
                       意向 {score}%
                     </span>
                   </div>
                   <div className="text-[11px] text-stone-600">
-                    💡 建議行動：{lead.aiRecommendedAction}
+                     建議行動：{lead.aiRecommendedAction}
                   </div>
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500">
+                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
                     <span>發案方：{lead.clientName}</span>
                     <span>最適排程：{bestTime}</span>
                   </div>
@@ -2812,9 +2728,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       {/* 頁籤 3: 主動推播與廣播中心 (Broadcast Center) */}
       {/* ========================================================================= */}
       {activeSubTab === 'broadcast_center' && (
-        <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5 animate-in fade-in duration-150">
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-5 animate-in fade-in duration-150">
           <div className="border-b border-stone-100 pb-3">
-            <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
               <Megaphone className="w-5 h-5 text-purple-600" />
               <span>全站 AI 主動推播與廣播中心</span>
             </h3>
@@ -2824,7 +2740,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           </div>
 
           {broadcastSuccessNotice && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-stone-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{broadcastSuccessNotice}</span>
             </div>
@@ -2881,11 +2797,11 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-purple-900">【{push.targetAudience}】</span>
-                      <span className="text-[10px] text-stone-500">{push.triggerEvent}</span>
+                      <span className="text-[11px] text-stone-500">{push.triggerEvent}</span>
                     </div>
                     <p className="text-stone-700 text-[11px]">{push.content}</p>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold self-start sm:self-auto shrink-0">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold self-start sm:self-auto shrink-0">
                     已送達 (點擊 {push.clicksCount} 次)
                   </span>
                 </div>
@@ -2899,10 +2815,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       {/* 頁籤 4: 系統運營參數與規則 (Settings & Rules) */}
       {/* ========================================================================= */}
       {activeSubTab === 'settings' && (
-        <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-150">
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-150">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div>
-              <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
                 <Settings className="w-5 h-5 text-purple-600" />
                 <span>AI-CRM 系統運營參數與推播規則設定</span>
               </h3>
@@ -2922,7 +2838,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           </div>
 
           {saveSuccessMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-stone-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{saveSuccessMsg}</span>
             </div>
@@ -2939,7 +2855,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 onChange={(e) => setFormData({ ...formData, hesitationDaysThreshold: Number(e.target.value) })}
                 className="w-full p-2.5 rounded-xl border border-stone-200 bg-white font-bold"
               />
-              <p className="text-[10px] text-stone-500">發布超過此天數未採納方案者，AI-CRM 標記為猶豫期商機。</p>
+              <p className="text-[11px] text-stone-500">發布超過此天數未採納方案者，AI-CRM 標記為猶豫期商機。</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1.5">
@@ -2952,7 +2868,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 onChange={(e) => setFormData({ ...formData, highIntentBountyThreshold: Number(e.target.value) })}
                 className="w-full p-2.5 rounded-xl border border-stone-200 bg-white font-bold"
               />
-              <p className="text-[10px] text-stone-500">懸賞金額達此門檻之題目，系統優先排入大師專家代操隊列。</p>
+              <p className="text-[11px] text-stone-500">懸賞金額達此門檻之題目，系統優先排入大師專家代操隊列。</p>
             </div>
           </div>
 
@@ -2964,7 +2880,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 <div key={rule.id} className="p-3 rounded-xl border border-stone-200 bg-stone-50/60 flex items-center justify-between gap-3 text-xs">
                   <div className="space-y-0.5">
                     <span className="font-bold text-stone-900">{rule.name}</span>
-                    <p className="text-[10px] text-stone-500">{rule.triggerCondition}</p>
+                    <p className="text-[11px] text-stone-500">{rule.triggerCondition}</p>
                   </div>
                   <input
                     type="checkbox"

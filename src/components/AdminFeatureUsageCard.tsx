@@ -113,7 +113,7 @@ export const AdminFeatureUsageCard: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0"><PieChart className="w-5 h-5" /></div>
           <div>
-            <h4 className="font-black text-sm sm:text-base text-stone-900">各大功能使用比例</h4>
+            <h4 className="font-semibold text-sm sm:text-base text-stone-900">各大功能使用比例</h4>
             <p className="text-xs text-stone-500 mt-0.5">每位訪客每天用到某功能算 1 人次；比例＝佔同期間不重複訪客的幾成</p>
           </div>
         </div>
@@ -146,14 +146,14 @@ export const AdminFeatureUsageCard: React.FC = () => {
                 <Bar key={r.key} label={r.label} value={r.value} pct={(r.value / tracked.base) * 100} max={tracked.rows[0].value} color="#0284c7" suffix="人次" />
               ))}
             </div>
-            <p className="text-[10px] text-stone-400">一位訪客常會用好幾個功能，所以各功能比例加總會超過 100%。</p>
+            <p className="text-[11px] text-stone-400">一位訪客常會用好幾個功能，所以各功能比例加總會超過 100%。</p>
           </>
         )}
       </div>
 
       {/* 過去資料（反推） */}
       <div className="rounded-xl border border-dashed border-stone-300 p-3 space-y-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-black text-stone-800"><History className="w-4 h-4 text-stone-500" />開始記錄前：用現有資料反推</div>
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800"><History className="w-4 h-4 text-stone-500" />開始記錄前：用現有資料反推</div>
         {content.total > 0 && (
           <div className="space-y-1.5">
             <div className="text-[11px] text-stone-500">各類內容發布數（共 {content.total.toLocaleString()} 篇，不含模擬內容）</div>
@@ -168,7 +168,7 @@ export const AdminFeatureUsageCard: React.FC = () => {
             <span>和 AI 客服對話 <b className="text-stone-900">{mascot.agent.toLocaleString()}</b> 次</span>
           </div>
         )}
-        <p className="text-[10px] text-stone-400">
+        <p className="text-[11px] text-stone-400">
           開始記錄前沒有逐功能的瀏覽數字，這裡用已經存在的資料估：發布數代表「發布類功能」用得多寡；匯職缺、展場等瀏覽型功能的過去數字可以到 Google Analytics 的「網頁和畫面」報表看。
         </p>
       </div>

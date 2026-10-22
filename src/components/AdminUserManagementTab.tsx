@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { usePagedList, ShowMoreButton } from './ShowMoreList';
+import { formatDateTime } from '../utils/formatDateTime';
 import { useApp } from '../context/AppContext';
 import { User, AdminSite } from '../types';
 import {
@@ -431,6 +433,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     '帳號涉嫌異常登入與安全性風險',
   ];
 
+  const pagedUsers = usePagedList(filteredUsers, 20);
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* 頂部訊息反饋 */}
@@ -438,8 +441,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 border animate-in fade-in ${
             feedbackMsg.isError
-              ? 'bg-rose-50 text-rose-900 border-rose-200'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
+              : 'bg-emerald-50 text-emerald-900 border-stone-200'
           }`}
         >
           {feedbackMsg.isError ? (
@@ -454,18 +457,18 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
+          <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2 flex-wrap">
             <UserCheck className="w-5 h-5 text-purple-600" />
             <span>用戶管理</span>
-            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
-              🌟 真實註冊會員 {realUsers.length} 位
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-stone-200 shadow-2xs">
+               真實註冊會員 {realUsers.length} 位
             </span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
               全站共 {availableUsers.length} 位用戶
             </span>
             {simulatedUsers.length > 0 && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                🤖 模擬展示 {simulatedUsers.length} 位
+                 模擬展示 {simulatedUsers.length} 位
               </span>
             )}
           </h3>
@@ -482,11 +485,11 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               type="button"
               disabled={isPurgingSimulated}
               onClick={handlePurgeSimulated}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 font-black text-xs border border-amber-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 font-semibold text-xs border border-stone-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               title="徹底從雲端與本地清除所有預設模擬創作者帳號，讓名單 100% 呈現真實用戶"
             >
               <Trash2 className={`w-3.5 h-3.5 text-amber-700 ${isPurgingSimulated ? 'animate-spin' : ''}`} />
-              <span>{isPurgingSimulated ? '清理模擬中...' : '🧹 清除所有模擬帳號'}</span>
+              <span>{isPurgingSimulated ? '清理模擬中...' : ' 清除所有模擬帳號'}</span>
             </button>
           )}
 
@@ -494,7 +497,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           <button
             type="button"
             onClick={() => setIsTestUserModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-stone-950 font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             title="免註冊、免登入一鍵生成測試帳號"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -520,7 +523,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 setTimeout(() => setFeedbackMsg(null), 4000);
               }
             }}
-            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs border border-purple-200 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs border border-stone-200 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
             title="即時從 Cloud Firestore 重新整理最新用戶狀態"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-purple-700' : 'text-purple-600'}`} />
@@ -553,7 +556,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 setTimeout(() => setFeedbackMsg(null), 5000);
               }
             }}
-            className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 font-black text-xs border border-rose-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 font-semibold text-xs border border-stone-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             title="自動比對帳號 ID、會員編號、Email 與姓名，一鍵清除本地與雲端資料庫中的重複帳號"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-600" />
@@ -579,9 +582,9 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           </button>
 
           {/* 封鎖名單快速統計 Badge */}
-          <span className={`text-xs font-black px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+          <span className={`text-xs font-semibold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
             blockedUsers.length > 0
-              ? 'bg-rose-50 text-rose-900 border-rose-300'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
               : 'bg-stone-50 text-stone-600 border-stone-200'
           }`}>
             <ShieldAlert className="w-4 h-4 text-rose-600" />
@@ -592,15 +595,15 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
       {/* 快捷通道：直接連線至受理認證與身分證照頁 */}
       {onNavigateToCertifications && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50/60 to-white border border-purple-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3.5 rounded-2xl bg-white border border-stone-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+              <div className="text-xs font-semibold text-purple-950 flex items-center gap-1.5">
                 <span>受理認證與身分證照核驗通道</span>
-                <span className="text-[10px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-bold">已連線</span>
+                <span className="text-[11px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-bold">已連線</span>
               </div>
               <p className="text-[11px] text-stone-500 mt-0.5">
                 解答者上傳之身分證正反面相片已安全壓縮並存於 Firebase Storage，可隨時前往受理認證頁查閱並核准資格。
@@ -610,7 +613,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           <button
             type="button"
             onClick={() => onNavigateToCertifications()}
-            className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
           >
             <ImageIcon className="w-3.5 h-3.5" />
             <span>前往受理認證頁 ↗</span>
@@ -636,14 +639,14 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           <button
             type="button"
             onClick={() => setActiveFilter('real')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
               activeFilter === 'real'
                 ? 'bg-emerald-600 text-white shadow-2xs'
                 : 'text-emerald-800 hover:bg-emerald-50'
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>🌟 真實會員 ({realUsers.length})</span>
+            <span> 真實會員 ({realUsers.length})</span>
           </button>
           <button
             type="button"
@@ -665,7 +668,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 : 'text-blue-800 hover:bg-blue-50'
             }`}
           >
-            🏢 企業機構 ({enterpriseUsers.length})
+             企業機構 ({enterpriseUsers.length})
           </button>
           <button
             type="button"
@@ -676,7 +679,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 : 'text-amber-800 hover:bg-amber-50'
             }`}
           >
-            👑 管理團隊 ({adminUsers.length})
+             管理團隊 ({adminUsers.length})
           </button>
           {simulatedUsers.length > 0 && (
             <button
@@ -688,7 +691,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                   : 'text-stone-500 hover:bg-stone-200'
               }`}
             >
-              🤖 模擬展示 ({simulatedUsers.length})
+               模擬展示 ({simulatedUsers.length})
             </button>
           )}
           <button
@@ -743,12 +746,12 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 用戶列表清單 */}
       <div className="space-y-3">
         {filteredUsers.length === 0 ? (
-          <div className="p-10 text-center bg-stone-50 rounded-3xl border border-dashed border-stone-200 space-y-2">
+          <div className="p-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-2">
             <UserCheck className="w-8 h-8 text-stone-300 mx-auto" />
             <p className="text-xs font-bold text-stone-600">無相符的用戶名單</p>
           </div>
         ) : (
-          filteredUsers.map((u) => {
+          pagedUsers.visible.map((u) => {
             const isSelf = u.id === currentUser.id;
             const isBlocked = Boolean(u.isBlocked);
 
@@ -757,7 +760,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 key={u.id}
                 className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                   isBlocked
-                    ? 'bg-rose-50/50 border-rose-300 shadow-2xs ring-1 ring-rose-200'
+                    ? 'bg-stone-50 border-stone-200 shadow-2xs ring-1 ring-rose-200'
                     : 'bg-white border-stone-200 hover:border-stone-300 shadow-2xs'
                 }`}
               >
@@ -782,67 +785,67 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className={`font-black text-sm transition-colors truncate flex items-center gap-1 ${getUserNameColorClass(u.id, availableUsers, u)}`}>
+                        <h4 className={`font-semibold text-sm transition-colors truncate flex items-center gap-1 ${getUserNameColorClass(u.id, availableUsers, u)}`}>
                           <span>{resolveUserDisplayName(u.id, u.name, availableUsers)}</span>
                           <ExternalLink className="w-3 h-3 text-purple-500 opacity-0 group-hover/user:opacity-100 transition-opacity shrink-0" />
                         </h4>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                             u.role === 'admin'
-                              ? getAdminSiteBadgeClass(u) || 'bg-purple-100 text-purple-900 border border-purple-300'
+                              ? getAdminSiteBadgeClass(u) || 'bg-purple-100 text-purple-900 border border-stone-200'
                               : u.accountType === 'enterprise' || (u.role as string) === 'enterprise'
-                              ? 'bg-blue-100 text-blue-900 border border-blue-200'
-                              : 'bg-amber-100 text-amber-900 border border-amber-200'
+                              ? 'bg-blue-100 text-blue-900 border border-stone-200'
+                              : 'bg-amber-100 text-amber-900 border border-stone-200'
                           }`}
                         >
-                          {u.role === 'admin' ? (getAdminSiteLabel(u) || '👑 管理員') : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '🏢 企業機構' : '👤 一般用戶'}
+                          {u.role === 'admin' ? (getAdminSiteLabel(u) || ' 管理員') : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? ' 企業機構' : ' 一般用戶'}
                         </span>
 
                         {isRealRegisteredUser(u) ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1 shadow-2xs" title="此帳號為真實註冊會員 (已在 Firebase / 資料庫建立)">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-stone-200 flex items-center gap-1 shadow-2xs" title="此帳號為真實註冊會員 (已在 Firebase / 資料庫建立)">
                             <CheckCircle2 className="w-3 h-3 text-emerald-700" />
                             <span>真實會員</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-500 border border-stone-200 flex items-center gap-1" title="此帳號為系統預設模擬展示或測試環境帳號">
-                            <span>🤖 系統模擬/展示</span>
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-500 border border-stone-200 flex items-center gap-1" title="此帳號為系統預設模擬展示或測試環境帳號">
+                            <span> 系統模擬/展示</span>
                           </span>
                         )}
 
                         {isBlocked ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white flex items-center gap-1 shadow-2xs">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-rose-600 text-white flex items-center gap-1 shadow-2xs">
                             <Lock className="w-3 h-3" />
                             <span>已停權封鎖</span>
                           </span>
                         ) : u.deactivationStatus === 'deactivated' ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 border border-stone-300">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 border border-stone-300">
                             此帳號已註銷
                           </span>
                         ) : isUserDeactivated(u) ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 animate-pulse flex items-center gap-1 shadow-2xs">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-stone-200 animate-pulse flex items-center gap-1 shadow-2xs">
                             <Clock className="w-3 h-3 text-amber-700" />
                             <span>7日反悔猶豫期中</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-stone-200">
                             正常使用中
                           </span>
                         )}
 
                         {isSelf && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                          <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
                             目前登入本人
                           </span>
                         )}
 
                         {/* 實名狀態徽章 */}
                         {u.realNameAuthStatus === 'verified' ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-stone-200 flex items-center gap-1">
                             <ShieldCheck className="w-3 h-3 text-emerald-700" />
                             <span>實名已認證</span>
                           </span>
                         ) : u.realNameAuthStatus === 'pending' ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 animate-pulse">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-stone-200 flex items-center gap-1 animate-pulse">
                             <Clock className="w-3 h-3 text-amber-700" />
                             <span>實名待受理</span>
                           </span>
@@ -850,7 +853,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                         {/* 身分證件照存檔標籤 */}
                         {(u.hasIdDocuments || u.realNameAuthData?.idCardFrontFile || u.realNameAuthData?.idCardBackFile) && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-stone-200 flex items-center gap-1 shadow-2xs">
                             <ImageIcon className="w-3 h-3 text-purple-700" />
                             <span>已附證件照 (Storage)</span>
                           </span>
@@ -859,16 +862,16 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                       <p className="text-xs text-stone-500 truncate mt-0.5 flex items-center gap-2 flex-wrap">
                         <span>{u.title || '一般領域用戶'}</span>
-                        <span>· 帳號代碼：<span className="font-mono text-stone-800 font-semibold">{u.id}</span></span>
-                        {u.memberId && <span className="font-mono text-purple-700 font-bold">({u.memberId})</span>}
+                        <span>· 帳號代碼：<span className="tabular-nums text-stone-800 font-semibold">{u.id}</span></span>
+                        {u.memberId && <span className="tabular-nums text-purple-700 font-bold">({u.memberId})</span>}
                         {u.email && (
-                          <span className="font-mono text-stone-700 bg-stone-100 px-1.5 py-0.2 rounded text-[11px] border border-stone-200">
+                          <span className="tabular-nums text-stone-700 bg-stone-100 px-1.5 py-0.2 rounded text-[11px] border border-stone-200">
                             {u.email}
                           </span>
                         )}
                         {u.phone && (
-                          <span className="font-mono text-stone-500 text-[11px]">
-                            📞 {u.phone}
+                          <span className="tabular-nums text-stone-500 text-[11px]">
+                             {u.phone}
                           </span>
                         )}
                       </p>
@@ -876,21 +879,21 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       <div className="flex items-center gap-3 text-[11px] text-stone-500 mt-1 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span>註冊日期：<strong className="text-stone-700 font-mono">{u.registeredAt || u.createdAt || u.joinedDate || '2026/09/20'}</strong></span>
+                          <span>註冊日期：<strong className="text-stone-700 tabular-nums">{formatDateTime(u.registeredAt || u.createdAt || u.joinedDate) || '未記錄'}</strong></span>
                         </span>
                         <span className="text-stone-300">·</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span>最近上線：<strong className="text-stone-700 font-mono">{
+                          <span>最近上線：<strong className="text-stone-700 tabular-nums">{
                             u.lastLoginAt || u.lastActiveAt || userActivity[u.id]
                               ? new Date(latestSeen(u.lastLoginAt, u.lastActiveAt, userActivity[u.id])).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
                               : isSelf ? '目前在線上' : '尚無紀錄'
                           }</strong></span>
                         </span>
                         <span className="text-stone-300">·</span>
-                        <span>可用點數：<strong className="text-stone-700 font-mono">{(u.balance || 0).toLocaleString()}</strong></span>
+                        <span>可用點數：<strong className="text-stone-700 tabular-nums">{(u.balance || 0).toLocaleString()}</strong></span>
                         <span className="text-stone-300">·</span>
-                        <span>託管款項：<strong className="text-stone-700 font-mono">NT$ {(u.withheldPoints || 0).toLocaleString()}</strong></span>
+                        <span>託管款項：<strong className="text-stone-700 tabular-nums">NT$ {(u.withheldPoints || 0).toLocaleString()}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -901,7 +904,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setViewingProfileUser(u)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-stone-200 font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                       title={`開啟「${u.name}」的完整個人資訊頁（包含所有個人基本資料、提問、解答、財務與認證檔案）`}
                     >
                       <UserIcon className="w-3.5 h-3.5 text-purple-700" />
@@ -913,7 +916,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenAdminAssignModal(u)}
-                        className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-stone-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                         title="由初始創始管理員獨立指派此用戶 A 站/B 站管理員站點管轄權"
                       >
                         <Crown className="w-3.5 h-3.5 text-amber-600" />
@@ -925,7 +928,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigateToCertifications?.(u.id)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-200 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-stone-200 font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                       title="前往受理認證頁查閱此用戶之身分證正反面照片與核准認證"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
@@ -942,7 +945,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                             setFeedbackMsg({ text: `已成功撤銷「${u.name}」之註銷狀態，恢復正常使用中！`, isError: false });
                             setTimeout(() => setFeedbackMsg(null), 4000);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-stone-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
                           title="撤銷此帳號之註銷申請，恢復正常使用"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -970,7 +973,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       <button
                         type="button"
                         onClick={() => setUnblockingTargetUser(u)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <Unlock className="w-3.5 h-3.5" />
                         <span>解除封鎖</span>
@@ -984,7 +987,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                           setBlockDuration(7);
                         }}
                         disabled={isSelf}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                        className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                         title={isSelf ? '無法封鎖目前登入的管理員本人' : '執行停權封鎖'}
                       >
                         <Lock className="w-3.5 h-3.5" />
@@ -1009,7 +1012,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                 {/* 註銷/7日反悔猶豫期詳細說明 (當用戶處於猶豫期時展示) */}
                 {isUserDeactivated(u) && u.deactivationStatus !== 'deactivated' && (
-                  <div className="mt-3.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-xs space-y-1.5">
+                  <div className="mt-3.5 p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-1.5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-amber-900">
                       <span className="font-bold flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-amber-600" />
@@ -1026,7 +1029,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                 {/* 封鎖詳細說明 (當用戶已被封鎖時展示) */}
                 {isBlocked && (
-                  <div className="mt-3.5 p-3 rounded-xl bg-white border border-rose-200 text-xs space-y-1.5">
+                  <div className="mt-3.5 p-3 rounded-xl bg-white border border-stone-200 text-xs space-y-1.5">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-rose-900">
                       <span className="font-bold flex items-center gap-1">
                         <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
@@ -1034,7 +1037,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       </span>
                       <span className="text-stone-400">執行管理員：{u.blockedByAdminName || '平台管理員'} · 封鎖時間：{u.blockedAt?.split('T')[0] || '近期'}</span>
                     </div>
-                    <div className="text-stone-700 bg-rose-50/50 p-2 rounded-lg leading-relaxed">
+                    <div className="text-stone-700 bg-stone-50 p-2 rounded-lg leading-relaxed">
                       <strong>封鎖理由：</strong>{u.blockedReason || '違反創點子平台服務條款與使用者安全守則'}
                     </div>
                   </div>
@@ -1043,16 +1046,17 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             );
           })
         )}
+        <ShowMoreButton remaining={pagedUsers.remaining} onClick={pagedUsers.showMore} />
       </div>
 
       {/* 封鎖操作彈窗 */}
       {blockingTargetUser && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2 text-rose-600">
                 <ShieldAlert className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900">設定停權封鎖用戶帳號</h4>
+                <h4 className="font-semibold text-base text-stone-900">設定停權封鎖用戶帳號</h4>
               </div>
               <button
                 type="button"
@@ -1071,7 +1075,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 className="w-10 h-10 rounded-xl object-cover"
               />
               <div>
-                <span className="font-black text-sm text-stone-900">{blockingTargetUser.name}</span>
+                <span className="font-semibold text-sm text-stone-900">{blockingTargetUser.name}</span>
                 <span className="text-[11px] text-stone-500 block">{blockingTargetUser.title || '用戶'} ({blockingTargetUser.id})</span>
               </div>
             </div>
@@ -1079,7 +1083,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             <form onSubmit={handleConfirmBlock} className="space-y-4">
               {/* 1. 設定封鎖時間 */}
               <div>
-                <label className="block text-xs font-black text-stone-800 mb-1.5">
+                <label className="block text-xs font-semibold text-stone-800 mb-1.5">
                   1. 設定封鎖時間 <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -1097,7 +1101,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       onClick={() => setBlockDuration(item.val)}
                       className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
                         blockDuration === item.val
-                          ? 'bg-rose-600 text-white border-rose-600 font-black shadow-2xs'
+                          ? 'bg-rose-600 text-white border-rose-600 font-semibold shadow-2xs'
                           : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
                       }`}
                     >
@@ -1110,7 +1114,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               {/* 2. 說明封鎖理由 */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-black text-stone-800">
+                  <label className="block text-xs font-semibold text-stone-800">
                     2. 說明封鎖理由（將以平台系統通知通知該用戶） <span className="text-rose-500">*</span>
                   </label>
                 </div>
@@ -1121,7 +1125,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       key={r}
                       type="button"
                       onClick={() => setBlockReason(r)}
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-rose-50 hover:text-rose-800 text-stone-600 border border-stone-200 transition-colors cursor-pointer"
+                      className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-rose-50 hover:text-rose-800 text-stone-600 border border-stone-200 transition-colors cursor-pointer"
                     >
                       帶入：{r}
                     </button>
@@ -1138,8 +1142,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed font-semibold">
-                ⚠️ 提示：確認封鎖後，該用戶帳號將無法發布問題、提交方案、發送私訊或進行金流交易，且系統會即刻發送官方平台通知告知停權期限與理由。
+              <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-[11px] text-amber-900 leading-relaxed font-semibold">
+                 提示：確認封鎖後，該用戶帳號將無法發布問題、提交方案、發送私訊或進行金流交易，且系統會即刻發送官方平台通知告知停權期限與理由。
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
@@ -1152,7 +1156,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
                 >
                   確認執行封鎖並發送平台通知
                 </button>
@@ -1165,11 +1169,11 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 一鍵生成測試帳號彈窗 */}
       {isTestUserModalOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2 text-amber-600">
                 <Sparkles className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900">一鍵添加測試帳號（免註冊免登入）</h4>
+                <h4 className="font-semibold text-base text-stone-900">一鍵添加測試帳號（免註冊免登入）</h4>
               </div>
               <button
                 type="button"
@@ -1194,14 +1198,14 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                         testUserRole === r
                           ? r === 'admin'
-                            ? 'bg-purple-700 text-white shadow-2xs font-black'
+                            ? 'bg-purple-700 text-white shadow-2xs font-semibold'
                             : r === 'solver'
-                            ? 'bg-blue-600 text-white shadow-2xs font-black'
-                            : 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                            ? 'bg-blue-600 text-white shadow-2xs font-semibold'
+                            : 'bg-amber-500 text-stone-950 shadow-2xs font-semibold'
                           : 'bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100'
                       }`}
                     >
-                      {r === 'admin' ? '👑 管理員' : r === 'solver' ? '💼 解答專家' : '🙋 提問者'}
+                      {r === 'admin' ? ' 管理員' : r === 'solver' ? ' 解答專家' : ' 提問者'}
                     </button>
                   ))}
                 </div>
@@ -1242,7 +1246,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     type="number"
                     value={testUserBalance}
                     onChange={(e) => setTestUserBalance(Number(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono font-bold focus:bg-white focus:border-amber-500 outline-none"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs tabular-nums font-bold focus:bg-white focus:border-amber-500 outline-none"
                   />
                 </div>
 
@@ -1259,8 +1263,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed font-medium">
-                💡 測試環境特權：此帳號免註冊、免密碼、免信箱驗證，建立後將直接加載至系統並可於全站快速切換使用！
+              <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-[11px] text-amber-900 leading-relaxed font-medium">
+                 測試環境特權：此帳號免註冊、免密碼、免信箱驗證，建立後將直接加載至系統並可於全站快速切換使用！
               </div>
             </div>
 
@@ -1292,7 +1296,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                   });
                   setTimeout(() => setFeedbackMsg(null), 4000);
                 }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>立即建立測試帳號</span>
@@ -1304,10 +1308,10 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 解除封鎖二次確認彈窗 */}
       {unblockingTargetUser && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-emerald-600">
               <Unlock className="w-6 h-6" />
-              <h4 className="font-black text-base text-stone-900">確認解除用戶封鎖？</h4>
+              <h4 className="font-semibold text-base text-stone-900">確認解除用戶封鎖？</h4>
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
@@ -1325,7 +1329,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmUnblock}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
                 確認解除封鎖
               </button>
@@ -1337,11 +1341,11 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 初始管理員指派兩站管理員權限彈窗 */}
       {adminAssignTargetUser && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2 text-purple-700">
                 <Crown className="w-5 h-5 text-amber-500" />
-                <h4 className="font-black text-base text-stone-900">初始管理員授權中心 · 兩站管理員分開指派</h4>
+                <h4 className="font-semibold text-base text-stone-900">初始管理員授權中心 · 兩站管理員分開指派</h4>
               </div>
               <button
                 type="button"
@@ -1361,20 +1365,20 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-sm text-stone-900 truncate">{adminAssignTargetUser.name}</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
-                    {getAdminSiteLabel(adminAssignTargetUser) || (adminAssignTargetUser.role === 'admin' ? '👑 管理員' : '一般會員')}
+                  <span className="font-semibold text-sm text-stone-900 truncate">{adminAssignTargetUser.name}</span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
+                    {getAdminSiteLabel(adminAssignTargetUser) || (adminAssignTargetUser.role === 'admin' ? ' 管理員' : '一般會員')}
                   </span>
                 </div>
                 <span className="text-[11px] text-stone-500 block truncate">
-                  帳號代碼：<span className="font-mono">{adminAssignTargetUser.id}</span>
+                  帳號代碼：<span className="tabular-nums">{adminAssignTargetUser.id}</span>
                 </span>
               </div>
             </div>
 
             {/* 說明權利隔離規範 */}
-            <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
-              <div className="font-black flex items-center gap-1.5 text-amber-900">
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-amber-950 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-amber-900">
                 <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>兩站管理員分開授權治理規則</span>
               </div>
@@ -1394,7 +1398,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 }}
                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
                   selectedAdminSites.includes('site_a')
-                    ? 'bg-blue-50/70 border-blue-400 ring-2 ring-blue-300/40'
+                    ? 'bg-stone-50 border-blue-400 ring-2 ring-blue-300/40'
                     : 'bg-stone-50/70 border-stone-200 hover:border-stone-300'
                 }`}
               >
@@ -1406,8 +1410,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 />
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-black text-xs text-blue-950">🅰️ A 站管理員（IdeaX 創點子主站）</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold">site_a</span>
+                    <span className="font-semibold text-xs text-blue-950"> A 站管理員（IdeaX 創點子主站）</span>
+                    <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold">site_a</span>
                   </div>
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     掌管 IdeaX 主站問題市場審核、認證專家受理審核、懸賞託管款項撥付、會員個資與一般檢舉仲裁。
@@ -1424,7 +1428,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 }}
                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
                   selectedAdminSites.includes('site_b')
-                    ? 'bg-rose-50/70 border-rose-400 ring-2 ring-rose-300/40'
+                    ? 'bg-stone-50 border-rose-400 ring-2 ring-rose-300/40'
                     : 'bg-stone-50/70 border-stone-200 hover:border-stone-300'
                 }`}
               >
@@ -1436,8 +1440,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 />
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-black text-xs text-rose-950">🅱️ B 站管理員（創星季賽事專區）</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">site_b</span>
+                    <span className="font-semibold text-xs text-rose-950"> B 站管理員（創星季賽事專區）</span>
+                    <span className="text-[11px] tabular-nums px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">site_b</span>
                   </div>
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     掌管創星季參賽提案審核、專家評審資格管理、決審評分統計、賽事大獎核發與競賽規章條款機密存檔。
@@ -1482,14 +1486,14 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             {/* 預覽結果提示 */}
             <div className="p-2.5 rounded-xl bg-stone-100 text-xs font-bold flex items-center justify-between text-stone-800">
               <span>儲存後身分：</span>
-              <span className="font-black text-purple-900">
+              <span className="font-semibold text-purple-900">
                 {selectedAdminSites.includes('site_a') && selectedAdminSites.includes('site_b')
-                  ? '👑 雙站全權管理員（A 站主站 ＋ B 站創星季）'
+                  ? ' 雙站全權管理員（A 站主站 ＋ B 站創星季）'
                   : selectedAdminSites.includes('site_a')
-                  ? '🅰️ A 站專屬管理員（IdeaX 創點子主站）'
+                  ? ' A 站專屬管理員（IdeaX 創點子主站）'
                   : selectedAdminSites.includes('site_b')
-                  ? '🅱️ B 站專屬管理員（創星季賽事專區）'
-                  : '👤 撤銷管理員（轉為一般會員）'}
+                  ? ' B 站專屬管理員（創星季賽事專區）'
+                  : ' 撤銷管理員（轉為一般會員）'}
               </span>
             </div>
 
@@ -1505,7 +1509,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveAdminSites}
-                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
                 <Check className="w-4 h-4" />
                 <span>確認儲存授權</span>
@@ -1542,7 +1546,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           onClick={() => setEditingUserProfileUser(null)}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+            className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 隱藏的頭像 input */}
@@ -1561,7 +1565,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                   <Edit3 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-white">
+                  <h3 className="text-sm sm:text-base font-semibold text-white">
                     管理員改名與更換頭像
                   </h3>
                   <p className="text-[11px] text-purple-200/80">
@@ -1581,7 +1585,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             {/* Modal Body */}
             <form onSubmit={handleSaveUserEdit} className="p-5 sm:p-6 space-y-4">
               {editAvatarError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-50 border border-stone-200 text-xs text-rose-700 font-bold flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{editAvatarError}</span>
                 </div>
@@ -1663,7 +1667,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>確認儲存變更</span>
@@ -1693,7 +1697,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           onClick={() => setDeletingTargetUser(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-6 border border-rose-200 shadow-2xl space-y-4"
+            className="bg-white rounded-2xl max-w-md w-full p-6 border border-stone-200 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
@@ -1702,7 +1706,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-black text-stone-900 text-base">永久刪除帳號確認</h4>
+                  <h4 className="font-semibold text-stone-900 text-base">永久刪除帳號確認</h4>
                   <p className="text-xs text-stone-500">將從本地與 Cloud Firestore 資料庫徹底移除</p>
                 </div>
               </div>
@@ -1715,9 +1719,9 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
               </button>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200 text-xs text-stone-700 space-y-1.5">
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-700 space-y-1.5">
               <p className="font-bold text-stone-900">
-                您確定要永久刪除帳號「<span className="text-rose-700">{deletingTargetUser.name}</span>」（ID: <span className="font-mono">{deletingTargetUser.id}</span>）嗎？
+                您確定要永久刪除帳號「<span className="text-rose-700">{deletingTargetUser.name}</span>」（ID: <span className="tabular-nums">{deletingTargetUser.id}</span>）嗎？
               </p>
               <p className="text-stone-600">
                 刪除後此帳號將自用戶清單與雲端資料庫移除，且不會在重整後自動重生。
@@ -1741,7 +1745,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                   setFeedbackMsg({ text: res.message, isError: !res.success });
                   setTimeout(() => setFeedbackMsg(null), 4000);
                 }}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>確認永久刪除</span>

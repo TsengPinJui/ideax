@@ -480,7 +480,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                     <span className="text-stone-400 block text-[11px]">帳號註冊日期</span>
                     <span className="font-bold text-stone-900 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>{user.registeredAt || user.createdAt || (user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '2026/09/20')}</span>
+                      <span>{user.registeredAt || user.createdAt || (user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '未記錄')}</span>
                     </span>
                   </div>
 

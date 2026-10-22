@@ -38,50 +38,50 @@ export interface TransactionCategoryDef {
 export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
   {
     key: 'custom_payment',
-    label: '💼 自訂提案支付',
+    label: ' 自訂提案支付',
     shortLabel: '提案支付',
     badge: {
-      bg: 'bg-blue-100 text-blue-900 border-blue-300',
+      bg: 'bg-blue-100 text-blue-900 border-stone-200',
       text: '自訂提案支付',
     },
     types: ['自訂提案支付', '自訂專案支付', '私聊專案支付', '自訂方案支付', '委託提案付款'],
   },
   {
     key: 'custom_income',
-    label: '🎉 自訂提案收入',
+    label: ' 自訂提案收入',
     shortLabel: '提案收入',
     badge: {
-      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      bg: 'bg-emerald-100 text-emerald-900 border-stone-200',
       text: '自訂提案收入',
     },
     types: ['自訂提案收入', '自訂專案收入', '自訂接案收入', '私聊專案收益', '階段交付驗收收益'],
   },
   {
     key: 'payout',
-    label: '💰 解答採納與拆款收入',
+    label: ' 解答採納與拆款收入',
     shortLabel: '採納收入',
     badge: {
-      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      bg: 'bg-emerald-100 text-emerald-900 border-stone-200',
       text: '解答者收益',
     },
     types: ['第三方採納拆款撥付', '階段交付拆款撥付', '解答者收益', '解答採納撥付', '解答採納收益', '解答採納收入', '階段交付收入', '解答收益'],
   },
   {
     key: 'escrow',
-    label: '📋 階段方案預扣與託管',
+    label: ' 階段方案預扣與託管',
     shortLabel: '託管預扣',
     badge: {
-      bg: 'bg-amber-100 text-amber-900 border-amber-300',
+      bg: 'bg-amber-100 text-amber-900 border-stone-200',
       text: '託管預扣',
     },
     types: ['階段方案預扣', '階段履約預扣', '第三方階段託管', '委託問題懸賞金託管'],
   },
   {
     key: 'refund',
-    label: '🔄 款項退款返還',
+    label: ' 款項退款返還',
     shortLabel: '交易退款',
     badge: {
-      bg: 'bg-rose-100 text-rose-900 border-rose-300',
+      bg: 'bg-rose-100 text-rose-900 border-stone-200',
       text: '款項退款',
     },
     types: [
@@ -98,47 +98,47 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
   },
   {
     key: 'unlock',
-    label: '🔓 方案解鎖與私聊交易',
+    label: ' 方案解鎖與私聊交易',
     shortLabel: '方案解鎖',
     badge: {
-      bg: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+      bg: 'bg-indigo-100 text-indigo-900 border-stone-200',
       text: '方案解鎖',
     },
     types: ['方案解鎖', '第三方方案解鎖', '私聊自訂方案交易', '付費解鎖方案'],
   },
   {
     key: 'subscription',
-    label: '👑 會員訂閱',
+    label: ' 會員訂閱',
     shortLabel: '會員訂閱',
     badge: {
-      bg: 'bg-purple-100 text-purple-900 border-purple-300',
+      bg: 'bg-purple-100 text-purple-900 border-stone-200',
       text: '會員訂閱',
     },
     types: ['會員訂閱', '會員方案訂閱', '訂閱會員方案'],
   },
   {
     key: 'deposit',
-    label: '🪙 點數儲值與充值入金',
+    label: ' 點數儲值與充值入金',
     shortLabel: '點數儲值',
     badge: {
-      bg: 'bg-teal-100 text-teal-900 border-teal-300',
+      bg: 'bg-teal-100 text-teal-900 border-stone-200',
       text: '點數儲值',
     },
     types: ['點數儲值', '錢包儲值', '儲值'],
   },
   {
     key: 'deduction',
-    label: '💳 點數消費與服務扣抵',
+    label: ' 點數消費與服務扣抵',
     shortLabel: '點數扣抵',
     badge: {
-      bg: 'bg-orange-100 text-orange-900 border-orange-300',
+      bg: 'bg-orange-100 text-orange-900 border-stone-200',
       text: '點數扣抵',
     },
     types: ['點數扣抵', '預扣額折抵解鎖'],
   },
   {
     key: 'withdrawal',
-    label: '🏦 銀行提領出金',
+    label: ' 銀行提領出金',
     shortLabel: '銀行提領',
     badge: {
       bg: 'bg-stone-200 text-stone-800 border-stone-300',
@@ -381,12 +381,12 @@ export const formatTransactionItem = (tx: Transaction, viewerName?: string): For
     : `- NT$ ${(displayAmount || 0).toLocaleString()}`;
 
   const flowBadgeClass = isIncome
-    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-    : 'bg-rose-100 text-rose-800 border-rose-300';
+    ? 'bg-emerald-100 text-emerald-800 border-stone-200'
+    : 'bg-rose-100 text-rose-800 border-stone-200';
 
   const categoryBadgeClass = isIncome
-    ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-    : 'bg-rose-50 text-rose-900 border-rose-200';
+    ? 'bg-emerald-50 text-emerald-900 border-stone-200'
+    : 'bg-rose-50 text-rose-900 border-stone-200';
 
   return {
     isIncome,
@@ -560,7 +560,7 @@ export const AdminTransactionsTab: React.FC = () => {
       {/* 標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-purple-600" />
             <span>交易管理</span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
@@ -591,7 +591,7 @@ export const AdminTransactionsTab: React.FC = () => {
             <Layers className="w-3.5 h-3.5 text-purple-600" />
             <span>依大類快速篩選：</span>
           </span>
-          <span className="text-[10px] text-stone-400">可左右橫向滑動查閱全部分類</span>
+          <span className="text-[11px] text-stone-400">可左右橫向滑動查閱全部分類</span>
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
@@ -600,13 +600,13 @@ export const AdminTransactionsTab: React.FC = () => {
             onClick={() => setSelectedType('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               selectedType === 'all'
-                ? 'bg-purple-700 text-white shadow-2xs font-black ring-2 ring-purple-300'
+                ? 'bg-purple-700 text-white shadow-2xs font-semibold ring-2 ring-purple-300'
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
             <span>全部交易</span>
             <span
-              className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+              className={`text-[11px] tabular-nums px-1.5 py-0.2 rounded-full ${
                 selectedType === 'all' ? 'bg-purple-800 text-white' : 'bg-stone-200 text-stone-600'
               }`}
             >
@@ -624,13 +624,13 @@ export const AdminTransactionsTab: React.FC = () => {
                 onClick={() => setSelectedType(isSelected ? 'all' : `group:${cat.key}`)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-purple-700 text-white shadow-2xs font-black ring-2 ring-purple-300'
+                    ? 'bg-purple-700 text-white shadow-2xs font-semibold ring-2 ring-purple-300'
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
               >
                 <span>{cat.label}</span>
                 <span
-                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                  className={`text-[11px] tabular-nums px-1.5 py-0.2 rounded-full ${
                     isSelected ? 'bg-purple-800 text-white' : 'bg-stone-200 text-stone-600'
                   }`}
                 >
@@ -668,7 +668,7 @@ export const AdminTransactionsTab: React.FC = () => {
           <div>
             <label className="text-[11px] font-bold text-stone-700 block mb-1 flex items-center justify-between">
               <span>交易類型分類名單：</span>
-              <span className="text-[10px] text-purple-700 font-mono">共 {allUniqueTypes.length} 種已標註標籤</span>
+              <span className="text-[11px] text-purple-700 tabular-nums">共 {allUniqueTypes.length} 種已標註標籤</span>
             </label>
             <select
               value={selectedType}
@@ -724,18 +724,18 @@ export const AdminTransactionsTab: React.FC = () => {
             <span>·</span>
             <span>分類篩選：<strong className="text-purple-900">{currentFilterLabel}</strong></span>
             <span>·</span>
-            <span>符合 <strong className="text-purple-700 font-mono text-sm">{filteredTransactions.length}</strong> 筆</span>
+            <span>符合 <strong className="text-purple-700 tabular-nums text-sm">{filteredTransactions.length}</strong> 筆</span>
           </div>
-          <div className="flex flex-wrap items-center gap-3 font-mono font-bold">
-            <span>流水總額：<strong className="text-purple-950 font-black">NT$ {totalFilteredVolume.toLocaleString()}</strong></span>
+          <div className="flex flex-wrap items-center gap-3 tabular-nums font-bold">
+            <span>流水總額：<strong className="text-purple-950 font-semibold">NT$ {totalFilteredVolume.toLocaleString()}</strong></span>
             <span title="平台收入 = 平台抽成服務費 + 該用戶支付給平台的會員訂閱/點數儲值等費用">
-              平台收入：<strong className="text-amber-800 font-black">NT$ {totalPlatformRevenue.toLocaleString()}</strong>
+              平台收入：<strong className="text-amber-800 font-semibold">NT$ {totalPlatformRevenue.toLocaleString()}</strong>
             </span>
             {!isStatementSelectMode && (
               <button
                 type="button"
                 onClick={() => setIsStatementSelectMode(true)}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0 ml-1 font-sans"
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0 ml-1 font-sans"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>整合產出對帳單</span>
@@ -747,15 +747,15 @@ export const AdminTransactionsTab: React.FC = () => {
 
       {/* 4. 多選數筆交易對帳單操作列 (僅在點擊整合產出對帳單後展開) */}
       {isStatementSelectMode && (
-        <div className="p-3.5 bg-stone-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md border border-stone-800 animate-in fade-in duration-150">
+        <div className="p-3.5 bg-stone-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm border border-stone-800 animate-in fade-in duration-150">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-stone-50 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
               <Layers className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm text-stone-100">多選交易對帳單模式</span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
+                <span className="font-semibold text-sm text-stone-100">多選交易對帳單模式</span>
+                <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-stone-50 text-amber-300 font-bold border border-amber-400/30">
                   已勾選 {selectedTxIds.size} / {filteredTransactions.length} 筆
                 </span>
               </div>
@@ -784,7 +784,7 @@ export const AdminTransactionsTab: React.FC = () => {
               type="button"
               disabled={selectedTxIds.size === 0}
               onClick={() => setIsConsolidatedModalOpen(true)}
-              className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-all shadow-sm ${
                 selectedTxIds.size > 0
                   ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 cursor-pointer active:scale-95'
                   : 'bg-stone-800 text-stone-500 cursor-not-allowed border border-stone-700 opacity-60'
@@ -811,7 +811,7 @@ export const AdminTransactionsTab: React.FC = () => {
       {/* 交易紀錄清單 */}
       <div className="space-y-2.5">
         {filteredTransactions.length === 0 ? (
-          <div className="p-10 text-center bg-stone-50 rounded-3xl border border-dashed border-stone-200 space-y-2">
+          <div className="p-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-2">
             <Clock className="w-8 h-8 text-stone-300 mx-auto" />
             <p className="text-xs font-bold text-stone-600">無相符交易紀錄</p>
             <p className="text-[11px] text-stone-400">目前選擇的分類條件未包含任何交易，可點擊上方「全部交易」或「重置分類篩選」。</p>
@@ -839,10 +839,10 @@ export const AdminTransactionsTab: React.FC = () => {
                 }}
                 className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border transition-all space-y-2 ${
                   isStatementSelectMode && isSelected
-                    ? 'border-amber-400 ring-2 ring-amber-300 shadow-xs bg-amber-50/20 cursor-pointer'
+                    ? 'border-amber-400 ring-2 ring-amber-300 shadow-xs bg-stone-50 cursor-pointer'
                     : isStatementSelectMode
-                    ? 'border-stone-200 hover:border-amber-300 cursor-pointer shadow-2xs'
-                    : 'border-stone-200 hover:border-purple-300 shadow-2xs'
+                    ? 'border-stone-200 hover:border-stone-200 cursor-pointer shadow-2xs'
+                    : 'border-stone-200 hover:border-stone-200 shadow-2xs'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
@@ -871,12 +871,12 @@ export const AdminTransactionsTab: React.FC = () => {
                       type="button"
                       onClick={() => setSelectedType(isTypeActive ? 'all' : tx.type)}
                       title="點擊依此交易類型篩選"
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
                         itemInfo.isIncome
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : 'bg-rose-100 text-rose-800 border-rose-300'
+                          ? 'bg-emerald-100 text-emerald-800 border-stone-200'
+                          : 'bg-rose-100 text-rose-800 border-stone-200'
                       } ${
-                        isTypeActive ? 'ring-2 ring-purple-600 font-black' : 'hover:opacity-80'
+                        isTypeActive ? 'ring-2 ring-purple-600 font-semibold' : 'hover:opacity-80'
                       }`}
                     >
                       {tx.type === '錢包儲值'
@@ -893,16 +893,16 @@ export const AdminTransactionsTab: React.FC = () => {
                       type="button"
                       onClick={() => setSelectedType(isGroupActive ? 'all' : `group:${badge.groupKey}`)}
                       title={`歸類大類：${badge.categoryLabel}（點擊依此大類篩選）`}
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
+                      className={`text-[10.5px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
                         isGroupActive
-                          ? 'bg-purple-100 text-purple-900 border-purple-300 font-black'
+                          ? 'bg-purple-100 text-purple-900 border-stone-200 font-semibold'
                           : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
                       }`}
                     >
                       {badge.category}
                     </button>
 
-                    <span className="font-extrabold text-stone-900" title={itemInfo.cleanTitle}>
+                    <span className="font-semibold text-stone-900" title={itemInfo.cleanTitle}>
                       <span className="sm:hidden">
                         {itemInfo.cleanTitle.length > 24
                           ? `${itemInfo.cleanTitle.slice(0, 24)}...`
@@ -912,12 +912,12 @@ export const AdminTransactionsTab: React.FC = () => {
                         {itemInfo.cleanTitle}
                       </span>
                     </span>
-                    <span className="text-[10px] font-mono text-stone-400">ID: {tx.id}</span>
+                    <span className="text-[11px] tabular-nums text-stone-400">ID: {tx.id}</span>
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-left sm:text-right">
-                      <span className={`text-base font-black font-mono block ${itemInfo.isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <span className={`text-base font-semibold tabular-nums block ${itemInfo.isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {itemInfo.amountFormatted}
                       </span>
                     </div>
@@ -928,24 +928,24 @@ export const AdminTransactionsTab: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-stone-500 pt-1.5 border-t border-stone-100">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span>付款方：<strong className="text-stone-700">{resolveUserDisplayName(tx.fromUserId, tx.fromUserName, availableUsers) || '委託提問者'}</strong></span>
-                    <span>➔</span>
+                    <span className="text-stone-400">→</span>
                     <span>收款方：<strong className="text-stone-700">{resolveUserDisplayName(tx.toUserId, tx.toUserName, availableUsers) || '受款專家'}</strong></span>
                     {tx.paymentMethod && <span className="text-stone-400">· 方式：{tx.paymentMethod}</span>}
                     {tx.bankAccountSnapshot && (
-                      <span className="text-stone-400 font-mono text-[10px]">· 帳戶：{tx.bankAccountSnapshot}</span>
+                      <span className="text-stone-400 tabular-nums text-[11px]">· 帳戶：{tx.bankAccountSnapshot}</span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded border border-emerald-200">
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded border border-stone-200">
                       {tx.status || '已完成'}
                     </span>
                     {tx.payoutStatus && (
-                      <span className="text-[10px] font-bold text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded">
+                      <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded">
                         {tx.payoutStatus}
                       </span>
                     )}
-                    <span className="font-mono text-stone-400">{tx.createdAt ? tx.createdAt.split('T')[0] : ''}</span>
+                    <span className="tabular-nums text-stone-400">{tx.createdAt ? tx.createdAt.split('T')[0] : ''}</span>
                   </div>
                 </div>
 

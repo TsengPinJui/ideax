@@ -631,8 +631,8 @@ export const AdminUserAnalyticsTab: React.FC = () => {
               <circle cx="50" cy="50" r="22" fill="white" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-[10px] text-stone-400 font-bold">總計</span>
-              <span className="text-xs font-black text-stone-500">0 人</span>
+              <span className="text-[11px] text-stone-400 font-bold">總計</span>
+              <span className="text-xs font-semibold text-stone-500">0 人</span>
             </div>
           </div>
           <div className="flex-1 w-full space-y-1.5 text-xs">
@@ -642,9 +642,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                   <span className="text-stone-600 truncate font-medium text-[11px]">{item.label}</span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 font-mono">
+                <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
                   <span className="font-bold text-stone-400">0人</span>
-                  <span className="text-stone-400 text-[10px]">(0.0%)</span>
+                  <span className="text-stone-400 text-[11px]">(0.0%)</span>
                 </div>
               </div>
             ))}
@@ -698,8 +698,8 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <circle cx="50" cy="50" r="22" fill="white" />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="text-[10px] text-stone-400 font-bold">總計</span>
-            <span className="text-xs font-black text-stone-900">{rawTotal} 人</span>
+            <span className="text-[11px] text-stone-400 font-bold">總計</span>
+            <span className="text-xs font-semibold text-stone-900">{rawTotal} 人</span>
           </div>
         </div>
 
@@ -715,9 +715,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                   />
                   <span className="text-stone-700 truncate font-medium text-[11px]">{item.label}</span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 font-mono">
+                <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
                   <span className="font-bold text-stone-900">{item.count}人</span>
-                  <span className="text-stone-400 text-[10px]">({pct}%)</span>
+                  <span className="text-stone-400 text-[11px]">({pct}%)</span>
                 </div>
               </div>
             );
@@ -741,8 +741,8 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <div key={idx} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-stone-700 text-[11px] truncate max-w-[200px]">{item.label}</span>
-                <span className="font-mono text-stone-900 font-bold text-[11px]">
-                  {item.count} 人 <span className="text-stone-400 font-normal text-[10px]">({ratioPct}%)</span>
+                <span className="tabular-nums text-stone-900 font-bold text-[11px]">
+                  {item.count} 人 <span className="text-stone-400 font-normal text-[11px]">({ratioPct}%)</span>
                 </span>
               </div>
               <div className="w-full h-3 bg-stone-100 rounded-full overflow-hidden flex">
@@ -764,16 +764,16 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner Header */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-400/30 flex items-center gap-1.5">
+            <span className="px-2.5 py-0.5 rounded-full bg-stone-50 text-purple-300 text-xs font-bold border border-purple-400/30 flex items-center gap-1.5">
               <BarChart3 className="w-3.5 h-3.5" />
               <span>平台治理決策雷達</span>
             </span>
             <span className="text-xs text-purple-200/80">用戶畫像與需求數據庫</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
             用戶分佈與習慣統計報表
           </h2>
           <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
@@ -794,13 +794,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>{isRefreshing ? '刷新計算中...' : '手動刷新統計'}</span>
             </button>
-            <span className="text-[10px] text-stone-400 font-mono">上次刷新：{lastRefreshedAt}</span>
+            <span className="text-[11px] text-stone-400 tabular-nums">上次刷新：{lastRefreshedAt}</span>
           </div>
 
           <button
             type="button"
             onClick={() => exportSurveyToExcelXlsx(availableUsers, aiAnalytics)}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 font-black text-xs shadow-lg flex items-center gap-2 transition-all cursor-pointer ring-2 ring-emerald-300"
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 font-semibold text-xs shadow-sm flex items-center gap-2 transition-all cursor-pointer ring-2 ring-emerald-300"
             title="一鍵下載完整用戶個資與問卷統計及 AI 客群分析 Excel 試算表 (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-stone-950" />
@@ -820,29 +820,29 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       </div>
 
       {refreshSuccess && (
-        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in fade-in">
+        <div className="p-3 rounded-2xl bg-emerald-50 border border-stone-200 text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>全體用戶最新基本資料與調研統計已手動刷新更新完成！（快照時間：{lastRefreshedAt}）</span>
         </div>
       )}
 
       {/* AI 深度客群分析與營運戰略建議 (頁面最上方重點區塊) */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-purple-900/90 via-indigo-950 to-stone-900 text-white shadow-xl border border-purple-500/30 relative overflow-hidden space-y-5">
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-purple-900/90 via-indigo-950 to-stone-900 text-white shadow-sm border border-purple-500/30 relative overflow-hidden space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-500/20 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-400/40 text-purple-300 shadow-inner">
+            <div className="p-2.5 rounded-2xl bg-stone-50 border border-purple-400/40 text-purple-300 shadow-inner">
               <Brain className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                <h3 className="text-base sm:text-lg font-semibold text-white tracking-tight">
                   AI 客群結構分析與營運戰略建議
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-bold border border-purple-400/30">
+                <span className="px-2 py-0.5 rounded-full bg-stone-50 text-purple-200 text-[11px] font-bold border border-purple-400/30">
                   Gemini 3.8 Intelligence
                 </span>
                 {aiAnalyticsLastAnalyzedAt && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-mono font-bold border border-amber-400/30 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[11px] tabular-nums font-bold border border-amber-400/30 flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
                     <span>上次分析時間：{aiAnalyticsLastAnalyzedAt}</span>
                   </span>
@@ -860,7 +860,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
               onClick={() => setIsAiReportExpanded(!isAiReportExpanded)}
               className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
                 isAiReportExpanded
-                  ? 'bg-amber-400 text-stone-950 border-amber-300 hover:bg-amber-300'
+                  ? 'bg-amber-400 text-stone-950 border-stone-200 hover:bg-amber-300'
                   : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
               }`}
             >
@@ -877,7 +877,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
               type="button"
               onClick={runAiCustomerAnalytics}
               disabled={isAnalyzingCustomer}
-              className="px-3.5 py-2 rounded-xl bg-purple-500/30 hover:bg-purple-500/50 active:scale-95 text-purple-200 font-bold text-xs flex items-center gap-1.5 transition-all border border-purple-400/30 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 rounded-xl bg-stone-50 hover:bg-stone-50 active:scale-95 text-purple-200 font-bold text-xs flex items-center gap-1.5 transition-all border border-purple-400/30 cursor-pointer disabled:opacity-50"
             >
               <Sparkles className={`w-3.5 h-3.5 ${isAnalyzingCustomer ? 'animate-spin' : ''}`} />
               <span>{isAnalyzingCustomer ? 'AI 分析運算中...' : '重新產出 AI 分析'}</span>
@@ -903,8 +903,8 @@ export const AdminUserAnalyticsTab: React.FC = () => {
               </div>
 
               <div className="px-4 py-3 rounded-2xl bg-purple-950/80 border border-purple-400/30 shrink-0 flex flex-col items-center justify-center text-center">
-                <span className="text-[10px] text-purple-300 font-bold">平台生態健康度</span>
-                <div className="text-2xl font-black text-emerald-400 flex items-baseline gap-0.5">
+                <span className="text-[11px] text-purple-300 font-bold">平台生態健康度</span>
+                <div className="text-2xl font-semibold text-emerald-400 flex items-baseline gap-0.5">
                   <span>{aiAnalytics?.platformHealthScore ?? (isDemoMode ? 94 : 0)}</span>
                   <span className="text-xs text-purple-300 font-normal">/ 100</span>
                 </div>
@@ -996,8 +996,8 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <span className="text-xs font-bold">總註冊用戶數</span>
             <Users className="w-4 h-4 text-purple-600" />
           </div>
-          <p className="text-2xl font-black text-stone-900">{validUsers.length}</p>
-          <p className="text-[10px] text-stone-400 mt-0.5">扣除免登入訪客</p>
+          <p className="text-2xl font-semibold text-stone-900">{validUsers.length}</p>
+          <p className="text-[11px] text-stone-400 mt-0.5">扣除免登入訪客</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
@@ -1005,10 +1005,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <span className="text-xs font-bold">有意願付費提問</span>
             <DollarSign className="w-4 h-4 text-amber-600" />
           </div>
-          <p className="text-2xl font-black text-amber-950">
+          <p className="text-2xl font-semibold text-amber-950">
             {kpi.budget.answered > 0 ? `${Math.round((kpi.budget.yes / kpi.budget.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">具備直接懸賞消費意願・{kpi.budget.answered} 人作答</p>
+          <p className="text-[11px] text-stone-400 mt-0.5">具備直接懸賞消費意願・{kpi.budget.answered} 人作答</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
@@ -1016,10 +1016,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <span className="text-xs font-bold">願意作為有償副業</span>
             <Briefcase className="w-4 h-4 text-blue-600" />
           </div>
-          <p className="text-2xl font-black text-blue-950">
+          <p className="text-2xl font-semibold text-blue-950">
             {kpi.sideHustle.answered > 0 ? `${Math.round((kpi.sideHustle.yes / kpi.sideHustle.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">具備專家接案與解題意願・{kpi.sideHustle.answered} 人作答</p>
+          <p className="text-[11px] text-stone-400 mt-0.5">具備專家接案與解題意願・{kpi.sideHustle.answered} 人作答</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
@@ -1027,19 +1027,19 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <span className="text-xs font-bold">方案訂閱付費意向</span>
             <Crown className="w-4 h-4 text-emerald-600" />
           </div>
-          <p className="text-2xl font-black text-emerald-950">
+          <p className="text-2xl font-semibold text-emerald-950">
             {kpi.subscribe.answered > 0 ? `${Math.round((kpi.subscribe.yes / kpi.subscribe.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">含視獲利付費訂閱者・{kpi.subscribe.answered} 人作答</p>
+          <p className="text-[11px] text-stone-400 mt-0.5">含視獲利付費訂閱者・{kpi.subscribe.answered} 人作答</p>
         </div>
       </div>
 
       {/* 10 Visual Charts Grid - 依照性別、年齡、專業領域、職業、薪水、其他問題順序排列 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* 1. 用戶性別分佈 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500" />
               <span>1. 用戶性別分佈</span>
             </h3>
@@ -1049,9 +1049,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 2. 用戶年齡層分佈 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>2. 用戶年齡層分佈</span>
             </h3>
@@ -1061,9 +1061,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 3. 相關專業領域分佈 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-cyan-500" />
               <span>3. 相關專業領域分佈（可多選）</span>
             </h3>
@@ -1081,9 +1081,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 4.1 AI 職業歸類：行業分佈圓餅圖 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-purple-500" />
               <span>4.1 AI 職業歸類：行業分佈</span>
             </h3>
@@ -1093,9 +1093,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 4.2 AI 職業位階：職級結構圓餅圖 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-indigo-500" />
               <span>4.2 AI 職業位階：職級結構</span>
             </h3>
@@ -1105,9 +1105,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 5. 目前薪水(年)層級分佈 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span>5. 目前薪水 (年) 層級分佈</span>
             </h3>
@@ -1117,9 +1117,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 6. 其他問題：期望在 IdeaX 使用的服務 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-orange-500" />
               <span>6. 其他問題 - 期望在 IdeaX 獲得之服務（可多選）</span>
             </h3>
@@ -1135,9 +1135,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 7. 其他問題：願付提問解答預算區間 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>7. 其他問題 - 單次尋求專家解答願付預算區間</span>
             </h3>
@@ -1147,9 +1147,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 8. 其他問題：使用習慣（多久打開一次 IdeaX） */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-indigo-500" />
               <span>8. 其他問題 - 預計多久打開一次 IdeaX 平台？</span>
             </h3>
@@ -1159,9 +1159,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 9. 其他問題：是否願意將解答作為您的副業 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-600" />
               <span>9. 其他問題 - 是否願意將解答作為您的副業 (有償)？</span>
             </h3>
@@ -1171,9 +1171,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 10. 其他問題：是否願意有償為其他提問提供解方 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-teal-500" />
               <span>10. 其他問題 - 是否願意為他人提問提供解方 (為人解答)？</span>
             </h3>
@@ -1183,9 +1183,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
         </div>
 
         {/* 11. 其他問題：是否願意花錢訂閱解答者的優惠方案 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-purple-600" />
               <span>11. 其他問題 - 是否願意花錢訂閱解答者的優惠方案？</span>
             </h3>
@@ -1196,10 +1196,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       </div>
 
       {/* Raw User Data Table with Search */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-black text-stone-900">用戶填寫原始問卷明細</h3>
+            <h3 className="text-base font-semibold text-stone-900">用戶填寫原始問卷明細</h3>
             <p className="text-xs text-stone-500 mt-0.5">
               顯示共 {filteredUsers.length} 筆會員資料，點選上方按鈕可隨時下載成完整的 Excel / CSV
               報表。
@@ -1247,7 +1247,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                         <div className="min-w-0">
                           <p className="font-bold text-stone-900 truncate">{u.name}</p>
                           <span
-                            className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                            className={`text-[10.5px] px-1.5 py-0.2 rounded font-bold ${
                               u.role === 'admin'
                                 ? 'bg-purple-100 text-purple-800'
                                 : u.role === 'solver'
@@ -1271,14 +1271,14 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                         : '未填寫'}
                     </td>
                     {/* 2. 年齡 */}
-                    <td className="p-3 text-stone-600 font-mono text-[11px]">
+                    <td className="p-3 text-stone-600 tabular-nums text-[11px]">
                       {u.ageGroup
                         ? u.ageGroup.replace('under_18', '<18歲').replace('55_above', '>55歲').replace('_', '~') + '歲'
                         : '25~34歲'}
                     </td>
                     {/* 3. 專業領域 */}
                     <td className="p-3 text-stone-700">
-                      <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200 text-[10px] font-medium">
+                      <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200 text-[11px] font-medium">
                         {u.domain || u.industry || '創新創業'}
                       </span>
                     </td>
@@ -1288,12 +1288,12 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                         {u.jobTitle || u.title || '專業顧問'}
                       </p>
                       {u.industry && (
-                        <p className="text-[10px] text-stone-400 truncate max-w-[140px]">{u.industry}</p>
+                        <p className="text-[11px] text-stone-400 truncate max-w-[140px]">{u.industry}</p>
                       )}
                     </td>
                     {/* 5. 目前年薪 */}
                     <td className="p-3 text-stone-700">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-stone-200">
                         {u.annualSalary === 'under_500k'
                           ? '< 50萬'
                           : u.annualSalary === '500k_1000k'
@@ -1311,7 +1311,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                     <td className="p-3 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {s.willingPointsPerQuestion && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-950 border border-orange-300">
+                          <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-950 border border-stone-200">
                             懸賞點數:{' '}
                             {s.willingPointsPerQuestion === '0_free'
                               ? '0點'
@@ -1326,7 +1326,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                               : '視情況'}
                           </span>
                         )}
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                        <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-stone-200">
                           單次預算:{' '}
                           {s.willingQuestionBudget
                             ? s.willingQuestionBudget === 'under_500'
@@ -1341,7 +1341,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                             : '2k~5k'}
                         </span>
                         {s.monthlyQuestionBudget && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                          <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-stone-200">
                             月預算:{' '}
                             {s.monthlyQuestionBudget === 'monthly_0'
                               ? '$0'
@@ -1356,7 +1356,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                               : '>$3k'}
                           </span>
                         )}
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-900">
+                        <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-900">
                           副業:{' '}
                           {s.willingToBeSideHustle === 'very_willing'
                             ? '非常願意'
@@ -1366,7 +1366,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                             ? '不考慮'
                             : '考慮中'}
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900">
+                        <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900">
                           訂閱:{' '}
                           {s.willingToSubscribeSolverPlan === 'willing'
                             ? '願意'
@@ -1378,7 +1378,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="p-3 text-[11px] text-stone-500 font-mono">
+                    <td className="p-3 text-[11px] text-stone-500 tabular-nums">
                       {s.updatedAt?.split('T')[0] || s.completedAt?.split('T')[0] || u.joinedDate}
                     </td>
                   </tr>
