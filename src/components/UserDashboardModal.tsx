@@ -19,6 +19,7 @@ import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
+import { AdminDataRepairCard } from './AdminDataRepairCard';
 import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
@@ -2989,6 +2990,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 {/* 吉祥物互動統計：捷徑到 AI-CRM 分頁的小燈泡統計 */}
                 <AdminMascotStatsShortcut onGo={() => setActiveTab('admin_aicrm')} />
+
+                {/* 修正舊程式錯誤寫進資料庫的不實資料 */}
+                <AdminDataRepairCard />
 
                 {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">

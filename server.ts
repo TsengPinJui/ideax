@@ -17,6 +17,7 @@ import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_REFER_007_REPLY, MASCOT_REFER_007_ACTIONS, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
 import { recordFeatureUse, getFeatureUsage, getPublicFeatureTotals } from './server/featureUsage';
+import { ALL_REPAIR_CATEGORIES, runDataRepair } from './server/dataRepair';
 import { buildJobDocResult, detectDocKind, extractDocxText, MAX_DOC_BYTES } from './server/docText';
 import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
@@ -4113,6 +4114,23 @@ app.post('/api/me/active', async (req: Request, res: Response) => {
 });
 
 // 管理員看會員最近上線時間（打開後台會員頁時讀一次）
+// 管理員：修正舊程式錯誤寫進資料庫的不實資料（apply=false 只預覽）
+app.post('/api/admin/data-repair', async (req: Request, res: Response) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+    if (!au || !(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, error: '只有管理員可以使用' });
+    const wanted = Array.isArray(req.body?.categories) ? req.body.categories.map(String) : ALL_REPAIR_CATEGORIES;
+    const categories = ALL_REPAIR_CATEGORIES.filter((c) => wanted.includes(c));
+    if (!categories.length) return res.status(400).json({ ok: false, error: '請至少選一個類別' });
+    const report = await runDataRepair(req.body?.apply === true, categories);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: !report.error, ...report });
+  } catch (err: any) {
+    console.warn('[Data Repair] error:', String(err?.message || err).slice(0, 200));
+    res.status(500).json({ ok: false, error: '修正時發生錯誤，請稍後再試' });
+  }
+});
+
 app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
   try {
     const au = await verifyAuthToken(req.headers.authorization as string | undefined);

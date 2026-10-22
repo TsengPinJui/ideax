@@ -242,6 +242,22 @@ function applyPayloadToLocalDoc(colName: string, docId: string, data: any, merge
   scheduleSaveLocalDbStore();
 }
 
+/** 資料修正用：同步更新本機鏡像（patch 套用、deletes 移除欄位） */
+export function patchMirrorDoc(colName: string, docId: string, patch: Record<string, any>, deletes: string[] = []) {
+  const cur = localDbStore[colName]?.[docId];
+  if (!cur) return;
+  const next = { ...cur, ...JSON.parse(JSON.stringify(patch)) };
+  for (const k of deletes) delete next[k];
+  localDbStore[colName][docId] = next;
+  scheduleSaveLocalDbStore();
+}
+
+/** 資料修正用：取得服務帳戶的 Firestore（沒有服務帳戶時回傳 null） */
+export async function getServiceFirestore(): Promise<{ fs: any; FV: any } | null> {
+  if (!hasAdminCredentials) return null;
+  return loadServerFs();
+}
+
 function deleteLocalDoc(colName: string, docId: string) {
   if (localDbStore[colName] && localDbStore[colName][docId]) {
     delete localDbStore[colName][docId];
