@@ -300,11 +300,12 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           className="bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 p-3 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 group"
         >
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-24 h-20 sm:w-32 sm:h-24 rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
+            <div className="w-28 sm:w-36 aspect-video rounded-xl overflow-hidden bg-stone-900 shrink-0 relative">
+              <img src={coverImg} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
               <img
                 src={coverImg}
                 alt={app.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="relative w-full h-full object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
                 }}
@@ -404,7 +405,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             onFallbackErrorImage={getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2)}
             title={app.title}
             isHovered={isCardHovered}
-            heightClass="h-28 sm:h-36"
+            heightClass="aspect-video"
           >
             <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10">
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">

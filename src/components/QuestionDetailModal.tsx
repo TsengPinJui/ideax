@@ -1276,11 +1276,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             })()}
             {/* 封面大圖 */}
             {question.coverImage && (
-              <div className="relative w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-stone-900 border border-stone-200 shadow-sm">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-stone-900 border border-stone-200">
+                <img src={question.coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
                 <img
                   src={question.coverImage}
                   alt={question.title}
-                  className="w-full h-full object-cover"
+                  className="relative w-full h-full object-contain"
                 />
               </div>
             )}

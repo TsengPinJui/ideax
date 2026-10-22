@@ -1297,12 +1297,13 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {cardViewMode === 'large' && (
                     <div
                       onClick={() => handleOpenProposalDetail(proposal)}
-                      className="relative h-32 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 cursor-pointer group/img"
+                      className="relative aspect-video overflow-hidden bg-stone-900 border-b border-stone-100 cursor-pointer group/img"
                     >
+                      <img src={coverImg} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
                       <img
                         src={coverImg}
                         alt={proposal.title}
-                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                        className="relative w-full h-full object-contain group-hover/img:scale-[1.03] transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 

@@ -963,7 +963,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                     onFallbackErrorImage={getUniqueProposalCoverImage({ id: proposal.id }, 1)}
                     title={proposal.title}
                     isHovered={isCardHovered}
-                    heightClass="h-28 sm:h-36"
+                    heightClass="aspect-video"
                   >
                     <div className="absolute top-2 left-2 pointer-events-none z-10 flex items-center gap-1 flex-wrap">
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
@@ -1066,7 +1066,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   onFallbackErrorImage={getUniqueProposalCoverImage({ id: proposal.id }, 1)}
                   title={proposal.title}
                   isHovered={isLargeCardHovered}
-                  heightClass="h-40 sm:h-48"
+                  heightClass="aspect-video"
                 >
                   {/* Top Overlay Badges */}
                   <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none z-10">

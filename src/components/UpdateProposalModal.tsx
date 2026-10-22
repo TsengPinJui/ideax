@@ -634,6 +634,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                     支援 JPG / PNG / WebP · 單張上限 {MAX_IMAGE_FILE_SIZE_MB}MB
                   </span>
                 </div>
+                <p className="mb-1.5 text-[11.5px] text-stone-500">建議 16:9，例如 1280×720 或 1920×1080 px；其他比例也會完整顯示，兩側以模糊底補滿。下方預覽就是卡片上的樣子。</p>
 
                 {!coverImage.trim() ? (
                   <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/40 text-indigo-800 text-xs font-bold cursor-pointer transition-all">
@@ -651,8 +652,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                     />
                   </label>
                 ) : (
-                  <div className="relative w-full h-36 rounded-lg overflow-hidden border border-stone-300 bg-stone-900 group">
-                    <img src={coverImage} alt="封面預覽" className="w-full h-full object-cover" />
+                  <div className="relative w-full max-w-md aspect-video rounded-lg overflow-hidden border border-stone-300 bg-stone-900 group">
+                    <img src={coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
+                    <img src={coverImage} alt="封面預覽" className="relative w-full h-full object-contain" />
                     <div className="absolute top-2 right-2 flex items-center gap-1.5">
                       <label className="px-2.5 py-1 rounded bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors">
                         <Upload className="w-3 h-3" />
