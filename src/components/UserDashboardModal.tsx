@@ -152,6 +152,7 @@ import { AdminHomeShowcaseCard } from './AdminHomeShowcaseCard';
 import { AdminSettingsSearch } from './AdminSettingsSearch';
 import { DEMO_ACCOUNTS } from '../services/accountGuard';
 import { AiCrmView } from './AiCrmView';
+import { ProjectPlanExportButton } from './ProjectPlanExportButton';
 
 export type UserDashboardTab =
   | 'points_receivables'
@@ -5108,6 +5109,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <span>觀看數：<strong className="text-stone-900">{(q.views ?? q.viewsCount ?? 0).toLocaleString()}</strong> 次</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          {!q.isSimulated && (q.postType === 'vibecoding_app' || q.postType === 'innovation_proposal') && (
+                            <ProjectPlanExportButton project={q} compact />
+                          )}
                           <button
                             type="button"
                             onClick={() => setDeletingQuestionTarget(q)}
