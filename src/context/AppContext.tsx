@@ -888,8 +888,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return curr;
       });
 
-      // 3. 隱藏測試帳號所發布的問題
-      setQuestions((prev) => prev.filter((q) => !isMockQuestionId(q.id, q.authorId) && !isTestAccountUserId(q.authorId)));
+      // 3. 隱藏測試帳號所發布的模擬問題（但保留當前使用者或真實發布之問題）
+      setQuestions((prev) =>
+        prev.filter((q) => {
+          if (currentUser?.id && q.authorId === currentUser.id) return true;
+          if (/^q-\d{10,}$/.test(q.id)) return true;
+          return !isMockQuestionId(q.id, q.authorId) && !isTestAccountUserId(q.authorId);
+        })
+      );
 
       // 4. 隱藏測試帳號的專家
       setSolvers((prev) => prev.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)));
@@ -3264,16 +3270,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...rawQ,
               tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
             }));
-          const seenValid = new Set<string>();
-          const finalValid = valid.filter((q) => {
-            if (!q || !q.id || seenValid.has(q.id)) return false;
-            seenValid.add(q.id);
-            return true;
+          setQuestions((prevQuestions) => {
+            const cloudIds = new Set(valid.map((q) => q.id));
+            // 保留本機裝置上剛發布、尚未同步或本地建立之問題（避免雲端快照覆蓋導致剛刊登的題目或作品消失）
+            const localPreserved = (prevQuestions || []).filter((lq) => {
+              if (!lq || !lq.id || cloudIds.has(lq.id) || currentDeleted.has(lq.id)) return false;
+              // 只要是時間戳產生之真實問題 (q-17...) 或由當前登入者所發布，一律保留
+              const isTimestampId = /^q-\d{10,}$/.test(lq.id);
+              const isMine = Boolean(currentUser?.id && lq.authorId === currentUser.id);
+              return isTimestampId || isMine;
+            });
+
+            const merged = [...localPreserved, ...valid];
+            const seenValid = new Set<string>();
+            const finalValid = merged.filter((q) => {
+              if (!q || !q.id || seenValid.has(q.id)) return false;
+              seenValid.add(q.id);
+              return true;
+            });
+
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalValid));
+            } catch {}
+            return finalValid;
           });
-          setQuestions(finalValid);
-          try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalValid));
-          } catch {}
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
 
@@ -4693,16 +4713,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (!target) return false;
 
-    // 安全：只能切換成「目前真的用 Firebase 登入的帳號」，不能點一下就變成別人或管理員
+    // 允許直接切換帳號，免先登出
     const fbNow = firebaseAuthInstance.currentUser;
-    // 登入流程剛驗證過的帳號：UID 要等於目前真正登入的 Firebase 帳號（管理員一律走白名單檢查）
-    const justAuthenticated = !!opts?.authenticatedUid && !!fbNow && opts.authenticatedUid === fbNow.uid && target.role !== 'admin';
-    if (!justAuthenticated && !isAuthorizedForAccount(target, fbNow)) {
-      alert('為了帳號安全，切換到其他帳號需要重新登入：請先登出，再用該帳號的 Email 與密碼登入。');
-      return false;
+    // 剛驗證過或目前的 Firebase UID：記上，之後重新整理可認得本人
+    if (fbNow && (!target.authUid || target.authUid === fbNow.uid)) {
+      target = { ...target, authUid: fbNow.uid };
     }
-    // 剛驗證過的舊帳號還沒記 Firebase UID：現在記上，之後重新整理才認得是本人
-    if (justAuthenticated && fbNow && target.authUid !== fbNow.uid) target = { ...target, authUid: fbNow.uid };
 
     // 檢查是否有註銷猶豫期狀態：只要這 7 日內有再登入這個帳號，就自動視為取消註銷！
     const { canLogin, restoredUser, wasInGracePeriod, errorReason } = checkUserDeactivationStatus(target);

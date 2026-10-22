@@ -10,16 +10,35 @@ export interface QuestionDraft {
   id: string;
   userId: string;
   postType: PostType;
+  appName?: string;
   title: string;
   description: string;
   category: Category | '';
   subcategory: string;
+  subcategories?: string[];
+  selectedVibeCategories?: string[];
   tagsInput: string;
   level: ProblemLevel;
   bounty: number;
   deadlineDays: number;
   paymentMethod?: string;
   externalLink?: string;
+  demoUrl?: string;
+  previewMode?: 'embed' | 'external';
+  techArchitecture?: string;
+  publishedPlatforms?: any[];
+  referencedPainPoint?: string;
+  targetGoal?: string;
+  proposalProgressStage?: string;
+  currentVersion?: string;
+  coverImage?: string;
+  galleryImages?: string[];
+  youtubeUrl?: string;
+  coverMode?: 'custom_image' | 'youtube_video';
+  cardHoverMode?: 'video_autoplay' | 'image_carousel';
+  showCardImage?: boolean;
+  selectedCardImage?: string;
+  mindMap?: any;
   enablePhasedDelivery?: boolean;
   phase1Points?: number;
   phase2Points?: number;
@@ -100,16 +119,35 @@ export function saveQuestionDraft(
     id: draftData.id || `draft-q-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     userId: userId || draftData.userId || 'user-guest',
     postType: draftData.postType || 'seek_solution',
+    appName: draftData.appName,
     title: draftData.title || '',
     description: draftData.description || '',
     category: draftData.category || '創新創業',
     subcategory: draftData.subcategory || '資訊科技',
+    subcategories: draftData.subcategories,
+    selectedVibeCategories: draftData.selectedVibeCategories,
     tagsInput: draftData.tagsInput || '',
     level: draftData.level || 'L2',
     bounty: draftData.bounty !== undefined ? draftData.bounty : 500,
     deadlineDays: draftData.deadlineDays || 14,
     paymentMethod: draftData.paymentMethod || '信用卡',
     externalLink: draftData.externalLink || '',
+    demoUrl: draftData.demoUrl,
+    previewMode: draftData.previewMode,
+    techArchitecture: draftData.techArchitecture,
+    publishedPlatforms: draftData.publishedPlatforms,
+    referencedPainPoint: draftData.referencedPainPoint,
+    targetGoal: draftData.targetGoal,
+    proposalProgressStage: draftData.proposalProgressStage,
+    currentVersion: draftData.currentVersion,
+    coverImage: draftData.coverImage,
+    galleryImages: draftData.galleryImages,
+    youtubeUrl: draftData.youtubeUrl,
+    coverMode: draftData.coverMode,
+    cardHoverMode: draftData.cardHoverMode,
+    showCardImage: draftData.showCardImage,
+    selectedCardImage: draftData.selectedCardImage,
+    mindMap: draftData.mindMap,
     enablePhasedDelivery: draftData.enablePhasedDelivery || false,
     phase1Points: draftData.phase1Points || 200,
     phase2Points: draftData.phase2Points || 300,

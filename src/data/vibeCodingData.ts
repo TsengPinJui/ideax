@@ -157,5 +157,77 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
       { id: 'tip-vibe3-1', userId: 'vp-user-08', userName: '蘇郁婷 品牌主理人', amount: 500, message: '自媒體救星！以前剪一支 Reels 要兩小時，現在 10 分鐘搞定！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 8).toISOString() },
       { id: 'tip-vibe3-2', userId: 'vp-user-03', userName: '王建民 廠長', amount: 350, message: '瀏覽器端直接跑 WebAssembly 切片不卡頓，非常驚豔！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 4).toISOString() }
     ]
+  },
+  {
+    id: 'vibe-app-4',
+    appName: '小廚師（EZ COOK）',
+    title: '小廚師（EZ COOK）｜您的星級智慧烹飪助手',
+    description: '「小廚師」 是一款專為現代廚房打造的 AI 智慧即時料理教練與烹飪筆記應用。無論是料理新手想快速上手家常菜，還是料理愛好者探索異國料理，小廚師都能透過 AI 語音、視訊辨識、食譜份量動態換算與 YouTube 教學影片，一步步陪伴您完成美味佳餚。\n\n🌟 核心特色與亮點：\n🔍 AI 智慧料理搜尋與多重風味自訂：\n• 模糊需求精準化：輸入菜名（如「麻婆豆腐」）或手邊現有食材（如「冰箱剩雞蛋跟番茄」），AI 能自動分析意圖，推薦最合適的 3～4 道精選菜色。\n• 地區風味與口味自由複選：支援同時多選台式經典、日式和風、四川麻辣、義式經典等地區風味，以及清淡低卡、鹹香開胃、酸甜麻辣等口味偏好，量身打造專屬菜單。\n• 精準高畫質美食圖卡：內建豐富的料理美食圖像對應庫，料理外觀一目了然。\n\n📖 互動式食譜與動態份量換算：\n• 一鍵人份調整：點選 + 或 − 人份，系統即時依比例自動換算食材克數與調味料份量。\n• 備料檢查清單：備料完成後可逐項勾選劃線，廚房準備井然有序。\n• 清晰步驟與火候提醒：標示所需時間、烹調難易度、火候掌握重點與貼心防呆叮嚀。\n\n📺 多語言精選 YouTube 料理教學：\n• 多元語言教學庫：支援自訂與複選偏好教學語言（國語、台語、粵語、日語、英語、韓語）。\n• 畫中畫同步對照：無須跳出網頁，直接在應用程式內觀看名廚名師的影音示範，邊看邊做不手忙腳亂。\n\n🍳 專為廚房設計的「全螢幕料理模式」：\n• 大字體與高對比視覺：擺在流理台或手機支架上遠看依然清晰。\n• 智慧語音步驟朗讀（TTS）：點擊即可播報當前料理步驟，滿手油水時不需頻繁觸摸螢幕。\n• 內建料理倒數計時器：直接輸入「計時 3 分鐘」或點擊按鈕，時間一到自動響鈴並語音提醒。\n\n📷 多模態 AI 視訊與鍋況診斷（AI Coach）：\n• 「看一下畫面」拍照鑑定：透過手機鏡頭拍攝鍋內狀況，AI 視覺即時為您判斷食材熟度、上色程度或醬汁收乾狀態，給予即時火候指導。\n• 料理問答小幫手：烹調過程中有任何疑問（如「太鹹怎麼補救？」、「太乾要加水嗎？」），小廚師隨時在線上解答。\n\n📱 完整 PWA 跨平台 App 支援：\n• 一鍵安裝至桌面與手機：頂部提供「📥 下載 App」按鍵，點擊即可觸發瀏覽器原生安裝彈窗，直接加到手機主畫面（支援 iOS 與 Android）。\n• 極速秒開與離線快取：具備 Service Worker 離線快取能力，免經由應用商店下載，享受如同原生 App 般乾淨無干擾的全螢幕體驗。\n\n🎯 適合對象：\n• 廚房新手：步驟清晰、份量自動換算，還能隨時拍照問火候，告別黑暗料理。\n• 租屋族與小家庭：針對手邊僅有的 1～2 種食材快速發想菜色，15 分鐘快手出餐。\n• 料理進階愛好者：自由組合多元風味與異國料理風格，探索不同菜系的烹飪樂趣。',
+    category: '網站程式',
+    subcategory: 'AI工具',
+    subcategories: ['AI工具', '網站程式', '自動化'],
+    tags: ['AI工具', 'AI料理', '食譜換算', 'PWA應用', '智慧廚房', '料理教練'],
+    level: 'L0',
+    bounty: 0,
+    status: 'open',
+    authorId: 'user-vibecoder-chef',
+    authorName: '阿倫師（星級主廚開發者）',
+    authorAvatar: '/seed-covers/vibe-app-ezcook-pwa.png',
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString(),
+    deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
+    views: 1520,
+    likes: 286,
+    secondedCount: 79,
+    sameQuestionCount: 38,
+    answersCount: 9,
+    postType: 'vibecoding_app',
+    specialZone: 'vibecoding',
+    referencedPainPoint: '[q-vp-pain-17] 週末去大賣場買菜塞滿冰箱，結果忘記最裡面冰了什麼，每個月都在丟爛掉的葉菜跟過期牛奶',
+    targetGoal: '希望半年內達成 100,000 次安裝下載，協助 2 萬名租屋族與廚房新手告別黑暗料理！',
+    currentVersion: 'v1.2.0',
+    updateLogs: [
+      {
+        id: 'log-vibe-4-2',
+        timestamp: '2026/10/22 10:30',
+        version: 'v1.2.0',
+        content: '重大升級！新增「拍照看鍋況」多模態 AI 視覺辨識、全螢幕大字高對比烹飪模式、Web Speech 即時語音播報與精選 YouTube 多國語系影音畫中畫同步對照。',
+        note: '星級廚房教練正式上線版本',
+        authorId: 'user-vibecoder-chef',
+        authorName: '阿倫師（星級主廚開發者）',
+        authorAvatar: '/seed-covers/vibe-app-ezcook-pwa.png',
+        updatedFields: ['內容說明', '技術架構', '成果網址', '版本號'],
+      },
+      {
+        id: 'log-vibe-4-1',
+        timestamp: '2026/10/18 14:20',
+        version: 'v1.1.0',
+        content: '導入動態人份等比自動換算引擎、備料劃線檢查清單與 PWA 離線秒開快取支援。',
+        note: '備料體驗與離線能力優化',
+        authorId: 'user-vibecoder-chef',
+        authorName: '阿倫師（星級主廚開發者）',
+        authorAvatar: '/seed-covers/vibe-app-ezcook-pwa.png',
+        updatedFields: ['內容說明', '版本號'],
+      }
+    ],
+    coverImage: '/seed-covers/vibe-app-4.jpg',
+    galleryImages: [
+      '/seed-covers/vibe-app-4.jpg',
+      '/seed-covers/vibe-app-ezcook-mobile-1.png',
+      '/seed-covers/vibe-app-ezcook-pwa.png'
+    ],
+    techArchitecture: 'React 19 + TypeScript + Vite + Tailwind CSS + Gemini 2.5 Flash / 3.8 Flash (Multimodal Vision & Audio API) + Web Speech API (TTS) + Service Worker PWA + YouTube IFrame Player API',
+    demoUrl: 'https://ez-cook.onrender.com/',
+    previewMode: 'embed',
+    fileLink: 'https://ez-cook.onrender.com/',
+    publishedPlatforms: [
+      { name: 'PWA Web App', url: 'https://ez-cook.onrender.com/' },
+      { name: '線上體驗', url: 'https://ez-cook.onrender.com/' }
+    ],
+    supportPoints: 3600,
+    tippersCount: 42,
+    tipsHistory: [
+      { id: 'tip-vibe4-1', userId: 'vp-user-01', userName: '林家豪 研發長', amount: 600, message: '拍照看鍋況收汁熟度太神了！對於新手來說火候最難掌握，這個功能真的解決大痛點！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString() },
+      { id: 'tip-vibe4-2', userId: 'vp-user-04', userName: '陳美玲 營養師', amount: 500, message: '份量自動等比換算超貼心，食材備料清單一目了然，已加到手機主畫面天天用！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString() }
+    ]
   }
 ];

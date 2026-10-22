@@ -8,6 +8,7 @@ import type { PublishedPlatform } from '../types';
  */
 export const PLATFORM_PRESETS = [
   '網頁瀏覽器',
+  'PWA',
   'Google Play',
   'App Store',
   'Steam',
@@ -52,6 +53,7 @@ export function normalizePlatforms(list: unknown, keepDraftUrl = false): Publish
 
 const iconFor = (name: string) => {
   const n = name.toLowerCase();
+  if (n.includes('pwa')) return Smartphone;
   if (n.includes('網頁') || n.includes('web') || n.includes('瀏覽器')) return Globe;
   if (n.includes('steam') || n.includes('itch') || n.includes('nintendo') || n.includes('playstation') || n.includes('xbox') || n.includes('eshop')) return Gamepad2;
   if (n.includes('擴充') || n.includes('extension') || n.includes('外掛')) return Puzzle;
@@ -62,6 +64,7 @@ const iconFor = (name: string) => {
 
 const URL_HINT: Record<string, string> = {
   '網頁瀏覽器': 'https://你的網站.com',
+  'PWA': 'https://你的網站.com',
   'Google Play': 'https://play.google.com/store/apps/details?id=…',
   'App Store': 'https://apps.apple.com/app/…',
   Steam: 'https://store.steampowered.com/app/…',

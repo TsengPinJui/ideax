@@ -52,12 +52,14 @@ import {
   MAX_IMAGE_FILE_SIZE_MB,
   ACCEPTED_IMAGE_TYPES,
 } from '../utils/imageUploadUtils';
+import { ImageCropperModal } from './common/ImageCropperModal';
 import {
   X,
   Wallet,
   Coins,
   ArrowUpRight,
   ArrowDownLeft,
+  Crop,
   Briefcase,
   FileCheck,
   MessageSquare,
@@ -747,6 +749,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showNameRuleHelp, setShowNameRuleHelp] = useState(false);
+  const [avatarToCrop, setAvatarToCrop] = useState<string>('');
+  const [isAvatarCropperOpen, setIsAvatarCropperOpen] = useState(false);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
   // About and Support Tab State
@@ -883,69 +887,43 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setTimeout(() => setMsg(null), 2500);
   };
 
+  const applyCroppedAvatar = (croppedDataUrl: string) => {
+    setAvatar(croppedDataUrl);
+    saveCustomUserProfile(currentUser.id, { avatar: croppedDataUrl });
+    setCurrentUser((prev) => ({
+      ...prev,
+      avatar: croppedDataUrl,
+    }));
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id || (aliasId && u.id === aliasId) ? { ...u, avatar: croppedDataUrl } : u))
+    );
+    syncUserToFirestore({ ...currentUser, avatar: croppedDataUrl }).catch(() => {});
+    setMsg('頭像儲存成功');
+    setTimeout(() => setMsg(null), 2500);
+  };
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
-    // 檢查檔案大小：嚴格限制 6MB
+    // 檢查檔案大小：放寬至 6MB
     if (file.size > 6 * 1024 * 1024) {
       setAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 6MB 內，請選擇較小圖片或壓縮後再上傳！`);
-      e.target.value = '';
       return;
     }
 
     setAvatarError(null);
     const reader = new FileReader();
     reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const size = 320;
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            const minDim = Math.min(img.width, img.height);
-            const sx = (img.width - minDim) / 2;
-            const sy = (img.height - minDim) / 2;
-            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            setAvatar(compressedDataUrl);
-            saveCustomUserProfile(currentUser.id, { avatar: compressedDataUrl });
-            setCurrentUser((prev) => ({
-              ...prev,
-              avatar: compressedDataUrl,
-            }));
-            const aliasId = USER_ALIAS_MAP[currentUser.id];
-            setAvailableUsers((prev) =>
-              prev.map((u) => (u.id === currentUser.id || (aliasId && u.id === aliasId) ? { ...u, avatar: compressedDataUrl } : u))
-            );
-            syncUserToFirestore({ ...currentUser, avatar: compressedDataUrl }).catch(() => {});
-            setMsg('頭像儲存成功');
-            setTimeout(() => setMsg(null), 2500);
-          }
-        } catch {
-          const rawUrl = event.target?.result as string;
-          setAvatar(rawUrl);
-          saveCustomUserProfile(currentUser.id, { avatar: rawUrl });
-          setCurrentUser((prev) => ({
-            ...prev,
-            avatar: rawUrl,
-          }));
-          const aliasId = USER_ALIAS_MAP[currentUser.id];
-          setAvailableUsers((prev) =>
-            prev.map((u) => (u.id === currentUser.id || (aliasId && u.id === aliasId) ? { ...u, avatar: rawUrl } : u))
-          );
-          syncUserToFirestore({ ...currentUser, avatar: rawUrl }).catch(() => {});
-          setMsg('頭像儲存成功');
-          setTimeout(() => setMsg(null), 2500);
-        }
-      };
-      img.src = event.target?.result as string;
+      const rawUrl = event.target?.result as string;
+      if (rawUrl) {
+        setAvatarToCrop(rawUrl);
+        setIsAvatarCropperOpen(true);
+      }
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
   const [domain, setDomain] = useState<Category>(currentUser.domain || '創新創業');
   const [skillsInput, setSkillsInput] = useState(
@@ -8154,7 +8132,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                               }}
                               className="h-8 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer"
                             >
-                              {isLogged ? '切換' : '重新登入'}
+                              切換
                             </button>
                             <button
                               type="button"
@@ -9777,6 +9755,27 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* 頭像裁切彈窗：必須為 1:1 正方形裁切 */}
+      <ImageCropperModal
+        isOpen={isAvatarCropperOpen}
+        imageSrc={avatarToCrop}
+        title="裁切個人頭像（必須為 1:1 正方形）"
+        mode="avatar"
+        initialAspectRatio="1:1"
+        lockAspectRatio={true}
+        cropShape="round"
+        outputMaxWidth={512}
+        onClose={() => {
+          setIsAvatarCropperOpen(false);
+          setAvatarToCrop('');
+        }}
+        onConfirm={(cropped) => {
+          setIsAvatarCropperOpen(false);
+          setAvatarToCrop('');
+          applyCroppedAvatar(cropped);
+        }}
+      />
     </div>
   );
 

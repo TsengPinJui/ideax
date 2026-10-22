@@ -140,6 +140,10 @@ export function isSimulatedQuestion(qOrId?: Partial<Question> | string | null): 
   ) {
     return true;
   }
+  // 關鍵保護：執行階段由使用者發布之真實問題（ID 為時間戳記 q-17... 且無 simulated 標記），絕不視為模擬數據
+  if (id && /^q-\d{10,}$/.test(id) && !obj?.isSimulated && !obj?.simulatedBatchId) {
+    return false;
+  }
   if (obj?.authorId && isSimulatedUser(obj.authorId)) return true;
   return false;
 }

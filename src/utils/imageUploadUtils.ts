@@ -1,10 +1,10 @@
 /**
  * 統一圖片上傳與檔案大小限制處理工具
- * - 預設單張圖片上限：2 MB (支援 JPG / PNG / WebP / GIF)
- * - 內建 Canvas 智慧輕量化壓縮（最寬 1440px），確保本地與雲端儲存流暢不破表
+ * - 提案圖片與封面單張上限：6 MB (支援 JPG / PNG / WebP / GIF)
+ * - 內建 Canvas 智慧輕量化壓縮（最寬 1920px），確保本地與雲端儲存流暢不破表
  */
 
-export const MAX_IMAGE_FILE_SIZE_MB = 2;
+export const MAX_IMAGE_FILE_SIZE_MB = 6;
 export const MAX_IMAGE_FILE_SIZE_BYTES = MAX_IMAGE_FILE_SIZE_MB * 1024 * 1024;
 
 export const MAX_AVATAR_FILE_SIZE_MB = 6;

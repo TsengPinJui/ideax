@@ -572,6 +572,16 @@ function MainContent() {
     }
   }, []);
 
+  // 監聽補填資料捷徑廣播（由發布視窗或提示彈窗觸發，直接引導至會員中心基本資料）
+  useEffect(() => {
+    const handleNavigateProfile = () => {
+      setUserDashboardTab('profile');
+      setActiveTab('user_dashboard');
+    };
+    window.addEventListener('ideax:navigate-profile', handleNavigateProfile);
+    return () => window.removeEventListener('ideax:navigate-profile', handleNavigateProfile);
+  }, []);
+
   // 讀取來自搜尋引擎、Google Sitelinks Searchbox 或外部網址帶入的搜尋詞 (?q=xxx, ?search=xxx)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -3126,6 +3136,9 @@ function MainContent() {
             isFullPage={true}
             question={selectedQuestion}
             onClose={() => {
+              if (selectedQuestion?.specialZone) {
+                setSpecialZone(selectedQuestion.specialZone);
+              }
               setSelectedQuestion(null);
               setActiveTab('explore');
             }}
@@ -3190,7 +3203,20 @@ function MainContent() {
             initialCategory={selectedCategory !== '全部' ? selectedCategory : undefined}
             initialSubcategory={selectedSubcategory !== '全部' ? selectedSubcategory : undefined}
             onClose={() => setActiveTab('explore')}
+            onNavigateToProfile={() => {
+              setUserDashboardTab('profile');
+              setActiveTab('user_dashboard');
+            }}
             onSuccess={(newQ) => {
+              if (newQ.specialZone) {
+                setSpecialZone(newQ.specialZone);
+              } else if (newQ.postType === 'innovation_proposal') {
+                setSpecialZone('create_ideas');
+              } else if (newQ.postType === 'pain_point') {
+                setSpecialZone('pain_points');
+              } else if (newQ.postType === 'chat_discussion') {
+                setSpecialZone('l0_discussion');
+              }
               setSelectedQuestion(newQ);
               setActiveTab('question_detail');
             }}

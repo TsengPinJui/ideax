@@ -45,7 +45,19 @@ import {
   Play,
   Video,
   Images,
+  Crop,
+  Bookmark,
+  FileText,
+  Save,
+  ArrowRight,
 } from 'lucide-react';
+import {
+  saveQuestionDraft,
+  getQuestionDrafts,
+  deleteQuestionDraft,
+  QuestionDraft,
+} from '../services/draftService';
+import { ImageCropperModal, CropAspectRatio } from './common/ImageCropperModal';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatforms';
 import type { PublishedPlatform } from '../types';
@@ -59,6 +71,7 @@ import {
 interface CreateQuestionModalProps {
   onClose: () => void;
   onSuccess: (created: Question) => void;
+  onNavigateToProfile?: () => void;
   isFullPage?: boolean;
   initialCategory?: Category;
   initialSubcategory?: string;
@@ -161,6 +174,7 @@ const getDescriptionPlaceholder = (type: PostType): string => {
 export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   onClose,
   onSuccess,
+  onNavigateToProfile,
   isFullPage = false,
   initialCategory,
   initialSubcategory,
@@ -169,6 +183,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 }) => {
   const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast } = useApp();
 
+  const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
 
   const hasAgreedQuestioner = hasAgreedTerms('questioner');
@@ -218,6 +233,13 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [previewMode, setPreviewMode] = useState<'embed' | 'external'>('embed');
   const [currentVersion, setCurrentVersion] = useState<string>('v1.0.0');
 
+  // 圖片裁切器狀態 (支援常用尺寸：16:9, 4:3, 3:2, 1:1, 9:16, 2:1, 自由比例)
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [cropperTarget, setCropperTarget] = useState<'cover' | 'gallery'>('cover');
+  const [cropperImageSrc, setCropperImageSrc] = useState<string>('');
+  const [cropperInitialRatio, setCropperInitialRatio] = useState<CropAspectRatio>('16:9');
+  const [pendingGalleryQueue, setPendingGalleryQueue] = useState<string[]>([]);
+
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -230,7 +252,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       setImageUploadError(res.error || '圖片上傳失敗');
       return;
     }
-    setCoverImage(res.dataUrl);
+    // 開啟裁切器，預設推薦 16:9（封面黃金比例），用戶可自由切換常用尺寸與建議尺寸
+    setCropperTarget('cover');
+    setCropperImageSrc(res.dataUrl);
+    setCropperInitialRatio('16:9');
+    setCropperModalOpen(true);
+  };
+
+  const handleCropExistingCover = () => {
+    if (!coverImage) return;
+    setCropperTarget('cover');
+    setCropperImageSrc(coverImage);
+    setCropperInitialRatio('16:9');
+    setCropperModalOpen(true);
   };
 
   // 可以選擇是否顯示圖片在卡片，可選擇一張
@@ -261,13 +295,239 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     }
     setIsUploadingImage(false);
     if (uploadedList.length > 0) {
+      const [first, ...rest] = uploadedList;
+      setPendingGalleryQueue(rest);
+      setCropperTarget('gallery');
+      setCropperImageSrc(first);
+      setCropperInitialRatio('16:9');
+      setCropperModalOpen(true);
+    }
+  };
+
+  const handleCropperConfirm = (croppedDataUrl: string) => {
+    if (cropperTarget === 'cover') {
+      setCoverImage(croppedDataUrl);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
+    } else {
       setGalleryImages((prev) => {
-        const next = [...prev, ...uploadedList].slice(0, maxSlots);
+        const next = [...prev, croppedDataUrl];
         if (!selectedCardImage && next.length > 0) {
           setSelectedCardImage(next[0]);
         }
         return next;
       });
+      if (pendingGalleryQueue.length > 0) {
+        const [nextImage, ...remaining] = pendingGalleryQueue;
+        setPendingGalleryQueue(remaining);
+        setCropperImageSrc(nextImage);
+        setCropperInitialRatio('16:9');
+      } else {
+        setCropperModalOpen(false);
+        setCropperImageSrc('');
+      }
+    }
+  };
+
+  const handleCropperSkip = () => {
+    if (cropperTarget === 'cover') {
+      setCoverImage(cropperImageSrc);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
+    } else {
+      setGalleryImages((prev) => {
+        const next = [...prev, cropperImageSrc];
+        if (!selectedCardImage && next.length > 0) {
+          setSelectedCardImage(next[0]);
+        }
+        return next;
+      });
+      if (pendingGalleryQueue.length > 0) {
+        const [nextImage, ...remaining] = pendingGalleryQueue;
+        setPendingGalleryQueue(remaining);
+        setCropperImageSrc(nextImage);
+        setCropperInitialRatio('16:9');
+      } else {
+        setCropperModalOpen(false);
+        setCropperImageSrc('');
+      }
+    }
+  };
+
+  // 草稿狀態 (支援隨時暫存與還原提案/作品草稿)
+  const [currentDraftId, setCurrentDraftId] = useState<string>('');
+  const [detectedDraft, setDetectedDraft] = useState<QuestionDraft | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string>('');
+
+  // 檢查是否有同類型草稿
+  useEffect(() => {
+    try {
+      const drafts = getQuestionDrafts(currentUser.id);
+      const match = drafts.find((d) => d.postType === postType && (d.title || d.description || d.appName));
+      if (match) {
+        setDetectedDraft(match);
+      }
+    } catch {}
+  }, [postType, currentUser.id]);
+
+  const handleApplyDraft = (draft: QuestionDraft) => {
+    setCurrentDraftId(draft.id);
+    if (draft.appName) setAppName(draft.appName);
+    if (draft.title) setTitle(draft.title);
+    if (draft.description) setDescription(draft.description);
+    if (draft.category) setCategory(draft.category);
+    if (draft.subcategory) setSubcategory(draft.subcategory);
+    if (draft.subcategories) setSelectedVibeCategories(draft.subcategories);
+    if (draft.selectedVibeCategories) setSelectedVibeCategories(draft.selectedVibeCategories);
+    if (draft.tagsInput) setTagsInput(draft.tagsInput);
+    if (draft.level) setLevel(draft.level);
+    if (draft.bounty !== undefined) setBounty(draft.bounty);
+    if (draft.deadlineDays !== undefined) setDeadlineDays(draft.deadlineDays);
+    if (draft.externalLink) setExternalLink(draft.externalLink);
+    if (draft.demoUrl) setDemoUrl(draft.demoUrl);
+    if (draft.previewMode) setPreviewMode(draft.previewMode);
+    if (draft.techArchitecture) setTechArchitecture(draft.techArchitecture);
+    if (draft.publishedPlatforms) setPublishedPlatforms(draft.publishedPlatforms);
+    if (draft.referencedPainPoint) setReferencedPainPoint(draft.referencedPainPoint);
+    if (draft.targetGoal) setTargetGoal(draft.targetGoal);
+    if (draft.proposalProgressStage) setProposalProgressStage(draft.proposalProgressStage as any);
+    if (draft.currentVersion) setCurrentVersion(draft.currentVersion);
+    if (draft.coverImage) setCoverImage(draft.coverImage);
+    if (draft.galleryImages) setGalleryImages(draft.galleryImages);
+    if (draft.youtubeUrl) setYoutubeUrl(draft.youtubeUrl);
+    if (draft.coverMode) setCoverMode(draft.coverMode);
+    if (draft.cardHoverMode) setCardHoverMode(draft.cardHoverMode);
+    if (draft.showCardImage !== undefined) setShowCardImage(draft.showCardImage);
+    if (draft.selectedCardImage) setSelectedCardImage(draft.selectedCardImage);
+    if (draft.mindMap) setMindMap(draft.mindMap);
+    setDetectedDraft(null);
+    showCenterToast('草稿已成功載入！', '已還原您之前填寫的全部內容', { type: 'success', duration: 2500 });
+  };
+
+  const handleDiscardDraft = () => {
+    if (detectedDraft?.id) {
+      deleteQuestionDraft(detectedDraft.id);
+    }
+    setDetectedDraft(null);
+  };
+
+  const handleSaveDraft = () => {
+    if (!title.trim() && !description.trim() && !appName.trim()) {
+      showCenterToast('請至少輸入標題或作品名稱再儲存草稿', undefined, { type: 'warning' });
+      return;
+    }
+    setIsSavingDraft(true);
+    const saved = saveQuestionDraft({
+      id: currentDraftId || undefined,
+      userId: currentUser.id,
+      postType,
+      appName: appName.trim() || undefined,
+      title: title.trim(),
+      description: description.trim(),
+      category: category || '',
+      subcategory: subcategory || '',
+      subcategories: selectedVibeCategories,
+      selectedVibeCategories,
+      tagsInput,
+      level,
+      bounty: currentBounty,
+      deadlineDays,
+      externalLink: externalLink.trim() || undefined,
+      demoUrl: demoUrl.trim() || undefined,
+      previewMode,
+      techArchitecture: techArchitecture.trim() || undefined,
+      publishedPlatforms,
+      referencedPainPoint: referencedPainPoint.trim() || undefined,
+      targetGoal: targetGoal.trim() || undefined,
+      proposalProgressStage: proposalProgressStage || undefined,
+      currentVersion: currentVersion.trim() || undefined,
+      coverImage: coverImage.trim() || undefined,
+      galleryImages,
+      youtubeUrl: youtubeUrl.trim() || undefined,
+      coverMode,
+      cardHoverMode,
+      showCardImage,
+      selectedCardImage,
+      mindMap,
+    }, currentUser.id);
+    setCurrentDraftId(saved.id);
+    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    setLastSavedDraftTime(timeStr);
+    setIsSavingDraft(false);
+    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，下次進入可繼續編輯。`, { type: 'success', duration: 2500 });
+  };
+
+  /** 自動安全儲存草稿（不設嚴苛標題檢核，確保任何已填寫內容皆被妥善存檔） */
+  const performAutoSaveDraft = () => {
+    try {
+      setIsSavingDraft(true);
+      const fallbackTitle =
+        title.trim() ||
+        appName.trim() ||
+        `${getPostTypeName(postType)}草稿（${new Date().toLocaleDateString('zh-TW')} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}）`;
+      const saved = saveQuestionDraft(
+        {
+          id: currentDraftId || undefined,
+          userId: currentUser.id,
+          postType,
+          appName: appName.trim() || undefined,
+          title: fallbackTitle,
+          description: description.trim(),
+          category: category || '',
+          subcategory: subcategory || '',
+          subcategories: selectedVibeCategories,
+          selectedVibeCategories,
+          tagsInput,
+          level,
+          bounty: currentBounty,
+          deadlineDays,
+          externalLink: externalLink.trim() || undefined,
+          demoUrl: demoUrl.trim() || undefined,
+          previewMode,
+          techArchitecture: techArchitecture.trim() || undefined,
+          publishedPlatforms,
+          referencedPainPoint: referencedPainPoint.trim() || undefined,
+          targetGoal: targetGoal.trim() || undefined,
+          proposalProgressStage: proposalProgressStage || undefined,
+          currentVersion: currentVersion.trim() || undefined,
+          coverImage: coverImage.trim() || undefined,
+          galleryImages,
+          youtubeUrl: youtubeUrl.trim() || undefined,
+          coverMode,
+          cardHoverMode,
+          showCardImage,
+          selectedCardImage,
+          mindMap,
+        },
+        currentUser.id
+      );
+      setCurrentDraftId(saved.id);
+      const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+      setLastSavedDraftTime(timeStr);
+      setIsSavingDraft(false);
+      return saved;
+    } catch (err) {
+      console.error('Auto save draft failed:', err);
+      setIsSavingDraft(false);
+      return null;
+    }
+  };
+
+  /** 補填資料捷徑：自動儲存當前草稿並跳轉至會員中心基本資料 */
+  const handleGoToProfile = () => {
+    performAutoSaveDraft();
+    showCenterToast(
+      '草稿已自動儲存！',
+      '已為您安全暫存當前填寫進度，補填個人資料後，返回發布頁即可載入草稿繼續編輯。',
+      { type: 'success', duration: 3500 }
+    );
+    setShowProfileIncompleteModal(false);
+    if (onNavigateToProfile) {
+      onNavigateToProfile();
+    } else {
+      window.dispatchEvent(new CustomEvent('ideax:navigate-profile'));
+      if (onClose) onClose();
     }
   };
 
@@ -466,7 +726,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
     const isProfileComplete = hasFilledRequiredProfile(currentUser);
     if (!isProfileComplete) {
-      return failWithError('⚠️ 個人資料為發布問題之必要條件！您在註冊時跳過了個人資料填寫，發布問題涉及履約通知，請先前往「會員中心 → 基本資料」補填完整個人資料。');
+      performAutoSaveDraft();
+      setShowProfileIncompleteModal(true);
+      return failWithError('⚠️ 個人資料為發布之必要條件！系統已自動為您安全儲存當前草稿，請點選彈窗或捷徑前往補填完整個人資料。');
     }
 
     const isL0OrChatType = postType === 'chat_discussion';
@@ -522,6 +784,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if ((e.nativeEvent as any)?.isComposing) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
 
     if (!validateFormForPreview()) {
@@ -708,6 +974,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       }
 
       if (!newQuestion) return; // 例如帳號停權：已顯示原因，停留在表單
+      if (currentDraftId) {
+        deleteQuestionDraft(currentDraftId);
+      }
       onSuccess(newQuestion);
     } finally {
       setIsSubmitting(false);
@@ -742,18 +1011,102 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </p>
           </div>
         </div>
-        {!isFullPage && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+            className="px-3 py-1.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            title="將目前填寫的內容暫存為草稿"
           >
-            <X className="w-5 h-5" />
+            <Save className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isSavingDraft ? '儲存中...' : '儲存草稿'}</span>
           </button>
-        )}
+          {!isFullPage && (
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className={`relative p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          // 關鍵防護：若處於輸入法組字選字中（IME isComposing）或在單行 input 按 Enter，阻止意外觸發表單送出以防選字中斷
+          if (e.key === 'Enter') {
+            if (e.nativeEvent.isComposing) return;
+            const target = e.target as HTMLElement;
+            if (target && target.tagName === 'INPUT' && target.getAttribute('type') !== 'submit') {
+              e.preventDefault();
+            }
+          }
+        }}
+        className={`relative p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}
+      >
+        {/* 草稿偵測橫幅 */}
+        {detectedDraft && (
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <FileText className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-black text-amber-950 truncate">
+                  偵測到您上次有未發布草稿：{detectedDraft.title || detectedDraft.appName || '未命名草稿'}
+                </p>
+                <p className="text-[11px] text-amber-700">
+                  上次編輯於 {new Date(detectedDraft.updatedAt).toLocaleDateString('zh-TW')} {new Date(detectedDraft.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleApplyDraft(detectedDraft)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-xs"
+              >
+                載入草稿
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-2.5 py-1.5 rounded-xl hover:bg-amber-100/80 text-stone-600 text-xs font-semibold transition-all cursor-pointer"
+              >
+                捨棄
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 補填資料快捷提示橫幅：未完成必填資料時顯示，可一鍵儲存草稿並直接前往 */}
+        {currentUser && currentUser.id !== 'user-guest' && !hasFilledRequiredProfile(currentUser) && (
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/60 to-amber-50 border border-amber-300 flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-amber-950 truncate">
+                  提示：您尚未完成個人基本資料（電話與職位為發布必要條件）
+                </p>
+                <p className="text-[11px] text-amber-800">
+                  發布問題或提案需提供聯絡資訊。點選捷徑將自動安全儲存草稿並前往補填。
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleGoToProfile}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5"
+            >
+              <span>前往補填資料</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {/* 市場顧問白喵在各個字卡之間跳來跳去，幫忙分類、貼標籤時顯示進度 */}
         <BaiMiaoCardHopper
           cardsSelector=":scope > *"
@@ -1329,6 +1682,15 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                       封面大圖預覽
                     </span>
                     <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleCropExistingCover}
+                        className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors"
+                        title="裁切封面圖片比例與尺寸"
+                      >
+                        <Crop className="w-3 h-3 text-amber-300" />
+                        <span>裁切</span>
+                      </button>
                       <label className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors">
                         <Upload className="w-3 h-3" />
                         <span>更換封面</span>
@@ -2422,6 +2784,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             取消返回
           </button>
 
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+            className="px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            title="將目前填寫的內容暫存為草稿，隨時可回頭繼續編輯"
+          >
+            <Bookmark className="w-4 h-4 text-amber-600" />
+            <span>{isSavingDraft ? '儲存中...' : '存為草稿'}</span>
+          </button>
+
           {/* 創新提案或軟體程式：專屬預覽效果按鈕 */}
           {(postType === 'innovation_proposal' || postType === 'vibecoding_app') && (
             <button
@@ -2494,6 +2867,71 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           domainTrack={category || '資通訊'}
         />
       )}
+
+      {/* 補填個人資料引導彈窗（含自動草稿儲存與捷徑） */}
+      {showProfileIncompleteModal && (
+        <div
+          className="fixed inset-0 z-[200] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowProfileIncompleteModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-md w-full p-6 text-center space-y-4 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-2xs">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-black text-stone-900">
+                需要補填個人基本資料
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed text-left bg-stone-50 p-3 rounded-xl border border-stone-200/80">
+                登錄個人聯絡資料（電話、職稱或產業）為提問、創新提案與軟體作品發布之必要條件，以保障履約通知與聯絡。
+              </p>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold text-left">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>系統已自動將您目前編輯的全部內容儲存為草稿，補填完成後即可一鍵載入繼續！</span>
+              </div>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleGoToProfile}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>立即前往補填資料（草稿已安全暫存）</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowProfileIncompleteModal(false)}
+                className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-xs transition-colors cursor-pointer"
+              >
+                稍後再補填，留在本頁
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 提案與作品圖片裁切器：支援 16:9, 4:3, 3:2, 1:1, 9:16, 2:1, 自由比例與建議尺寸 */}
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={cropperImageSrc}
+        title={cropperTarget === 'cover' ? '裁切提案/作品封面（支援 16:9、4:3、1:1 等建議尺寸）' : '裁切展示截圖與圖片'}
+        mode="proposal"
+        initialAspectRatio={cropperInitialRatio}
+        lockAspectRatio={false}
+        cropShape="rect"
+        outputMaxWidth={1920}
+        onClose={() => {
+          setCropperModalOpen(false);
+          setCropperImageSrc('');
+          setPendingGalleryQueue([]);
+        }}
+        onConfirm={handleCropperConfirm}
+        onSkip={handleCropperSkip}
+      />
     </div>
   );
 

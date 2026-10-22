@@ -22,7 +22,12 @@ import {
   Play,
   Video,
   Images,
+  Crop,
+  Bookmark,
+  Save,
+  FileText,
 } from 'lucide-react';
+import { ImageCropperModal, CropAspectRatio } from './common/ImageCropperModal';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
@@ -48,7 +53,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { currentUser, updateProposalContent, openAboutModal } = useApp();
+  const { currentUser, updateProposalContent, openAboutModal, showCenterToast } = useApp();
   const isVibeCoding = question.postType === 'vibecoding_app';
 
   const getInitialCats = () => {
@@ -102,6 +107,19 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [selectedCardImage, setSelectedCardImage] = useState<string>(question.cardDisplayImage || '');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // 圖片裁切器狀態 (支援 16:9, 4:3, 3:2, 1:1, 9:16, 2:1, 自由比例)
+  const [cropperModalOpen, setCropperModalOpen] = useState(false);
+  const [cropperTarget, setCropperTarget] = useState<'cover' | 'gallery'>('cover');
+  const [cropperImageSrc, setCropperImageSrc] = useState<string>('');
+  const [cropperInitialRatio, setCropperInitialRatio] = useState<CropAspectRatio>('16:9');
+  const [pendingGalleryQueue, setPendingGalleryQueue] = useState<string[]>([]);
+
+  // 草稿暫存狀態
+  const draftStorageKey = `ideax_proposal_update_draft_${question.id}_${currentUser?.id || 'user'}`;
+  const [detectedDraft, setDetectedDraft] = useState<any | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string | null>(null);
+
   const [version, setVersion] = useState(getNextVersion);
   const [changelogContent, setChangelogContent] = useState('');
   const [changelogNote, setChangelogNote] = useState('');
@@ -138,10 +156,98 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setChangelogNote('');
       setError('');
       setSubmitting(false);
+
+      // 檢查是否有未發布更新草稿
+      try {
+        const raw = localStorage.getItem(draftStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.updatedAt) {
+            setDetectedDraft(parsed);
+          }
+        }
+      } catch {}
     }
-  }, [isOpen, question.id]);
+  }, [isOpen, question.id, draftStorageKey]);
 
   if (!isOpen) return null;
+
+  const handleApplyDraft = (draft: any) => {
+    if (!draft) return;
+    if (draft.appName !== undefined) setAppName(draft.appName);
+    if (draft.title !== undefined) setTitle(draft.title);
+    if (draft.description !== undefined) setDescription(draft.description);
+    if (draft.selectedCategories !== undefined) setSelectedCategories(draft.selectedCategories);
+    if (draft.referencedPainPoint !== undefined) setReferencedPainPoint(draft.referencedPainPoint);
+    if (draft.targetGoal !== undefined) setTargetGoal(draft.targetGoal);
+    if (draft.mindMap !== undefined) setMindMap(draft.mindMap);
+    if (draft.demoUrl !== undefined) setDemoUrl(draft.demoUrl);
+    if (draft.fileLink !== undefined) setFileLink(draft.fileLink);
+    if (draft.previewMode !== undefined) setPreviewMode(draft.previewMode);
+    if (draft.techArchitecture !== undefined) setTechArchitecture(draft.techArchitecture);
+    if (draft.publishedPlatforms !== undefined) setPublishedPlatforms(draft.publishedPlatforms);
+    if (draft.coverImage !== undefined) setCoverImage(draft.coverImage);
+    if (draft.galleryImages !== undefined) setGalleryImages(draft.galleryImages);
+    if (draft.youtubeUrl !== undefined) setYoutubeUrl(draft.youtubeUrl);
+    if (draft.coverMode !== undefined) setCoverMode(draft.coverMode);
+    if (draft.cardHoverMode !== undefined) setCardHoverMode(draft.cardHoverMode);
+    if (draft.proposalProgressStage !== undefined) setProposalProgressStage(draft.proposalProgressStage);
+    if (draft.showCardImage !== undefined) setShowCardImage(draft.showCardImage);
+    if (draft.selectedCardImage !== undefined) setSelectedCardImage(draft.selectedCardImage);
+    if (draft.version !== undefined) setVersion(draft.version);
+    if (draft.changelogContent !== undefined) setChangelogContent(draft.changelogContent);
+    if (draft.changelogNote !== undefined) setChangelogNote(draft.changelogNote);
+    setDetectedDraft(null);
+    showCenterToast('草稿已成功載入！', '已還原您之前填寫的更新內容', { type: 'success', duration: 2500 });
+  };
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch {}
+    setDetectedDraft(null);
+  };
+
+  const handleSaveDraft = () => {
+    setIsSavingDraft(true);
+    const draftData = {
+      questionId: question.id,
+      userId: currentUser?.id,
+      appName,
+      title,
+      description,
+      selectedCategories,
+      referencedPainPoint,
+      targetGoal,
+      mindMap,
+      demoUrl,
+      fileLink,
+      previewMode,
+      techArchitecture,
+      publishedPlatforms,
+      coverImage,
+      galleryImages,
+      youtubeUrl,
+      coverMode,
+      cardHoverMode,
+      proposalProgressStage,
+      showCardImage,
+      selectedCardImage,
+      version,
+      changelogContent,
+      changelogNote,
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(draftData));
+    } catch (e) {
+      console.error(e);
+    }
+    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    setLastSavedDraftTime(timeStr);
+    setIsSavingDraft(false);
+    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，下次開啟可載入繼續編輯。`, { type: 'success', duration: 2500 });
+  };
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,7 +261,18 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setError(res.error || '圖片上傳失敗');
       return;
     }
-    setCoverImage(res.dataUrl);
+    setCropperTarget('cover');
+    setCropperImageSrc(res.dataUrl);
+    setCropperInitialRatio('16:9');
+    setCropperModalOpen(true);
+  };
+
+  const handleCropExistingCover = () => {
+    if (!coverImage) return;
+    setCropperTarget('cover');
+    setCropperImageSrc(coverImage);
+    setCropperInitialRatio('16:9');
+    setCropperModalOpen(true);
   };
 
   const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,7 +298,62 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     }
     setIsUploadingImage(false);
     if (uploadedList.length > 0) {
-      setGalleryImages((prev) => [...prev, ...uploadedList].slice(0, 6));
+      const [first, ...rest] = uploadedList;
+      setPendingGalleryQueue(rest);
+      setCropperTarget('gallery');
+      setCropperImageSrc(first);
+      setCropperInitialRatio('16:9');
+      setCropperModalOpen(true);
+    }
+  };
+
+  const handleCropperConfirm = (croppedDataUrl: string) => {
+    if (cropperTarget === 'cover') {
+      setCoverImage(croppedDataUrl);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
+    } else {
+      setGalleryImages((prev) => {
+        const next = [...prev, croppedDataUrl];
+        if (!selectedCardImage && next.length > 0) {
+          setSelectedCardImage(next[0]);
+        }
+        return next.slice(0, 6);
+      });
+      if (pendingGalleryQueue.length > 0) {
+        const [nextImage, ...remaining] = pendingGalleryQueue;
+        setPendingGalleryQueue(remaining);
+        setCropperImageSrc(nextImage);
+        setCropperInitialRatio('16:9');
+      } else {
+        setCropperModalOpen(false);
+        setCropperImageSrc('');
+      }
+    }
+  };
+
+  const handleCropperSkip = () => {
+    if (cropperTarget === 'cover') {
+      setCoverImage(cropperImageSrc);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
+    } else {
+      setGalleryImages((prev) => {
+        const next = [...prev, cropperImageSrc];
+        if (!selectedCardImage && next.length > 0) {
+          setSelectedCardImage(next[0]);
+        }
+        return next.slice(0, 6);
+      });
+      if (pendingGalleryQueue.length > 0) {
+        const [nextImage, ...remaining] = pendingGalleryQueue;
+        setPendingGalleryQueue(remaining);
+        setCropperImageSrc(nextImage);
+        setCropperInitialRatio('16:9');
+      } else {
+        setCropperModalOpen(false);
+        setCropperImageSrc('');
+      }
     }
   };
 
@@ -190,7 +362,14 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+    if (e) {
+      // 關鍵防護：若處於輸入法組字選字中（IME isComposing），阻止意外觸發送出
+      if ((e.nativeEvent as any)?.isComposing) {
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+    }
     setError('');
 
     if (!title.trim()) {
@@ -250,6 +429,11 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       return;
     }
 
+    // 發布成功後清除草稿
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch {}
+
     if (onSuccess) onSuccess();
     onClose();
   };
@@ -281,22 +465,80 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            aria-label="關閉視窗"
-            className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft}
+              className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="暫存目前編輯內容為草稿"
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isSavingDraft ? '儲存中...' : '儲存草稿'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              aria-label="關閉視窗"
+              className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <form
+          onSubmit={handleSubmit}
+          onKeyDown={(e) => {
+            // 關鍵防護：若處於輸入法組字選字中（IME isComposing）或在單行 input 按 Enter，阻止意外觸發表單送出以防選字中斷
+            if (e.key === 'Enter') {
+              if ((e.nativeEvent as any)?.isComposing) return;
+              const target = e.target as HTMLElement;
+              if (target && target.tagName === 'INPUT' && target.getAttribute('type') !== 'submit') {
+                e.preventDefault();
+              }
+            }
+          }}
+          className="flex flex-col flex-1 min-h-0"
+        >
           <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            {/* 草稿偵測橫幅 */}
+            {detectedDraft && (
+              <div className="p-3 sm:p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-amber-950 truncate">
+                      偵測到您上次有未儲存的更新草稿
+                    </p>
+                    <p className="text-[11px] text-amber-700">
+                      上次編輯於 {new Date(detectedDraft.updatedAt).toLocaleDateString('zh-TW')} {new Date(detectedDraft.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyDraft(detectedDraft)}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-xs"
+                  >
+                    載入草稿
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDiscardDraft}
+                    className="px-2.5 py-1.5 rounded-lg hover:bg-amber-100 text-stone-600 text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    捨棄
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Version & Changelog */}
             <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200/80 space-y-3">
               <div className="flex items-center justify-between">
@@ -657,6 +899,15 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                     <img src={coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
                     <img src={coverImage} alt="封面預覽" className="relative w-full h-full object-contain" />
                     <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleCropExistingCover}
+                        className="px-2.5 py-1 rounded bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors"
+                        title="裁切封面圖片"
+                      >
+                        <Crop className="w-3 h-3 text-amber-300" />
+                        <span>裁切</span>
+                      </button>
                       <label className="px-2.5 py-1 rounded bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors">
                         <Upload className="w-3 h-3" />
                         <span>更換封面</span>
@@ -951,6 +1202,17 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
 
               <button
                 type="button"
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft}
+                className="px-4 py-2 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="暫存目前編輯內容為草稿"
+              >
+                <Bookmark className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isSavingDraft ? '儲存中...' : '存為草稿'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowPreviewModal(true)}
                 className="px-4 py-2 rounded-lg border-2 border-indigo-500 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 title="預覽更新後的展示效果"
@@ -1014,6 +1276,25 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
           domainTrack={question.category || '資通訊'}
         />
       )}
+
+      {/* 提案與作品圖片裁切器：支援 16:9, 4:3, 3:2, 1:1, 9:16, 2:1, 自由比例與建議尺寸 */}
+      <ImageCropperModal
+        isOpen={cropperModalOpen}
+        imageSrc={cropperImageSrc}
+        title={cropperTarget === 'cover' ? '裁切作品/提案封面（支援 16:9、4:3、1:1 等建議尺寸）' : '裁切展示截圖與圖片'}
+        mode="proposal"
+        initialAspectRatio={cropperInitialRatio}
+        lockAspectRatio={false}
+        cropShape="rect"
+        outputMaxWidth={1920}
+        onClose={() => {
+          setCropperModalOpen(false);
+          setCropperImageSrc('');
+          setPendingGalleryQueue([]);
+        }}
+        onConfirm={handleCropperConfirm}
+        onSkip={handleCropperSkip}
+      />
     </div>
   );
 };
