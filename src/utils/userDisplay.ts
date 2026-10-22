@@ -1,4 +1,5 @@
 import { User } from '../types';
+import { repairUserForDisplay } from './dataRepair';
 import { resolveIdCategory, getFormattedPlatformId, UserIdentificationLike } from '../services/userIdService';
 import { VIRTUAL_PERSONAS } from '../data/virtualProposalsSeed';
 
@@ -279,6 +280,8 @@ export function saveCustomUserProfile(
 export function restoreCanonicalUserIdentity(u: User): User {
   if (!u || !u.id) return u;
   if (u.id === 'user-guest') return u;
+  // 舊程式寫進去的不實資料（預設問卷、假評分、自動簡介…）讀進來就先修正
+  u = repairUserForDisplay(u);
 
   const customProfiles = getCustomUserProfiles();
   const aliasId = USER_ALIAS_MAP[u.id];

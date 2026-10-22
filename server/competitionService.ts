@@ -242,6 +242,22 @@ function applyPayloadToLocalDoc(colName: string, docId: string, data: any, merge
   scheduleSaveLocalDbStore();
 }
 
+/** 資料修正用：同步更新本機鏡像（patch 套用、deletes 移除欄位） */
+export function patchMirrorDoc(colName: string, docId: string, patch: Record<string, any>, deletes: string[] = []) {
+  const cur = localDbStore[colName]?.[docId];
+  if (!cur) return;
+  const next = { ...cur, ...JSON.parse(JSON.stringify(patch)) };
+  for (const k of deletes) delete next[k];
+  localDbStore[colName][docId] = next;
+  scheduleSaveLocalDbStore();
+}
+
+/** 資料修正用：取得服務帳戶的 Firestore（沒有服務帳戶時回傳 null） */
+export async function getServiceFirestore(): Promise<{ fs: any; FV: any } | null> {
+  if (!hasAdminCredentials) return null;
+  return loadServerFs();
+}
+
 function deleteLocalDoc(colName: string, docId: string) {
   if (localDbStore[colName] && localDbStore[colName][docId]) {
     delete localDbStore[colName][docId];
@@ -2415,6 +2431,8 @@ export interface RealSiteTrafficStats {
   /** 每日／每時造訪用戶數（同一裝置當天只算一次） */
   visitorsDaily: Record<string, number>;
   visitorsHourly: Record<string, number>;
+  /** 每日「第一次來」的新訪客（v3.3.9 起記錄；累計不重複訪客的趨勢用） */
+  newVisitorsDaily: Record<string, number>;
 }
 
 /** 瀏覽量自此數字起算（2026/10/18 依營運需求調整） */
@@ -2449,9 +2467,22 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
 }
 
+// 有服務帳戶時一律用管理端寫入（不依賴資料庫規則開放給所有人）
 async function touchPresence(sessionId: string) {
+  const id = sessionId.slice(0, 64).replace(/\//g, '_');
+  if (hasAdminCredentials) {
+    try {
+      const { fs } = await loadServerFs();
+      await fs.collection(PRESENCE_COLLECTION).doc(id).set({ lastSeen: Date.now() });
+      if (Math.random() < 0.02) {
+        const old = await fs.collection(PRESENCE_COLLECTION).where('lastSeen', '<', Date.now() - 86400000).limit(100).get();
+        await Promise.all(old.docs.map((d: any) => d.ref.delete().catch(() => {})));
+      }
+    } catch {}
+    return;
+  }
   try {
-    await clientSetDoc(clientDoc(rawFirestoreDb, PRESENCE_COLLECTION, sessionId.slice(0, 64).replace(/\//g, '_')), {
+    await clientSetDoc(clientDoc(rawFirestoreDb, PRESENCE_COLLECTION, id), {
       lastSeen: Date.now(),
     });
   } catch {}
@@ -2469,6 +2500,15 @@ async function touchPresence(sessionId: string) {
 async function getOnlineCount(): Promise<number> {
   if (Date.now() - cachedOnline.at < 15000) return cachedOnline.count;
   try {
+    if (hasAdminCredentials) {
+      const { fs } = await loadServerFs();
+      const agg = await withTimeout<any>(
+        fs.collection(PRESENCE_COLLECTION).where('lastSeen', '>=', Date.now() - PRESENCE_WINDOW_MS).count().get(),
+        4000
+      );
+      cachedOnline = { count: Math.max(1, agg.data().count), at: Date.now() };
+      return cachedOnline.count;
+    }
     const snap = await withTimeout(
       clientGetCountFromServer(
         clientQuery(clientCollection(rawFirestoreDb, PRESENCE_COLLECTION), clientWhere('lastSeen', '>=', Date.now() - PRESENCE_WINDOW_MS))
@@ -2511,6 +2551,7 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
   const daily = readCountMap(raw?.daily);
   const visitorsDaily = readCountMap(raw?.visitorsDaily);
   const visitorsHourly = readCountMap(raw?.visitorsHourly);
+  const newVisitorsDaily = readCountMap(raw?.newVisitorsDaily);
 
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
@@ -2521,11 +2562,7 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
   if (!raw?.pageviewBaselineApplied) {
     baseVisits = PAGEVIEW_BASELINE_TARGET - sumDaily;
     try {
-      await clientSetDoc(
-        clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats'),
-        { baseVisits, pageviewBaselineApplied: true },
-        { merge: true }
-      );
+      await upsertMirrorAndFirestoreDoc('platform_settings', 'site_traffic_stats', { baseVisits, pageviewBaselineApplied: true }, true);
     } catch {}
   }
   const totalVisits = baseVisits + sumDaily;
@@ -2543,6 +2580,7 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
     uniqueVisitorsTotal: Number(raw?.uniqueVisitorsTotal) || 0,
     visitorsDaily,
     visitorsHourly,
+    newVisitorsDaily,
   };
 }
 
@@ -2560,6 +2598,20 @@ export async function recordRealSiteVisit(
   // 以資料庫原子遞增計數：Vercel 上同時有多台伺服器處理請求，
   // 「先讀再寫」會互相覆蓋而漏算，改用 increment 才不會掉數字
   try {
+    if (hasAdminCredentials) {
+      const { fs, FV } = await loadServerFs();
+      const inc = FV.increment(1);
+      await fs.collection('platform_settings').doc('site_traffic_stats').set(
+        {
+          hourly: { [nowParts.hourKey]: inc },
+          daily: { [nowParts.dateKey]: inc },
+          ...(visitor.newToday ? { visitorsHourly: { [nowParts.hourKey]: inc }, visitorsDaily: { [nowParts.dateKey]: inc } } : {}),
+          ...(visitor.newEver ? { uniqueVisitorsTotal: inc, newVisitorsDaily: { [nowParts.dateKey]: inc } } : {}),
+          lastUpdatedUtc8: nowParts.fullDateTime,
+        },
+        { merge: true }
+      );
+    } else {
     const ref = clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats');
     await clientSetDoc(
       ref,
@@ -2572,11 +2624,12 @@ export async function recordRealSiteVisit(
               visitorsDaily: { [nowParts.dateKey]: clientIncrement(1) },
             }
           : {}),
-        ...(visitor.newEver ? { uniqueVisitorsTotal: clientIncrement(1) } : {}),
+        ...(visitor.newEver ? { uniqueVisitorsTotal: clientIncrement(1), newVisitorsDaily: { [nowParts.dateKey]: clientIncrement(1) } } : {}),
         lastUpdatedUtc8: nowParts.fullDateTime,
       },
       { merge: true }
     );
+    }
   } catch (err) {
     if (!isQuotaError(err)) {
       console.warn('[SiteTraffic] increment failed:', (err as any)?.message);
@@ -2586,10 +2639,11 @@ export async function recordRealSiteVisit(
   const current = await getRealSiteTrafficStats();
   if (!current.firstRecordedAtUtc8) {
     try {
-      await clientSetDoc(
-        clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats'),
+      await upsertMirrorAndFirestoreDoc(
+        'platform_settings',
+        'site_traffic_stats',
         { firstRecordedAtUtc8: nowParts.fullDateTime, firstHourKey: nowParts.hourKey, firstDateKey: nowParts.dateKey },
-        { merge: true }
+        true
       );
     } catch {}
   }

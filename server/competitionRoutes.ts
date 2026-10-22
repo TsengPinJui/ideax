@@ -45,6 +45,9 @@ import {
   recordRealPresenceHeartbeat,
 } from './competitionService';
 import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_COMPETITION_SCHEDULE } from '../src/types/competition';
+import { isKnownEmbeddableHost } from '../src/utils/embedPlatforms';
+import { isProtectedAnswer, splitAnswerForStorage } from '../src/utils/answerSecrets';
+import { safeFetch } from './safeFetch';
 
 const router = Router();
 
@@ -69,7 +72,7 @@ const PROTECTED_QUESTION_FIELDS = new Set([
   'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
   'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
   'demoUrl', 'previewMode', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
-  'externalLink', 'fileLink', 'techArchitecture', 'publishedPlatforms',
+  'externalLink', 'fileLink', 'techArchitecture', 'publishedPlatforms', 'mindMap',
 ]);
 
 /** 是否為內容發布者：比對 authorAuthUid、authorId，或透過會員資料的 authUid 對照 */
@@ -116,28 +119,24 @@ router.get('/check-embed', async (req: Request, res: Response) => {
     return res.json({ canEmbed: false, reason: 'demo-placeholder' });
   }
 
+  // Streamlit Community Cloud、Hugging Face Spaces 官方支援內嵌，但會先轉址到登入／喚醒頁，標頭檢查不準，直接放行
+  if (isKnownEmbeddableHost(host)) {
+    return res.json({ canEmbed: true, finalUrl: parsed.toString(), platform: 'known' });
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     let response: globalThis.Response;
     try {
-      response = await fetch(parsed.toString(), {
-        method: 'HEAD',
-        redirect: 'follow',
+      const init = {
         signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
-        },
-      });
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)' },
+      };
+      // safeFetch：擋內網／本機位址，轉址逐跳檢查（防 SSRF）
+      response = await safeFetch(parsed.toString(), { ...init, method: 'HEAD' });
       if (response.status === 405 || response.status === 403) {
-        response = await fetch(parsed.toString(), {
-          method: 'GET',
-          redirect: 'follow',
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
-          },
-        });
+        response = await safeFetch(parsed.toString(), { ...init, method: 'GET' });
       }
     } finally {
       clearTimeout(timer);
@@ -166,7 +165,9 @@ router.get('/check-embed', async (req: Request, res: Response) => {
 
     return res.json({ canEmbed: true, finalUrl: response.url || parsed.toString() });
   } catch (err: any) {
-    return res.json({ canEmbed: false, reason: 'unreachable', detail: err?.message || 'timeout' });
+    const msg = String(err?.message || '');
+    if (msg.startsWith('blocked-')) return res.json({ canEmbed: false, reason: 'blocked-host' });
+    return res.json({ canEmbed: false, reason: 'unreachable' });
   }
 });
 
@@ -845,7 +846,12 @@ router.get('/db-mirror', async (req: Request, res: Response) => {
   try {
     await ensureProposalsSyncedToFirestore();
     const questions = Object.values(getMirrorCollectionMap('questions'));
-    const answers = Object.values(getMirrorCollectionMap('answers'));
+    // 付費解答的完整內容不公開（經 /api/answers/contents 依付款／解鎖紀錄取得）
+    const answers = Object.values(getMirrorCollectionMap('answers')).map((a: any) =>
+      a && typeof a === 'object' && isProtectedAnswer(a)
+        ? { ...splitAnswerForStorage(a).publicAnswer, hasProtectedContent: Boolean(a.hasProtectedContent || a.fullContent || a.meetingDetails || a.attachments?.length) }
+        : a
+    );
     // 安全性：公開端點不回傳密碼與實名認證個資
     const users = Object.values(getMirrorCollectionMap('users')).map(stripUserSecretsForPublic);
     const competitionProposals = Object.values(getMirrorCollectionMap('competition_proposals'));
@@ -884,9 +890,25 @@ router.post('/db-mirror/:collection/:docId', async (req: Request, res: Response)
     if (!(await isVerifiedAdmin(authUser.uid))) {
       const snap = await adminDb.collection(colName).doc(docId).get();
       const existingDoc: any = snap.exists ? snap.data() : null;
+      // 官方身分、精選只有管理員能設定
+      const changedTo = (k: string) => data[k] !== undefined && JSON.stringify(data[k]) !== JSON.stringify(existingDoc ? existingDoc[k] : undefined);
+      const touchesAdminOnly =
+        (changedTo('isOfficial') && data.isOfficial === true) ||
+        (changedTo('isFeatured') && data.isFeatured === true) ||
+        (changedTo('publishIdentity') && data.publishIdentity === 'platform');
+      if (touchesAdminOnly) {
+        return res.status(403).json({ success: false, error: '未授權：只有管理員能以官方身分發布或設為精選' });
+      }
       if (!existingDoc) {
         if (String(data.authorAuthUid || '') !== authUser.uid) {
           return res.status(403).json({ success: false, error: '未授權：發布者身分不符' });
+        }
+        // 新發布：作者編號必須是自己的會員帳號，名稱不可冒用官方
+        if (!(await isContentOwner({ authorId: data.authorId }, authUser.uid))) {
+          return res.status(403).json({ success: false, error: '未授權：發布者身分不符' });
+        }
+        if (/官方/.test(String(data.authorName || ''))) {
+          return res.status(403).json({ success: false, error: '未授權：不可使用官方名稱發布' });
         }
       } else if (!(await isContentOwner(existingDoc, authUser.uid))) {
         const changed = Object.keys(data || {}).filter((k) => JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]));

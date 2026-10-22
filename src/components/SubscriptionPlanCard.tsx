@@ -120,7 +120,7 @@ export const SubscriptionPlanCard: React.FC = () => {
 
     if (res.success) {
       setActionMsg({
-        text: `🎉 成功開通「${targetPlan.name}」！付款方式：${selectedPaymentMethod}，即刻享有專屬服務費減免與特權！後續變更方案皆會在下個期間開始生效。`,
+        text: ` 成功開通「${targetPlan.name}」！付款方式：${selectedPaymentMethod}，即刻享有專屬服務費減免與特權！後續變更方案皆會在下個期間開始生效。`,
         isError: false,
       });
       setIsPaymentStep(false);
@@ -155,8 +155,8 @@ export const SubscriptionPlanCard: React.FC = () => {
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 border animate-in fade-in duration-150 ${
             actionMsg.isError
-              ? 'bg-rose-50 text-rose-900 border-rose-200'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
+              : 'bg-emerald-50 text-emerald-900 border-stone-200'
           }`}
         >
           {actionMsg.isError ? (
@@ -174,17 +174,17 @@ export const SubscriptionPlanCard: React.FC = () => {
       <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 font-semibold flex items-center justify-center shrink-0 shadow-2xs">
               <Crown className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-stone-500">目前會員方案</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${currentPlan.badgeClass}`}>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${currentPlan.badgeClass}`}>
                   {currentPlan.name}
                 </span>
               </div>
-              <h3 className="font-black text-base text-stone-900 mt-0.5">
+              <h3 className="font-semibold text-base text-stone-900 mt-0.5">
                 {currentPlan.name}
               </h3>
             </div>
@@ -193,7 +193,7 @@ export const SubscriptionPlanCard: React.FC = () => {
           <div className="flex items-center gap-1.5 self-start sm:self-auto bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200/80 text-xs">
             <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span className="text-stone-500 font-bold">方案到期日：</span>
-            <strong className="text-stone-900 font-mono font-black">{expiryDisplay}</strong>
+            <strong className="text-stone-900 tabular-nums font-semibold">{expiryDisplay}</strong>
           </div>
         </div>
 
@@ -201,8 +201,8 @@ export const SubscriptionPlanCard: React.FC = () => {
         {currentUser.nextSubscriptionTier && (
           <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in ${
             currentUser.nextSubscriptionTier === 'free'
-              ? 'bg-amber-500/10 border-amber-300 text-amber-950'
-              : 'bg-purple-500/10 border-purple-300 text-purple-950'
+              ? 'bg-stone-50 border-stone-200 text-amber-950'
+              : 'bg-stone-50 border-stone-200 text-purple-950'
           }`}>
             <div className="flex items-start gap-2.5">
               {currentUser.nextSubscriptionTier === 'free' ? (
@@ -211,7 +211,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 <Calendar className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
               )}
               <div className="text-xs space-y-0.5">
-                <div className="font-black text-sm">
+                <div className="font-semibold text-sm">
                   {currentUser.nextSubscriptionTier === 'free'
                     ? '已申請轉換為一般會員（視為取消會員資格）'
                     : `已預約變換方案：${subscriptionPlans[currentUser.nextSubscriptionTier]?.name || currentUser.nextSubscriptionTier}`}
@@ -242,13 +242,13 @@ export const SubscriptionPlanCard: React.FC = () => {
           {(() => {
             const curRate = getDynamicPlanRate(currentPlan);
             return (
-              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
                 <div>
                   <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
                     <Percent className="w-3 h-3 text-amber-700" />
                     <span>享有服務費率</span>
                   </span>
-                  <div className="text-sm font-black text-amber-950 font-mono mt-0.5">
+                  <div className="text-sm font-semibold text-amber-950 tabular-nums mt-0.5">
                     {curRate.effectiveFeePercent <= 0
                       ? curRate.effectiveFeePercent < 0
                         ? `免服務費 + 另獲 ${Math.abs(curRate.effectiveFeePercent)}% 紅利`
@@ -257,8 +257,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-amber-800 font-medium block">解答者實收</span>
-                  <span className="text-sm font-black text-amber-950 font-mono">{curRate.sellerPayoutPercent}%</span>
+                  <span className="text-[11px] text-amber-800 font-medium block">解答者實收</span>
+                  <span className="text-sm font-semibold text-amber-950 tabular-nums">{curRate.sellerPayoutPercent}%</span>
                 </div>
               </div>
             );
@@ -270,11 +270,11 @@ export const SubscriptionPlanCard: React.FC = () => {
                 <Calendar className="w-3 h-3 text-stone-400" />
                 <span>帳號與身分狀態</span>
               </span>
-              <div className="text-xs font-black text-stone-900 mt-0.5">
+              <div className="text-xs font-semibold text-stone-900 mt-0.5">
                 {currentTier === 'free' ? '一般用戶（免月費基礎帳號）' : '訂閱會員（已開通付費方案）'}
               </div>
             </div>
-            <span className="text-[10px] text-stone-500 font-medium">
+            <span className="text-[11px] text-stone-500 font-medium">
               {currentTier === 'free' ? '可依需求隨時訂閱升級' : '可隨時變更或取消'}
             </span>
           </div>
@@ -286,7 +286,7 @@ export const SubscriptionPlanCard: React.FC = () => {
       {/* ========================================================================= */}
       <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3.5">
         <div className="border-b border-stone-100 pb-2.5">
-          <h4 className="font-black text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
+          <h4 className="font-semibold text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-600" />
             <span>更改方案</span>
           </h4>
@@ -296,8 +296,8 @@ export const SubscriptionPlanCard: React.FC = () => {
         </div>
 
         {/* 暫不開放訂閱付費會員公告 */}
-        <div className="p-3.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center gap-2">
-          <span className="text-base select-none shrink-0">💡</span>
+        <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-amber-950 text-xs font-semibold flex items-center gap-2">
+          <span className="text-base select-none shrink-0"></span>
           <span>
             <strong>平台公告：</strong>目前為創星季競賽營運階段，暫不開放訂閱付費會員。所有用戶均可自由體驗專家方案與交流，敬請期待後續正式開通！
           </span>
@@ -371,8 +371,8 @@ export const SubscriptionPlanCard: React.FC = () => {
               if (selectedTier === 'free') {
                 return (
                   <div className="space-y-2.5">
-                    <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1">
-                      <div className="font-black flex items-center gap-1.5 text-amber-900">
+                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-amber-950 space-y-1">
+                      <div className="font-semibold flex items-center gap-1.5 text-amber-900">
                         <Info className="w-4 h-4 text-amber-600 shrink-0" />
                         <span>轉換為一般會員規範提醒</span>
                       </div>
@@ -384,10 +384,10 @@ export const SubscriptionPlanCard: React.FC = () => {
                     <div className="p-3 rounded-xl bg-stone-100 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-black text-xs text-stone-900">
+                          <span className="font-semibold text-xs text-stone-900">
                             預計變更為：一般會員（視為取消會員資格）
                           </span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-200 text-stone-700">
+                          <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-200 text-stone-700">
                             標準 10% 服務費
                           </span>
                         </div>
@@ -400,7 +400,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                         type="button"
                         onClick={handleConvertFree}
                         disabled={isProcessing || currentTier === 'free'}
-                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-semibold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <XCircle className="w-3.5 h-3.5 text-amber-400" />
                         <span>{currentTier === 'free' ? '目前已是一般會員' : '確認轉換為一般會員 (取消資格・免扣款)'}</span>
@@ -414,8 +414,8 @@ export const SubscriptionPlanCard: React.FC = () => {
               if (currentTier !== 'free') {
                 return (
                   <div className="space-y-2.5">
-                    <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200 text-xs text-purple-950 space-y-1">
-                      <div className="font-black flex items-center gap-1.5 text-purple-900">
+                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-purple-950 space-y-1">
+                      <div className="font-semibold flex items-center gap-1.5 text-purple-900">
                         <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
                         <span>任何變換方案都會在下個期間開始</span>
                       </div>
@@ -424,13 +424,13 @@ export const SubscriptionPlanCard: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-black text-xs text-purple-950">
+                          <span className="font-semibold text-xs text-purple-950">
                             預約變換為：{targetPlan.name}（{targetCycleObj.label}）
                           </span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
+                          <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
                             {feeBadgeText}
                           </span>
                         </div>
@@ -442,7 +442,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setActionMsg({ text: '💡 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
+                          setActionMsg({ text: ' 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
                         }}
                         className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-100 text-stone-500 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 border border-stone-200"
                         title="目前暫不開放訂閱"
@@ -456,13 +456,13 @@ export const SubscriptionPlanCard: React.FC = () => {
 
               // 情況 C：一般會員首次開通方案
               return (
-                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-black text-xs text-amber-950">
+                      <span className="font-semibold text-xs text-amber-950">
                         目標方案：{targetPlan.name}
                       </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
+                      <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
                         {feeBadgeText}
                       </span>
                     </div>
@@ -474,7 +474,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setActionMsg({ text: '💡 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
+                      setActionMsg({ text: ' 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
                     }}
                     className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-100 text-stone-500 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 border border-stone-200"
                     title="目前暫不開放訂閱"
@@ -491,7 +491,7 @@ export const SubscriptionPlanCard: React.FC = () => {
             <div className="flex items-center justify-between border-b border-stone-200 pb-2">
               <div className="flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-amber-600" />
-                <h5 className="font-black text-xs sm:text-sm text-stone-900">付款確認頁面</h5>
+                <h5 className="font-semibold text-xs sm:text-sm text-stone-900">付款確認頁面</h5>
               </div>
               <button
                 type="button"
@@ -505,8 +505,8 @@ export const SubscriptionPlanCard: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
               <div className="p-2.5 rounded-lg bg-white border border-stone-200 space-y-1">
-                <span className="text-stone-500 font-bold block text-[10px]">訂閱方案與週期</span>
-                <p className="text-xs font-black text-stone-900">
+                <span className="text-stone-500 font-bold block text-[11px]">訂閱方案與週期</span>
+                <p className="text-xs font-semibold text-stone-900">
                   {targetPlan.name}（{targetCycleObj.label}）
                 </p>
                 <p className="text-emerald-700 font-bold text-[11px]">
@@ -515,14 +515,14 @@ export const SubscriptionPlanCard: React.FC = () => {
               </div>
 
               <div className="p-2.5 rounded-lg bg-white border border-stone-200 space-y-1">
-                <span className="text-stone-500 font-bold block text-[10px]">本期應付總點數</span>
+                <span className="text-stone-500 font-bold block text-[11px]">本期應付總點數</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-stone-900 font-mono">
+                  <span className="text-lg font-semibold text-stone-900 tabular-nums">
                     {(targetCycleObj.price || 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-stone-400">點</span>
+                  <span className="text-[11px] text-stone-400">點</span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-semibold">
                   <ShieldCheck className="w-3 h-3" />
                   <span>平台點數安全扣點</span>
                 </div>
@@ -535,10 +535,10 @@ export const SubscriptionPlanCard: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                 <button
                   type="button"
-                  className="py-1.5 px-2 rounded-lg text-xs font-black border bg-amber-500 text-stone-950 border-amber-500 shadow-2xs cursor-pointer text-center"
+                  className="py-1.5 px-2 rounded-lg text-xs font-semibold border bg-amber-500 text-stone-950 border-amber-500 shadow-2xs cursor-pointer text-center"
                 >
-                  <div>🪙 平台點數扣點</div>
-                  <div className="text-[10px] font-normal text-stone-800">
+                  <div> 平台點數扣點</div>
+                  <div className="text-[11px] font-normal text-stone-800">
                     餘額 {(currentUser.balance || 0).toLocaleString()} 點
                   </div>
                 </button>
@@ -550,14 +550,14 @@ export const SubscriptionPlanCard: React.FC = () => {
                     className="py-1.5 px-2 rounded-lg text-xs font-bold border bg-stone-50 text-stone-400 border-stone-200 opacity-60 cursor-not-allowed text-center"
                   >
                     <div>{method}</div>
-                    <div className="text-[10px] font-normal">暫不支援</div>
+                    <div className="text-[11px] font-normal">暫不支援</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* 定型化契約與自動續約法律合規提醒與勾選 */}
-            <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/90 text-xs text-stone-700 space-y-2">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 space-y-2">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -573,7 +573,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       e.preventDefault();
                       openAboutModal('recharge_subscription_terms');
                     }}
-                    className="text-amber-800 hover:text-amber-900 underline font-black cursor-pointer inline-flex items-center"
+                    className="text-amber-800 hover:text-amber-900 underline font-semibold cursor-pointer inline-flex items-center"
                   >
                     《點數儲值與會員方案訂閱服務條款》
                   </button>
@@ -596,7 +596,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 type="button"
                 onClick={handleConfirmPayment}
                 disabled={isProcessing || !agreeSubscriptionTerms}
-                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 text-xs font-black shadow-xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 text-xs font-semibold shadow-xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>確認扣點 {(targetCycleObj.price || 0).toLocaleString()} 點並變更方案</span>
               </button>
@@ -608,11 +608,11 @@ export const SubscriptionPlanCard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. 再下面：直式「解答者會員方案對比」表格（強調半價、免服務費、另獲2%紅利，附功能對比） */}
       {/* ========================================================================= */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-4">
         {/* 頂部標題與到期日期限標籤 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-stone-100 pb-3.5">
           <div>
-            <h4 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+            <h4 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2">
               <Crown className="w-5 h-5 text-amber-600" />
               <span>解答者會員方案對比</span>
             </h4>
@@ -622,9 +622,9 @@ export const SubscriptionPlanCard: React.FC = () => {
           </div>
 
           {/* 右上角：目前方案期限 */}
-          <div className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-amber-200/80 text-xs font-bold flex items-center gap-1.5 shadow-2xs shrink-0">
+          <div className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-stone-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs shrink-0">
             <Calendar className="w-3.5 h-3.5 text-amber-600" />
-            <span>目前方案期限：<strong className="font-mono text-stone-900 font-black">{expiryDisplay}</strong></span>
+            <span>目前方案期限：<strong className="tabular-nums text-stone-900 font-semibold">{expiryDisplay}</strong></span>
           </div>
         </div>
 
@@ -632,7 +632,7 @@ export const SubscriptionPlanCard: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[640px]">
             <thead>
-              <tr className="border-b-2 border-stone-200 bg-stone-50/90 text-stone-900 font-black">
+              <tr className="border-b-2 border-stone-200 bg-stone-50/90 text-stone-900 font-semibold">
                 <th colSpan={2} className="py-3 px-3.5 w-36 sm:w-44 text-stone-500 font-bold">項目/方案</th>
                 {activePlanList.map((plan) => {
                   const isCurrent =
@@ -644,21 +644,21 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3 px-3.5 text-center transition-colors ${
                         plan.id === 'master'
-                          ? 'bg-amber-50/70 text-amber-950 border-x border-amber-200'
+                          ? 'bg-stone-50 text-amber-950 border-x border-stone-200'
                           : plan.id === 'authority'
-                          ? 'bg-purple-50/60 text-purple-950 border-x border-purple-100'
+                          ? 'bg-stone-50 text-purple-950 border-x border-stone-200'
                           : plan.id === 'expert' || plan.id === 'pro'
-                          ? 'bg-blue-50/60 text-blue-950 border-x border-blue-100'
+                          ? 'bg-stone-50 text-blue-950 border-x border-stone-200'
                           : 'text-stone-800'
                       }`}
                     >
                       <div className="flex flex-col items-center justify-center gap-1">
                         <div className="flex items-center gap-1">
-                          <span className="text-sm font-black">{plan.name}</span>
+                          <span className="text-sm font-semibold">{plan.name}</span>
                           {plan.id === 'master' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />}
                         </div>
                         {isCurrent && (
-                          <span className="bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs animate-pulse">
+                          <span className="bg-amber-500 text-stone-950 text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-2xs animate-pulse">
                             目前方案
                           </span>
                         )}
@@ -679,13 +679,13 @@ export const SubscriptionPlanCard: React.FC = () => {
                   return (
                     <td
                       key={plan.id}
-                      className={`py-3.5 px-3.5 text-center font-mono font-bold text-stone-900 ${
+                      className={`py-3.5 px-3.5 text-center tabular-nums font-bold text-stone-900 ${
                         plan.id === 'master'
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : plan.id === 'authority'
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : plan.id === 'expert' || plan.id === 'pro'
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
@@ -712,40 +712,40 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3.5 px-3.5 text-center ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : isAuth
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : isPro
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       {isFree ? (
                         <span className="font-bold text-stone-800">
-                          標準 <strong className="text-stone-950 font-black">{baseRatePercent}%</strong> 服務費
+                          標準 <strong className="text-stone-950 font-semibold">{baseRatePercent}%</strong> 服務費
                         </span>
                       ) : isPro ? (
                         <div className="space-y-0.5">
                           <div className="font-bold text-blue-950">
-                            <strong className="text-blue-950 font-black text-base font-mono">8%</strong>
+                            <strong className="text-blue-950 font-semibold text-base tabular-nums">8%</strong>
                           </div>
-                          <span className="inline-block font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[11px] shadow-2xs font-mono">
+                          <span className="inline-block font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-stone-200 text-[11px] shadow-2xs tabular-nums">
                             -2%
                           </span>
                         </div>
                       ) : isAuth ? (
                         <div className="space-y-0.5">
                           <div className="font-bold text-purple-950">
-                            服務費 <strong className="text-purple-950 font-black">5%</strong>
+                            服務費 <strong className="text-purple-950 font-semibold">5%</strong>
                           </div>
-                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs font-mono">
+                          <span className="inline-block font-semibold text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-stone-200 text-[11px] shadow-2xs tabular-nums">
                             -5%
                           </span>
                         </div>
                       ) : isMaster ? (
                         <div className="space-y-1">
                           <div className="flex items-center justify-center gap-1 flex-wrap">
-                            <span className="font-black text-amber-950 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 text-[11px]">
+                            <span className="font-semibold text-amber-950 bg-amber-100 px-2.5 py-0.5 rounded-full border border-stone-200 text-[11px]">
                               極低 2% 服務費
                             </span>
                           </div>
@@ -753,7 +753,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       ) : (
                         <span className="font-bold text-stone-800">
                           {rate.effectiveFeePercent <= 0 ? (
-                            <strong className="text-emerald-700 font-black">免服務費 (0%)</strong>
+                            <strong className="text-emerald-700 font-semibold">免服務費 (0%)</strong>
                           ) : (
                             `服務費 ${rate.effectiveFeePercent}%`
                           )}
@@ -778,20 +778,20 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3.5 px-3.5 text-center ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : plan.id === 'authority'
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : plan.id === 'expert' || plan.id === 'pro'
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       <div className="flex flex-col items-center justify-center">
-                        <span className="text-base font-black font-mono text-stone-900">
+                        <span className="text-base font-semibold tabular-nums text-stone-900">
                           {rate.sellerPayoutPercent}%
                         </span>
                         {isMaster && (
-                          <span className="text-[10px] font-black text-amber-950 bg-amber-200/90 px-1.5 py-0.2 rounded mt-0.5">
+                          <span className="text-[11px] font-semibold text-amber-950 bg-amber-200/90 px-1.5 py-0.2 rounded mt-0.5">
                             實收高達 98%
                           </span>
                         )}
@@ -829,8 +829,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           plan.id === 'master'
                             ? 'text-amber-950 bg-amber-200/80'
                             : plan.id === 'authority'
-                            ? 'text-purple-900 bg-purple-100/70 font-black'
-                            : 'text-blue-900 bg-blue-100/70'
+                            ? 'text-purple-900 bg-stone-50 font-semibold'
+                            : 'text-blue-900 bg-stone-50'
                         }`}
                       >
                         {isPro
@@ -858,8 +858,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           plan.id === 'master'
                             ? 'text-amber-950 bg-amber-200/80'
                             : plan.id === 'authority'
-                            ? 'text-purple-900 bg-purple-100/70'
-                            : 'text-blue-900 bg-blue-100/70'
+                            ? 'text-purple-900 bg-stone-50'
+                            : 'text-blue-900 bg-stone-50'
                         }`}
                       >
                         {isPro ? '＋ 一鍵整理 4 層架構' : '一鍵整理 4 層架構'}
@@ -880,7 +880,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                         className={`inline-block font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           plan.id === 'master'
                             ? 'text-amber-950 bg-amber-200/80'
-                            : 'text-purple-900 bg-purple-100/70 font-black'
+                            : 'text-purple-900 bg-stone-50 font-semibold'
                         }`}
                       >
                         {plan.id === 'authority' ? '＋ 升級優先推薦曝光' : '優先推薦曝光'}
@@ -891,7 +891,7 @@ export const SubscriptionPlanCard: React.FC = () => {
               ].map((feat) => (
                 <tr key={feat.id} className="hover:bg-stone-50/60 transition-colors">
                   <td colSpan={2} className="py-3 px-3.5 bg-stone-50/40 text-stone-900">
-                    <strong className="font-black text-stone-900 block">{feat.name}</strong>
+                    <strong className="font-semibold text-stone-900 block">{feat.name}</strong>
                   </td>
                   {activePlanList.map((plan) => {
                     const isMaster = plan.id === 'master';
@@ -903,11 +903,11 @@ export const SubscriptionPlanCard: React.FC = () => {
                         key={plan.id}
                         className={`py-3 px-3.5 text-center ${
                           isMaster
-                            ? 'bg-amber-50/30'
+                            ? 'bg-stone-50'
                             : isAuth
-                            ? 'bg-purple-50/20'
+                            ? 'bg-stone-50'
                             : isPro
-                            ? 'bg-blue-50/20'
+                            ? 'bg-stone-50'
                             : ''
                         }`}
                       >
@@ -920,20 +920,20 @@ export const SubscriptionPlanCard: React.FC = () => {
 
               {/* AI-CRM 客戶關係管理 群組項目 (左側垂直標記 AI-CRM客戶關係管理，右側分 4 項目) */}
               {/* 項目 1: 24hr巡航雷達 */}
-              <tr key="ai_crm_radar" className="hover:bg-stone-50/60 transition-colors border-t-2 border-amber-200/80">
+              <tr key="ai_crm_radar" className="hover:bg-stone-50/60 transition-colors border-t-2 border-stone-200">
                 <td
                   rowSpan={4}
-                  className="py-3 px-1.5 sm:px-2 bg-gradient-to-b from-amber-500/20 via-amber-400/15 to-orange-500/20 text-amber-950 border-r-2 border-amber-300 text-center font-black align-middle select-none w-8 sm:w-10"
+                  className="py-3 px-1.5 sm:px-2 bg-stone-50 text-amber-950 border-r-2 border-stone-200 text-center font-semibold align-middle select-none w-8 sm:w-10"
                 >
                   <div className="flex flex-col items-center justify-center gap-1.5 py-1">
                     <Sparkles className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span className="text-[11px] font-black tracking-widest text-amber-950 [writing-mode:vertical-lr] select-none py-1">
+                    <span className="text-[11px] font-semibold tracking-widest text-amber-950 [writing-mode:vertical-lr] select-none py-1">
                       AI-CRM客戶關係管理
                     </span>
                   </div>
                 </td>
                 <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
-                  <strong className="font-black text-stone-900 block">24hr巡航雷達</strong>
+                  <strong className="font-semibold text-stone-900 block">24hr巡航雷達</strong>
                 </td>
                 {activePlanList.map((plan) => {
                   const isMaster = plan.id === 'master';
@@ -945,18 +945,18 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3 px-3.5 text-center border-b border-stone-100 ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : isAuth
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : isPro
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       {isMaster ? (
                         <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                            ＋ 🎯 24hr巡航・意向偵測
+                          <span className="inline-block font-semibold text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋  24hr巡航・意向偵測
                           </span>
                         </div>
                       ) : (
@@ -970,7 +970,7 @@ export const SubscriptionPlanCard: React.FC = () => {
               {/* 項目 2: 優質提案推薦您來賺 */}
               <tr key="ai_crm_bounty_hunter" className="hover:bg-stone-50/60 transition-colors">
                 <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
-                  <strong className="font-black text-stone-900 block">優質提案推薦您來賺</strong>
+                  <strong className="font-semibold text-stone-900 block">優質提案推薦您來賺</strong>
                 </td>
                 {activePlanList.map((plan) => {
                   const isMaster = plan.id === 'master';
@@ -982,22 +982,22 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3 px-3.5 text-center border-b border-stone-100 ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : isAuth
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : isPro
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       {isMaster || isAuth ? (
                         <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className={`inline-block font-black px-2 py-0.5 rounded-md text-[11px] shadow-2xs ${
+                          <span className={`inline-block font-semibold px-2 py-0.5 rounded-md text-[11px] shadow-2xs ${
                             isMaster
                               ? 'text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300'
                               : 'text-purple-950 bg-purple-200'
                           }`}>
-                            ＋ 💰 AI-CRM 智能推播高賞好題
+                            ＋  AI-CRM 智能推播高賞好題
                           </span>
                         </div>
                       ) : (
@@ -1011,7 +1011,7 @@ export const SubscriptionPlanCard: React.FC = () => {
               {/* 項目 2: 24hr策略軍師 */}
               <tr key="ai_crm_strategist" className="hover:bg-stone-50/60 transition-colors">
                 <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
-                  <strong className="font-black text-stone-900 block">24hr策略軍師</strong>
+                  <strong className="font-semibold text-stone-900 block">24hr策略軍師</strong>
                 </td>
                 {activePlanList.map((plan) => {
                   const isMaster = plan.id === 'master';
@@ -1023,18 +1023,18 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3 px-3.5 text-center border-b border-stone-100 ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : isAuth
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : isPro
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       {isMaster ? (
                         <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 via-orange-200 to-amber-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                            ＋ 🧠 心理學談判推演・話術排程代操
+                          <span className="inline-block font-semibold text-amber-950 bg-gradient-to-r from-amber-300 via-orange-200 to-amber-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋  心理學談判推演・話術排程代操
                           </span>
                         </div>
                       ) : (
@@ -1046,9 +1046,9 @@ export const SubscriptionPlanCard: React.FC = () => {
               </tr>
 
               {/* 項目 3: 24hr AI客服特助 */}
-              <tr key="ai_crm_assistant" className="hover:bg-stone-50/60 transition-colors border-b-2 border-amber-200/80">
+              <tr key="ai_crm_assistant" className="hover:bg-stone-50/60 transition-colors border-b-2 border-stone-200">
                 <td className="py-3 px-3 bg-stone-50/40 text-stone-900">
-                  <strong className="font-black text-stone-900 block">24hr AI客服特助</strong>
+                  <strong className="font-semibold text-stone-900 block">24hr AI客服特助</strong>
                 </td>
                 {activePlanList.map((plan) => {
                   const isMaster = plan.id === 'master';
@@ -1060,18 +1060,18 @@ export const SubscriptionPlanCard: React.FC = () => {
                       key={plan.id}
                       className={`py-3 px-3.5 text-center ${
                         isMaster
-                          ? 'bg-amber-50/30'
+                          ? 'bg-stone-50'
                           : isAuth
-                          ? 'bg-purple-50/20'
+                          ? 'bg-stone-50'
                           : isPro
-                          ? 'bg-blue-50/20'
+                          ? 'bg-stone-50'
                           : ''
                       }`}
                     >
                       {isMaster ? (
                         <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                            ＋ 🤖 離線代客對談 ＋ 聊天室策略建議
+                          <span className="inline-block font-semibold text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋  離線代客對談 ＋ 聊天室策略建議
                           </span>
                         </div>
                       ) : (
@@ -1086,29 +1086,29 @@ export const SubscriptionPlanCard: React.FC = () => {
         </div>
 
         {/* 大師方案 BUFF 綜效公式 (+=... 表示) */}
-        <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-300/80 flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-amber-950 font-bold shadow-2xs">
-          <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-2xs flex items-center gap-1 shrink-0">
+        <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-amber-950 font-bold shadow-2xs">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-2xs flex items-center gap-1 shrink-0">
             <Sparkles className="w-3 h-3" />
             <span>大師限定 BUFF 加成</span>
           </span>
           <div className="flex items-center gap-1.5 flex-wrap justify-center text-xs">
-            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              🎯 24hr巡航雷達
+            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-semibold text-[11px]">
+               24hr巡航雷達
             </span>
-            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs">
+            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-semibold text-xs flex items-center justify-center shadow-2xs">
               +
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              🧠 24hr策略軍師
+            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-semibold text-[11px]">
+               24hr策略軍師
             </span>
-            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs">
+            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-semibold text-xs flex items-center justify-center shadow-2xs">
               +
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              🤖 24hr AI客服特助
+            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-semibold text-[11px]">
+               24hr AI客服特助
             </span>
-            <span className="font-black text-amber-700 text-sm px-0.5">＝</span>
-            <span className="text-amber-950 font-black text-[11px] sm:text-xs bg-white/90 px-2.5 py-0.5 rounded-md border border-amber-300/80 shadow-2xs">
+            <span className="font-semibold text-amber-700 text-sm px-0.5">＝</span>
+            <span className="text-amber-950 font-semibold text-[11px] sm:text-xs bg-white/90 px-2.5 py-0.5 rounded-md border border-stone-200 shadow-2xs">
               極低 2% 服務費（實收 98%）＋ AI-CRM 主動接案轉單飛輪！
             </span>
           </div>
@@ -1118,9 +1118,9 @@ export const SubscriptionPlanCard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. 再往下：紅色的取消訂閱，確認後才可取消 */}
       {/* ========================================================================= */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-rose-50/50 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h5 className="font-black text-xs sm:text-sm text-rose-950 flex items-center gap-1.5">
+          <h5 className="font-semibold text-xs sm:text-sm text-rose-950 flex items-center gap-1.5">
             <XCircle className="w-4 h-4 text-rose-600" />
             <span>取消會員資格（轉換為一般會員）</span>
           </h5>
@@ -1131,7 +1131,7 @@ export const SubscriptionPlanCard: React.FC = () => {
 
         {currentUser.nextSubscriptionTier === 'free' ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-rose-800 bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-300">
+            <span className="text-xs font-bold text-rose-800 bg-rose-100 px-3 py-1.5 rounded-xl border border-stone-200">
               已申請下期轉為一般會員
             </span>
             <button
@@ -1162,18 +1162,18 @@ export const SubscriptionPlanCard: React.FC = () => {
       {/* 取消訂閱防呆二次確認彈窗 */}
       {isCancelConfirmOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-rose-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h4 className="font-black text-base text-stone-900">確認取消會員資格？</h4>
+              <h4 className="font-semibold text-base text-stone-900">確認取消會員資格？</h4>
             </div>
 
             <div className="space-y-2 text-xs text-stone-600 leading-relaxed">
               <p>
                 您目前享有<strong>「{currentPlan.name}」</strong>。
               </p>
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 font-semibold text-[11px] space-y-1">
-                <p>💡 <strong>轉換為一般會員不需要重新扣款</strong>（費用 NT$ 0），視為取消會員資格。</p>
+              <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-amber-950 font-semibold text-[11px] space-y-1">
+                <p> <strong>轉換為一般會員不需要重新扣款</strong>（費用 NT$ 0），視為取消會員資格。</p>
                 <p>任何變換方案都會在<strong>下個期間開始生效</strong>（到期日：{expiryDisplay}）。現有方案特權將保留享有至本期結束，下個期間開始不再自動續約扣款。</p>
               </div>
             </div>
@@ -1191,7 +1191,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 type="button"
                 onClick={handleConfirmCancel}
                 disabled={isProcessing}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
                 確認取消（下期生效・免扣款）
               </button>

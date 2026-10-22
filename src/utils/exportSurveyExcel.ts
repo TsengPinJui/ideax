@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { realSurvey } from './surveyData';
 import { User } from '../types';
 
 export const GENDER_MAP: Record<string, string> = {
@@ -89,7 +90,7 @@ export function exportSurveyToExcelXlsx(
 
   // 1. 建立 Sheet 1: 用戶詳細名冊與問卷記錄
   const detailRows = validUsers.map((u) => {
-    const s = u.surveyData || {};
+    const s = realSurvey(u) || {};
     const desiredServices = [
       ...(s.desiredServices || []),
       ...(s.desiredServicesCustom ? [`自填：${s.desiredServicesCustom}`] : []),
@@ -185,7 +186,7 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【3. 尋求解答預算區間】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const budgetCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const b = u.surveyData?.willingQuestionBudget;
+    const b = realSurvey(u)?.willingQuestionBudget;
     if (b) budgetCounts[b] = (budgetCounts[b] || 0) + 1;
   });
   Object.entries(BUDGET_MAP).forEach(([key, label]) => {
@@ -198,7 +199,7 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【4. 為他人提供有償解方意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const solveCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const w = u.surveyData?.willingToProvideSolutions;
+    const w = realSurvey(u)?.willingToProvideSolutions;
     if (w) solveCounts[w] = (solveCounts[w] || 0) + 1;
   });
   Object.entries(WILLING_SOLVE_MAP).forEach(([key, label]) => {
@@ -211,7 +212,7 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【5. 打開 IdeaX 頻率習慣】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const freqCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const f = u.surveyData?.usageFrequency;
+    const f = realSurvey(u)?.usageFrequency;
     if (f) freqCounts[f] = (freqCounts[f] || 0) + 1;
   });
   Object.entries(FREQ_MAP).forEach(([key, label]) => {
@@ -224,7 +225,7 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【6. 將解答作為有償副業意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const sideCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const sh = u.surveyData?.willingToBeSideHustle;
+    const sh = realSurvey(u)?.willingToBeSideHustle;
     if (sh) sideCounts[sh] = (sideCounts[sh] || 0) + 1;
   });
   Object.entries(SIDE_HUSTLE_MAP).forEach(([key, label]) => {
@@ -237,7 +238,7 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【7. 解答者優惠方案付費意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const subCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const sp = u.surveyData?.willingToSubscribeSolverPlan;
+    const sp = realSurvey(u)?.willingToSubscribeSolverPlan;
     if (sp) subCounts[sp] = (subCounts[sp] || 0) + 1;
   });
   Object.entries(SUBSCRIBE_MAP).forEach(([key, label]) => {
@@ -365,7 +366,7 @@ export function exportSurveyToExcelCsv(
   const rows = users
     .filter((u) => u.id !== 'user-guest')
     .map((u) => {
-      const s = u.surveyData || {};
+      const s = realSurvey(u) || {};
       const desiredServices = [
         ...(s.desiredServices || []),
         ...(s.desiredServicesCustom ? [`自填：${s.desiredServicesCustom}`] : []),

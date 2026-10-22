@@ -68,19 +68,13 @@ import { syncUserToFirestore, getUserFromFirestore } from '../services/firestore
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
-// 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'ideax.office@gmail.com')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+// 管理員 Email 白名單：共用 services/accountGuard（切換帳號的安全檢查也用同一份）
+import { isAllowlistedAdminEmail, isLocalDevHost, ADMIN_LOGIN_EMAIL } from '../services/accountGuard';
 /**
  * 管理員帳號 admin_001：只是登入時的別名，實際用綁定信箱（白名單第一個）的 Firebase 帳號與密碼驗證，
  * 前端不保存、不比對任何管理員密碼。
  */
-const ADMIN_LOGIN_EMAIL = ADMIN_EMAIL_ALLOWLIST[0] || 'ideax.office@gmail.com';
 const isAdminLoginAlias = (id: string): boolean => ['admin_001', 'admin001'].includes(id.trim().toLowerCase());
-const isAllowlistedAdminEmail = (email: string): boolean =>
-  ADMIN_EMAIL_ALLOWLIST.includes(email.trim().toLowerCase());
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -521,7 +515,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
 
           const effectiveUser = checkRes.restoredUser || matched;
-          switchAccount(effectiveUser.id);
+          switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
 
           if (rememberMe) {
             localStorage.setItem(
@@ -599,7 +593,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // 4. 非 Email 格式（使用者帳號 / 手機號碼 / ID 登入）：
       //    由伺服器查出對應 Email 並驗證密碼（Email 屬私密資料，前端不會拿到）
-      const finishLogin = (u: any, rememberIdentifier: string) => {
+      const finishLogin = (u: any, rememberIdentifier: string, authenticatedUid?: string) => {
         if (u.role === 'admin') {
           setErrorMsg('管理員請用 admin_001（或已授權的管理員 Email）與密碼登入。');
           setIsLoading(false);
@@ -612,7 +606,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || u;
-        switchAccount(effectiveUser.id);
+        switchAccount(effectiveUser.id, { authenticatedUid });
         if (rememberMe) {
           localStorage.setItem(
             STORAGE_REMEMBER_LOGIN_KEY,
@@ -634,7 +628,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           setIsLoading(false);
           return;
         }
-        finishLogin(matched, identifier);
+        finishLogin(matched, identifier, fbUser.uid);
         return;
       } catch (serverErr: any) {
         // 舊版本機帳號（未在 Firebase 註冊）：比對本機註冊時留存的密碼
@@ -676,7 +670,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
       const effectiveUser = checkRes.restoredUser || existing;
-      switchAccount(effectiveUser.id);
+      switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
       setSuccessMsg(`${label} 登入成功。`);
       setTimeout(() => onClose(), 400);
       return;
@@ -839,7 +833,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || existing;
-        switchAccount(effectiveUser.id);
+        switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
         setSuccessMsg('手機簡訊登入成功。');
         setTimeout(() => onClose(), 400);
       } else {
@@ -1130,8 +1124,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }
           })();
         } catch (authErr: any) {
-          console.warn('Firebase register notice:', authErr);
+          // 安全：Firebase 註冊失敗（例如 Email 已被註冊）就停下來，不再建立只存在這台裝置、沒有真正登入的帳號
+          const code = String(authErr?.code || '');
+          setErrorMsg(
+            code.includes('email-already-in-use') ? '這個 Email 已經註冊過了，請直接登入；忘記密碼可以點「忘記密碼」重設。'
+            : code.includes('weak-password') ? '密碼太簡單，請改用 6 ~ 20 位英數組合。'
+            : code.includes('invalid-email') ? 'Email 格式不正確，請重新確認。'
+            : `註冊失敗：${authErr?.message || '請稍後再試'}`
+          );
+          setIsLoading(false);
+          return;
         }
+      }
+      // 正式站一定要有真正的 Firebase 帳號才能建立會員（本機開發除外）
+      if (!registeredUid && !isLocalDevHost()) {
+        setErrorMsg('註冊失敗：無法建立登入帳號，請稍後再試或改用 Google 登入。');
+        setIsLoading(false);
+        return;
       }
 
       const chosenDomains: string[] = regInterests; // 只用使用者自己選的興趣；沒選時主領域另有「創新創業」保底
@@ -1167,17 +1176,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         pendingEarnings: 0,
         reputation: isExpert ? 120 : 100,
         joinedDate: new Date().toISOString().split('T')[0],
-        bio: isExpert
-          ? `${finalName} 專家顧問。領域：${industry}。專長：${chosenDomains.join('、')}。`
-          : `${finalName} 的個人簡介。`,
+        // 自我介紹留白，讓使用者自己寫（不再自動產生「XXX 的個人簡介。」）
+        bio: '',
         email: regEmail.trim() || `${finalUsername}@ideax.user`,
         phone: effectivePhone,
         // 略過或沒選的欄位存成未填寫，不再補假資料
-        gender: isQuestionerSkipped ? 'undisclosed' : gender,
+        gender: undefined, // 註冊表單沒有問性別，留空（問卷再填）
         ageGroup: isQuestionerSkipped || !ageGroup ? undefined : ageGroup,
         industry: isQuestionerSkipped || !industry ? undefined : industry,
         jobTitle: isQuestionerSkipped ? undefined : jobTitle.trim() || undefined,
-        annualSalary,
+        annualSalary: undefined, // 註冊表單沒有問年薪，留空（問卷再填）
         company: company.trim() || undefined,
         domain: (chosenDomains[0] as Category) || '創新創業',
         domains: chosenDomains as Category[],
@@ -1185,24 +1193,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         interests: chosenDomains,
         hasCompletedProfile: !isQuestionerSkipped,
         subscriptionTier: 'free',
-        verifiedExpert: isExpert,
-        verifiedBadge: isExpert ? '認證專家' : undefined,
-        realNameAuthStatus: isExpert ? 'verified' : 'none',
+        // 註冊為解答者只是送出資料，要等管理員審核才算通過（不再註冊當下就變成已認證）
+        verifiedExpert: false,
+        verifiedBadge: undefined,
+        realNameAuthStatus: isExpert && (idCardFront || idCardBack) ? 'pending' : 'none',
         realNameAuthData: isExpert
           ? {
               legalName: regRealLegalName.trim() || regName.trim(),
               idNumber: regIdNumber.trim(),
               nationality: '中華民國 (Taiwan)',
-              birthDate: '1990-01-01',
-              phoneNumber: effectivePhone || '0900000000',
+              birthDate: '', // 註冊沒有問生日，留空
+              phoneNumber: effectivePhone || '',
               email: regEmail.trim() || `${regUsername.trim()}@ideax.user`,
               idCardFrontFile: idCardFront || undefined,
               idCardBackFile: idCardBack || undefined,
               appliedAt: new Date().toISOString(),
-              verifiedAt: new Date().toISOString(),
             }
           : undefined,
-        rating: 5.0,
+        rating: 0, // 還沒有任何評價
         reviewCount: 0,
         acceptedSolutionsCount: 0,
         submittedSolutionsCount: 0,
@@ -1886,7 +1894,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   />
                   <path
                     fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
                 <span className="text-xs font-bold text-stone-700 group-hover:text-stone-900">Google 登入</span>

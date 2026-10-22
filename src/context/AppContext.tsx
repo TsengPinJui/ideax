@@ -1,4 +1,5 @@
 import { DEFAULT_MASCOT_CONFIG, cheerMascot, normalizeMascotConfig, type MascotConfig } from '../components/mascot/mascotConfig';
+import { trackFeature } from '../services/featureUsage';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Question,
@@ -124,20 +125,22 @@ import {
   savePublicMetricsConfig,
   saveHomeShowcaseConfig,
 } from '../services/firestoreSync';
-import { DEFAULT_HOME_SHOWCASE_CONFIG, HOME_SHOWCASE_MODES, type HomeShowcaseConfig } from '../types';
+import { DEFAULT_HOME_SHOWCASE_CONFIG, HOME_SHOWCASE_MODES, type HomeShowcaseConfig, type MindMapData } from '../types';
 
 /** 雲端讀回來的播放區設定整理成固定格式 */
 function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
   // 舊版只存單一 mode：轉成陣列
   const list: unknown[] = Array.isArray(raw?.modes) ? raw.modes : raw?.mode ? [raw.mode] : ['excellent'];
   const modes = HOME_SHOWCASE_MODES.filter((m) => list.includes(m));
-  return { enabled: raw?.enabled === true, modes, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
+  const customIds = Array.isArray(raw?.customIds) ? raw.customIds.filter((x: unknown) => typeof x === 'string' && x).slice(0, 30) : [];
+  return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, hideHeroTitles: raw?.hideHeroTitles === true, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
 }
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
+import { isAuthorizedForAccount, isLocalDevHost } from '../services/accountGuard';
 import { consumeSocialRedirectResult, type SocialRedirectOutcome } from '../services/firebaseAuth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
@@ -306,6 +309,8 @@ interface AppContextType {
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      /** 心智圖：null＝移除 */
+      mindMap?: MindMapData | null;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -545,7 +550,8 @@ interface AppContextType {
 
   // Device Logged-In Accounts Management (本裝置曾經登錄的帳號)
   deviceAccounts: DeviceAccount[];
-  switchAccount: (userId: string) => boolean;
+  /** authenticatedUid：登入流程剛用密碼／簡訊／社群驗證過的 Firebase UID（必須等於目前真正登入的帳號） */
+  switchAccount: (userId: string, opts?: { authenticatedUid?: string }) => boolean;
   logoutAccount: (userId?: string) => void;
   removeDeviceAccount: (userId: string) => boolean;
   addDeviceAccount: (userId: string) => boolean;
@@ -650,6 +656,24 @@ const getInitialPlatformMode = (): PlatformMode => {
 const getInitialIsDemoMode = (): boolean => {
   return getInitialPlatformMode() === 'TEST';
 };
+
+/**
+ * 以前創星季期間，真實用戶新留言／方案會被預設 28 讚、120,000 支持點數、12 則留言和一張圖庫封面。
+ * 讀進來時扣掉這些假基數（用那張圖庫封面辨認），並標記 fakeDefaultsFixed，之後同步回資料庫就不會重複扣。
+ */
+const FAKE_STAR_SEASON_COVER = 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80';
+function stripFakeStarSeasonDefaults<T extends { isSimulated?: boolean; coverImageUrl?: string; likes?: number; supportPoints?: number; commentsCount?: number; fakeDefaultsFixed?: boolean }>(a: T): T {
+  if (!a || a.isSimulated || a.fakeDefaultsFixed || a.coverImageUrl !== FAKE_STAR_SEASON_COVER) return a;
+  const sp = Math.max(0, (Number(a.supportPoints) || 0) - 120000);
+  return {
+    ...a,
+    likes: Math.max(0, (Number(a.likes) || 0) - 28),
+    supportPoints: sp || undefined,
+    commentsCount: Math.max(0, (Number(a.commentsCount) || 0) - 12),
+    coverImageUrl: '',
+    fakeDefaultsFixed: true,
+  };
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Demo Mode State (管理員示範資料與測試模式開關：默認開啟測試環境，除非開啟正式營運模式或無金流模式)
@@ -1274,8 +1298,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(parsed) && parsed.length > 0) {
           // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號，並去除別名重複
           const seenIds = new Set<string>();
+          // 內建的管理員／測試帳號不放進「本裝置已登錄帳號」（以前會被自動補進來）
+          const builtInIds = new Set([...CORE_TEST_ACCOUNTS, ...DEMO_CORE_TEST_USERS, ...CLEAN_CORE_USERS].flatMap((u) => [u.id, USER_ALIAS_MAP[u.id]]).filter(Boolean) as string[]);
           const cleaned = parsed.filter((a: any) => {
             if (!a || !a.userId || a.userId === 'user-guest') return false;
+            if (builtInIds.has(a.userId) && !isLocalDevHost()) return false;
             const aliasId = USER_ALIAS_MAP[a.userId];
             if (seenIds.has(a.userId) || (aliasId && seenIds.has(aliasId))) return false;
             seenIds.add(a.userId);
@@ -1301,6 +1328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!currentUser || currentUser.id === 'user-guest') return;
+    // 只有真的登入（Firebase 帳號對得上）的身分才記進「本裝置已登錄帳號」
+    if (!isAuthorizedForAccount(currentUser, firebaseAuthInstance.currentUser)) return;
     setDeviceAccounts((prev) => {
       const aliasId = USER_ALIAS_MAP[currentUser.id];
       const idx = prev.findIndex((a) => a.userId === currentUser.id || (aliasId && a.userId === aliasId));
@@ -1552,7 +1581,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const seen = new Set<string>();
       const out: Answer[] = [];
       const activeVirtualAns = isPurged ? [] : ALL_VIRTUAL_ANSWERS_SEED;
-      for (const rawA of [...baseList, ...activeVirtualAns]) {
+      for (const rawA0 of [...baseList, ...activeVirtualAns]) {
+        const rawA = stripFakeStarSeasonDefaults(rawA0);
         if (isAnswerValid(rawA) && !seen.has(rawA.id)) {
           seen.add(rawA.id);
           const seedAns = virtualAnsMap.get(rawA.id);
@@ -1811,6 +1841,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [ratingTarget, setRatingTarget] = useState<any>(null);
 
   const openCustomerService = (ctx?: any) => {
+    trackFeature('customer_service');
     setCustomerServiceContext(ctx || null);
     setIsCustomerServiceOpen(true);
   };
@@ -1844,6 +1875,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showProposalsCount: false,
     showTotalDeals: false,
     showTotalGMV: false,
+    showTodayVisitors: false,
+    showNewMembers7d: false,
+    showJobsUsers: false,
+    showPublicMetrics: true,
   };
 
   const [publicMetricsConfig, setPublicMetricsConfig] = useState<PublicMetricsConfig>(() => {
@@ -1866,7 +1901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setHomeShowcaseConfig(next);
     homeShowcaseSavingRef.current += 1;
     try {
-      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes });
+      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated, hideHeroTitles: next.hideHeroTitles });
       if (!r.ok) {
         setHomeShowcaseConfig(before);
         alert(`首頁播放區設定沒有儲存成功：${(r.message || '請稍後再試').replace(/[。.]$/, '')}。`);
@@ -2333,6 +2368,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateAuthUidDirectory(availableUsers);
   }, [availableUsers]);
 
+  // 安全：網站記住的身分（localStorage）必須和 Firebase 真正登入的帳號一致；
+  // 不一致（被竄改、或 Firebase 已登出）就回到訪客，避免冒用別人或管理員身分
+  useEffect(() => {
+    if (isLocalDevHost()) return;
+    const unsub = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
+      setCurrentUser((prev) => {
+        if (!prev?.id || prev.id === 'user-guest') return prev;
+        if (isAuthorizedForAccount(prev, fbUser)) return prev;
+        try {
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}user`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+        } catch {}
+        // 冒用的身分也從「本裝置已登錄帳號」拿掉
+        setDeviceAccounts((list) => list.filter((a) => a.userId !== prev.id));
+        return GUEST_USER;
+      });
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 登入 Firebase 後，把 Firebase UID 記在自己的會員資料上，讓別人傳訊時找得到
   useEffect(() => {
     const unsub = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
@@ -2775,7 +2833,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const ansSeen = new Set<string>();
         const mergedAns: Answer[] = [];
         const activeVirtualAns = isPurgedPull ? [] : ALL_VIRTUAL_ANSWERS_SEED;
-        for (const rawA of [...rawCleanAns, ...activeVirtualAns]) {
+        for (const rawA0 of [...rawCleanAns, ...activeVirtualAns]) {
+          const rawA = stripFakeStarSeasonDefaults(rawA0);
           if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !deletedIds.has(rawA.questionId) && !ansSeen.has(rawA.id)) {
             ansSeen.add(rawA.id);
             const seedAns = virtualAnsMap.get(rawA.id);
@@ -3103,7 +3162,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const answersToSync: Answer[] = [];
             const activeVirtualAns = isPurgedBoot ? [] : ALL_VIRTUAL_ANSWERS_SEED;
             const cloudAnsMap = new Map(rawCloudAns.map((ca) => [ca.id, ca]));
-            for (const rawA of [...rawCloudAns, ...activeVirtualAns]) {
+            for (const rawA0 of [...rawCloudAns, ...activeVirtualAns]) {
+              const rawA = stripFakeStarSeasonDefaults(rawA0);
               if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !currentDeletedQ.has(rawA.questionId) && !seenAns.has(rawA.id)) {
                 seenAns.add(rawA.id);
                 const seedAns = virtualAnsMap.get(rawA.id);
@@ -4593,7 +4653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const switchAccount = (userId: string): boolean => {
+  const switchAccount = (userId: string, opts?: { authenticatedUid?: string }): boolean => {
     // 支援別名映射 (例如 user-questioner <-> c100000001, user-admin <-> a000000001, solver-2 <-> c200000002, solver-1 <-> c100000003)
     const aliasMap: Record<string, string> = {
       'user-admin': 'a000000001',
@@ -4630,6 +4690,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     if (!target) return false;
+
+    // 安全：只能切換成「目前真的用 Firebase 登入的帳號」，不能點一下就變成別人或管理員
+    const fbNow = firebaseAuthInstance.currentUser;
+    // 登入流程剛驗證過的帳號：UID 要等於目前真正登入的 Firebase 帳號（管理員一律走白名單檢查）
+    const justAuthenticated = !!opts?.authenticatedUid && !!fbNow && opts.authenticatedUid === fbNow.uid && target.role !== 'admin';
+    if (!justAuthenticated && !isAuthorizedForAccount(target, fbNow)) {
+      alert('為了帳號安全，切換到其他帳號需要重新登入：請先登出，再用該帳號的 Email 與密碼登入。');
+      return false;
+    }
+    // 剛驗證過的舊帳號還沒記 Firebase UID：現在記上，之後重新整理才認得是本人
+    if (justAuthenticated && fbNow && target.authUid !== fbNow.uid) target = { ...target, authUid: fbNow.uid };
 
     // 檢查是否有註銷猶豫期狀態：只要這 7 日內有再登入這個帳號，就自動視為取消註銷！
     const { canLogin, restoredUser, wasInGracePeriod, errorReason } = checkUserDeactivationStatus(target);
@@ -5076,6 +5147,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      /** 心智圖：null＝移除 */
+      mindMap?: MindMapData | null;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -5118,6 +5191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.cardHoverMode !== undefined && params.cardHoverMode !== currentQ.cardHoverMode) changedFields.push('卡片動態展示');
     if (params.proposalProgressStage !== undefined && params.proposalProgressStage !== currentQ.proposalProgressStage) changedFields.push('提案進度狀態');
     if (params.techArchitecture !== undefined && params.techArchitecture !== currentQ.techArchitecture) changedFields.push('技術架構');
+    if (params.mindMap !== undefined && JSON.stringify(params.mindMap?.root || null) !== JSON.stringify(currentQ.mindMap?.root || null)) changedFields.push('心智圖');
     if (params.version && params.version !== currentQ.currentVersion) changedFields.push('版本號');
     if (changedFields.length === 0) changedFields.push('內容更新');
 
@@ -5156,6 +5230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCardImage: params.showCardImage !== undefined ? params.showCardImage : currentQ.showCardImage,
       cardDisplayImage: params.cardDisplayImage !== undefined ? params.cardDisplayImage : currentQ.cardDisplayImage,
       proposalProgressStage: params.proposalProgressStage !== undefined ? params.proposalProgressStage : currentQ.proposalProgressStage,
+      mindMap: params.mindMap !== undefined ? params.mindMap : currentQ.mindMap,
       vibeCodingData: currentQ.vibeCodingData
         ? {
             ...currentQ.vibeCodingData,
@@ -5225,7 +5300,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       solverName: currentUser.name,
       solverTitle: currentUser.title || `${currentUser.domain || '創新創業'}專家`,
       solverAvatar: currentUser.avatar,
-      solverRating: currentUser.rating || 4.9,
+      solverRating: currentUser.rating || 0, // 沒有評分就是 0（不灌假評分）
       deliveryType: isDiscussion ? '交流探討' : (newAns.deliveryType || '商業策略架構'),
       deliveryFormat: isDiscussion ? 'text' : (newAns.deliveryFormats?.[0] || newAns.deliveryFormat || 'text'),
       deliveryFormats: isDiscussion ? ['text'] : (newAns.deliveryFormats || (newAns.deliveryFormat ? [newAns.deliveryFormat] : ['text'])),
@@ -5238,14 +5313,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unlockedByUserIds: [currentUser.id],
       isUnlockedByCurrentUser: true,
       createdAt: new Date().toISOString(),
-      likes: newAns.likes ?? (isStarSeasonAnswer ? 28 : 0),
-      coverImageUrl: newAns.coverImageUrl || (isStarSeasonAnswer ? 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80' : undefined),
+      // 真實用戶的留言／方案一律從 0 開始（以前創星季會預設 28 讚、120,000 支持點數、12 則留言和一張圖庫封面）
+      likes: newAns.likes ?? 0,
+      coverImageUrl: newAns.coverImageUrl || undefined,
       exclusiveChallengeUrl: newAns.exclusiveChallengeUrl || (isStarSeasonAnswer ? `https://ideax.tw/challenge/proposal?proposalId=${ansId}` : undefined),
       isStarSeasonSolution: isStarSeasonAnswer ? true : false,
       starSeasonProposalId: newAns.starSeasonProposalId || (isStarSeasonAnswer ? ansId : undefined),
       sourcePainPointProposalId: targetQ?.id,
-      supportPoints: newAns.supportPoints || (isStarSeasonAnswer ? 120000 : undefined),
-      commentsCount: newAns.commentsCount || (isStarSeasonAnswer ? 12 : 0),
+      supportPoints: newAns.supportPoints || undefined,
+      commentsCount: newAns.commentsCount || 0,
     };
 
     setAnswers((prev) => [ans, ...prev]);
@@ -8652,6 +8728,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [questions, resolvedDisputeIds]);
 
   // 全站統一追蹤客服工單受理數量 (pending 狀態之工單)
+  const isAdminForTickets = currentUser?.role === 'admin' && Boolean(firebaseUidState);
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(() => {
     try {
       const tickets = getStoredTickets();
@@ -8671,11 +8748,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     updateTicketsFromStorage();
 
-    const unsub = subscribeToTickets((firestoreTickets) => {
-      if (firestoreTickets) {
-        setPendingTicketsCount(firestoreTickets.filter((t) => t.status === 'pending').length);
-      }
-    });
+    // 全站工單只有管理員需要（待處理數）；一般訪客不訂閱，避免讀到別人的工單
+    const unsub = isAdminForTickets
+      ? subscribeToTickets((firestoreTickets) => {
+          if (firestoreTickets) {
+            setPendingTicketsCount(firestoreTickets.filter((t) => t.status === 'pending').length);
+          }
+        })
+      : null;
 
     window.addEventListener('storage', updateTicketsFromStorage);
     window.addEventListener('customer_tickets_updated', updateTicketsFromStorage);
@@ -8685,7 +8765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener('storage', updateTicketsFromStorage);
       window.removeEventListener('customer_tickets_updated', updateTicketsFromStorage);
     };
-  }, []);
+  }, [isAdminForTickets]);
 
   // 🤖 24hr AI 特助自動排程巡航代操背景處理引擎 (全自動依未來排定時序即時發送私聊提案)
   useEffect(() => {

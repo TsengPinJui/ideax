@@ -1272,7 +1272,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                     ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
                     : viewMode === 'list'
                     ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
+                    : 'grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5'
                 }
               >
                 {visibleProposals.map(renderProposalCard)}
@@ -1291,7 +1291,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                           ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
                           : viewMode === 'list'
                           ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                          : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
+                          : 'grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5'
                       }
                     >
                       {blurredProposals.map(renderProposalCard)}

@@ -263,7 +263,13 @@ export async function matchSolversWithAI(question: Question, solvers: Solver[]):
 
     const matchedKeySkills = s.skills.filter((sk) => qFullText.includes(sk.toLowerCase()));
     const displaySkills = matchedKeySkills.length > 0 ? matchedKeySkills.slice(0, 2) : s.skills.slice(0, 2);
-    const matchReason = `專精於「${displaySkills.join('、')}」，在 ${s.domain || '相關領域'} 累計 ${s.answerCount || 10} 次方案驗收，歷史滿意度達 ${s.rating || 4.9} 星（採納率 ${s.acceptedRate || 85}%）。`;
+    // 只寫真的有的數字（以前沒有資料時會寫成「累計 10 次、4.9 星、採納率 85%」）
+    const facts = [
+      s.answerCount ? `累計 ${s.answerCount} 次方案` : '',
+      s.rating ? `歷史滿意度 ${s.rating} 星` : '',
+      s.acceptedRate ? `採納率 ${s.acceptedRate}%` : '',
+    ].filter(Boolean).join('、');
+    const matchReason = `專精於「${displaySkills.join('、')}」${s.domain ? `，專業領域為 ${s.domain}` : ''}${facts ? `（${facts}）` : ''}。`;
 
     return {
       solverId: s.id,

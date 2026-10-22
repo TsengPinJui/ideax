@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { setMascotExpanded } from './mascotPresence';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
-import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
+import { playBabble, playClank, playDanceMusic, playGlowSound, playHappySound, playShock, playZap, startCurrent, stopBabble, stopCurrent, stopDanceMusic, unlockMascotAudio } from './mascotSound';
+import { trackFeature } from '../../services/featureUsage';
 import { unlockAgentVoices } from '../agents/agentVoices';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
@@ -54,6 +56,11 @@ const Drop = ({ style }: { style: React.CSSProperties }) => (
 
 const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal?: NewProposalNotice | null }> = ({ config, userId, newProposal }) => {
   const [collapsed, setCollapsed] = useState(() => readLS(COLLAPSED_KEY) === '1');
+  // 告訴「回到頂部」等浮動按鈕：小燈泡展開時要讓位，收合或離開時可以靠右
+  useEffect(() => {
+    setMascotExpanded(!collapsed);
+    return () => setMascotExpanded(false);
+  }, [collapsed]);
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(false);
   chatOpenRef.current = chatOpen;
@@ -67,7 +74,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const sendingRef = useRef(false);
   const waitTimer = useRef(0);
   const revealTimer = useRef(0);
-  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); stopCurrent(); }, []);
+  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); stopCurrent(); stopDanceMusic(); }, []);
   const [grips, setGrips] = useState<Array<{ dir: 'left' | 'top'; left: number; top: number }>>([]);
   const [liveText, setLiveText] = useState('');
   const chatRef = useRef<HTMLElement>(null);
@@ -183,6 +190,9 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
         getInsets: measureInsets,
         onEvent: (type, data) => {
           // 音效事件（後台「音效」開關控制）：撞擊哐當、驚嚇觸電、閃爍滋滋
+          // 跳波浪舞：配上跟舞步同拍的小曲；被拖走就停
+          if (type === 'dance') { if (configRef.current.soundEnabled) playDanceMusic(data || 6000); return; }
+          if (type === 'drag') stopDanceMusic();
           if (type === 'impact' || type === 'scared' || type === 'calm' || type === 'zap') {
             if (type === 'calm') { stopCurrent(); return; }
             if (configRef.current.soundEnabled) {
@@ -194,7 +204,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
           }
           markActive();
           // 從對話框上被拖下來摔暈：過一會兒自己再爬回對話框頂部
-          if (type === 'glow') { if (configRef.current.soundEnabled && data === 1) playGlowSound(); return; } // 只有重要提示（新提案）才出聲，平常開心亮起不出聲
+          // 亮起來：有新提案（重要提示）播開燈音效；平常開心播玻璃風鈴「叮叮叮↑」
+          if (type === 'glow') { if (configRef.current.soundEnabled) { if (data === 1) playGlowSound(); else playHappySound(); } return; }
           if (type === 'dropped') { window.setTimeout(() => { if (chatOpenRef.current) setClimbNonce((n) => n + 1); }, 3400); return; }
           trackMascotEvent(type);
         },
@@ -369,6 +380,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const goTo = (to: string) => {
     if (!MASCOT_NAV_TARGETS.has(to)) return;
     markActive();
+    trackMascotEvent('nav', undefined, to); // 小燈泡轉介：使用者點了建議的功能
     try { window.dispatchEvent(new CustomEvent(MASCOT_NAVIGATE_EVENT, { detail: { to } })); } catch {}
     if (window.innerWidth < WIDE_MIN) setChatOpen(false);
   };
@@ -383,14 +395,15 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const addBotReply = (text: string, tag?: string, actions?: MascotAction[]) => new Promise<void>((resolve) => {
     const id = ++msgSeq.current;
     const safeActions = (actions || []).filter((a) => a && typeof a.label === 'string' && MASCOT_NAV_TARGETS.has(a.to)).slice(0, 3);
+    for (const a of safeActions) trackMascotEvent('nav_offer', undefined, a.to); // 小燈泡轉介：回答裡建議了這個功能
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dur = reduce ? 0 : Math.min(4500, Math.max(700, text.length * 35));
     setLiveText('');
     if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag, actions: safeActions }]); setLiveText(text); resolve(); return; }
     setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0, actions: safeActions }]);
     engineRef.current?.talk(dur);
-    // 說話音效：只有附上操作引導（按鈕）的回覆才出聲，一般聊天不出聲
-    if (configRef.current.soundEnabled && safeActions.length > 0) playBabble(dur, text);
+    // 說話音效：小燈泡每一則回答都出聲（打開對話框的開場白、平常閒晃不出聲）
+    if (configRef.current.soundEnabled) playBabble(dur, text);
     const t0 = Date.now();
     if (revealTimer.current) window.clearInterval(revealTimer.current);
     revealTimer.current = window.setInterval(() => {
@@ -408,6 +421,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     // 手機：對話框上方保留小燈泡站的空間
     setChatMaxH(window.innerWidth < WIDE_MIN ? `calc(100vh - ${cb + 200}px)` : undefined);
     setChatOpen(true);
+    trackFeature('mascot_chat');
     trackMascotEvent('open');
     if (!msgs.length) setMsgs([{ id: ++msgSeq.current, who: 'bot', text: configRef.current.bubbleText, tag: '小燈泡' }]);
     window.setTimeout(() => inputRef.current?.focus(), 50);
@@ -416,6 +430,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const collapse = (e: React.MouseEvent) => {
     e.stopPropagation();
     markActive();
+    stopDanceMusic();
     trackMascotEvent('collapse');
     setChatOpen(false);
     setCollapsed(true);

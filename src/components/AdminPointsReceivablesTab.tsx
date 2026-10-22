@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDateTime } from '../utils/formatDateTime';
 import { useApp } from '../context/AppContext';
 import {
   Coins,
@@ -113,8 +114,8 @@ export const AdminPointsReceivablesTab: React.FC = () => {
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 border animate-in fade-in ${
             feedbackMsg.isError
-              ? 'bg-rose-50 text-rose-900 border-rose-200'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
+              : 'bg-emerald-50 text-emerald-900 border-stone-200'
           }`}
         >
           {feedbackMsg.isError ? (
@@ -129,10 +130,10 @@ export const AdminPointsReceivablesTab: React.FC = () => {
       {/* 頂部標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
+          <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2 flex-wrap">
             <Coins className="w-5 h-5 text-purple-600" />
             <span>點數與帳務管理</span>
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-stone-200">
               每日撥付配額 {adminDailyQuota.toLocaleString()} 點
             </span>
           </h3>
@@ -141,17 +142,17 @@ export const AdminPointsReceivablesTab: React.FC = () => {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <span className="text-[11px] text-stone-400 block font-mono">今日剩餘可轉配額</span>
-          <span className="text-base font-black text-amber-700 font-mono">
+          <span className="text-[11px] text-stone-400 block tabular-nums">今日剩餘可轉配額</span>
+          <span className="text-base font-semibold text-amber-700 tabular-nums">
             {remainingQuota.toLocaleString()} <span className="text-xs font-normal">點</span>
           </span>
         </div>
       </div>
 
       {/* 查閱個別用戶選擇器 */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3">
+      <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <label className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-purple-950 flex items-center gap-1.5">
             <UserIcon className="w-4 h-4 text-purple-700" />
             <span>選擇受款 / 查閱之會員用戶：</span>
           </label>
@@ -162,7 +163,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               placeholder="搜尋用戶姓名、Email、職稱..."
               value={searchUserQuery}
               onChange={(e) => setSearchUserQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 bg-white border border-purple-200 rounded-xl text-xs focus:outline-none focus:border-purple-600"
+              className="w-full pl-8 pr-3 py-1 bg-white border border-stone-200 rounded-xl text-xs focus:outline-none focus:border-purple-600"
             />
           </div>
         </div>
@@ -178,7 +179,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
                   isSelected
                     ? 'bg-purple-700 text-white border-purple-700 shadow-2xs font-bold'
-                    : 'bg-white text-stone-800 border-stone-200 hover:border-purple-300 hover:bg-white'
+                    : 'bg-white text-stone-800 border-stone-200 hover:border-stone-200 hover:bg-white'
                 }`}
               >
                 <img
@@ -188,7 +189,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 />
                 <div className="min-w-0">
                   <span className="block text-xs font-bold truncate">{u.name}</span>
-                  <span className={`text-[10px] block truncate ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
+                  <span className={`text-[11px] block truncate ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
                     {(u.role === 'admin' ? remainingQuota : (u.balance || 0)).toLocaleString()} 點
                   </span>
                 </div>
@@ -201,7 +202,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
       {/* 選定用戶帳目明細與調度面板 */}
       {selectedUser && (
         <div className="space-y-4">
-          <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-4">
+          <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-4">
             {/* 用戶身分抬頭 */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-3">
@@ -212,45 +213,45 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-extrabold text-sm text-stone-900">{selectedUser.name}</h4>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-bold">
+                    <h4 className="font-semibold text-sm text-stone-900">{selectedUser.name}</h4>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-bold">
                       {selectedUser.role === 'admin' ? '超級管理員' : selectedUser.role === 'solver' ? '認證專家' : '提問者'}
                     </span>
                   </div>
                   <p className="text-xs text-stone-500 mt-0.5">{selectedUser.email || '未提供電子郵件'}</p>
                 </div>
               </div>
-              <span className="text-xs text-stone-400 font-mono">ID: {selectedUser.id}</span>
+              <span className="text-xs text-stone-400 tabular-nums">ID: {selectedUser.id}</span>
             </div>
 
             {/* 用戶 3 大帳務指標 (多格面板) */}
             <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
                 <span className="text-xs font-bold text-amber-900 block truncate">
                   {selectedUser.role === 'admin' ? '今日剩餘可撥配額' : '可用點數餘額'}
                 </span>
-                <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono mt-1 block">
+                <span className="text-xl sm:text-2xl font-semibold text-amber-950 tabular-nums mt-1 block">
                   {(selectedUser.role === 'admin' ? remainingQuota : (selectedUser.balance || 0)).toLocaleString()} <span className="text-xs font-normal">點</span>
                 </span>
-                <span className="text-[10px] text-amber-800 mt-0.5 block truncate">
+                <span className="text-[11px] text-amber-800 mt-0.5 block truncate">
                   {selectedUser.role === 'admin' ? '每日上限 50,000 點' : '發布懸賞隨時抵用'}
                 </span>
               </div>
 
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
                 <span className="text-xs font-bold text-blue-900 block truncate">應收帳款（託管）</span>
-                <span className="text-xl sm:text-2xl font-black text-blue-950 font-mono mt-1 block">
+                <span className="text-xl sm:text-2xl font-semibold text-blue-950 tabular-nums mt-1 block">
                   NT$ {(selectedUser.withheldPoints || 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-blue-800 mt-0.5 block truncate">驗收後自動撥付</span>
+                <span className="text-[11px] text-blue-800 mt-0.5 block truncate">驗收後自動撥付</span>
               </div>
 
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
                 <span className="text-xs font-bold text-emerald-900 block truncate">累計已撥款出金</span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-950 font-mono mt-1 block">
+                <span className="text-xl sm:text-2xl font-semibold text-emerald-950 tabular-nums mt-1 block">
                   NT$ {(selectedUser.totalPaidOut || 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-emerald-800 mt-0.5 block truncate">歷史直撥累計總額</span>
+                <span className="text-[11px] text-emerald-800 mt-0.5 block truncate">歷史直撥累計總額</span>
               </div>
             </div>
 
@@ -258,31 +259,31 @@ export const AdminPointsReceivablesTab: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1.5">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-stone-600" />
-                <h5 className="font-extrabold text-xs text-stone-900">該用戶綁定之直撥收款銀行帳戶</h5>
+                <h5 className="font-semibold text-xs text-stone-900">該用戶綁定之直撥收款銀行帳戶</h5>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">銀行名稱</span>
+                  <span className="text-[11px] text-stone-400 block">銀行名稱</span>
                   <span className="font-bold text-stone-800 truncate block">
                     {selectedUser.bankAccount?.bankName || '822 中國信託商業銀行'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">銀行代碼</span>
-                  <span className="font-mono font-bold text-stone-800">
+                  <span className="text-[11px] text-stone-400 block">銀行代碼</span>
+                  <span className="tabular-nums font-bold text-stone-800">
                     {selectedUser.bankAccount?.bankCode || '822'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">帳戶號碼</span>
-                  <span className="font-mono font-bold text-stone-800">
+                  <span className="text-[11px] text-stone-400 block">帳戶號碼</span>
+                  <span className="tabular-nums font-bold text-stone-800">
                     {selectedUser.bankAccount?.accountNumber
                       ? `•••• ${selectedUser.bankAccount.accountNumber.slice(-4)}`
                       : '•••• 6789'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">戶名</span>
+                  <span className="text-[11px] text-stone-400 block">戶名</span>
                   <span className="font-bold text-stone-800 truncate block">
                     {selectedUser.bankAccount?.accountHolder || selectedUser.name}
                   </span>
@@ -297,7 +298,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                   <Send className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-sm text-stone-100">點數轉入</span>
                 </div>
-                <div className="text-xs text-amber-400 font-mono bg-stone-850 px-2.5 py-1 rounded-lg border border-stone-800">
+                <div className="text-xs text-amber-400 tabular-nums bg-stone-850 px-2.5 py-1 rounded-lg border border-stone-800">
                   今日剩餘配額：{remainingQuota.toLocaleString()} 點
                 </div>
               </div>
@@ -306,7 +307,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-xs text-stone-300 font-bold flex items-center justify-between">
                   <span>轉入點數金額：</span>
-                  <span className="text-[11px] text-stone-400 font-mono">
+                  <span className="text-[11px] text-stone-400 tabular-nums">
                     上限：{remainingQuota.toLocaleString()} 點
                   </span>
                 </label>
@@ -316,9 +317,9 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                       key={val}
                       type="button"
                       onClick={() => setAmount(val)}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-xl text-xs tabular-nums font-bold transition-all cursor-pointer ${
                         amount === val
-                          ? 'bg-amber-400 text-stone-950 font-black shadow-xs'
+                          ? 'bg-amber-400 text-stone-950 font-semibold shadow-xs'
                           : 'bg-stone-800 hover:bg-stone-700 text-stone-200'
                       }`}
                     >
@@ -333,7 +334,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                     value={amount || ''}
                     onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value) || 0))}
                     placeholder="自訂點數金額..."
-                    className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-amber-400"
+                    className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-white tabular-nums text-sm focus:outline-none focus:border-amber-400"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">點數</span>
                 </div>
@@ -379,7 +380,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                   type="button"
                   onClick={() => setIsConfirming(true)}
                   disabled={amount <= 0 || amount > remainingQuota}
-                  className="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                  className="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-stone-950 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Send className="w-3.5 h-3.5 text-stone-950" />
                   <span>確認轉入點數</span>
@@ -391,13 +392,13 @@ export const AdminPointsReceivablesTab: React.FC = () => {
       )}
 
       {/* 最近點數轉入紀錄 */}
-      <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+      <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
         <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-purple-600" />
-            <h4 className="font-extrabold text-sm text-stone-900">最近點數轉入紀錄</h4>
+            <h4 className="font-semibold text-sm text-stone-900">最近點數轉入紀錄</h4>
           </div>
-          <span className="text-[11px] text-stone-400 font-mono">共 {historyTransactions.length} 筆</span>
+          <span className="text-[11px] text-stone-400 tabular-nums">共 {historyTransactions.length} 筆</span>
         </div>
 
         {historyTransactions.length === 0 ? (
@@ -411,17 +412,17 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                     <span className="font-bold text-stone-900 truncate">
                       撥至：{tx.toUserName || '會員用戶'}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-mono">
+                    <span className="text-[11px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 tabular-nums">
                       {tx.type}
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-500 truncate mt-0.5">{tx.note || '管理員點數異動'}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="font-black text-amber-700 font-mono block">
+                  <span className="font-semibold text-amber-700 tabular-nums block">
                     +{tx.amount?.toLocaleString()} 點
                   </span>
-                  <span className="text-[10px] text-stone-400 font-mono">{tx.createdAt}</span>
+                  <span className="text-[11px] text-stone-400 tabular-nums">{formatDateTime(tx.createdAt)}</span>
                 </div>
               </div>
             ))}
@@ -432,14 +433,14 @@ export const AdminPointsReceivablesTab: React.FC = () => {
       {/* 確認彈窗 */}
       {isConfirming && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-amber-700">
               <ShieldCheck className="w-5 h-5 text-amber-600" />
-              <h4 className="font-black text-sm text-stone-900">確認轉入點數？</h4>
+              <h4 className="font-semibold text-sm text-stone-900">確認轉入點數？</h4>
             </div>
             <p className="text-xs text-stone-600 leading-relaxed">
               即將為「<strong>{selectedUser?.name}</strong>」轉入
-              <strong className="text-amber-700 text-sm font-mono"> +{amount.toLocaleString()} 點</strong>。
+              <strong className="text-amber-700 text-sm tabular-nums"> +{amount.toLocaleString()} 點</strong>。
               <br />
               原因備註：{customReasonNote.trim() ? `${reasonCategory} - ${customReasonNote.trim()}` : reasonCategory}。
             </p>
@@ -454,7 +455,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleExecute}
-                className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black cursor-pointer shadow-xs"
+                className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold cursor-pointer shadow-xs"
               >
                 確定轉入
               </button>

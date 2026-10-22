@@ -24,6 +24,7 @@ import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
+import { BackToTopButton } from './components/BackToTopButton';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { CenterToast } from './components/CenterToast';
 import { SplashScreen } from './components/SplashScreen';
@@ -38,6 +39,8 @@ import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
+import { trackFeature, featureFromPath } from './services/featureUsage';
+import { OPEN_DASHBOARD_TAB_EVENT } from './utils/adminShortcuts';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -914,6 +917,8 @@ function MainContent() {
     try {
       const curPath = window.location.pathname + window.location.search + window.location.hash;
       trackPageView(curPath || '/', document.title);
+      // 各大功能使用統計（每位訪客每天每個功能算一次）
+      trackFeature(featureFromPath(window.location.pathname, Boolean(selectedQuestion?.id)));
     } catch {}
   }, [activeTab, specialZone, selectedQuestion?.id]);
 
@@ -1093,6 +1098,20 @@ function MainContent() {
     window.addEventListener('ideax:open-question', onOpenQuestion);
     return () => window.removeEventListener('ideax:open-question', onOpenQuestion);
   }, [questions]);
+
+  // 管理員頁面的捷徑：打開會員後台的管理分頁（只接受白名單分頁，且只有管理員）
+  useEffect(() => {
+    const onOpenTab = (e: Event) => {
+      const tab = String((e as CustomEvent).detail?.tab || '');
+      if (tab !== 'admin_aicrm' || currentUser.role !== 'admin') return;
+      setSelectedQuestion(null);
+      setUserDashboardTab(tab as any);
+      setActiveTab('user_dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener(OPEN_DASHBOARD_TAB_EVENT, onOpenTab);
+    return () => window.removeEventListener(OPEN_DASHBOARD_TAB_EVENT, onOpenTab);
+  }, [currentUser.role]);
 
   // 小燈泡對話框的功能捷徑：只打開網站頁面（白名單），需要登入的頁面先請訪客登入
   useEffect(() => {
@@ -2034,11 +2053,9 @@ function MainContent() {
               onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
               onBackFromDetail={backToIdeasSearch}
               onOpenCreateProposal={() => {
+                // 創點子專區的「發布創新提案」走一般發布頁（創新提案），不是創星季競賽報名
                 setCreateIdeasDetailId(null);
-                setActiveTab('star_season');
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'submit' } }));
-                }, 0);
+                handleOpenCreateWithType('innovation_proposal');
               }}
               onOpenAuth={() => openAuthModal('login')}
             />
@@ -2118,21 +2135,7 @@ function MainContent() {
                 {specialZone === 'create_ideas' && (
                   <CreateIdeasZoneView
                     onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
-                    onOpenCreateProposal={() => {
-                      window.history.pushState(
-                        { ideaxMain: true, tab: 'star_season', subView: 'submit' },
-                        '',
-                        '/challenge/submit'
-                      );
-                      setActiveTab('star_season');
-                      setTimeout(() => {
-                        window.dispatchEvent(
-                          new CustomEvent('ideax_challenge_navigate', {
-                            detail: { subView: 'submit' },
-                          })
-                        );
-                      }, 50);
-                    }}
+                    onOpenCreateProposal={() => handleOpenCreateWithType('innovation_proposal')}
                     onCloseZone={() => {
                       setSpecialZone('all');
                     }}
@@ -2240,7 +2243,7 @@ function MainContent() {
                       <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-1.5 animate-in fade-in duration-150">
                         <p className="text-xs font-medium text-stone-700 leading-relaxed">
                           {isRaceMode
-                            ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
+                            ? "匯集真實生活與產業未解痛點，開放給創星季參賽團隊作為解題題目與共創解方。"
                             : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"}
                         </p>
                         <div className="flex items-center gap-2 text-[11px] text-rose-800 font-bold pt-0.5">
@@ -2470,7 +2473,7 @@ function MainContent() {
                     {showL0Help && (
                       <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-1.5 animate-in fade-in duration-150">
                         <p className="text-xs font-medium text-stone-700 leading-relaxed">
-                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。
+                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助，適合社群激盪與早期方向探索。
                         </p>
                         <div className="flex items-center gap-2 text-[11px] text-sky-800 font-bold pt-0.5">
                           <span>0 門檻自由交流 · 社群觀點激盪</span>
@@ -2839,7 +2842,7 @@ function MainContent() {
                               ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
                               : viewMode === 'list'
                               ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                              : 'grid grid-cols-1 md:grid-cols-2 gap-5'
                           }
                         >
                           {visibleQuestions.map((q, idx) => {
@@ -2883,7 +2886,7 @@ function MainContent() {
                                     ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
                                     : viewMode === 'list'
                                     ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                                    : 'grid grid-cols-1 md:grid-cols-2 gap-5'
                                 }
                               >
                                 {blurredQuestions.map((q, idx) => (
@@ -3451,6 +3454,9 @@ function MainContent() {
           }}
         />
       )}
+
+      {/* 瀏覽卡片的頁面：右下角「回到頂部」 */}
+      {['explore', 'solvers', 'job_explorer', 'star_season', 'leaderboard', 'my_projects'].includes(activeTab) && <BackToTopButton />}
 
       {/* 手機行動裝置專屬底部導覽列 (創星季獨立站模式下隱藏，保持獨立單頁體驗) */}
       {activeTab !== 'star_season' && (

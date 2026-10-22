@@ -88,6 +88,7 @@ import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
 import { isGuestPreviewOnly } from '../utils/guestAccess';
+import { MindMapSection } from './mindmap/MindMapSection';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -1429,6 +1430,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         )}
 
+        {/* 心智圖（作者選填） */}
+        {(liveQuestion.postType === 'innovation_proposal' || liveQuestion.postType === 'vibecoding_app') && (
+          <MindMapSection data={liveQuestion.mindMap} />
+        )}
+
         {/* Question Full Description & AI Tags Section */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3.5">
           <div className="flex items-center justify-between">
@@ -2429,7 +2435,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                               </button>
                             ) : (
                               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                                免費公開交流
+                                公開交流
                               </span>
                             )}
                           </div>

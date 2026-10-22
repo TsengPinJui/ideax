@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { playSousouSound, sousouWindStop, sousouAha } from './sousouSound';
+import { supportsWebGL } from '../../utils/webglSupport';
 
 /**
  * 匯職缺的探索者「搜搜」
@@ -18,14 +19,6 @@ type Engine = {
   destroy: () => void;
 };
 
-function supportsWebGL() {
-  try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
 
 const sizeFor = () => (window.innerWidth < 640 ? 138 : 196);
 
@@ -71,12 +64,17 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
   };
 
   // 左下角停靠點（避開手機版底部選單）
+  // 底部選單高度每秒量一次就好（之前每一格都量，會逼瀏覽器一直重算整頁排版）
+  const trailCleared = useRef(false);
+  const navCache = useRef({ at: 0, h: 0 });
   const dock = () => {
     const s = state.current.size;
-    let bottom = 10;
-    const nav = document.querySelector('[data-ixm-avoid="bottom"]') as HTMLElement | null;
-    if (nav && nav.offsetParent !== null) bottom += nav.getBoundingClientRect().height;
-    return { x: 6, y: window.innerHeight - s - bottom };
+    const now = performance.now();
+    if (now - navCache.current.at > 1000) {
+      const nav = document.querySelector('[data-ixm-avoid="bottom"]') as HTMLElement | null;
+      navCache.current = { at: now, h: nav && nav.offsetParent !== null ? nav.getBoundingClientRect().height : 0 };
+    }
+    return { x: 6, y: window.innerHeight - s - 10 - navCache.current.h };
   };
 
   // 載入 3D 角色
@@ -118,8 +116,11 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       const dpr = Math.min(2, window.devicePixelRatio || 1), W = window.innerWidth, H = window.innerHeight;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       const g = cv.getContext('2d'); if (!g) return;
-      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
       while (S.trail.length && now - S.trail[0].t > LIFE) S.trail.shift();
+      // 沒有風線時不用每一格清整個螢幕大小的畫布
+      if (S.trail.length < 2 && trailCleared.current) return;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      trailCleared.current = S.trail.length < 2;
       const pts = S.trail; if (pts.length < 2) return;
       const sc = S.size / 168;
       g.lineCap = 'butt'; // 分段畫，圓頭會在交疊處形成一顆顆珠子
@@ -206,7 +207,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
         if (soundRef.current) sousouWindStop();
         const found = S.resultCount > 0;
         engineRef.current?.play(found ? 'found' : 'sorry');
-        later(() => engineRef.current?.play('land'), found ? 2600 : 2200);
+        later(() => engineRef.current?.play('land'), found ? 2600 : 3600);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -252,7 +253,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       const found = S.resultCount > 0;
       if (found) aha();
       engineRef.current?.play(found ? 'found' : 'sorry');
-      later(() => engineRef.current?.play('land'), found ? 2600 : 2200);
+      later(() => engineRef.current?.play('land'), found ? 2600 : 3600);
     }
     if (!searching) S.launched = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps

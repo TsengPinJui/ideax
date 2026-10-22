@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePagedList, ShowMoreButton } from './ShowMoreList';
 import { useApp } from '../context/AppContext';
 import { Question, Answer, ChatConversation } from '../types';
 import { ContractPreviewModal } from './ContractPreviewModal';
@@ -46,8 +47,9 @@ export const AdminCasesManagementTab: React.FC<{
 
   // 整理案件清單
   const casesList = questions.map((q) => {
-    const qAnswers = answers.filter((a) => a.questionId === q.id);
-    const acceptedAnswer = qAnswers.find((a) => a.isAccepted) || qAnswers[0];
+    // 只算解決方案（不含討論留言）；「採納專家」必須是真的被採納的那一份，不能拿第一則留言充數
+    const qAnswers = answers.filter((a) => a.questionId === q.id && a.type !== 'discussion');
+    const acceptedAnswer = qAnswers.find((a) => a.isAccepted);
     const matchingConv = conversations.find(
       (c) =>
         c.relatedQuestionId === q.id ||
@@ -86,12 +88,12 @@ export const AdminCasesManagementTab: React.FC<{
           : '公開招募解答中',
       statusBadge:
         progressStatus === 'disputed'
-          ? 'bg-rose-100 text-rose-900 border-rose-300'
+          ? 'bg-rose-100 text-rose-900 border-stone-200'
           : progressStatus === 'solved'
-          ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+          ? 'bg-emerald-100 text-emerald-900 border-stone-200'
           : progressStatus === 'in_progress'
-          ? 'bg-amber-100 text-amber-950 border-amber-300'
-          : 'bg-blue-100 text-blue-900 border-blue-200',
+          ? 'bg-amber-100 text-amber-950 border-stone-200'
+          : 'bg-blue-100 text-blue-900 border-stone-200',
       createdAt: q.createdAt,
       deadline: q.deadline,
       acceptedAnswer,
@@ -118,6 +120,7 @@ export const AdminCasesManagementTab: React.FC<{
     }
     return true;
   });
+  const pagedCases = usePagedList(filteredCases, 20);
 
   const handleOpenDialogue = (item: (typeof casesList)[0]) => {
     setActiveDialogueCase({
@@ -134,7 +137,7 @@ export const AdminCasesManagementTab: React.FC<{
       {/* 標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2">
             <Briefcase className="w-5 h-5 text-purple-600" />
             <span>案件管理</span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
@@ -153,72 +156,72 @@ export const AdminCasesManagementTab: React.FC<{
           onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
           className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
             statusFilter === 'open'
-              ? 'bg-blue-100/80 border-blue-400 ring-2 ring-blue-300 shadow-xs'
-              : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100/50'
+              ? 'bg-stone-50 border-blue-400 ring-2 ring-blue-300 shadow-xs'
+              : 'bg-stone-50 border-stone-200 hover:bg-stone-50'
           }`}
         >
           <span className="text-[11px] text-blue-800 font-bold block flex items-center justify-center gap-1">
             <span className="w-2 h-2 rounded-full bg-blue-500" />
             <span>招募中案件</span>
           </span>
-          <span className="text-xl sm:text-2xl font-black text-blue-900 font-mono mt-1 block">
+          <span className="text-xl sm:text-2xl font-semibold text-blue-900 tabular-nums mt-1 block">
             {openCasesCount} 筆
           </span>
-          <span className="text-[10px] text-blue-700/80 mt-0.5 block truncate">等待專家提案</span>
+          <span className="text-[11px] text-blue-700/80 mt-0.5 block truncate">等待專家提案</span>
         </div>
 
         <div
           onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
           className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
             statusFilter === 'in_progress'
-              ? 'bg-amber-100/80 border-amber-400 ring-2 ring-amber-300 shadow-xs'
-              : 'bg-amber-50/50 border-amber-200 hover:bg-amber-100/50'
+              ? 'bg-stone-50 border-amber-400 ring-2 ring-amber-300 shadow-xs'
+              : 'bg-stone-50 border-stone-200 hover:bg-stone-50'
           }`}
         >
           <span className="text-[11px] text-amber-800 font-bold block flex items-center justify-center gap-1">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             <span>進行中交付</span>
           </span>
-          <span className="text-xl sm:text-2xl font-black text-amber-900 font-mono mt-1 block">
+          <span className="text-xl sm:text-2xl font-semibold text-amber-900 tabular-nums mt-1 block">
             {inProgressCasesCount} 筆
           </span>
-          <span className="text-[10px] text-amber-700/80 mt-0.5 block truncate">專家履約執行中</span>
+          <span className="text-[11px] text-amber-700/80 mt-0.5 block truncate">專家履約執行中</span>
         </div>
 
         <div
           onClick={() => setStatusFilter(statusFilter === 'solved' ? 'all' : 'solved')}
           className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
             statusFilter === 'solved'
-              ? 'bg-emerald-100/80 border-emerald-400 ring-2 ring-emerald-300 shadow-xs'
-              : 'bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100/50'
+              ? 'bg-stone-50 border-emerald-400 ring-2 ring-emerald-300 shadow-xs'
+              : 'bg-stone-50 border-stone-200 hover:bg-stone-50'
           }`}
         >
           <span className="text-[11px] text-emerald-800 font-bold block flex items-center justify-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>已完成結案</span>
           </span>
-          <span className="text-xl sm:text-2xl font-black text-emerald-900 font-mono mt-1 block">
+          <span className="text-xl sm:text-2xl font-semibold text-emerald-900 tabular-nums mt-1 block">
             {solvedCasesCount} 筆
           </span>
-          <span className="text-[10px] text-emerald-700/80 mt-0.5 block truncate">驗收採納撥款</span>
+          <span className="text-[11px] text-emerald-700/80 mt-0.5 block truncate">驗收採納撥款</span>
         </div>
 
         <div
           onClick={() => setStatusFilter(statusFilter === 'disputed' ? 'all' : 'disputed')}
           className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
             statusFilter === 'disputed'
-              ? 'bg-rose-100/80 border-rose-400 ring-2 ring-rose-300 shadow-xs'
-              : 'bg-rose-50/50 border-rose-200 hover:bg-rose-100/50'
+              ? 'bg-stone-50 border-rose-400 ring-2 ring-rose-300 shadow-xs'
+              : 'bg-stone-50 border-stone-200 hover:bg-stone-50'
           }`}
         >
           <span className="text-[11px] text-rose-800 font-bold block flex items-center justify-center gap-1">
             <span className="w-2 h-2 rounded-full bg-rose-500" />
             <span>爭議申訴件</span>
           </span>
-          <span className="text-xl sm:text-2xl font-black text-rose-900 font-mono mt-1 block">
+          <span className="text-xl sm:text-2xl font-semibold text-rose-900 tabular-nums mt-1 block">
             {disputedCasesCount} 筆
           </span>
-          <span className="text-[10px] text-rose-700/80 mt-0.5 block truncate">待管理員介入</span>
+          <span className="text-[11px] text-rose-700/80 mt-0.5 block truncate">待管理員介入</span>
         </div>
       </div>
 
@@ -262,30 +265,30 @@ export const AdminCasesManagementTab: React.FC<{
       {/* 案件卡片列表 */}
       <div className="space-y-3.5">
         {filteredCases.length === 0 ? (
-          <div className="p-10 text-center bg-stone-50 rounded-3xl border border-dashed border-stone-200 space-y-2">
+          <div className="p-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-2">
             <Briefcase className="w-8 h-8 text-stone-300 mx-auto" />
             <p className="text-xs font-bold text-stone-600">無相符案件紀錄</p>
           </div>
         ) : (
-          filteredCases.map((item) => (
+          pagedCases.visible.map((item) => (
             <div
               key={item.id}
-              className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-purple-300 shadow-2xs transition-all space-y-3"
+              className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-stone-200 shadow-2xs transition-all space-y-3"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-700">
                     {item.category}
                   </span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${item.statusBadge}`}>
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${item.statusBadge}`}>
                     {item.statusLabel}
                   </span>
-                  <span className="text-xs font-mono text-stone-400">ID: {item.id}</span>
+                  <span className="text-xs tabular-nums text-stone-400">ID: {item.id}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-stone-400">提案懸賞：</span>
-                  <span className="text-base font-black text-amber-950 font-mono">
+                  <span className="text-base font-semibold text-amber-950 tabular-nums">
                     NT$ {item.bounty.toLocaleString()}
                   </span>
                 </div>
@@ -293,7 +296,7 @@ export const AdminCasesManagementTab: React.FC<{
 
               {/* 案件名稱與摘要 */}
               <div>
-                <h4 className="font-black text-sm text-stone-900 hover:text-purple-700 transition-colors">
+                <h4 className="font-semibold text-sm text-stone-900 hover:text-purple-700 transition-colors">
                   {item.title}
                 </h4>
                 <p className="text-xs text-stone-600 mt-1 line-clamp-2 leading-relaxed">
@@ -352,7 +355,7 @@ export const AdminCasesManagementTab: React.FC<{
                         );
                         setPreviewContract(cData);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-stone-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       title="檢視與下載此案件之商業契約檔案"
                     >
                       <FileText className="w-3.5 h-3.5 text-amber-700" />
@@ -364,7 +367,7 @@ export const AdminCasesManagementTab: React.FC<{
                   <button
                     type="button"
                     onClick={() => handleOpenDialogue(item)}
-                    className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-stone-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                     title="查閱雙方私聊訊息與對話紀錄"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-purple-700" />
@@ -387,16 +390,17 @@ export const AdminCasesManagementTab: React.FC<{
             </div>
           ))
         )}
+        <ShowMoreButton remaining={pagedCases.remaining} onClick={pagedCases.showMore} />
       </div>
 
       {/* 查閱對話紀錄彈窗 */}
       {activeDialogueCase && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2 text-purple-700">
                 <MessageSquare className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900 truncate max-w-xs">
+                <h4 className="font-semibold text-base text-stone-900 truncate max-w-xs">
                   案件對話審計紀錄
                 </h4>
               </div>
@@ -425,11 +429,11 @@ export const AdminCasesManagementTab: React.FC<{
                 activeDialogueCase.conversation.messages.map((m) => (
                   <div key={m.id} className="p-3 rounded-xl bg-white border border-stone-200 space-y-1 text-xs shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-stone-900 flex items-center gap-1.5">
+                      <span className="font-semibold text-stone-900 flex items-center gap-1.5">
                         <img src={m.senderAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt="" className="w-4 h-4 rounded-full" />
                         <span>{m.senderName}</span>
                       </span>
-                      <span className="text-[10px] text-stone-400 font-mono">{m.createdAt.split('T')[0]}</span>
+                      <span className="text-[11px] text-stone-400 tabular-nums">{m.createdAt.split('T')[0]}</span>
                     </div>
 
                     <p className="text-stone-700 text-xs leading-relaxed pt-1">
@@ -437,12 +441,12 @@ export const AdminCasesManagementTab: React.FC<{
                     </p>
 
                     {m.offer && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 space-y-1">
-                        <span className="text-[11px] font-black text-amber-950 block">
+                      <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-stone-200 space-y-1">
+                        <span className="text-[11px] font-semibold text-amber-950 block">
                           [自訂專屬報價單] {m.offer.title} - NT$ {m.offer.price.toLocaleString()}
                         </span>
                         <p className="text-[11px] text-amber-900">{m.offer.description}</p>
-                        <span className="text-[10px] text-stone-500 block">狀態：{m.offer.status}</span>
+                        <span className="text-[11px] text-stone-500 block">狀態：{m.offer.status}</span>
                       </div>
                     )}
                   </div>

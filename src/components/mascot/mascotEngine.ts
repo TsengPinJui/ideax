@@ -14,7 +14,7 @@ export interface MascotEngineOptions {
   tuning?: Partial<MascotTuning>; bubbleDefault?: string;
   getInsets?: () => { bottom: number; right: number };
   /** impact 會帶撞擊速度（px/s）；scared 進入驚嚇；zap 驚嚇中燈光閃一下 */
-  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow' | 'scared' | 'calm' | 'zap' | 'impact', data?: number) => void;
+  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow' | 'scared' | 'calm' | 'zap' | 'impact' | 'dance', data?: number) => void;
 }
 export interface MascotStage { x: number; y: number; lean?: number; look?: 'around' }
 export interface MascotEngine {
@@ -58,7 +58,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   el.appendChild(canvas);
   canvas.className = 'ixm-canvas';
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(2.5, Math.max(1.5, devicePixelRatio || 1)));
+  // 解析度最高 2 倍（之前 2.5 倍，透光玻璃每格要多畫一次，太吃顯示卡）
+  renderer.setPixelRatio(Math.min(2, Math.max(1.25, devicePixelRatio || 1)));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -360,10 +361,22 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     flickerAt: 0, flickerOn: false, prevX: 0, prevY: 0, prevVx: 0, prevVy: 0, ax: 0, ay: 0,
     sadSince: 0, sadLie: false, lie: 0, sadMix: 0, puddle: 0, stage: null, talkUntil: 0, dropFromStage: false,
   };
-  const size = () => ({ w: el.offsetWidth, h: el.offsetHeight });
+  // 尺寸改成記住（ResizeObserver 更新）：之前每一格都讀 offsetWidth，
+  // 而且是在改完位置之後讀，瀏覽器每秒要重算 60 次整頁排版，欄位多的頁面（例如個人資料）會明顯卡
+  const dims = { w: el.offsetWidth, h: el.offsetHeight, shadowW: shadowEl.offsetWidth, bubbleW: bubble.offsetWidth, bubbleH: bubble.offsetHeight };
+  const measureDims = () => {
+    dims.w = el.offsetWidth; dims.h = el.offsetHeight; dims.shadowW = shadowEl.offsetWidth;
+    if (!bubble.hidden) { dims.bubbleW = bubble.offsetWidth; dims.bubbleH = bubble.offsetHeight; }
+  };
+  let dimsRO = null;
+  try {
+    dimsRO = new ResizeObserver(() => measureDims());
+    dimsRO.observe(el); dimsRO.observe(shadowEl); dimsRO.observe(bubble);
+  } catch {}
+  const size = () => ({ w: dims.w, h: dims.h });
   const FOOT_RATIO = 0.8; // 腳底在畫布中的高度比例
   const PAD = 1.5; // 畫布 / 燈泡本體框 的比例（CSS 尺寸也要一致）
-  const msize = () => ({ w: el.offsetWidth / PAD, h: el.offsetHeight / PAD });
+  const msize = () => ({ w: dims.w / PAD, h: dims.h / PAD });
   // 除錯用：localStorage 設 ixm_debug=1 時可在主控台讀取狀態
   try { if (localStorage.getItem('ixm_debug') === '1') (window as any).__ixm = S; } catch {}
   function home() { const { w } = msize(); return { x: innerWidth - w / 2 - insets.right, y: innerHeight - insets.bottom }; }
@@ -433,7 +446,9 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     const m = S.mood, c = fctx, W = 512, H = 384;
     const lx = S.lookX * 10, ly = S.lookY * 9;
     const talking = S.talkUntil > performance.now() && m !== 'sad' && m !== 'scared' && m !== 'dizzy';
-    const sig = [m, lx.toFixed(0), ly.toFixed(0), S.blink.toFixed(1), talking ? 't' : '', Math.floor(performance.now() / (m === 'sad' || talking ? 60 : 120)) % 64].join('|');
+    // 只有會動的表情（說話、哭、冷汗、嚇到）才需要隨時間重畫；平常表情沒變就不重新上傳貼圖
+    const animated = talking || m === 'sad' || m === 'shy' || m === 'scared';
+    const sig = [m, lx.toFixed(0), ly.toFixed(0), S.blink.toFixed(1), talking ? 't' : '', animated ? Math.floor(performance.now() / (m === 'sad' || talking ? 60 : 120)) % 64 : 0].join('|');
     if (!faceDirty && sig === faceSig) return;
     faceSig = sig; faceDirty = false;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 1024, 768); c.setTransform(2, 0, 0, 2, 0, 0);
@@ -599,9 +614,13 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     }
   }
 
-  let lastT = performance.now(), running = !document.hidden, unitPx = 50, lastInsetRead = 0;
+  let lastT = performance.now(), running = !document.hidden, unitPx = 50, lastInsetRead = 0, frameNo = 0;
   function frame(now) {
     if (!running || destroyed) return;
+    // 閒著（待在原位、沒表情變化、沒說話跳舞、游標 4 秒沒動）就每秒畫 30 格，顯示卡負擔減半
+    const idleNow = S.mode === 'home' && S.mood === 'idle' && !S.jumpY && now > S.talkUntil && !(S.waveDanceUntil > now)
+      && (!S.lastPointer || now - S.lastPointer.t > 4000);
+    if (idleNow && (frameNo++ & 1)) { rafId = requestAnimationFrame(frame); return; }
     if (now - lastInsetRead > 1000) { lastInsetRead = now; readInsets(); }
     const dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
     const vw = innerWidth, vh = innerHeight, { w, h } = size(), H = S.stage ? { x: S.stage.x, y: S.stage.y } : home();
@@ -754,7 +773,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     const bob = S.mode === 'home' && !S.jumpY ? Math.sin(now / 700) * 2 : 0;
     el.style.transform = `translate(${S.x - w / 2 + shake}px, ${S.y - h * FOOT_RATIO + S.jumpY + bob}px)`;
     const lift = Math.min(1, -S.jumpY / 200 + Math.max(0, (vh - insets.bottom - S.y) / 300));
-    shadowEl.style.transform = `translate(${S.x - shadowEl.offsetWidth / 2}px, ${vh - insets.bottom - 8}px) scale(${1 - lift * 0.5})`;
+    shadowEl.style.transform = `translate(${S.x - dims.shadowW / 2}px, ${vh - insets.bottom - 8}px) scale(${1 - lift * 0.5})`;
     shadowEl.style.opacity = String(1 - lift * 0.7);
     glowEl.style.opacity = String(Math.min(1, g * 0.95));
     { const lift2 = Math.min(1, -S.jumpY / 220 + Math.max(0, (vh - insets.bottom - S.y) / 320));
@@ -772,9 +791,11 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     alarmEl.style.transform = `translateY(${Math.sin(now / 80) * 3}px)`;
     if (!bubble.hidden) {
       if (bubbleUntil && now > bubbleUntil) { bubbleText.textContent = bubbleDefault; bubbleUntil = 0; }
-      const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
-      // 手機上燈泡比較小，訊息框往下靠近燈泡一點（不然離太遠，像是飄在內容上）
-      const near = vw < 640 ? 38 : 0;
+      // 泡泡剛出現（尺寸還是 0）才量一次，其他時候用 ResizeObserver 記住的尺寸
+      if (!dims.bubbleW) { dims.bubbleW = bubble.offsetWidth; dims.bubbleH = bubble.offsetHeight; }
+      const bw = dims.bubbleW, bh = dims.bubbleH;
+      // 訊息框靠近燈泡頭頂一點；手機上燈泡比較小，再往下多靠一些（不然離太遠，像是飄在內容上）
+      const near = vw < 640 ? 48 : 24;
       const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - msize().h * 0.95 - bh + S.jumpY + near);
       bubble.style.transform = `translate(${bx}px, ${by}px)`;
     }
@@ -783,6 +804,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
 
   function resize() {
     readInsets();
+    measureDims();
     const { w, h } = size();
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -812,6 +834,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       const now = performance.now();
       S.sadLie = false;
       S.waveDanceStart = now; S.waveDanceUntil = now + ms; S.danceHopAt = now + DANCE_BEAT;
+      emit('dance', ms); // 外層播放跳舞音樂（先於開心，跳舞時就不另外播開心音效）
       setMood('happy', ms);
       S.pose = 'idle'; // 手的動作交給波浪舞
       say(text || '～♪ 來跟我一起跳波浪舞！～♬', ms);
@@ -839,7 +862,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     size: () => ({ ...msize(), foot: 0.86 }),
     refreshInsets: () => { readInsets(); if (S.mode === 'fallen' || S.mode === 'fly') return; S.mode = 'home'; },
     destroy: () => {
-      destroyed = true; cancelAnimationFrame(rafId); cleanups.forEach((f) => f());
+      destroyed = true; cancelAnimationFrame(rafId); cleanups.forEach((f) => f()); try { dimsRO?.disconnect(); } catch {}
       scene.traverse((obj) => { if (obj.geometry) obj.geometry.dispose(); const m = obj.material; if (m) (Array.isArray(m) ? m : [m]).forEach((mm) => { if (mm.map) mm.map.dispose(); mm.dispose(); }); });
       pmrem.dispose(); renderer.dispose(); canvas.remove();
     },

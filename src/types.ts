@@ -962,6 +962,7 @@ export interface Question {
   version?: string; // 相容 currentVersion
   vibeCodingData?: any; // VibeCoding 專屬規格與作品資料
   publishedPlatforms?: PublishedPlatform[]; // VibeCoding 作品已上架的平台（選填，可附網址）
+  mindMap?: MindMapData | null; // 心智圖（創新提案、VibeCoding 作品選填）
   isSimulated?: boolean; // 是否為系統模擬貼文（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   tipsHistory?: Array<{
@@ -1133,6 +1134,7 @@ export interface Answer {
   sourcePainPointProposalId?: string;
   supportPoints?: number; // 創星季模擬募資點數
   coverImageUrl?: string; // 提案卡片封面圖片
+  fakeDefaultsFixed?: boolean; // 已扣掉以前創星季預設的假讚數／點數／留言數
   commentsCount?: number; // 討論數
   isSimulated?: boolean; // 是否為系統模擬解答/討論留言（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
@@ -1453,19 +1455,41 @@ export interface HomeShowcaseConfig {
   enabled: boolean;
   /** 可複選：要播放哪幾種內容 */
   modes: HomeShowcaseMode[];
+  /** 管理員自選：要播放的作品（問題／提案）ID，最多 30 個，依勾選順序 */
+  customIds: string[];
+  /** 優秀作品、付費推播也播放虛擬（模擬）卡片；真實作品夠多後可以關掉。預設開 */
+  includeSimulated?: boolean;
+  /** 隱藏首頁的大標題「一個問題，找到更多可能。」與小標題（只是視覺上隱藏，搜尋引擎仍讀得到） */
+  hideHeroTitles?: boolean;
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
-export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'] };
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [], includeSimulated: true };
+export const HOME_SHOWCASE_MAX_CUSTOM = 30;
+
+/** 心智圖：中心主題往外分支，最多 3 層、40 個節點 */
+export interface MindMapNode {
+  id: string;
+  text: string;
+  children: MindMapNode[];
+}
+export interface MindMapData {
+  root: MindMapNode;
+  updatedAt?: string;
+}
 
 export interface PublicMetricsConfig {
+  showPublicMetrics?: boolean;     // 統一開關：關閉時首頁不顯示任何公開數據（沒設定過視為開啟）
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數
   showTotalBounty: boolean;        // 累計懸賞金額
   showAvgResponseSpeed: boolean;   // 平均回覆速度
   showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
   showTotalViews?: boolean;        // 網站總瀏覽量（進入網站的總瀏覽次數）
-  showUniqueVisitors?: boolean;    // 造訪用戶（不重複裝置數）
+  showUniqueVisitors?: boolean;    // 不重複訪客（不重複裝置數）
+  showTodayVisitors?: boolean;     // 今日不重複訪客
+  showNewMembers7d?: boolean;      // 近 7 天新註冊會員
+  showJobsUsers?: boolean;         // 匯職缺使用人次（累計）
   showOnlineUsers?: boolean;       // 即時線上人數
   showTotalMembers?: boolean;      // 總註冊用戶
   showVerifiedSolvers?: boolean;   // 認證專家
@@ -1474,6 +1498,14 @@ export interface PublicMetricsConfig {
   showTotalDeals?: boolean;        // 已成交方案
   showTotalGMV?: boolean;          // 平台總交易額
 }
+
+/** 各項公開數據的開關（不含統一開關），計算「已公開 N / M 項」用 */
+export const PUBLIC_METRIC_TOGGLE_KEYS: Array<keyof PublicMetricsConfig> = [
+  'showTotalViews', 'showUniqueVisitors', 'showTodayVisitors', 'showOnlineUsers', 'showTotalMembers', 'showNewMembers7d', 'showVerifiedSolvers',
+  'showQuestionsCount', 'showProposalsCount', 'showJobsUsers', 'showSolvedCount', 'showTotalBounty', 'showHighestBounty', 'showTotalDeals',
+  'showAvgResponseSpeed', 'showSatisfactionRate', 'showTotalGMV',
+];
+export const countPublicMetrics = (c: PublicMetricsConfig) => PUBLIC_METRIC_TOGGLE_KEYS.filter((k) => c[k] === true).length;
 
 // =========================================================================
 // AI 客服與智慧工單 / FAQ 體系 (AI Customer Support & FAQ Suite)

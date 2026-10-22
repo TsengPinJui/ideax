@@ -38,6 +38,7 @@ export interface RealSiteTrafficStatsPayload {
   uniqueVisitorsTotal?: number;
   visitorsDaily?: Record<string, number>;
   visitorsHourly?: Record<string, number>;
+  newVisitorsDaily?: Record<string, number>;
 }
 
 export const REAL_TRAFFIC_STORAGE_KEY = 'ideax_real_site_traffic_utc8_v3';
@@ -86,6 +87,7 @@ export function getCachedRealTrafficStats(): RealSiteTrafficStatsPayload {
           uniqueVisitorsTotal: Number(parsed.uniqueVisitorsTotal) || 0,
           visitorsDaily: parsed.visitorsDaily && typeof parsed.visitorsDaily === 'object' ? parsed.visitorsDaily : {},
           visitorsHourly: parsed.visitorsHourly && typeof parsed.visitorsHourly === 'object' ? parsed.visitorsHourly : {},
+          newVisitorsDaily: parsed.newVisitorsDaily && typeof parsed.newVisitorsDaily === 'object' ? parsed.newVisitorsDaily : {},
           hourly,
           daily,
           firstRecordedAtUtc8: parsed.firstRecordedAtUtc8 || '',
@@ -354,17 +356,17 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h5 className="font-black text-xs sm:text-sm text-stone-900">{title}</h5>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>{badgeText}</span>
+              <h5 className="font-semibold text-xs sm:text-sm text-stone-900">{title}</h5>
+              <span className={`text-[11px] tabular-nums font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>{badgeText}</span>
             </div>
             <p className="text-[11px] text-stone-500 mt-0.5">{subtitle}</p>
           </div>
           {activeHover && (
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white border border-stone-200 shadow-2xs text-[11px]">
               <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-              <span className="font-mono font-bold text-stone-700">{activeHover.point.fullDateTimeLabel}</span>
+              <span className="tabular-nums font-bold text-stone-700">{activeHover.point.fullDateTimeLabel}</span>
               <span className="text-stone-300">|</span>
-              <span className="font-black font-mono" style={{ color: colorHex }}>{activeHover.val.toLocaleString()} 次</span>
+              <span className="font-semibold tabular-nums" style={{ color: colorHex }}>{activeHover.val.toLocaleString()} 次</span>
             </div>
           )}
         </div>
@@ -382,7 +384,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
               return (
                 <g key={idx}>
                   <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke="#e7e5e4" strokeDasharray={idx === 0 ? undefined : '3 3'} strokeWidth="1" />
-                  <text x={padLeft - 8} y={y + 3.5} textAnchor="end" className="fill-stone-400 font-mono text-[10px]">{tickVal.toLocaleString()}</text>
+                  <text x={padLeft - 8} y={y + 3.5} textAnchor="end" className="fill-stone-400 tabular-nums text-[11px]">{tickVal.toLocaleString()}</text>
                 </g>
               );
             })}
@@ -399,16 +401,16 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
                   {isSingle && <circle cx={c.x} cy={c.y} r={10} fill={colorHex} fillOpacity="0.16" />}
                   <circle cx={c.x} cy={c.y} r={isHovered || isSingle ? 5.5 : isLast ? 4.5 : 3} fill={isHovered || isLast ? colorHex : '#ffffff'} stroke={colorHex} strokeWidth="2" />
                   {showVal && (
-                    <text x={c.x} y={c.y - 10} textAnchor="middle" className="font-mono text-[10px] font-black fill-stone-900">
+                    <text x={c.x} y={c.y - 10} textAnchor="middle" className="tabular-nums text-[11px] font-semibold fill-stone-900">
                       {c.val.toLocaleString()} 次
                     </text>
                   )}
                   {showTick && (
                     <g transform={`translate(${c.x}, ${padTop + plotH + 14})`}>
-                      <text x={0} y={0} textAnchor="middle" className="font-mono text-[9.5px] font-black fill-stone-800">
+                      <text x={0} y={0} textAnchor="middle" className="tabular-nums text-[10.5px] font-semibold fill-stone-800">
                         {granularity === 'hourly' ? c.point.shortLabel.split(' ')[0] : c.point.shortLabel}
                       </text>
-                      <text x={0} y={12} textAnchor="middle" className="font-mono text-[9px] font-bold fill-amber-700">
+                      <text x={0} y={12} textAnchor="middle" className="tabular-nums text-[10.5px] font-bold fill-amber-700">
                         {granularity === 'hourly' ? c.point.timePart : c.point.datePart.slice(0, 4)}
                       </text>
                       {c.point.isFirstConfirmedPeriod && (
@@ -476,11 +478,11 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
       <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50/70 border border-stone-200/90 space-y-2.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-stone-200">
               <span className="w-3 h-1.5 rounded-full bg-amber-500 inline-block" />
               單位時間量：{granularity === 'hourly' ? '每小時瀏覽量 (左軸)' : '每日瀏覽量 (左軸)'}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-black text-purple-800 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-50 px-2.5 py-1 rounded-lg border border-stone-200">
               <span className="w-3 h-1.5 rounded-full bg-purple-600 inline-block" />
               總量：網站累計總瀏覽量 (右軸)
             </span>
@@ -488,11 +490,11 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
           {activePoint && (
             <div className="flex items-center gap-2 flex-wrap px-2.5 py-1.5 rounded-xl bg-white border border-stone-200 shadow-2xs text-[11px]">
               <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-              <span className="font-mono font-bold text-stone-700">{activePoint.fullDateTimeLabel}</span>
+              <span className="tabular-nums font-bold text-stone-700">{activePoint.fullDateTimeLabel}</span>
               <span className="text-stone-300">|</span>
-              <span className="font-mono font-black text-amber-700">單位時間：+{activePoint.periodViews.toLocaleString()} 次</span>
+              <span className="tabular-nums font-semibold text-amber-700">單位時間：+{activePoint.periodViews.toLocaleString()} 次</span>
               <span className="text-stone-300">|</span>
-              <span className="font-mono font-black text-purple-700">累計總量：{activePoint.cumulativeViews.toLocaleString()} 次</span>
+              <span className="tabular-nums font-semibold text-purple-700">累計總量：{activePoint.cumulativeViews.toLocaleString()} 次</span>
             </div>
           )}
         </div>
@@ -509,8 +511,8 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
                 <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.01" />
               </linearGradient>
             </defs>
-            <text x={padLeft - 6} y={16} textAnchor="end" className="fill-amber-700 font-sans font-bold text-[9.5px]">單位時間 (次)</text>
-            <text x={width - padRight + 6} y={16} textAnchor="start" className="fill-purple-700 font-sans font-bold text-[9.5px]">累計總量 (次)</text>
+            <text x={padLeft - 6} y={16} textAnchor="end" className="fill-amber-700 font-sans font-bold text-[10.5px]">單位時間 (次)</text>
+            <text x={width - padRight + 6} y={16} textAnchor="start" className="fill-purple-700 font-sans font-bold text-[10.5px]">累計總量 (次)</text>
             {[0, 0.25, 0.5, 0.75, 1].map((t, idx) => {
               const y = padTop + plotH - t * plotH;
               const leftVal = Math.round(pMin + pSpan * t);
@@ -518,8 +520,8 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
               return (
                 <g key={idx}>
                   <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke="#e7e5e4" strokeDasharray={idx === 0 ? undefined : '3 3'} strokeWidth="1" />
-                  <text x={padLeft - 8} y={y + 3.5} textAnchor="end" className="fill-amber-700 font-mono text-[10px]">{leftVal.toLocaleString()}</text>
-                  <text x={width - padRight + 8} y={y + 3.5} textAnchor="start" className="fill-purple-700 font-mono text-[10px]">{rightVal.toLocaleString()}</text>
+                  <text x={padLeft - 8} y={y + 3.5} textAnchor="end" className="fill-amber-700 tabular-nums text-[11px]">{leftVal.toLocaleString()}</text>
+                  <text x={width - padRight + 8} y={y + 3.5} textAnchor="start" className="fill-purple-700 tabular-nums text-[11px]">{rightVal.toLocaleString()}</text>
                 </g>
               );
             })}
@@ -549,20 +551,20 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
                   <circle cx={x} cy={py} r={isHovered || isLast || isSingle ? 5 : 3.5} fill={isHovered || isLast || isSingle ? '#d97706' : '#ffffff'} stroke="#d97706" strokeWidth="2" />
                   {showVal && (
                     <>
-                      <text x={x} y={Math.min(cy, py) - 10} textAnchor="middle" className="font-mono font-black text-[9.5px] fill-purple-800">
+                      <text x={x} y={Math.min(cy, py) - 10} textAnchor="middle" className="tabular-nums font-semibold text-[10.5px] fill-purple-800">
                         總量 {p.cumulativeViews.toLocaleString()}
                       </text>
-                      <text x={x} y={Math.max(py, cy) + 15} textAnchor="middle" className="font-mono font-black text-[9.5px] fill-amber-800">
+                      <text x={x} y={Math.max(py, cy) + 15} textAnchor="middle" className="tabular-nums font-semibold text-[10.5px] fill-amber-800">
                         +{p.periodViews.toLocaleString()}
                       </text>
                     </>
                   )}
                   {showTick && (
                     <g transform={`translate(${x}, ${padTop + plotH + 14})`}>
-                      <text x={0} y={0} textAnchor="middle" className="font-mono text-[9.5px] font-black fill-stone-800">
+                      <text x={0} y={0} textAnchor="middle" className="tabular-nums text-[10.5px] font-semibold fill-stone-800">
                         {granularity === 'hourly' ? p.shortLabel.split(' ')[0] : p.shortLabel}
                       </text>
-                      <text x={0} y={12} textAnchor="middle" className="font-mono text-[9px] font-bold fill-amber-700">
+                      <text x={0} y={12} textAnchor="middle" className="tabular-nums text-[10.5px] font-bold fill-amber-700">
                         {granularity === 'hourly' ? p.timePart : p.datePart.slice(0, 4)}
                       </text>
                       {p.isFirstConfirmedPeriod && (
@@ -586,14 +588,14 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4">
-      {/* 指標摘要：瀏覽量與造訪用戶數分開呈現 */}
+      {/* 指標摘要：瀏覽量與不重複訪客數分開呈現 */}
       {(() => {
         const todayKey = getUtc8Parts(Date.now()).dateKey;
         const tiles = [
           { label: '累計瀏覽量', value: (trafficStats.totalVisits || 0).toLocaleString(), hint: '每次開啟網站算一次' },
           { label: '今日瀏覽量', value: (trafficStats.daily?.[todayKey] || 0).toLocaleString(), hint: '台灣時間今日' },
-          { label: '累計造訪用戶', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
-          { label: '今日造訪用戶', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
+          { label: '累計不重複訪客', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
+          { label: '今日不重複訪客', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
           { label: '即時在線', value: `${trafficStats.onlineUsersCount || onlineUsersCount}`, hint: '最近 75 秒內在線' },
         ];
         return (
@@ -601,8 +603,8 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             {tiles.map((t) => (
               <div key={t.label} className="rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-2.5">
                 <p className="text-[11px] font-bold text-stone-500">{t.label}</p>
-                <p className="text-lg font-black text-stone-900 font-mono leading-tight mt-0.5">{t.value}</p>
-                <p className="text-[10px] text-stone-400 mt-0.5">{t.hint}</p>
+                <p className="text-lg font-semibold text-stone-900 tabular-nums leading-tight mt-0.5">{t.value}</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">{t.hint}</p>
               </div>
             ))}
           </div>
@@ -614,13 +616,13 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
               <TrendingUp className="w-4 h-4 text-amber-700" />
             </div>
-            <h4 className="font-black text-sm sm:text-base text-stone-900">
+            <h4 className="font-semibold text-sm sm:text-base text-stone-900">
               網站總瀏覽量 ＆ 每日／每時瀏覽量趨勢折線圖
             </h4>
-            <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300">
+            <span className="text-[11px] tabular-nums font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-stone-200">
               台灣標準時間 UTC+8
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-stone-200">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
               100% 真實數據（無回填模擬）
             </span>
@@ -628,7 +630,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
           <p className="text-[11px] text-stone-500 mt-1 flex items-center gap-1.5 flex-wrap">
             <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span>目前基準時間：</span>
-            <strong className="font-mono text-stone-800">{currentUtc8Str}</strong>
+            <strong className="tabular-nums text-stone-800">{currentUtc8Str}</strong>
             <span className="text-stone-300">•</span>
             <span>即時在線：{trafficStats.onlineUsersCount || onlineUsersCount} 位</span>
             <span className="text-stone-300">•</span>
@@ -644,9 +646,9 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             role="switch"
             aria-checked={isOverlayMode}
             onClick={() => setIsOverlayMode((prev) => !prev)}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black transition-all cursor-pointer select-none ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer select-none ${
               isOverlayMode
-                ? 'bg-purple-50/90 border-purple-300 text-purple-950 shadow-2xs'
+                ? 'bg-stone-50 border-stone-200 text-purple-950 shadow-2xs'
                 : 'bg-stone-100 border-stone-200 text-stone-700 hover:bg-stone-200/70'
             }`}
           >
@@ -661,7 +663,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             <button
               type="button"
               onClick={() => { setGranularity('hourly'); setHoveredIndex(null); }}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${granularity === 'hourly' ? 'bg-amber-500 text-stone-950 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${granularity === 'hourly' ? 'bg-amber-500 text-stone-950 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
               <Clock className="w-3.5 h-3.5" />
               <span>每時瀏覽量</span>
@@ -669,7 +671,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             <button
               type="button"
               onClick={() => { setGranularity('daily'); setHoveredIndex(null); }}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${granularity === 'daily' ? 'bg-amber-500 text-stone-950 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${granularity === 'daily' ? 'bg-amber-500 text-stone-950 shadow-2xs' : 'text-stone-600 hover:text-stone-900'}`}
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>每日瀏覽量</span>
@@ -704,41 +706,41 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200/80">
+        <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
           <span className="text-[11px] font-bold text-purple-800 block">網站累計總瀏覽量</span>
-          <span className="text-lg sm:text-xl font-black text-purple-950 font-mono mt-0.5 block">
+          <span className="text-lg sm:text-xl font-semibold text-purple-950 tabular-nums mt-0.5 block">
             {(summaryStats.endCumulative || 1700).toLocaleString()} <span className="text-xs font-bold">次</span>
           </span>
-          <span className="text-[10px] text-purple-700 font-mono block mt-0.5 truncate">
+          <span className="text-[11px] text-purple-700 tabular-nums block mt-0.5 truncate">
             網站起始日2026/09/22
           </span>
         </div>
-        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80">
+        <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
           <span className="text-[11px] font-bold text-amber-800 block">
             已記錄區間總計 ({activePoints.length} {granularity === 'hourly' ? '小時' : '日'})
           </span>
-          <span className="text-lg sm:text-xl font-black text-amber-950 font-mono mt-0.5 block">
+          <span className="text-lg sm:text-xl font-semibold text-amber-950 tabular-nums mt-0.5 block">
             {summaryStats.periodTotal.toLocaleString()} <span className="text-xs font-bold">次</span>
           </span>
-          <span className="text-[10px] text-amber-700 font-mono block mt-0.5 truncate">
+          <span className="text-[11px] text-amber-700 tabular-nums block mt-0.5 truncate">
             平均每{granularity === 'hourly' ? '小時' : '日'} {summaryStats.periodAvg.toLocaleString()} 次
           </span>
         </div>
-        <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+        <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
           <span className="text-[11px] font-bold text-emerald-800 block">
             {granularity === 'hourly' ? '當前小時真實瀏覽 (+8)' : '今日真實累計瀏覽 (+8)'}
           </span>
-          <span className="text-lg sm:text-xl font-black text-emerald-950 font-mono mt-0.5 block">
+          <span className="text-lg sm:text-xl font-semibold text-emerald-950 tabular-nums mt-0.5 block">
             {(summaryStats.latestPoint?.periodViews || 0).toLocaleString()} <span className="text-xs font-bold">次</span>
           </span>
-          <span className="text-[10px] text-emerald-700 font-mono block mt-0.5 truncate">{summaryStats.latestPoint?.shortLabel} (UTC+8)</span>
+          <span className="text-[11px] text-emerald-700 tabular-nums block mt-0.5 truncate">{summaryStats.latestPoint?.shortLabel} (UTC+8)</span>
         </div>
         <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
           <span className="text-[11px] font-bold text-stone-600 block">最高峰時段 (+8)</span>
-          <span className="text-lg sm:text-xl font-black text-stone-900 font-mono mt-0.5 block">
+          <span className="text-lg sm:text-xl font-semibold text-stone-900 tabular-nums mt-0.5 block">
             {(summaryStats.peakPoint?.periodViews || 0).toLocaleString()} <span className="text-xs font-bold">次</span>
           </span>
-          <span className="text-[10px] text-stone-500 font-mono block mt-0.5 truncate">{summaryStats.peakPoint?.fullDateTimeLabel || '-'}</span>
+          <span className="text-[11px] text-stone-500 tabular-nums block mt-0.5 truncate">{summaryStats.peakPoint?.fullDateTimeLabel || '-'}</span>
         </div>
       </div>
 
@@ -754,7 +756,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             '#d97706',
             'trafficPeriodGrad',
             granularity === 'hourly' ? '每時真實流量 (UTC+8)' : '每日真實流量 (UTC+8)',
-            'bg-amber-100 text-amber-900 border-amber-300'
+            'bg-amber-100 text-amber-900 border-stone-200'
           )}
           {renderSingleLineChart(
             activePoints,
@@ -764,7 +766,7 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             '#7c3aed',
             'trafficCumulativeGrad',
             '累計總瀏覽量 (UTC+8)',
-            'bg-purple-100 text-purple-900 border-purple-300'
+            'bg-purple-100 text-purple-900 border-stone-200'
           )}
         </div>
       )}
@@ -786,21 +788,21 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-stone-100 text-stone-600 sticky top-0 z-10 border-b border-stone-200">
                 <tr>
-                  <th className="py-2 px-3 font-black">日期時間 (UTC+8)</th>
-                  <th className="py-2 px-3 font-black text-right">{granularity === 'hourly' ? '當小時真實瀏覽量' : '當日真實瀏覽量'}</th>
-                  <th className="py-2 px-3 font-black text-right">累計網站總瀏覽量</th>
+                  <th className="py-2 px-3 font-semibold">日期時間 (UTC+8)</th>
+                  <th className="py-2 px-3 font-semibold text-right">{granularity === 'hourly' ? '當小時真實瀏覽量' : '當日真實瀏覽量'}</th>
+                  <th className="py-2 px-3 font-semibold text-right">累計網站總瀏覽量</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 font-mono">
+              <tbody className="divide-y divide-stone-100 tabular-nums">
                 {[...activePoints].reverse().map((pt) => (
-                  <tr key={pt.key} className={pt.isCurrent ? 'bg-amber-50/60 font-bold text-stone-950' : 'hover:bg-stone-50 text-stone-700'}>
+                  <tr key={pt.key} className={pt.isCurrent ? 'bg-stone-50 font-bold text-stone-950' : 'hover:bg-stone-50 text-stone-700'}>
                     <td className="py-2 px-3 flex items-center gap-1.5 flex-wrap">
                       <span>{pt.fullDateTimeLabel}</span>
-                      {pt.isCurrent && <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-950 font-sans font-black">目前時段</span>}
-                      {pt.isFirstConfirmedPeriod && <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-sans font-black">首期資料起算點</span>}
+                      {pt.isCurrent && <span className="text-[11px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-950 font-sans font-semibold">目前時段</span>}
+                      {pt.isFirstConfirmedPeriod && <span className="text-[11px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-stone-200 font-sans font-semibold">首期資料起算點</span>}
                     </td>
                     <td className="py-2 px-3 text-right text-amber-700 font-bold">+{pt.periodViews.toLocaleString()} 次</td>
-                    <td className="py-2 px-3 text-right text-purple-800 font-black">{pt.cumulativeViews.toLocaleString()} 次</td>
+                    <td className="py-2 px-3 text-right text-purple-800 font-semibold">{pt.cumulativeViews.toLocaleString()} 次</td>
                   </tr>
                 ))}
               </tbody>

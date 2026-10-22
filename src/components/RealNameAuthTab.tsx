@@ -210,7 +210,7 @@ export const RealNameAuthTab: React.FC = () => {
       });
 
       setIsSubmitting(false);
-      setMsg('🎉 實名身分認證已成功審核通過！');
+      setMsg(' 實名身分認證已成功審核通過！');
       setTimeout(() => setMsg(null), 4000);
     }, 600);
   };
@@ -224,23 +224,23 @@ export const RealNameAuthTab: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-white border border-stone-200 shadow-2xs">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white border border-stone-200 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center font-black border border-blue-200 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center font-semibold border border-stone-200 shrink-0">
               <UserCheck className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-stone-900">
+                <h3 className="text-base sm:text-lg font-semibold text-stone-900">
                   會員實名認證
                 </h3>
                 {isVerified ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
                     <CheckCircle2 className="w-3.5 h-3.5" /> 已通過實名認證
                   </span>
                 ) : isPending ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
                     <Clock className="w-3.5 h-3.5" /> 實名審核中
                   </span>
                 ) : (
@@ -256,7 +256,7 @@ export const RealNameAuthTab: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-stone-400 font-mono flex items-center gap-1 bg-stone-50 px-2.5 py-1 rounded-xl border border-stone-200">
+            <span className="text-[11px] text-stone-400 tabular-nums flex items-center gap-1 bg-stone-50 px-2.5 py-1 rounded-xl border border-stone-200">
               <Lock className="w-3 h-3 text-emerald-600" />
               <span>TLS 256-bit 銀行級加密保護</span>
             </span>
@@ -265,17 +265,17 @@ export const RealNameAuthTab: React.FC = () => {
 
         {/* Status Notice */}
         {msg && (
-          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-stone-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>{msg}</span>
           </div>
         )}
 
         {isVerified && (
-          <div className="mt-4 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-start gap-3">
+          <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs text-emerald-950">
-              <strong className="block text-sm font-black">
+              <strong className="block text-sm font-semibold">
                 您的帳號已完成官方實名認證
               </strong>
               <p className="text-emerald-800">
@@ -289,17 +289,17 @@ export const RealNameAuthTab: React.FC = () => {
       {/* KYC Application Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 1. 必要資料 (Required Identity Information) */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center">
                 1
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 法定身分基本資料
               </h4>
             </div>
-            <span className="text-[10px] text-rose-500 font-bold">* 欄位為必填項目</span>
+            <span className="text-[11px] text-rose-500 font-bold">* 欄位為必填項目</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
@@ -329,7 +329,7 @@ export const RealNameAuthTab: React.FC = () => {
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="例：A123456789"
                 required
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-mono font-medium uppercase focus:outline-none focus:border-blue-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 tabular-nums font-medium uppercase focus:outline-none focus:border-blue-500 focus:bg-white"
               />
             </div>
 
@@ -435,16 +435,16 @@ export const RealNameAuthTab: React.FC = () => {
         </div>
 
         {/* 2. 證件影像上傳 (身分證正反面) */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
                 2
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 身分證明文件影像
               </h4>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-stone-200">
                 （僅供實名認證與建檔備查）
               </span>
               <HelpTooltip
@@ -461,7 +461,7 @@ export const RealNameAuthTab: React.FC = () => {
                 }
               />
             </div>
-            <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF (單檔 10MB 內)</span>
+            <span className="text-[11px] text-stone-400 tabular-nums">支援 JPG, PNG, PDF (單檔 10MB 內)</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -471,7 +471,7 @@ export const RealNameAuthTab: React.FC = () => {
                 <span className="text-xs font-bold text-stone-800">
                   身分證正面彩色影本 <span className="text-rose-500">*</span>
                 </span>
-                <span className="text-[10px] text-stone-400">含完整相片與姓名</span>
+                <span className="text-[11px] text-stone-400">含完整相片與姓名</span>
               </div>
 
               {frontFile ? (
@@ -479,7 +479,7 @@ export const RealNameAuthTab: React.FC = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                     <span className="font-semibold text-stone-800 truncate">{frontFile.name}</span>
-                    {frontFile.size && <span className="text-[10px] text-stone-400">({frontFile.size})</span>}
+                    {frontFile.size && <span className="text-[11px] text-stone-400">({frontFile.size})</span>}
                   </div>
                   <button
                     type="button"
@@ -509,7 +509,7 @@ export const RealNameAuthTab: React.FC = () => {
                 <span className="text-xs font-bold text-stone-800">
                   身分證反面彩色影本 <span className="text-rose-500">*</span>
                 </span>
-                <span className="text-[10px] text-stone-400">含配偶與戶籍地址</span>
+                <span className="text-[11px] text-stone-400">含配偶與戶籍地址</span>
               </div>
 
               {backFile ? (
@@ -517,7 +517,7 @@ export const RealNameAuthTab: React.FC = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                     <span className="font-semibold text-stone-800 truncate">{backFile.name}</span>
-                    {backFile.size && <span className="text-[10px] text-stone-400">({backFile.size})</span>}
+                    {backFile.size && <span className="text-[11px] text-stone-400">({backFile.size})</span>}
                   </div>
                   <button
                     type="button"
@@ -544,17 +544,17 @@ export const RealNameAuthTab: React.FC = () => {
         </div>
 
         {/* 3. 選填輔助資料 (Optional Information) */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-stone-500 text-white text-[11px] font-black flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-stone-500 text-white text-[11px] font-semibold flex items-center justify-center">
                 3
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 通訊地址與輔助核驗（選填資料）
               </h4>
             </div>
-            <span className="text-[10px] text-stone-500 font-bold bg-stone-100 px-2 py-0.5 rounded">
+            <span className="text-[11px] text-stone-500 font-bold bg-stone-100 px-2 py-0.5 rounded">
               選填
             </span>
           </div>
@@ -618,8 +618,8 @@ export const RealNameAuthTab: React.FC = () => {
         </div>
 
         {/* 4. 法規遵循與個資宣告 */}
-        <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-blue-950 font-black text-xs">
+        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-blue-950 font-semibold text-xs">
             <ShieldCheck className="w-4 h-4 text-blue-600" />
             <span>洗錢防制與個人資料保護聲明</span>
           </div>
@@ -658,7 +658,7 @@ export const RealNameAuthTab: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <UserCheck className="w-4 h-4" />
             <span>{isSubmitting ? '實名核驗加密傳輸中...' : isVerified ? '更新並儲存實名資料' : '提交實名身分認證'}</span>

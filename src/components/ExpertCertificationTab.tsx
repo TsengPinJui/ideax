@@ -29,7 +29,7 @@ export const ExpertCertificationTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal, answers } = useApp();
 
   const userAcceptedAnswers = answers.filter((a) => a.solverId === currentUser.id && a.isAccepted);
-  const userRating = currentUser.rating || 5.0;
+  const userRating = currentUser.rating || 0; // 沒有評分就是 0，不當成 5 分
   const isAutoQualified = userAcceptedAnswers.length >= 50 && userRating >= 4.0;
 
   // 7-day cooldown calculation
@@ -91,7 +91,7 @@ export const ExpertCertificationTab: React.FC = () => {
       if (selectedSubdomains.length > 1) {
         setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
       } else {
-        setMsg('⚠️ 至少須保留 1 個專長子領域！');
+        setMsg(' 至少須保留 1 個專長子領域！');
         setTimeout(() => setMsg(null), 3000);
       }
     } else {
@@ -101,7 +101,7 @@ export const ExpertCertificationTab: React.FC = () => {
           setSelectedDomains([...selectedDomains, parentCat]);
         }
       } else {
-        setMsg('⚠️ 專家專長子領域至多可複選 5 個！');
+        setMsg(' 專家專長子領域至多可複選 5 個！');
         setTimeout(() => setMsg(null), 3000);
       }
     }
@@ -111,7 +111,7 @@ export const ExpertCertificationTab: React.FC = () => {
     if (selectedSubdomains.length > 1) {
       setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
     } else {
-      setMsg('⚠️ 至少須保留 1 個專長子領域！');
+      setMsg(' 至少須保留 1 個專長子領域！');
       setTimeout(() => setMsg(null), 3000);
     }
   };
@@ -228,37 +228,37 @@ export const ExpertCertificationTab: React.FC = () => {
     e.preventDefault();
 
     if (currentUser.realNameAuthStatus !== 'verified') {
-      setMsg('⚠️ 申請專家認證前必須先完成【實名認證】！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。');
+      setMsg(' 申請專家認證前必須先完成【實名認證】！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。');
       return;
     }
 
     if (isWithinCooldown) {
-      setMsg(`⚠️ 依審核規範，未通過者每 7 日僅能申請一次，請於 ${remainingDays} 天後再次送出。`);
+      setMsg(` 依審核規範，未通過者每 7 日僅能申請一次，請於 ${remainingDays} 天後再次送出。`);
       return;
     }
 
     if (selectedSubdomains.length === 0) {
-      setMsg('⚠️ 請至少選擇 1 個專長子領域（至多 5 個）！');
+      setMsg(' 請至少選擇 1 個專長子領域（至多 5 個）！');
       return;
     }
 
     if (!professionalTitle.trim()) {
-      setMsg('⚠️ 請填寫您的專業頭銜或職稱！');
+      setMsg(' 請填寫您的專業頭銜或職稱！');
       return;
     }
 
     if (credentialsFiles.length === 0) {
-      setMsg('⚠️ 請至少上傳一份專業相關證件或資歷佐證！');
+      setMsg(' 請至少上傳一份專業相關證件或資歷佐證！');
       return;
     }
 
     if (!proofDescription.trim() && proofFiles.length === 0 && !portfolioLink.trim()) {
-      setMsg('⚠️ 請填寫實戰案例說明或提供成果佐證連結！');
+      setMsg(' 請填寫實戰案例說明或提供成果佐證連結！');
       return;
     }
 
     if (!agreedPrivacy || !agreedHonesty) {
-      setMsg('⚠️ 請閱讀並勾選隱私權保護政策與真實性切結聲明！');
+      setMsg(' 請閱讀並勾選隱私權保護政策與真實性切結聲明！');
       return;
     }
 
@@ -300,7 +300,7 @@ export const ExpertCertificationTab: React.FC = () => {
       });
 
       setIsSubmitting(false);
-      setMsg('🎉 專家認證資格審查表單已成功送出！官方人員審核中。');
+      setMsg(' 專家認證資格審查表單已成功送出！官方人員審核中。');
       setTimeout(() => setMsg(null), 4000);
     }, 600);
   };
@@ -308,27 +308,27 @@ export const ExpertCertificationTab: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-white border border-stone-200 shadow-2xs">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white border border-stone-200 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold shadow-2xs shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-stone-900">
+                <h3 className="text-base sm:text-lg font-semibold text-stone-900">
                   IdeaX 認證專家資格審查
                 </h3>
-                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-200/90 text-amber-950 border border-stone-200 inline-flex items-center gap-1 shadow-2xs">
                   <Sparkles className="w-3 h-3 text-amber-700" />
                   <span>成為專家優先獲得曝光</span>
                 </span>
                 {isApproved ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
                     <CheckCircle2 className="w-3.5 h-3.5" /> 認證專家
                   </span>
                 ) : isPending ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
                     <Clock className="w-3.5 h-3.5" /> 專家審核中
                   </span>
                 ) : (
@@ -338,13 +338,13 @@ export const ExpertCertificationTab: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                認證標準：(1) 通過平台官方<strong className="font-black text-stone-800">實名審核</strong>與<strong className="font-black text-stone-800">專業證明核驗</strong>，或 (2) 在平台累計<strong className="font-black text-stone-800">採納方案數達 50 份以上且評分 ≥ 4 星</strong>
+                認證標準：(1) 通過平台官方<strong className="font-semibold text-stone-800">實名審核</strong>與<strong className="font-semibold text-stone-800">專業證明核驗</strong>，或 (2) 在平台累計<strong className="font-semibold text-stone-800">採納方案數達 50 份以上且評分 ≥ 4 星</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-amber-900 font-bold bg-amber-100 px-3 py-1 rounded-xl border border-amber-200">
+            <span className="text-[11px] text-amber-900 font-bold bg-amber-100 px-3 py-1 rounded-xl border border-stone-200">
               每 7 日限申請 1 次
             </span>
           </div>
@@ -352,7 +352,7 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Message notification */}
         {msg && (
-          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-stone-200 text-amber-950 text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{msg}</span>
           </div>
@@ -360,12 +360,12 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Real Name Verification Prerequisite Warning */}
         {currentUser.realNameAuthStatus !== 'verified' && (
-          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-950">
+          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-950">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-xs sm:text-sm font-black text-rose-950">
-                  ⚠️ 申請專家認證前必須先完成實名認證
+                <h4 className="text-xs sm:text-sm font-semibold text-rose-950">
+                   申請專家認證前必須先完成實名認證
                 </h4>
                 <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
                   依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。
@@ -377,10 +377,10 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Approved Card */}
         {isApproved && (
-          <div className="mt-4 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-start gap-3">
+          <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs text-emerald-950">
-              <strong className="block text-sm font-black">
+              <strong className="block text-sm font-semibold">
                 您已具備「IdeaX 認證專家」資格
               </strong>
               <p className="text-emerald-800">
@@ -395,10 +395,10 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Pending Card */}
         {isPending && (
-          <div className="mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-start gap-3">
+          <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs text-amber-950">
-              <strong className="block text-sm font-black">
+              <strong className="block text-sm font-semibold">
                 您的專家審查表單已送出，官方審核中
               </strong>
               <p className="text-amber-800">
@@ -411,10 +411,10 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Cooldown notice */}
         {isWithinCooldown && (
-          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3">
+          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-stone-200 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs text-rose-950">
-              <strong className="block text-sm font-black">
+              <strong className="block text-sm font-semibold">
                 尚在 7 日重新申請冷卻期內
               </strong>
               <p className="text-rose-800">
@@ -426,33 +426,33 @@ export const ExpertCertificationTab: React.FC = () => {
       </div>
 
       {/* 實名與專家認證分流說明公告卡 */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-orange-50/40 to-white border border-amber-200 text-xs text-stone-800 space-y-2.5 shadow-2xs">
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 text-xs text-stone-800 space-y-2.5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-amber-950 font-black text-sm">
+          <div className="flex items-center gap-2 text-amber-950 font-semibold text-sm">
             <Award className="w-5 h-5 text-amber-600 shrink-0" />
             <span>【分流說明】實名認證 與 專家證照認證 為完全獨立分開之審核流程</span>
           </div>
-          <span className="text-[10px] bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto border border-amber-300">
+          <span className="text-[11px] bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto border border-stone-200">
             證件獨立分開 · 專屬審查
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] leading-relaxed">
-          <div className="p-3 rounded-2xl bg-white/90 border border-emerald-200 space-y-1">
-            <strong className="block text-emerald-800 font-black flex items-center gap-1.5">
+          <div className="p-3 rounded-2xl bg-white/90 border border-stone-200 space-y-1">
+            <strong className="block text-emerald-800 font-semibold flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>🪪 1. 實名身分認證（KYC 法定真實身分）</span>
+              <span> 1. 實名身分認證（KYC 法定真實身分）</span>
             </strong>
             <p className="text-stone-600">
               專用於確認個人真實姓名、身分證字號與第三方金流提領撥付（<strong>國民身分證/居留證正反面</strong>）。如尚未完成，請至左側<strong>「實名認證」</strong>分頁獨立辦理。
             </p>
           </div>
-          <div className="p-3 rounded-2xl bg-white/90 border border-amber-300 space-y-1">
-            <strong className="block text-amber-900 font-black flex items-center gap-1.5">
+          <div className="p-3 rounded-2xl bg-white/90 border border-stone-200 space-y-1">
+            <strong className="block text-amber-900 font-semibold flex items-center gap-1.5">
               <Award className="w-4 h-4 text-amber-600" />
-              <span>👑 2. 專家資格認證（專業領域實務執照）</span>
+              <span> 2. 專家資格認證（專業領域實務執照）</span>
             </strong>
             <p className="text-stone-600">
-              此處專門上傳您的<strong>國家專技執照、律師證、醫師執照、建築師/會計師執照、PMP、技術認證或學經歷證書</strong>。<span className="text-rose-600 font-black">請勿在此上傳身分證照片</span>。
+              此處專門上傳您的<strong>國家專技執照、律師證、醫師執照、建築師/會計師執照、PMP、技術認證或學經歷證書</strong>。<span className="text-rose-600 font-semibold">請勿在此上傳身分證照片</span>。
             </p>
           </div>
         </div>
@@ -461,17 +461,17 @@ export const ExpertCertificationTab: React.FC = () => {
       {/* Expert Application Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 1. 專業領域與子領域看板 */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-semibold flex items-center justify-center">
                 1
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 申請專家領域與子領域看板
               </h4>
             </div>
-            <span className="text-[10px] text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full font-bold border border-amber-200">
+            <span className="text-[11px] text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full font-bold border border-stone-200">
               可複選 1~5 個子領域（已選 {selectedSubdomains.length} / 5 個）
             </span>
           </div>
@@ -484,7 +484,7 @@ export const ExpertCertificationTab: React.FC = () => {
                   <Tag className="w-3.5 h-3.5 text-amber-600" />
                   <span>已選擇的專家專長子領域（點擊 ✕ 移除）：</span>
                 </span>
-                <span className="text-[10px] font-mono font-bold text-amber-900">
+                <span className="text-[11px] tabular-nums font-bold text-amber-900">
                   {selectedSubdomains.length} / 5 項
                 </span>
               </div>
@@ -492,13 +492,13 @@ export const ExpertCertificationTab: React.FC = () => {
                 {selectedSubdomains.map((sub) => (
                   <span
                     key={sub}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500 text-stone-950 text-xs font-black shadow-2xs"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500 text-stone-950 text-xs font-semibold shadow-2xs"
                   >
                     <span>✓ {sub}</span>
                     <button
                       type="button"
                       onClick={() => removeSubdomain(sub)}
-                      className="w-3.5 h-3.5 rounded-full hover:bg-amber-600 flex items-center justify-center text-[10px] cursor-pointer ml-0.5"
+                      className="w-3.5 h-3.5 rounded-full hover:bg-amber-600 flex items-center justify-center text-[11px] cursor-pointer ml-0.5"
                       title="移除此子領域"
                     >
                       ✕
@@ -514,7 +514,7 @@ export const ExpertCertificationTab: React.FC = () => {
                 <label className="text-[11px] font-bold text-stone-800">
                   點選下方看板子領域標籤（可跨領域複選 1~5 個專長）：
                 </label>
-                <span className="text-[10px] text-stone-400">管理員審核時可擇優通過或指派</span>
+                <span className="text-[11px] text-stone-400">管理員審核時可擇優通過或指派</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -525,7 +525,7 @@ export const ExpertCertificationTab: React.FC = () => {
                   return (
                     <div
                       key={catName}
-                      className="p-3.5 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-2.5 hover:border-amber-300 transition-colors"
+                      className="p-3.5 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-2.5 hover:border-stone-200 transition-colors"
                     >
                       <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                         <div className="flex items-center gap-2">
@@ -540,10 +540,10 @@ export const ExpertCertificationTab: React.FC = () => {
                                 : 'bg-emerald-500'
                             }`}
                           />
-                          <span className="font-black text-xs text-stone-900">{catName}</span>
+                          <span className="font-semibold text-xs text-stone-900">{catName}</span>
                         </div>
                         {catSelectedCount > 0 && (
-                          <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                          <span className="text-[11px] font-bold px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
                             已選 {catSelectedCount} 項
                           </span>
                         )}
@@ -560,7 +560,7 @@ export const ExpertCertificationTab: React.FC = () => {
                               onClick={() => toggleSubdomain(sub, catName)}
                               className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                                 isChecked
-                                  ? 'bg-amber-500 text-stone-950 font-black shadow-2xs ring-1 ring-amber-400'
+                                  ? 'bg-amber-500 text-stone-950 font-semibold shadow-2xs ring-1 ring-amber-400'
                                   : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200'
                               }`}
                             >
@@ -616,20 +616,20 @@ export const ExpertCertificationTab: React.FC = () => {
         </div>
 
         {/* 2. 上傳相關證件與資歷證明 (非身分證，專家專業證照專區) */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center shrink-0">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-semibold flex items-center justify-center shrink-0">
                 2
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 上傳【專家專業證照與專技執照】
               </h4>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                👑 專門審查專家資格 · 非身分證
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
+                 專門審查專家資格 · 非身分證
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                ☁️ Firebase Storage 雲端建檔
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-stone-200">
+                 Firebase Storage 雲端建檔
               </span>
               <HelpTooltip
                 title="【專家證照個資與安全儲存政策】"
@@ -648,7 +648,7 @@ export const ExpertCertificationTab: React.FC = () => {
                 }
               />
             </div>
-            <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF (智慧安全壓縮)</span>
+            <span className="text-[11px] text-stone-400 tabular-nums">支援 JPG, PNG, PDF (智慧安全壓縮)</span>
           </div>
 
           <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-[11px] text-stone-600 leading-relaxed space-y-1">
@@ -656,14 +656,14 @@ export const ExpertCertificationTab: React.FC = () => {
               請上傳可佐證您專業能力與執業資格之憑證（如：<strong>國家級/國際專技執照、律師證、醫師執照、建築師執照、會計師執照、PMP、AWS/Google Cloud 專業認證、畢業學位證書、在職或離職證明、名片、受聘合約</strong>等，機密財務數字請自行遮蔽）。
             </p>
             <p className="text-amber-800 font-bold">
-              💡 提醒：本處為「專家專業證照」，請勿上傳身分證。實名身分核驗請至「實名認證」分頁辦理。
+               提醒：本處為「專家專業證照」，請勿上傳身分證。實名身分核驗請至「實名認證」分頁辦理。
             </p>
           </div>
 
-          <label className="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/30 hover:bg-amber-50/60 rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
+          <label className="border-2 border-dashed border-stone-200 hover:border-amber-500 bg-stone-50 hover:bg-stone-50 rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
             <Upload className="w-6 h-6 text-amber-600 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-black text-stone-800">點擊或拖曳上傳【專業證照 / 執照】檔案</span>
-            <span className="text-[10px] text-stone-500">
+            <span className="text-xs font-semibold text-stone-800">點擊或拖曳上傳【專業證照 / 執照】檔案</span>
+            <span className="text-[11px] text-stone-500">
               支援 JPG / PNG 照片（自動進行安全防過度壓縮與 Storage 建檔）及 PDF 文件
             </span>
             <input
@@ -676,7 +676,7 @@ export const ExpertCertificationTab: React.FC = () => {
           </label>
 
           {isProcessingCredential && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-center gap-2 animate-pulse font-bold">
+            <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-xs text-amber-900 flex items-center justify-center gap-2 animate-pulse font-bold">
               <Clock className="w-4 h-4 text-amber-600 animate-spin" />
               <span>正在執行證照影像安全清晰壓縮（文字清晰可辨、體積約 200~350KB）並存入專屬雲端 Storage...</span>
             </div>
@@ -691,7 +691,7 @@ export const ExpertCertificationTab: React.FC = () => {
                 {credentialsFiles.map((file, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white border border-stone-200 text-xs hover:border-amber-300 transition-all shadow-2xs group"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-white border border-stone-200 text-xs hover:border-stone-200 transition-all shadow-2xs group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {file.url ? (
@@ -717,7 +717,7 @@ export const ExpertCertificationTab: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-amber-50 border border-stone-200 flex items-center justify-center text-amber-700 shrink-0">
                           <FileText className="w-5 h-5" />
                         </div>
                       )}
@@ -725,10 +725,10 @@ export const ExpertCertificationTab: React.FC = () => {
                         <span className="font-bold text-stone-800 truncate block max-w-[150px] sm:max-w-[180px]">
                           {file.name}
                         </span>
-                        <div className="flex items-center gap-1.5 text-[10px] text-stone-500 font-mono mt-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-stone-500 tabular-nums mt-0.5">
                           <span className="text-emerald-700 font-bold">{file.size || '安全清晰壓縮'}</span>
                           <span>•</span>
-                          <span>{file.isStorage ? '☁️ Storage' : '安全加密'}</span>
+                          <span>{file.isStorage ? ' Storage' : '安全加密'}</span>
                         </div>
                       </div>
                     </div>
@@ -770,17 +770,17 @@ export const ExpertCertificationTab: React.FC = () => {
         </div>
 
         {/* 3. 出示有利證明與實戰成果 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-semibold flex items-center justify-center">
                 3
               </span>
-              <h4 className="font-extrabold text-sm text-stone-900">
+              <h4 className="font-semibold text-sm text-stone-900">
                 出示有利證明與實戰成果（加分與審查依據）
               </h4>
             </div>
-            <span className="text-[10px] text-amber-900 font-bold bg-amber-100 px-2 py-0.5 rounded">
+            <span className="text-[11px] text-amber-900 font-bold bg-amber-100 px-2 py-0.5 rounded">
               加分審查
             </span>
           </div>
@@ -844,7 +844,7 @@ export const ExpertCertificationTab: React.FC = () => {
                         <FileText className="w-4 h-4 text-stone-500 shrink-0" />
                         <span className="font-semibold text-stone-800 truncate">{file.name}</span>
                         {file.size && (
-                          <span className="text-[10px] text-stone-400 font-mono shrink-0">
+                          <span className="text-[11px] text-stone-400 tabular-nums shrink-0">
                             ({file.size})
                           </span>
                         )}
@@ -867,8 +867,8 @@ export const ExpertCertificationTab: React.FC = () => {
         </div>
 
         {/* 4. 法規勾選與 7 日申請規定 */}
-        <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
+        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-amber-950 font-semibold text-xs">
             <ShieldCheck className="w-4 h-4 text-amber-600" />
             <span>法規遵循與誠實信用保證</span>
           </div>
@@ -917,7 +917,7 @@ export const ExpertCertificationTab: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting || isWithinCooldown}
-            className={`px-6 py-2.5 rounded-xl font-black text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-6 py-2.5 rounded-xl font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
               isWithinCooldown
                 ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
                 : 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950'
@@ -940,20 +940,20 @@ export const ExpertCertificationTab: React.FC = () => {
       {/* 專家專業證照照片放大檢視彈窗 */}
       {previewCredentialImg && (
         <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-5 space-y-4 shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0">
                   <Award className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="font-black text-sm text-stone-900 truncate">
+                  <h4 className="font-semibold text-sm text-stone-900 truncate">
                     {previewCredentialImg.title}
                   </h4>
-                  <div className="flex items-center gap-2 text-[10px] text-stone-500 font-mono mt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] text-stone-500 tabular-nums mt-0.5">
                     <span className="text-emerald-700 font-bold">{previewCredentialImg.size || '安全清晰壓縮'}</span>
                     <span>•</span>
-                    <span>{previewCredentialImg.isStorage ? '☁️ Firebase Storage' : '本地安全加密'}</span>
+                    <span>{previewCredentialImg.isStorage ? ' Firebase Storage' : '本地安全加密'}</span>
                   </div>
                 </div>
               </div>
@@ -974,7 +974,7 @@ export const ExpertCertificationTab: React.FC = () => {
               />
             </div>
 
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-xs text-amber-950 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>專家專業證照建檔（非身分證，文字與防偽印章清晰可辨）</span>
@@ -982,7 +982,7 @@ export const ExpertCertificationTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPreviewCredentialImg(null)}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-xs cursor-pointer shadow-2xs"
               >
                 完成檢視
               </button>

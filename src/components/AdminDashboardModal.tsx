@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { SubscriptionTier } from '../types';
+import { SubscriptionTier, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId, isRealRegisteredUser } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
+import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
+import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
+import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
+import { openDashboardTab } from '../utils/adminShortcuts';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -488,7 +492,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           onlineUsersCount={onlineUsersCount || 1}
         />
 
-        {/* 吉祥物互動統計 */}
+        {/* 成長趨勢：註冊會員、不重複訪客 */}
+        <AdminGrowthTrendsCard />
+
+        {/* 各大功能使用比例 */}
+        <AdminFeatureUsageCard />
+
+        {/* 吉祥物互動統計：捷徑到會員後台 AI-CRM 分頁的小燈泡統計 */}
+        <AdminMascotStatsShortcut onGo={() => openDashboardTab('admin_aicrm')} />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>
@@ -569,8 +580,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </p>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
-                已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 14 項指標
+<div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-amber-300 shadow-2xs"
+                    >
+                      <span className="text-[11px] font-black text-amber-950">{(localPublicMetrics.showPublicMetrics !== false) ? '首頁顯示中' : '首頁不顯示'}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={(localPublicMetrics.showPublicMetrics !== false)}
+                        aria-label="首頁公開數據統一開關"
+                        onClick={(e) => { e.stopPropagation(); setLocalPublicMetrics((prev) => ({ ...prev, showPublicMetrics: prev.showPublicMetrics === false })); }}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${(localPublicMetrics.showPublicMetrics !== false) ? 'bg-amber-500' : 'bg-stone-300'}`}
+                        title={(localPublicMetrics.showPublicMetrics !== false) ? '關閉：首頁不顯示任何公開數據' : '開啟：首頁顯示下面選好的數據'}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${(localPublicMetrics.showPublicMetrics !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
+                已選 {countPublicMetrics(localPublicMetrics)} / {PUBLIC_METRIC_TOGGLE_KEYS.length} 項指標
               </span>
               <button
                 type="button"
@@ -598,8 +626,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </div>
           </div>
 
+          {localPublicMetrics.showPublicMetrics === false && (
+            <p className="text-xs font-bold text-amber-900 bg-white/70 border border-amber-200 rounded-xl px-3 py-2">統一開關關閉：儲存後首頁不顯示任何公開數據。下面的選擇會保留，打開統一開關後才會顯示。</p>
+          )}
           {isPublicMetricsExpanded && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1 ${localPublicMetrics.showPublicMetrics === false ? 'opacity-60' : ''}`}>
             {/* Metric 1: 網站造訪量 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
@@ -625,13 +656,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 1b: 造訪用戶（和總瀏覽量分開開關） */}
+            {/* Metric 1b: 不重複訪客（和總瀏覽量分開開關） */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showUniqueVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">造訪用戶</span>
+                  <span className="font-extrabold text-xs text-stone-900">不重複訪客</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">不重複人數</span>
                 </div>
                 <p className="text-[11px] text-stone-500 mt-0.5">來過網站的不重複裝置數（同一裝置只算一次）</p>
@@ -646,6 +677,81 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   localPublicMetrics.showUniqueVisitors ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 今日訪客 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTodayVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">今日訪客</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">今日人數</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">今天來過網站的不重複訪客（同一裝置當天只算一次）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTodayVisitors: !prev.showTodayVisitors }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTodayVisitors ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTodayVisitors ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTodayVisitors ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 近 7 天新會員 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showNewMembers7d ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">近 7 天新會員</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">成長</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">最近 7 天新註冊的會員人數（不含測試帳號）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showNewMembers7d: !prev.showNewMembers7d }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showNewMembers7d ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showNewMembers7d ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showNewMembers7d ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 匯職缺使用人次 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showJobsUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">匯職缺使用人次</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">功能熱度</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">用過匯職缺的人次（每位訪客每天算一次，v3.4.0 起記錄）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showJobsUsers: !prev.showJobsUsers }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showJobsUsers ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showJobsUsers ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showJobsUsers ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
@@ -756,7 +862,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">提案數量</span>
+                  <span className="font-extrabold text-xs text-stone-900">提案總數</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
                 </div>
                 <p className="text-[11px] text-stone-500 mt-0.5">各領域專家提交之專業解題方案總數</p>
@@ -1752,7 +1858,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               {pendingConfirm.type === 'savePublicMetrics' && (
                 <div>
                   <p className="font-bold text-stone-900 mb-1">
-                    首頁公開指標展示將更新為目前勾選之 {Object.values(localPublicMetrics).filter(Boolean).length} 項指標：
+                    {localPublicMetrics.showPublicMetrics === false ? '統一開關關閉：首頁將不顯示任何公開數據（已選的項目會保留）。' : `首頁公開指標展示將更新為目前勾選之 ${countPublicMetrics(localPublicMetrics)} 項指標：`}
                   </p>
                   <p className="text-stone-600 text-[11px]">
                     設定儲存後將即時同步至首頁即時運營數據看板。

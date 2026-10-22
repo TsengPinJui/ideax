@@ -422,7 +422,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
                   <span className="text-[10px] font-black bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/30">
                     👤 已自動繫結操作身份
                   </span>
-                  <span className="text-xs font-mono text-stone-400">UID: {currentUser.id}</span>
+                  <span className="text-xs font-mono text-stone-400">ID: {currentUser.id}</span>
                 </div>
 
                 <div className="flex items-center gap-2">

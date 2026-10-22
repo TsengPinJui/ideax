@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { realSurvey } from '../utils/surveyData';
 import {
   X,
   User as UserIcon,
@@ -324,7 +325,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
             <div className="flex items-center justify-center gap-1 mt-0.5">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               <span className="text-base font-black text-stone-900 font-mono">
-                {user.rating || 5.0}
+                {user.rating ? user.rating : '尚無評價'}
               </span>
             </div>
             <span className="text-[9px] text-stone-400">({user.reviewCount || 0} 則評價)</span>
@@ -479,7 +480,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                     <span className="text-stone-400 block text-[11px]">帳號註冊日期</span>
                     <span className="font-bold text-stone-900 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>{user.registeredAt || user.createdAt || (user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '2026/09/20')}</span>
+                      <span>{user.registeredAt || user.createdAt || (user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '未記錄')}</span>
                     </span>
                   </div>
 
@@ -576,7 +577,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                       <span>解答各等級問題解答分佈（L0 ~ L4）</span>
                     </h4>
                     <span className="text-xs font-bold text-purple-800 font-mono">
-                      採納率：{solverInfo.acceptedRate || 85}%
+                      採納率：{solverInfo.acceptedRate ? `${solverInfo.acceptedRate}%` : '—'}
                     </span>
                   </div>
 
@@ -599,7 +600,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
               )}
 
               {/* 調研問卷數據（若用戶曾填寫） */}
-              {user.surveyData && (
+              {realSurvey(user) && (
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
                   <h4 className="text-xs font-black text-stone-900 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-stone-500" />
@@ -608,16 +609,16 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="p-3 bg-white rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">平台使用頻率</span>
-                      <span className="font-bold text-stone-800 mt-0.5 block">{user.surveyData.usageFrequency || '每週數次'}</span>
+                      <span className="font-bold text-stone-800 mt-0.5 block">{realSurvey(user)?.usageFrequency || '未填寫'}</span>
                     </div>
                     <div className="p-3 bg-white rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">有意願作為副業接案</span>
-                      <span className="font-bold text-stone-800 mt-0.5 block">{user.surveyData.willingToBeSideHustle || '是，非常有意願'}</span>
+                      <span className="font-bold text-stone-800 mt-0.5 block">{realSurvey(user)?.willingToBeSideHustle || '未填寫'}</span>
                     </div>
-                    {user.surveyData.feedbackSuggestions && (
+                    {realSurvey(user)?.feedbackSuggestions && (
                       <div className="p-3 bg-white rounded-xl border border-stone-200 sm:col-span-2">
                         <span className="text-stone-400 block text-[11px]">給予平台的建議</span>
-                        <p className="font-bold text-stone-800 mt-1">{user.surveyData.feedbackSuggestions}</p>
+                        <p className="font-bold text-stone-800 mt-1">{realSurvey(user)?.feedbackSuggestions}</p>
                       </div>
                     )}
                   </div>

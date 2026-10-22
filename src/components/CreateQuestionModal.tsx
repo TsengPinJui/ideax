@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { MindMapEditor } from './mindmap/MindMapEditor';
+import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import { BaiMiao } from './baimiao/BaiMiao';
-import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
+import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES, MindMapData } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { AIAnalysisResult } from '../services/aiService';
@@ -198,6 +200,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'帳戶點數付點' | '信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('帳戶點數付點');
   const [referencedPainPoint, setReferencedPainPoint] = useState('');
   const [targetGoal, setTargetGoal] = useState('');
+  // 心智圖（創新提案、VibeCoding 作品選填；null＝不使用）
+  const [mindMap, setMindMap] = useState<MindMapData | null>(null);
 
   // VibeCoding 與創新提案專屬欄位狀態
   const [appName, setAppName] = useState<string>('');
@@ -650,6 +654,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         specialZone: postType === 'vibecoding_app' ? 'vibecoding' : undefined,
         referencedPainPoint: referencedPainPoint.trim() || undefined,
         targetGoal: targetGoal.trim() || undefined,
+        mindMap: (postType === 'innovation_proposal' || postType === 'vibecoding_app') ? (sanitizeMindMap(mindMap) || undefined) : undefined,
         currentVersion: postType === 'vibecoding_app' ? (currentVersion.trim() || undefined) : undefined,
         updateLogs: (postType === 'vibecoding_app' && currentVersion.trim()) ? [{
           id: `log-init-${Date.now()}`,
@@ -684,7 +689,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         authorAvatar,
         authorTitle,
         isOfficial: isPlatformOfficial,
-        publishIdentity,
+        // 發布身分只有管理員才有（一般會員不帶這個欄位）
+        publishIdentity: currentUser?.role === 'admin' ? publishIdentity : undefined,
         phases,
         aiAnalysis: finalAiResult
           ? {
@@ -732,7 +738,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-stone-900">發布類型</h2>
             <p className="text-xs text-stone-500">
-              {isRaceMode ? '競賽期間免費 • 第三方安全防護' : '痛點提出 • 落地解法 • 第三方支付安全拆款'}
+              {isRaceMode ? '痛點提出 • 第三方安全防護' : '痛點提出 • 落地解法 • 第三方支付安全拆款'}
             </p>
           </div>
         </div>
@@ -963,14 +969,14 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-rose-600 shrink-0" />
                 <span className="font-extrabold text-rose-900 text-xs">
-                  {isRaceMode ? '競賽期間免費' : '痛點發布'}
+                  痛點發布
                 </span>
               </div>
               <HelpTooltip
-                title={isRaceMode ? '競賽期間免費' : '痛點發布機制'}
+                title="痛點發布機制"
                 content={
                   isRaceMode
-                    ? '創星季競賽期間免費。匯集生活與產業真實痛點，開放給參賽團隊作為解題題目與共創解方。'
+                    ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與共創解方。'
                     : '發布生活或產業痛點無須懸賞，各領域人才可在下方提交落地解決方案，提問者或其他人需透過第三方支付解鎖後查閱。'
                 }
               />
@@ -1202,6 +1208,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* 心智圖（選填）：創新提案、VibeCoding 作品 */}
+        {(postType === 'innovation_proposal' || postType === 'vibecoding_app') && (
+          <MindMapEditor value={mindMap} onChange={setMindMap} title={title} kind={postType === 'vibecoding_app' ? 'vibecoding' : 'proposal'} />
         )}
 
         {/* 創新提案 & VibeCoding 軟體刊登：展示圖片上傳 */}
@@ -1624,9 +1635,12 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                       type="url"
                       value={demoUrl}
                       onChange={(e) => setDemoUrl(e.target.value)}
-                      placeholder="例如：https://my-vibecoding-app.vercel.app 或專屬作品網站連結"
+                      placeholder="例如：https://my-app.vercel.app、https://my-app.streamlit.app"
                       className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
                     />
+                    <p className="mt-1 text-[10px] text-stone-500">
+                      支援 Streamlit（*.streamlit.app）與 Hugging Face Spaces 互動預覽，貼上 App 網址即可，系統會自動轉成嵌入模式。
+                    </p>
                   </div>
 
                   <label className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 cursor-pointer transition-colors select-none">
@@ -2056,20 +2070,22 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-emerald-600" />
                 <span className="font-bold text-stone-800">
-                  {isRaceMode ? '競賽期間免費' : 'L0 發布（0 點）'}
+                  {isRaceMode ? '痛點發布' : 'L0 發布（0 點）'}
                 </span>
                 <HelpTooltip
-                  title={isRaceMode ? '競賽期間免費說明' : '痛點與討論發布說明'}
+                  title={isRaceMode ? '痛點發布說明' : '痛點與討論發布說明'}
                   content={
                     isRaceMode
-                      ? '創星季競賽期間免費！匯集生活與產業真實痛點，開放給參賽團隊作為解題題目與共創解方。'
+                      ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與共創解方。'
                       : '無門檻發布痛點或討論，各領域人才可在下方提交落地方案！'
                   }
                 />
               </div>
-              <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                {isRaceMode ? '競賽期間免費' : '免付懸賞點數'}
-              </span>
+              {!isRaceMode && (
+                <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  免付懸賞點數
+                </span>
+              )}
             </div>
           )}
 
@@ -2316,7 +2332,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               </span>
             ) : (
               <span>
-                {isRaceMode ? '痛點提出競賽期間免費，開放給參賽團隊作為解題題目與共創解方。' : '痛點提出無門檻發布，各領域人才提供落地解法，您可自由評估後付費解鎖。'}
+                {isRaceMode ? '痛點提出後，開放給創星季參賽團隊作為解題題目與共創解方。' : '痛點提出無門檻發布，各領域人才提供落地解法，您可自由評估後付費解鎖。'}
               </span>
             )}
           </div>
@@ -2432,7 +2448,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 <CheckCircle2 className="w-4 h-4" />
                 <span>
                   {currentBounty === 0 && !isPromotedWithMegaphone
-                    ? (isRaceMode ? '確認發布（競賽期間免費）' : '確認發布')
+                    ? '確認發布'
                     : `預扣 ${(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 點懸賞金 並發布`}
                 </span>
               </>

@@ -39,19 +39,19 @@ function env(g: GainNode, t: number, peak: number, attack: number, decay: number
   g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
 }
 
-function tone(c: AudioContext, t: number, type: OscillatorType, f: number, peak: number, attack: number, decay: number) {
+function tone(c: AudioContext, t: number, type: OscillatorType, f: number, peak: number, attack: number, decay: number, dest: AudioNode = c.destination) {
   const o = c.createOscillator();
   const g = c.createGain();
   o.type = type;
   o.frequency.setValueAtTime(f, t);
   env(g, t, peak, attack, decay);
-  o.connect(g).connect(c.destination);
+  o.connect(g).connect(dest);
   o.start(t);
   o.stop(t + attack + decay + 0.05);
 }
 
 let noiseBuf: AudioBuffer | null = null;
-function noise(c: AudioContext, t: number, dur: number, freq: number, q: number, peak: number, type: BiquadFilterType = 'bandpass') {
+function noise(c: AudioContext, t: number, dur: number, freq: number, q: number, peak: number, type: BiquadFilterType = 'bandpass', dest: AudioNode = c.destination) {
   if (!noiseBuf) {
     noiseBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -65,7 +65,7 @@ function noise(c: AudioContext, t: number, dur: number, freq: number, q: number,
   f.Q.value = q;
   const g = c.createGain();
   env(g, t, peak, 0.002, dur);
-  s.connect(f).connect(g).connect(c.destination);
+  s.connect(f).connect(g).connect(dest);
   s.start(t);
   s.stop(t + dur + 0.05);
 }
@@ -244,4 +244,100 @@ export function startCurrent(volume = 1) {
 export function stopCurrent() {
   window.clearTimeout(currentSafety);
   if (currentStop) { currentStop(); currentStop = null; }
+}
+
+// ── 波浪舞：配合舞步的輕快小曲 ──
+// 一拍 300ms（和舞步同一個節拍）。波浪從左手傳到右手時旋律往上爬，傳回來時往下走；
+// 旋律用玻璃叮噹的音色，底下有輕輕的大鼓、低音和沙沙的小鈸，最後一拍收在一個亮晶晶的和弦。
+let danceOut: GainNode | null = null;
+let danceTimer: number | null = null;
+
+export function stopDanceMusic() {
+  danceUntil = 0;
+  if (danceTimer) { window.clearTimeout(danceTimer); danceTimer = null; }
+  const g = danceOut;
+  danceOut = null;
+  if (!g || !ctx) return;
+  try {
+    const t = ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(0, t + 0.12);
+    window.setTimeout(() => { try { g.disconnect(); } catch {} }, 200);
+  } catch {}
+}
+
+let danceUntil = 0; // 跳舞期間不另外播「開心」音效，避免和音樂疊在一起
+
+export function playDanceMusic(ms: number, beatMs = 300, volume = 1) {
+  stopDanceMusic();
+  const c = getCtx();
+  if (!c || ms <= 0 || document.hidden) return;
+  danceUntil = performance.now() + ms;
+  // 音訊還在暫停（剛點下去、手機切回來）：等它恢復再開始，不要直接沒聲音
+  if (c.state !== 'running') {
+    void c.resume().then(() => { if (performance.now() < danceUntil - 300) startDance(c, danceUntil - performance.now(), beatMs, volume); }).catch(() => {});
+    return;
+  }
+  startDance(c, ms, beatMs, volume);
+}
+
+function startDance(c: AudioContext, ms: number, beatMs: number, volume: number) {
+  try {
+    const out = c.createGain();
+    out.gain.value = volume;
+    out.connect(c.destination);
+    danceOut = out;
+    const B = beatMs / 1000;
+    const t0 = c.currentTime + 0.04;
+    const beats = Math.max(4, Math.floor(ms / beatMs));
+    // C 大調五聲音階：上行（波浪傳過去）、下行（傳回來）
+    const UP = [523.25, 587.33, 659.25, 783.99];
+    const DOWN = [880, 783.99, 659.25, 587.33];
+    const BASS = [130.81, 110, 87.31, 98]; // C、A、F、G，每 8 拍換一次
+    for (let i = 0; i < beats - 1; i++) {
+      const t = t0 + i * B;
+      const phrase = Math.floor(i / 4) % 2 === 0 ? UP : DOWN;
+      const f = phrase[i % 4];
+      // 旋律：玻璃叮噹
+      tone(c, t, 'sine', f, 0.075, 0.004, 0.22, out);
+      tone(c, t, 'sine', f * 2.76, 0.022, 0.002, 0.1, out);
+      // 拍子：每兩拍一下大鼓＋低音，反拍沙沙小鈸
+      if (i % 2 === 0) {
+        const k = c.createOscillator(); const kg = c.createGain();
+        k.type = 'sine'; k.frequency.setValueAtTime(150, t); k.frequency.exponentialRampToValueAtTime(48, t + 0.16);
+        env(kg, t, 0.2, 0.003, 0.2);
+        k.connect(kg).connect(out); k.start(t); k.stop(t + 0.25);
+        tone(c, t, 'triangle', BASS[Math.floor(i / 8) % 4], 0.07, 0.01, B * 1.6, out);
+      }
+      noise(c, t + B / 2, 0.04, 8000, 0.8, 0.018, 'highpass', out);
+    }
+    // 收尾：亮晶晶的 C 和弦
+    const end = t0 + (beats - 1) * B;
+    [1046.5, 1318.5, 1568, 2093].forEach((f, i) => tone(c, end + i * 0.035, 'sine', f, 0.05, 0.004, 0.55, out));
+    danceTimer = window.setTimeout(() => {
+      danceTimer = null;
+      if (danceOut === out) { danceOut = null; try { out.disconnect(); } catch {} }
+    }, ms + 900);
+  } catch {}
+}
+
+// ── 開心：玻璃風鈴「叮叮叮↑」 ──
+let happyAt = -Infinity;
+/** 小燈泡開心亮起來：三個往上爬的玻璃叮噹，最後一顆亮晶晶（跳舞中不播；2.5 秒內不重複） */
+export function playHappySound(volume = 1) {
+  const now = performance.now();
+  if (now < danceUntil || now - happyAt < 2500) return;
+  const c = getCtx();
+  if (!c || document.hidden) return;
+  happyAt = now;
+  const go = () => {
+    try {
+      const t = c.currentTime + 0.01;
+      [1046.5, 1318.5, 1568].forEach((f, i) => glassTink(c, t + i * 0.085, f, volume * 1.05));
+      tone(c, t + 0.26, 'sine', 2093, 0.05 * volume, 0.004, 0.45);
+      tone(c, t + 0.26, 'sine', 3136, 0.018 * volume, 0.003, 0.3);
+    } catch {}
+  };
+  if (c.state === 'running') go(); else void c.resume().then(go).catch(() => {});
 }

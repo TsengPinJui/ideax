@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
  * 系統要求減少動態時動作幅度會變小，走來走去由外層決定是否停用。
  */
 export type BaiMiaoAction =
-  | 'idle' | 'walk' | 'hi' | 'hop' | 'binoculars' | 'mediate' | 'inspect' | 'doze' | 'sleep' | 'cheer';
+  | 'idle' | 'walk' | 'run' | 'hi' | 'hop' | 'play' | 'angry' | 'binoculars' | 'mediate' | 'inspect' | 'doze' | 'sleep' | 'cheer';
 
 export type BaiMiaoBubble = {
   text: string;

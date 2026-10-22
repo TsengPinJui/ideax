@@ -60,10 +60,10 @@ export async function askMascot(
   }
 }
 
-export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort' | 'unanswered' | 'chat_mascot' | 'chat_agent' | 'mascot_answered' | 'escalated';
-export function trackMascotEvent(type: MascotEventType, durationMs?: number) {
+export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort' | 'unanswered' | 'chat_mascot' | 'chat_agent' | 'mascot_answered' | 'escalated' | 'nav' | 'nav_offer';
+export function trackMascotEvent(type: MascotEventType, durationMs?: number, target?: string) {
   try {
-    const body = JSON.stringify({ type, durationMs });
+    const body = JSON.stringify({ type, durationMs, target });
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
       navigator.sendBeacon('/api/mascot/event', new Blob([body], { type: 'application/json' }));
       return;
@@ -76,6 +76,9 @@ export interface MascotDayStats {
   day: string;
   counts: Partial<Record<MascotEventType | 'ask', number>>;
   agents: Partial<Record<MascotAgent, number>>;
+  /** 小燈泡轉介：使用者點了哪個功能／回答裡建議了哪個功能（v3.4.0 起） */
+  navs?: Record<string, number>;
+  navOffers?: Record<string, number>;
   interactionMs: number;
   chatMascotMs?: number;
   chatAgentMs?: number;

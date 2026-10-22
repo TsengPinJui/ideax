@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Lightbulb, RotateCcw, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FOCUS_MASCOT_STATS_EVENT, takeFocusMascotStatsFlag } from '../utils/adminShortcuts';
 import { AdminMascotStatsCard } from './AdminMascotStatsCard';
 import {
   DEFAULT_MASCOT_CONFIG,
@@ -55,6 +56,18 @@ export const AdminMascotSettingsCard: React.FC = () => {
   const savedRef = useRef(mascotConfig);
   savedRef.current = mascotConfig;
   const dirty = !sameConfig(draft, mascotConfig);
+
+  // 從儀表板統計區的捷徑過來：展開並捲到小燈泡互動統計
+  useEffect(() => {
+    const focus = () => {
+      setOpen(true);
+      window.setTimeout(() => document.getElementById('admin-mascot-stats')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
+    };
+    if (takeFocusMascotStatsFlag()) focus();
+    const onEv = () => { takeFocusMascotStatsFlag(); focus(); };
+    window.addEventListener(FOCUS_MASCOT_STATS_EVENT, onEv);
+    return () => window.removeEventListener(FOCUS_MASCOT_STATS_EVENT, onEv);
+  }, []);
 
   // 雲端設定被別處更新時，沒在編輯就同步
   useEffect(() => { if (!dirty) setDraft(mascotConfig); }, [mascotConfig]); // eslint-disable-line react-hooks/exhaustive-deps

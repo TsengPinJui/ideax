@@ -32,9 +32,13 @@ import {
   Calendar,
   GraduationCap,
   Info,
+  Paperclip,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
+import { CityMultiSelect, CategoryMultiSelect } from './jobExplorer/CityMultiSelect';
+import { ChipMultiSelect } from './jobExplorer/ChipMultiSelect';
+import { JobsInstallPrompt } from './jobExplorer/JobsInstallPrompt';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
@@ -320,7 +324,7 @@ export interface ConditionTag {
   experienceYears?: number; // numeric years
 }
 
-export type AiIntakeStatus = 'idle' | 'received' | 'understanding' | 'typing';
+export type AiIntakeStatus = 'idle' | 'received' | 'understanding' | 'typing' | 'reading';
 
 interface ChatMessage {
   id: string;
@@ -352,6 +356,8 @@ interface ChatMessage {
   roleSwitched?: boolean;
   /** 觸發這則回覆的使用者原話（清除對話後可以直接帶回輸入框） */
   sourceText?: string;
+  /** 搜尋完成：開頭顯示「以下為您精選 N 個職缺」，N 跟下方實際列出的筆數一致（篩選改了也會跟著變） */
+  showPicked?: boolean;
 }
 
 type SearchActionKey = 'wait' | 'bulb' | 'retry' | 'dismiss';
@@ -365,6 +371,64 @@ const SEARCH_ACTION_LABEL: Record<SearchActionKey, string> = {
 const DIFY_ASK_MS = 50000;
 const DIFY_PAUSE_MS = 80000;
 const MAX_JOBS = 100;
+
+/**
+ * 從「工作型態：正職、兼職、地區：台北市、新北市、職務：服務生」這種條件文字裡，
+ * 取出某個欄位的值：一直取到下一個「xx：」之前（所以「台北市、新北市」兩個都會留下）
+ */
+function fieldValue(text: string, label: RegExp): string {
+  const m = text.match(new RegExp(`(?:${label.source})(?:（複選）)?[：:]\\s*([^\\n•]*)`));
+  if (!m) return '';
+  return m[1].split(/[、,，;；]?\s*(?=[^、,，;；：:\s]{1,6}[：:])/)[0].replace(/[、,，;；\s]+$/, '').trim();
+}
+
+/** 工作型態文字 → 正職／兼職／實習（可以好幾個；「皆可」「都可以」＝正職＋兼職） */
+export function parseJobTypes(v: string): Array<'正職' | '兼職' | '實習'> {
+  const s = String(v || '');
+  const out = new Set<'正職' | '兼職' | '實習'>();
+  if (/皆可|都可以|都行|不拘|都好/.test(s) && !/實習/.test(s)) { out.add('正職'); out.add('兼職'); }
+  if (/正職|全職|約聘|派遣/.test(s)) out.add('正職');
+  if (/兼職|工讀|打工|計時/.test(s)) out.add('兼職');
+  if (/實習/.test(s)) out.add('實習');
+  return (['正職', '兼職', '實習'] as const).filter((x) => out.has(x));
+}
+
+/** 職務 → 職務類別（AI 整理好職務後，自動勾好篩選面板的職務類別；可以好幾個） */
+const ROLE_CATEGORY_RULES: Array<[RegExp, string]> = [
+  [/服務生|服務員|外場|內場|餐飲|廚|吧台|咖啡|門市|店員|店長|收銀|零售|飲料|手搖|烘焙|麵包|洗碗|早餐店|超商|便利商店|餐廳/i, '門市／餐飲／零售'],
+  [/軟體|程式|前端|後端|全端|工程師|開發|devops|qa|測試|資料科學|機器學習|ai\b|app/i, '軟體／AI工程'],
+  [/產品經理|專案|pm\b|產品企劃|pmo/i, '產品／專案管理'],
+  [/行銷|企劃|社群|小編|廣告|公關|品牌|文案|內容/i, '行銷／企劃／社群'],
+  [/設計|ui|ux|美編|視覺|平面/i, '設計／UIUX'],
+  [/業務|銷售|商務開發|bd\b|電銷|客戶經理/i, '業務／商務開發'],
+  [/行政|助理|人資|hr\b|人事|會計|財務|出納|總務|秘書|櫃台|櫃檯/i, '行政／人資／財會'],
+];
+export function rolesToCategories(roles: string[]): string[] {
+  const out: string[] = [];
+  for (const r of roles) {
+    for (const [re, c] of ROLE_CATEGORY_RULES) {
+      if (re.test(r) && !out.includes(c)) out.push(c);
+    }
+  }
+  return out;
+}
+
+/** 職務標籤的值拆成多個職務（「服務生、行政」→ ['服務生','行政']） */
+export function splitRoles(v: string): string[] {
+  return Array.from(new Set(String(v || '').split(/[、,，/／;；]|\s+或\s*|\s*和\s*/).map((s) => s.trim()).filter(Boolean)));
+}
+
+/** 最近一則有條件標籤的回覆裡，目前的職務（可能好幾個） */
+function currentRolesFrom(msgs: Array<{ role: string; conditionTags?: ConditionTag[] }>): string[] {
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const tags = msgs[i].role === 'bot' ? msgs[i].conditionTags : undefined;
+    if (tags && tags.length) {
+      const r = tags.find((t) => t.type === 'role');
+      return r ? splitRoles(r.value) : [];
+    }
+  }
+  return [];
+}
 
 export function parseConditionTags(brief: string, intakeData?: any): ConditionTag[] {
   if (Array.isArray(intakeData?.conditionTags) && intakeData.conditionTags.length > 0) {
@@ -384,14 +448,15 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   const text = `${brief || ''} ${intakeData?.reply || ''}`.trim();
 
   // 1. 工作型態
-  const jobTypeMatch = text.match(/工作型態[：:]\s*(正職|兼職工讀|兼職|工讀|打工|實習|皆可|正職兼職皆可)/i) ||
-    (intakeData?.jobType ? [null, intakeData.jobType] : null);
-  if (jobTypeMatch && jobTypeMatch[1]) {
+  // 可以有好幾個（「正職、兼職」「正職兼職都可以」）：只看「工作型態：」後面到下一個「xx：」之前的字
+  const jtHead = fieldValue(text, /工作型態/) || String(intakeData?.jobType || '');
+  const jobTypeList = parseJobTypes(jtHead);
+  if (jobTypeList.length) {
     tags.push({
       id: `tag-jobType-${Date.now()}`,
       type: 'jobType',
       label: '工作型態',
-      value: jobTypeMatch[1].replace(/兼職工讀/, '兼職'),
+      value: jobTypeList.join('、'),
     });
   }
 
@@ -400,7 +465,8 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   if (Array.isArray(intakeData?.roles) && intakeData.roles.length > 0) {
     extractedRoles = intakeData.roles;
   } else {
-    const roleMatch = text.match(/職務[：:]\s*([^、,，\n]+)/);
+    const roleV = fieldValue(text, /職務/);
+    const roleMatch = roleV ? [null, roleV] : null;
     if (roleMatch && roleMatch[1]) {
       extractedRoles = roleMatch[1].split(/[、,，]+/).map((s) => s.trim()).filter(Boolean);
     }
@@ -422,7 +488,8 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   if (Array.isArray(intakeData?.companies) && intakeData.companies.length > 0) {
     companyVal = intakeData.companies.join('、');
   } else {
-    const compMatch = text.match(/(?:目標公司|限定公司|指定公司)[：:]\s*([^、,，\n]+)/);
+    const compV = fieldValue(text, /目標公司|限定公司|指定公司/);
+    const compMatch = compV ? [null, compV] : null;
     if (compMatch && compMatch[1]) companyVal = compMatch[1].trim();
   }
   if (companyVal && !/^(不限|不拘|無)$/.test(companyVal)) {
@@ -479,7 +546,8 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   }
 
   // 5. 地區
-  const locMatch = text.match(/地區[：:]\s*([^、,，\n]+)/) || (intakeData?.location ? [null, intakeData.location] : null);
+  const locV = fieldValue(text, /地區/);
+  const locMatch = locV ? [null, locV] : intakeData?.location ? [null, intakeData.location] : null;
   if (locMatch && locMatch[1]) {
     tags.push({
       id: `tag-location-${Date.now()}`,
@@ -563,6 +631,27 @@ const CARE_POINT_META: Record<CarePointKey, { fieldLabel: string }> = {
   distance: { fieldLabel: '距離' },
 };
 
+/** 「你可能也關注的職缺」分隔線：上面完全符合條件，下面是不完全符合、依符合程度排序的職缺 */
+const PartialDivider: React.FC<{ variant: 'grid' | 'row'; fullCount: number }> = ({ variant, fullCount }) => (
+  <div className={variant === 'grid' ? 'col-span-full pt-3 pb-1' : 'px-3.5 sm:px-5 py-3 bg-stone-50'} role="separator" aria-label="你可能也關注的職缺">
+    <div className="flex items-center gap-3">
+      <span className="h-px flex-1 bg-stone-300" />
+      <span className="text-xs sm:text-sm font-black text-stone-700 shrink-0">你可能也關注的職缺</span>
+      <span className="h-px flex-1 bg-stone-300" />
+    </div>
+    <p className="mt-1 text-center text-[11px] text-stone-500">
+      {fullCount === 0 ? '目前沒有完全符合所有條件的職缺，' : ''}以下職缺不完全符合條件，依符合程度與你在意的項目排序
+    </p>
+  </div>
+);
+
+/** 卡片上的「不符：地區、薪資」 */
+const MissedBadge: React.FC<{ missed: string[]; inCardHeader?: boolean }> = ({ missed, inCardHeader }) => (
+  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0 ${inCardHeader ? 'mr-auto' : ''}`} title="這筆職缺沒有符合的條件">
+    不符：{missed.join('、')}
+  </span>
+);
+
 export const JobExplorerView: React.FC = () => {
   // 電腦默認小卡片、手機默認大卡片
   const [viewMode, setViewMode] = useState<JobViewMode>(() => {
@@ -581,12 +670,18 @@ export const JobExplorerView: React.FC = () => {
 
   // 手動篩選條件
   const [keyword, setKeyword] = useState('');
-  const [selectedCity, setSelectedCity] = useState('全部');
+  // 地區可以多選：空陣列＝不限；selectedCity 是給搜尋條件文字用的合併字串
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const selectedCity = selectedCities.length ? selectedCities.join('、') : '全部';
   const [userBaseCity, setUserBaseCity] = useState('台北市');
-  const [selectedCategory, setSelectedCategory] = useState('全部');
+  // 職務類別：可複選（空陣列＝不限）；送到後端與文字摘要時合併成「A、B」
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const selectedCategory = selectedCategories.length ? selectedCategories.join('、') : '全部';
   const [minSalaryFilter, setMinSalaryFilter] = useState<number>(0);
   // 篩選：正職／兼職、台灣／國外（含國家，預設不限、先不預設台灣）
-  const [jobTypeFilter, setJobTypeFilter] = useState<'全部' | '正職' | '兼職' | '實習'>('全部');
+  // 工作型態：可複選（空＝不限）。只選了兼職時，薪資門檻用時薪
+  const [jobTypes, setJobTypes] = useState<Array<'正職' | '兼職' | '實習'>>([]);
+  const jobTypeFilter = jobTypes.length ? jobTypes.join('、') : '全部';
   const [regionFilter, setRegionFilter] = useState<'全部' | '台灣' | '國外' | '台灣與國外'>('全部');
   const [countryFilter, setCountryFilter] = useState<string[]>([]);
   const [abroadCityFilter, setAbroadCityFilter] = useState<string[]>([]);
@@ -634,11 +729,11 @@ export const JobExplorerView: React.FC = () => {
   const allSiteOptions = useMemo(() => Array.from(new Set([...siteOptions.domestic, ...siteOptions.abroad])), [siteOptions]);
   const chosenSites = allSiteOptions.filter((x) => !excludedSites.includes(x));
   const isSiteFiltered = chosenSites.length > 0 && chosenSites.length < allSiteOptions.length;
-  const isHourlyFilter = jobTypeFilter === '兼職';
+  const isHourlyFilter = jobTypes.length === 1 && jobTypes[0] === '兼職';
   /** 篩選條件組成的搜尋說明（正職／兼職、範圍、時薪） */
   const filterBriefParts = (): string[] => {
     const parts: string[] = [];
-    if (jobTypeFilter !== '全部') parts.push(`工作型態：${jobTypeFilter === '兼職' ? '兼職工讀' : jobTypeFilter}`);
+    if (jobTypes.length) parts.push(`工作型態：${jobTypes.map((t) => (t === '兼職' ? '兼職工讀' : t)).join('、')}`);
     if (regionFilter !== '全部' && regionFilter !== '台灣') {
       const v = regionFilter === '國外' ? '工作範圍：國外' : '工作範圍：台灣與國外皆可';
       parts.push(countryFilter.length ? `${v}（${formatCountryScope(countryFilter, abroadCityFilter)}）` : v);
@@ -712,16 +807,20 @@ export const JobExplorerView: React.FC = () => {
       </span>
     ) : null;
 
-  // ─── 保留這次的搜尋結果：點職缺連結出去、頁面被重新整理或 APP 重開，回來時結果還在（存在這台裝置，6 小時內有效） ───
+  // ─── 保留這次的搜尋結果：離開匯職缺頁（換到網站其他頁、關閉、重新整理）5 分鐘內回來，結果和條件還在；
+  //     超過 5 分鐘就一律重新設定條件。停在匯職缺頁上（包含點職缺連結到新分頁看）不會過期。 ───
   const PERSIST_KEY = 'ideax_job_explorer_session_v1';
-  const PERSIST_TTL = 6 * 60 * 60 * 1000;
+  const PERSIST_TTL = 5 * 60 * 1000;
+  /** 離開的時間：明確離開 > 最後一次切到背景（手機直接關掉 APP 時記不到離開） > 最後一次存檔 */
+  const leftAtOf = (saved: any) => Number(saved?.leftAt || saved?.hiddenAt || saved?.at || 0);
   const restoredRef = useRef(false);
   const restoreScrollRef = useRef<number | null>(null);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PERSIST_KEY);
       const saved = raw ? JSON.parse(raw) : null;
-      if (saved && Date.now() - Number(saved.at || 0) < PERSIST_TTL && (saved.jobs?.length || saved.messages?.length)) {
+      if (saved && Date.now() - leftAtOf(saved) >= PERSIST_TTL) localStorage.removeItem(PERSIST_KEY);
+      else if (saved && (saved.jobs?.length || saved.messages?.length)) {
         // 上次還在搜尋中就離開了：結果保留，訊息改成可以重新搜尋
         const msgs: ChatMessage[] = (saved.messages || []).map((m: ChatMessage) =>
           m.id === saved.searchingMsgId
@@ -732,12 +831,17 @@ export const JobExplorerView: React.FC = () => {
         if (Array.isArray(saved.jobs)) setJobs(saved.jobs);
         setHasSearched(Boolean(saved.hasSearched || saved.jobs?.length));
         if (typeof saved.keyword === 'string') setKeyword(saved.keyword);
-        if (saved.selectedCity) setSelectedCity(saved.selectedCity);
-        if (saved.selectedCategory) setSelectedCategory(saved.selectedCategory);
+        if (Array.isArray(saved.selectedCities)) setSelectedCities(saved.selectedCities.filter((c: unknown) => typeof c === 'string'));
+        else if (saved.selectedCity && saved.selectedCity !== '全部') setSelectedCities(String(saved.selectedCity).split('、').filter(Boolean));
+        if (Array.isArray(saved.selectedCategories)) setSelectedCategories(saved.selectedCategories.filter((c: unknown) => typeof c === 'string'));
+        else if (saved.selectedCategory && saved.selectedCategory !== '全部') setSelectedCategories(String(saved.selectedCategory).split('、').filter(Boolean));
         if (saved.sortBy) setSortBy(saved.sortBy);
         if (saved.sortOrder) setSortOrder(saved.sortOrder);
         if (Array.isArray(saved.userCarePoints)) setUserCarePoints(saved.userCarePoints);
         if (typeof saved.scrollY === 'number') restoreScrollRef.current = saved.scrollY;
+        // 回到匯職缺頁了：離開時間歸零，之後停多久都不會過期
+        saved.leftAt = null; saved.hiddenAt = null;
+        localStorage.setItem(PERSIST_KEY, JSON.stringify(saved));
       }
     } catch {}
     restoredRef.current = true;
@@ -749,7 +853,16 @@ export const JobExplorerView: React.FC = () => {
   const [aiStatus, setAiStatus] = useState<AiIntakeStatus>('idle');
 
   // 條件標籤編輯狀態（依標籤形式，可刪除、新增、編輯文字或數字與幣別）
-  const [isAddTagOpen, setIsAddTagOpen] = useState(false);
+  // 新增條件選單：記住是哪一則訊息打開的（不然每則訊息的選單會一起打開）
+  const [addTagOpenFor, setAddTagOpenFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!addTagOpenFor) return;
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest?.('[data-add-tag-menu]')) setAddTagOpenFor(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [addTagOpenFor]);
   // 剛新增的標籤：一出現就直接在標籤上輸入
   const [newTagId, setNewTagId] = useState<string | null>(null);
 
@@ -767,6 +880,8 @@ export const JobExplorerView: React.FC = () => {
     for (const t of tags) {
       if (t.type === 'role' && t.value) {
         setKeyword(t.value);
+        // 職務類別跟著職務自動勾（好幾個職務就勾好幾個類別）
+        setSelectedCategories(rolesToCategories(splitRoles(t.value)));
       } else if (t.type === 'company') {
         const co = t.value.replace(/^(目標公司[：:]\s*|限定公司[：:]\s*)/, '').trim();
         if (co && co !== '不拘' && co !== '不限' && co !== '不限公司') {
@@ -780,12 +895,21 @@ export const JobExplorerView: React.FC = () => {
           '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣',
           '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣', '遠端工作'
         ];
-        const match = cityList.find((c) => t.value.includes(c) || c.includes(t.value));
-        if (match) setSelectedCity(match);
+        // 條件裡提到幾個縣市就選幾個（例如「台北市、新北市」；「台北」也算台北市；「北北基桃」展開成四個）
+        const v = t.value
+          .replace(/北北基桃/g, '台北市新北市基隆市桃園市').replace(/北北桃/g, '台北市新北市桃園市').replace(/北北基/g, '台北市新北市基隆市')
+          .replace(/雙北/g, '台北市新北市').replace(/桃竹苗/g, '桃園市新竹市新竹縣苗栗縣').replace(/桃竹竹/g, '桃園市新竹市新竹縣')
+          .replace(/中彰投/g, '台中市彰化縣南投縣').replace(/雲嘉南/g, '雲林縣嘉義市嘉義縣台南市').replace(/高屏/g, '高雄市屏東縣').replace(/花東/g, '花蓮縣台東縣');
+        const matches = cityList.filter((c) => v.includes(c) || (c !== '遠端工作' && v.includes(c.replace(/[市縣]$/, ''))) || (c === '遠端工作' && /遠端|在家工作/.test(v)));
+        if (matches.length) setSelectedCities(matches);
       } else if (t.type === 'jobType' && t.value) {
-        if (/兼職|工讀|打工/.test(t.value)) setJobTypeFilter('兼職');
-        else if (/實習/.test(t.value)) setJobTypeFilter('實習');
-        else if (/正職/.test(t.value)) setJobTypeFilter('正職');
+        const list = parseJobTypes(t.value);
+        if (list.length) {
+          // 只選兼職（時薪）和其他（月薪）切換時，薪資門檻的單位不同：清掉
+          const hourlyNow = list.length === 1 && list[0] === '兼職';
+          if (hourlyNow !== isHourlyFilter) setMinSalaryFilter(0);
+          setJobTypes(list);
+        }
       } else if (t.type === 'salary') {
         if (typeof t.numValue === 'number' && t.numValue > 0) {
           setMinSalaryFilter(t.numValue);
@@ -867,7 +991,7 @@ export const JobExplorerView: React.FC = () => {
         };
       })
     );
-    setIsAddTagOpen(false);
+    setAddTagOpenFor(null);
   };
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -881,10 +1005,12 @@ export const JobExplorerView: React.FC = () => {
         const sess = searchSessionRef.current;
         localStorage.setItem(PERSIST_KEY, JSON.stringify({
           at: Date.now(),
+          leftAt: null,
+          hiddenAt: document.visibilityState === 'hidden' ? Date.now() : null,
           messages: messages.slice(-40),
           jobs: jobs.slice(0, 100),
           hasSearched,
-          keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints,
+          keyword, selectedCity, selectedCities, selectedCategory, selectedCategories, sortBy, sortOrder, userCarePoints,
           searchingMsgId: isSearching && sess ? sess.botMsgId : null,
           searchingBrief: isSearching && sess ? sess.brief : null,
           scrollY: window.scrollY,
@@ -894,21 +1020,30 @@ export const JobExplorerView: React.FC = () => {
     return () => window.clearTimeout(t);
   }, [messages, jobs, hasSearched, keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 點出去前記下捲到哪裡，回來時捲回原位
+  // 記下離開時間與捲動位置：切到背景只記「最後在背景的時間」（回來就清掉），真正離開匯職缺頁或關閉才算離開
   useEffect(() => {
-    const save = () => {
-      if (document.visibilityState !== 'hidden') return;
+    const patch = (fn: (saved: any) => void) => {
       try {
         const raw = localStorage.getItem(PERSIST_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        saved.scrollY = window.scrollY;
+        fn(saved);
         localStorage.setItem(PERSIST_KEY, JSON.stringify(saved));
       } catch {}
     };
-    document.addEventListener('visibilitychange', save);
-    window.addEventListener('pagehide', save);
-    return () => { document.removeEventListener('visibilitychange', save); window.removeEventListener('pagehide', save); };
+    const markLeft = () => patch((saved) => { saved.scrollY = window.scrollY; saved.leftAt = Date.now(); });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') patch((saved) => { saved.scrollY = window.scrollY; saved.hiddenAt = Date.now(); });
+      else patch((saved) => { saved.hiddenAt = null; });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', markLeft);
+    return () => {
+      // 換到網站的其他頁面也算離開
+      markLeft();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', markLeft);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -1279,7 +1414,9 @@ export const JobExplorerView: React.FC = () => {
   };
 
   const updateBotMsg = (sess: SearchSession, patch: Partial<ChatMessage>) => {
-    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...patch } : m)));
+    // 之後又改了文字（重新搜尋等）就不再顯示「以下為您精選」
+    const p2 = patch.text !== undefined && patch.showPicked === undefined ? { ...patch, showPicked: false } : patch;
+    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...p2 } : m)));
   };
 
   const stopSearchSession = (sess: SearchSession | null) => {
@@ -1311,7 +1448,7 @@ export const JobExplorerView: React.FC = () => {
     const n = sess.jobs.length;
     setSearchProgressText(n ? `${foundSummary(sess)}，共 ${n} 筆` : '');
     if (note !== undefined) updateBotMsg(sess, { text: note });
-    else if (n) updateBotMsg(sess, { text: `找好了！${foundSummary(sess)}${userBrowsingRef.current ? '。' : '，已依推薦程度排序。'}`, searchActions: undefined });
+    else if (n) updateBotMsg(sess, { text: userBrowsingRef.current ? '' : '已依推薦程度排序。', showPicked: true, searchActions: undefined });
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   };
 
@@ -1566,6 +1703,8 @@ export const JobExplorerView: React.FC = () => {
         body: JSON.stringify({
           message: queryText,
           previousBrief: pendingConfirmedBrief,
+          // 目前條件裡的職務（使用者說「也想看…」時，後端會和新職務合併成複選）
+          previousRoles: currentRolesFrom(messages),
           conversationHistory: userHistory,
           skippedDimensions: effectiveSkipped,
           filters: {
@@ -1677,14 +1816,75 @@ export const JobExplorerView: React.FC = () => {
     }
   };
 
+  // 上傳履歷／求職需求（PDF、Word）：AI 讀完後整理成一句求職需求，再走原本的條件整理流程
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [isReadingDoc, setIsReadingDoc] = useState(false);
+  const handleUploadDoc = async (file: File) => {
+    const name = file.name.slice(0, 80);
+    const pushBot = (text: string) =>
+      setMessages((prev) => [...prev, { id: `doc-bot-${Date.now()}`, role: 'bot', text }]);
+    setIsChatCollapsed(false);
+    setMessages((prev) => [...prev, { id: `doc-user-${Date.now()}`, role: 'user', text: `📄 上傳檔案：${name}` }]);
+    if (!/\.(pdf|docx?)$/i.test(file.name)) {
+      pushBot('目前只支援 PDF 或 Word（.docx）檔，請換個檔案再試一次。');
+      return;
+    }
+    if (/\.doc$/i.test(file.name)) {
+      pushBot('舊版 Word（.doc）無法讀取，請在 Word 裡「另存新檔」成 .docx 或 PDF 再上傳。');
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      pushBot('檔案太大了（上限 4MB），可以把圖片拿掉或另存成較小的 PDF 再上傳。');
+      return;
+    }
+    setIsReadingDoc(true);
+    setAiStatus('reading');
+    try {
+      const res = await fetch('/api/job-explorer/parse-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(name) },
+        body: file,
+      });
+      const data = await res.json().catch(() => null);
+      if (res.status === 429) {
+        pushBot('上傳分析太頻繁了，請過幾分鐘再試，或直接用文字描述想找的工作。');
+        return;
+      }
+      if (!data?.ok || !data.brief) {
+        pushBot(data?.error || '這次沒能讀懂檔案，請稍後再試，或直接用文字描述想找的工作。');
+        return;
+      }
+      const lines = [
+        `已讀完《${name}》${data.docType && data.docType !== '其他' ? `（${data.docType}）` : ''}${data.summary ? `：${data.summary}` : ''}`,
+        data.roles?.length ? `・推薦職務：${data.roles.join('、')}` : '',
+        data.regions?.length ? `・希望地區：${data.regions.join('、')}` : '',
+        data.education ? `・學歷：${data.education}` : '',
+        data.experienceYears != null ? `・相關經驗：約 ${data.experienceYears} 年` : '',
+        data.skills?.length ? `・技能：${data.skills.join('、')}` : '',
+        '接著幫您整理成搜尋條件，之後都可以再調整。',
+      ].filter(Boolean);
+      pushBot(lines.join('\n'));
+      setAiStatus('idle');
+      setIsReadingDoc(false);
+      await handleSendInput(data.brief);
+    } catch {
+      pushBot('上傳時連線中斷了，請再試一次。');
+    } finally {
+      setIsReadingDoc(false);
+      setAiStatus((s) => (s === 'reading' ? 'idle' : s));
+      if (docInputRef.current) docInputRef.current.value = '';
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+    }
+  };
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (keyword.trim()) count++;
     if (companyFilter.trim()) count++;
-    if (selectedCity !== '全部') count++;
-    if (selectedCategory !== '全部') count++;
+    if (selectedCities.length) count++;
+    if (selectedCategories.length) count++;
     if (minSalaryFilter > 0 || abroadSalaryFilter) count++;
-    if (jobTypeFilter !== '全部') count++;
+    if (jobTypes.length) count++;
     if (regionFilter !== '全部') count++;
     if (isSiteFiltered) count++;
     if (maxExpFilter !== 'all') count++;
@@ -1694,6 +1894,9 @@ export const JobExplorerView: React.FC = () => {
   }, [keyword, companyFilter, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter, isSiteFiltered, abroadSalaryFilter]);
 
   // 合併目前列表（或僅顯示收藏職缺）並進行篩選與排序
+  // 不嚴格篩選：完全符合條件的排前面，不完全符合的列在「你可能也關注的職缺」下面
+  const filterStatsRef = useRef({ total: 0, full: 0 });
+
   const filteredAndSortedJobs = useMemo(() => {
     const sourceList = showSavedOnly ? Object.values(savedJobsMap) : jobs;
     const baseCoord = CITY_COORDS[userBaseCity];
@@ -1728,51 +1931,66 @@ export const JobExplorerView: React.FC = () => {
       };
     });
 
-    let filtered = withDynamicDistance.filter((job) => {
-      if (selectedCity !== '全部') {
-        const normSelected = selectedCity.replace(/臺/g, '台');
-        const normLoc = `${job.location || ''} ${job.city || ''}`.replace(/臺/g, '台');
-        if (selectedCity === '遠端工作') {
-          if (!/遠端|WFH|居家/i.test(`${job.workEnvironment} ${job.title} ${job.description}`)) return false;
-        } else if (normLoc.trim() && !normLoc.includes(normSelected) && !normLoc.includes(normSelected.slice(0, 2))) {
-          return false;
-        }
-      }
-      if (selectedCategory !== '全部' && job.category && job.category !== selectedCategory && !job.industry.includes(selectedCategory)) {
-        return false;
-      }
-      const jobCur = detectCurrency(job.salaryText, job.location || '');
-      const maxInTwd = jobCur === 'TWD' ? job.salaryMax : convert(job.salaryMax, jobCur, 'TWD', fxRates);
-      if (minSalaryFilter > 0 && job.salaryMax > 0 && maxInTwd < minSalaryFilter) {
-        return false;
-      }
-      if (maxExpFilter !== 'all' && job.experienceYears > maxExpFilter) {
-        return false;
-      }
-      if (maxEduFilter !== 'all' && job.educationLevel > maxEduFilter) {
-        return false;
-      }
-      if (keyword.trim()) {
-        const kw = keyword.trim().toLowerCase();
-        const haystack = `${job.title} ${job.company} ${job.location} ${job.industry} ${job.workEnvironment} ${job.benefits} ${job.description}`.toLowerCase();
-        if (!haystack.includes(kw)) return false;
-      }
-      return true;
-    });
+    // 職務關鍵字拆成多個詞（「服務生（外場）、行政」→ 服務生、外場、行政），符合任何一個就算
+    const kwTokens = Array.from(new Set(
+      keyword.trim().toLowerCase()
+        .split(/[、,，/／;；()（）\[\]「」\s]+|或|和/)
+        .map((t) => t.replace(/^(職務|工作型態|地區)[：:]/, '').trim())
+        .filter((t) => t.length >= 2 && !/^(兼職|正職|工讀|打工|實習|全職)$/.test(t)),
+    ));
+    // 薪資換算成「月」比較：時薪 ×176、日薪 ×22、年薪 ÷12（兼職的時薪職缺不會被月薪條件誤刪）
+    const toMonthly = (amount: number, text: string) => {
+      const t = text || '';
+      if (/時薪|\/\s*h(ou)?r|per hour|hourly/i.test(t) || (amount > 0 && amount < 1000)) return amount * 176;
+      if (/日薪|\/\s*day|per day|daily/i.test(t) || (amount >= 1000 && amount < 5000)) return amount * 22;
+      if (/年薪|\/\s*y(ea)?r|per year|annual/i.test(t) || amount >= 300000) return amount / 12;
+      return amount;
+    };
+    // 篩選條件的薪水：兼職時填的是時薪（小於 1000），其他是月薪
+    const minMonthly = minSalaryFilter > 0 ? (minSalaryFilter < 1000 ? minSalaryFilter * 176 : minSalaryFilter) : 0;
 
-    // 保證在非收藏模式下，若已取得職缺列表，至少顯示 3 筆、最多 100 筆
-    if (!showSavedOnly && withDynamicDistance.length > 0 && filtered.length < 3) {
-      const existingIds = new Set(filtered.map((j) => j.id));
-      for (const item of withDynamicDistance) {
-        if (!existingIds.has(item.id)) {
-          filtered.push(item);
-          existingIds.add(item.id);
-        }
-        if (filtered.length >= Math.min(withDynamicDistance.length, Math.max(3, filtered.length))) {
-          if (filtered.length >= 3) break;
-        }
+    // 每個條件各自檢查；沒全部符合也不會被刪掉，只是排到「你可能也關注的職缺」
+    // 權重＝條件重要性，使用者在意的項目（優先顯示的順序）再加重
+    const careW = (k: CarePointKey) => { const i = userCarePoints.indexOf(k); return i < 0 ? 0 : Math.max(1, 3 - i); };
+    const scored = withDynamicDistance.map((job) => {
+      const checks: Array<{ name: string; ok: boolean; w: number }> = [];
+      if (kwTokens.length) {
+        const haystack = `${job.title} ${job.company} ${job.location} ${job.industry} ${job.category || ''} ${job.workEnvironment} ${job.benefits} ${job.description}`.toLowerCase();
+        // 每個詞也試前兩個字（「服務生」對得到「外場服務人員」）
+        const ok = kwTokens.some((t) => haystack.includes(t) || (t.length >= 3 && /^[\u4e00-\u9fff]{2}/.test(t) && haystack.includes(t.slice(0, 2))));
+        checks.push({ name: '職務', ok, w: 4 });
       }
-    }
+      if (selectedCities.length) {
+        const normLoc = `${job.location || ''} ${job.city || ''}`.replace(/臺/g, '台');
+        const isRemote = /遠端|WFH|居家/i.test(`${job.workEnvironment} ${job.title} ${job.description}`);
+        const anywhere = /全台|全省|不限|多個地點|多地|各地|各縣市|台灣/.test(normLoc) && !/[市縣]/.test(normLoc.replace(/台灣/g, ''));
+        const ok = anywhere || !normLoc.trim() || selectedCities.some((c) => {
+          if (c === '遠端工作') return isRemote;
+          const norm = c.replace(/臺/g, '台');
+          return normLoc.includes(norm) || normLoc.includes(norm.slice(0, 2));
+        });
+        checks.push({ name: '地區', ok, w: 3 + careW('distance') });
+      }
+      if (selectedCategories.length && job.category) {
+        const titleHitsRole = kwTokens.some((t) => String(job.title || '').toLowerCase().includes(t));
+        const hay = `${job.category} ${job.industry || ''} ${job.title || ''}`;
+        const ok = titleHitsRole || selectedCategories.some((c) => job.category === c || c.split(/[／/]/).some((w) => w && hay.includes(w.replace(/工程$/, ''))));
+        checks.push({ name: '職務類別', ok, w: 1 + careW('industry') });
+      }
+      if (minMonthly > 0 && job.salaryMax > 0) {
+        const jobCur = detectCurrency(job.salaryText, job.location || '');
+        const maxInTwd = jobCur === 'TWD' ? job.salaryMax : convert(job.salaryMax, jobCur, 'TWD', fxRates);
+        checks.push({ name: '薪資', ok: toMonthly(maxInTwd, job.salaryText) >= minMonthly * 0.95, w: 2 + careW('salary') });
+      }
+      if (maxExpFilter !== 'all') checks.push({ name: '經歷', ok: !(job.experienceYears > maxExpFilter), w: 1 });
+      if (maxEduFilter !== 'all') checks.push({ name: '學歷', ok: !(job.educationLevel > maxEduFilter), w: 1 });
+      const total = checks.reduce((n, c) => n + c.w, 0);
+      const got = checks.reduce((n, c) => n + (c.ok ? c.w : 0), 0);
+      return { ...job, fullMatch: checks.every((c) => c.ok), relevance: total ? got / total : 1, missed: checks.filter((c) => !c.ok).map((c) => c.name) };
+    });
+    let filtered = scored;
+    filterStatsRef.current = { total: scored.length, full: scored.filter((j) => j.fullMatch).length };
+
     filtered = filtered.slice(0, 100);
 
     const parseJobTimestamp = (job: typeof withDynamicDistance[number]): number => {
@@ -1792,9 +2010,12 @@ export const JobExplorerView: React.FC = () => {
     };
 
     // 搜尋中照抵達順序顯示（不會一直跳位置），全部跑完再依排序方式整理
-    if (arrivalOrder && !showSavedOnly) return filtered;
+    const full = filtered.filter((j) => j.fullMatch);
+    const partial = filtered.filter((j) => !j.fullMatch);
+    // 搜尋中照抵達順序（兩組各自照順序）；不完全符合的一律先比「符合多少條件」
+    if (arrivalOrder && !showSavedOnly) return [...full, ...[...partial].sort((a, b) => b.relevance - a.relevance)];
     const dir = sortOrder === 'desc' ? -1 : 1;
-    return [...filtered].sort((a, b) => {
+    const cmp = (a: typeof filtered[number], b: typeof filtered[number]) => {
       switch (sortBy) {
         case 'recommended':
           return (a.effectiveAiScore - b.effectiveAiScore) * dir;
@@ -1818,14 +2039,15 @@ export const JobExplorerView: React.FC = () => {
         default:
           return 0;
       }
-    });
+    };
+    return [...[...full].sort(cmp), ...[...partial].sort((a, b) => (b.relevance - a.relevance) || cmp(a, b))];
   }, [
     jobs,
     savedJobsMap,
     showSavedOnly,
     userBaseCity,
     userCarePoints,
-    selectedCity,
+    selectedCities,
     selectedCategory,
     minSalaryFilter,
     maxExpFilter,
@@ -1834,8 +2056,7 @@ export const JobExplorerView: React.FC = () => {
     sortBy,
     sortOrder,
     fxRates,
-    arrivalOrder,
-  ]);
+    arrivalOrder, selectedCategories]);
 
   const handleSortClick = (key: JobSortKey) => {
     // 使用者自己選了排序：馬上照他選的排，之後也不再自動重排
@@ -1857,10 +2078,10 @@ export const JobExplorerView: React.FC = () => {
   const resetAllFilters = () => {
     setKeyword('');
     setCompanyFilter('');
-    setSelectedCity('全部');
-    setSelectedCategory('全部');
+    setSelectedCities([]);
+    setSelectedCategories([]);
     setMinSalaryFilter(0);
-    setJobTypeFilter('全部');
+    setJobTypes([]);
     setRegionFilter('台灣');
     setExcludedSites([]);
     setCountryFilter([]);
@@ -1894,13 +2115,13 @@ export const JobExplorerView: React.FC = () => {
         {/* 頂部主區塊：搜尋輸入框維持在最上方，下方為篩選面板與對話確認區 */}
         <div className="bg-white rounded-2xl border border-stone-200/90 p-2.5 sm:p-3 shadow-2xs space-y-2.5">
           {/* 1. 頂部主操作列：自然語言／關鍵字輸入 ＋ 搜尋鈕 ＋ 篩選收合鈕 ＋ 收藏切換 */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void handleSendInput();
               }}
-              className="flex-1 flex items-center gap-2 min-w-0"
+              className="w-full sm:w-auto sm:flex-1 flex items-center gap-2 min-w-0"
             >
               <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1913,9 +2134,30 @@ export const JobExplorerView: React.FC = () => {
                 />
               </div>
 
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleUploadDoc(f);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                disabled={isSearching || isRegulating || isReadingDoc}
+                title="上傳履歷或求職需求（PDF、Word），AI 幫你整理成搜尋條件"
+                aria-label="上傳履歷或求職需求檔案"
+                className="p-2 rounded-xl bg-white hover:bg-blue-50 disabled:opacity-40 text-[#1e3a8a] border border-stone-200 shrink-0 transition-colors cursor-pointer"
+              >
+                {isReadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+
               <button
                 type="submit"
-                disabled={isSearching || isRegulating || (!chatInput.trim() && !pendingConfirmedBrief)}
+                disabled={isSearching || isRegulating || isReadingDoc || (!chatInput.trim() && !pendingConfirmedBrief)}
                 className="px-3.5 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] disabled:opacity-40 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
               >
                 {isSearching || isRegulating ? (
@@ -1927,6 +2169,8 @@ export const JobExplorerView: React.FC = () => {
               </button>
             </form>
 
+            {/* 工具按鈕：手機版放第二行靠右，不跟輸入框搶寬度 */}
+            <div className="w-full sm:w-auto flex items-center justify-end gap-2 shrink-0">
             {/* 篩選條件收合按鈕 */}
             <button
               type="button"
@@ -1976,6 +2220,7 @@ export const JobExplorerView: React.FC = () => {
             >
               <HelpCircle className="w-4 h-4" />
             </button>
+            </div>
           </div>
 
           {isHelpOpen && (
@@ -2017,21 +2262,17 @@ export const JobExplorerView: React.FC = () => {
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-stone-50/70 focus:bg-white outline-none focus:border-[#1e3a8a]/50"
                 />
 
-                <select
-                  value={jobTypeFilter}
-                  onChange={(e) => {
-                    const v = e.target.value as typeof jobTypeFilter;
+                <ChipMultiSelect
+                  prefix="工作型態"
+                  groups={[{ items: ['正職', '兼職', '實習'] }]}
+                  value={jobTypes}
+                  onChange={(next) => {
+                    const list = (['正職', '兼職', '實習'] as const).filter((x) => next.includes(x));
                     // 正職用月薪、兼職用時薪：切換時清掉薪資門檻
-                    if ((v === '兼職') !== isHourlyFilter) setMinSalaryFilter(0);
-                    setJobTypeFilter(v);
+                    if ((list.length === 1 && list[0] === '兼職') !== isHourlyFilter) setMinSalaryFilter(0);
+                    setJobTypes(list);
                   }}
-                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
-                >
-                  <option value="全部">正職／兼職：不限</option>
-                  <option value="正職">正職</option>
-                  <option value="兼職">兼職／工讀</option>
-                  <option value="實習">實習</option>
-                </select>
+                />
 
                 <select
                   value={regionFilter}
@@ -2041,7 +2282,7 @@ export const JobExplorerView: React.FC = () => {
                     if (v === '國外') setMinSalaryFilter(0); else setAbroadSalaryFilter('');
                     setRegionFilter(v);
                     if (v === '台灣' || v === '全部') setCountryFilter([]);
-                    if (v === '國外') setSelectedCity('全部');
+                    if (v === '國外') setSelectedCities([]);
                   }}
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
@@ -2051,37 +2292,9 @@ export const JobExplorerView: React.FC = () => {
                   <option value="台灣與國外">台灣＋國外</option>
                 </select>
 
-                <select
-                  value={selectedCity}
-                  disabled={regionFilter === '國外'}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
-                >
-                  <option value="全部">地區：不限</option>
-                  <option value="台北市">台北市</option>
-                  <option value="新北市">新北市</option>
-                  <option value="桃園市">桃園市</option>
-                  <option value="新竹市">新竹市</option>
-                  <option value="台中市">台中市</option>
-                  <option value="台南市">台南市</option>
-                  <option value="高雄市">高雄市</option>
-                  <option value="遠端工作">遠端工作</option>
-                </select>
+                <CityMultiSelect value={selectedCities} onChange={setSelectedCities} disabled={regionFilter === '國外'} />
 
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
-                >
-                  <option value="全部">類別：不限</option>
-                  <option value="門市／餐飲／零售">門市／餐飲／零售</option>
-                  <option value="軟體／AI工程">軟體／AI工程</option>
-                  <option value="產品／專案管理">產品／專案管理</option>
-                  <option value="行銷／企劃／社群">行銷／企劃／社群</option>
-                  <option value="設計／UIUX">設計／UIUX</option>
-                  <option value="業務／商務開發">業務／商務開發</option>
-                  <option value="行政／人資／財會">行政／人資／財會</option>
-                </select>
+                <CategoryMultiSelect value={selectedCategories} onChange={setSelectedCategories} />
 
                 {regionFilter === '國外' ? (
                   <select
@@ -2420,20 +2633,24 @@ export const JobExplorerView: React.FC = () => {
                                   })}
 
                                   {/* 新增條件標籤按鈕 */}
-                                  <div className="relative inline-block">
+                                  <div className="relative inline-block" data-add-tag-menu>
                                     <button
                                       type="button"
-                                      onClick={() => setIsAddTagOpen((v) => !v)}
+                                      onClick={() => setAddTagOpenFor((v) => (v === m.id ? null : m.id))}
+                                      aria-expanded={addTagOpenFor === m.id}
                                       className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg border border-dashed border-stone-300 text-stone-500 hover:border-blue-400 hover:text-[#1e3a8a] hover:bg-blue-50/60 text-xs font-bold transition-all cursor-pointer"
                                     >
                                       <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                                       <span>新增條件</span>
                                     </button>
 
-                                    {isAddTagOpen && (
-                                      <div className="absolute left-0 top-full mt-1.5 z-30 w-48 rounded-xl bg-white border border-stone-200 shadow-xl p-1.5 space-y-0.5 text-xs">
-                                        <div className="px-2 py-1 text-[10px] font-black text-stone-400 uppercase tracking-wider">
-                                          選擇新增維度
+                                    {addTagOpenFor === m.id && (
+                                      <div className="fixed inset-x-3 bottom-24 z-[70] sm:absolute sm:inset-auto sm:left-0 sm:top-full sm:mt-1.5 sm:z-30 sm:w-56 rounded-2xl sm:rounded-xl bg-white border border-stone-200 shadow-2xl sm:shadow-xl p-2 sm:p-1.5 space-y-0.5 text-xs">
+                                        <div className="px-2 py-1 flex items-center justify-between">
+                                          <span className="text-[11px] sm:text-[10px] font-black text-stone-500 sm:text-stone-400">新增哪一種條件？</span>
+                                          <button type="button" onClick={() => setAddTagOpenFor(null)} aria-label="關閉" className="sm:hidden p-1 rounded-md text-stone-400 hover:text-stone-700 cursor-pointer">
+                                            <X className="w-4 h-4" />
+                                          </button>
                                         </div>
                                         {[
                                           { type: 'company', label: '🏢 限定公司（自填）' },
@@ -2448,7 +2665,7 @@ export const JobExplorerView: React.FC = () => {
                                             key={item.type}
                                             type="button"
                                             onClick={() => handleAddConditionTag(m.id, item.type as ConditionTagType)}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-blue-50 font-bold text-stone-700 transition-colors flex items-center justify-between cursor-pointer"
+                                            className="w-full text-left px-3 sm:px-2.5 py-2.5 sm:py-1.5 rounded-lg hover:bg-blue-50 font-bold text-sm sm:text-xs text-stone-700 transition-colors flex items-center justify-between cursor-pointer"
                                           >
                                             <span>{item.label}</span>
                                             <Plus className="w-3 h-3 text-stone-400" />
@@ -2483,25 +2700,48 @@ export const JobExplorerView: React.FC = () => {
                                 </div>
                               </div>
                             ) : (
-                              <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                              <p className="whitespace-pre-wrap font-medium">
+                                {m.showPicked ? `以下為您精選 ${filteredAndSortedJobs.length} 個職缺${m.text ? `，${m.text}` : '。'}` : m.text}
+                              </p>
                             )}
 
-                            {/* 換了不同職務：提醒先清除對話，條件才不會混在一起 */}
-                            {m.role === 'bot' && m.roleSwitched && (
-                              <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium leading-relaxed">
-                                <div>💡 你換了一個不同的職務。要搜尋其他職務，建議先清除對話重新開始，之前的條件才不會混在一起。</div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    clearJobChat();
-                                    if (m.sourceText) setChatInput(m.sourceText);
-                                  }}
-                                  className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black cursor-pointer"
-                                >
-                                  清除對話，用這個職務重新開始
-                                </button>
-                              </div>
-                            )}
+                            {/* 換了不同職務：可以兩個一起搜（職務複選），或清除對話只搜新的 */}
+                            {m.role === 'bot' && m.roleSwitched && (() => {
+                              const idx = messages.findIndex((x) => x.id === m.id);
+                              const prevRoles = currentRolesFrom(messages.slice(0, Math.max(0, idx)));
+                              const roleTag = (m.conditionTags || []).find((t) => t.type === 'role');
+                              const merged = Array.from(new Set([...prevRoles, ...splitRoles(roleTag?.value || '')]));
+                              const canMerge = Boolean(roleTag) && prevRoles.length > 0 && merged.length > splitRoles(roleTag?.value || '').length;
+                              return (
+                                <div className="mt-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium leading-relaxed">
+                                  <div>💡 你換了一個不同的職務。職務可以複選：要和之前的職務一起搜，還是清除對話只搜新的？</div>
+                                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {canMerge && roleTag && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateConditionTag(m.id, { ...roleTag, value: merged.join('、') });
+                                          setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, roleSwitched: false } : x)));
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-[11px] font-black cursor-pointer"
+                                      >
+                                        一起搜：{merged.join('、')}
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        clearJobChat();
+                                        if (m.sourceText) setChatInput(m.sourceText);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black cursor-pointer"
+                                    >
+                                      清除對話，只搜新的職務
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* 搜尋中要使用者決定：繼續等搜搜／派小燈泡／重新搜尋 */}
                             {m.role === 'bot' && m.searchActions && m.searchActions.length > 0 && (
@@ -2851,6 +3091,15 @@ export const JobExplorerView: React.FC = () => {
                               </div>
                             </>
                           )}
+                          {aiStatus === 'reading' && (
+                            <>
+                              <Sparkles className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                                <span>AI 正在讀取檔案…</span>
+                                <span className="text-[11px] text-indigo-600 font-normal">（約 10–30 秒，檔案只用來整理條件、不會儲存）</span>
+                              </div>
+                            </>
+                          )}
                           {aiStatus === 'typing' && (
                             <>
                               <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
@@ -2866,7 +3115,7 @@ export const JobExplorerView: React.FC = () => {
                     <div ref={chatEndRef} />
                   </div>
                   <div className="flex items-center justify-between gap-3 px-1">
-                    <span className="text-[11px] text-stone-500 leading-snug">💡 要搜尋其他職務，請先「清除對話」再重新輸入</span>
+                    <span className="text-[11px] text-stone-500 leading-snug">💡 職務可以複選：說「也想看行政」就會一起搜；要整個換掉請先「清除對話」</span>
                     <div className="flex items-center gap-3 shrink-0">
                       <button
                         type="button"
@@ -2890,6 +3139,9 @@ export const JobExplorerView: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* 找到職缺後：提示把匯職缺加到主畫面／安裝（瀏覽器支援時直接出現「安裝」鍵） */}
+        {jobs.length > 0 && <JobsInstallPrompt />}
 
         {/* 排序列 ＆ 大卡片／條列式／小卡片切換（手機橫向滑動不擁擠） */}
         <div className="flex items-center justify-between gap-2">
@@ -2930,6 +3182,7 @@ export const JobExplorerView: React.FC = () => {
             {filteredAndSortedJobs.length > 0 && (
               <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-200 shrink-0">
                 共 {filteredAndSortedJobs.length} 筆職缺
+                {filterStatsRef.current.full < filterStatsRef.current.total ? `（完全符合 ${filterStatsRef.current.full} 筆）` : ''}
               </span>
             )}
           </div>
@@ -3054,13 +3307,14 @@ export const JobExplorerView: React.FC = () => {
         ) : viewMode === 'small_card' ? (
           /* 小卡片（電腦預設） */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredAndSortedJobs.map((job) => {
+            {filteredAndSortedJobs.map((job, idx) => {
               const isSaved = Boolean(savedJobsMap[job.id]);
               const extraText = getExtraText(job);
 
               return (
+                <React.Fragment key={job.id}>
+                {idx === filterStatsRef.current.full && idx < filteredAndSortedJobs.length && !showSavedOnly && <PartialDivider variant="grid" fullCount={filterStatsRef.current.full} />}
                 <a
-                  key={job.id}
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -3071,6 +3325,7 @@ export const JobExplorerView: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-[#1e3a8a] border border-blue-200">
                         {job.sourcePlatform || '全網求職'}
                       </span>
+                      {!job.fullMatch && job.missed.length > 0 && <MissedBadge missed={job.missed}  inCardHeader />}
                       {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 flex items-center gap-0.5" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
@@ -3133,18 +3388,20 @@ export const JobExplorerView: React.FC = () => {
                     </button>
                   </div>
                 </a>
+                </React.Fragment>
               );
             })}
           </div>
         ) : viewMode === 'large_card' ? (
           /* 大卡片（手機預設，無圖片但顯示完整資訊） */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-            {filteredAndSortedJobs.map((job) => {
+            {filteredAndSortedJobs.map((job, idx) => {
               const isSaved = Boolean(savedJobsMap[job.id]);
 
               return (
+                <React.Fragment key={job.id}>
+                {idx === filterStatsRef.current.full && idx < filteredAndSortedJobs.length && !showSavedOnly && <PartialDivider variant="grid" fullCount={filterStatsRef.current.full} />}
                 <a
-                  key={job.id}
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -3155,6 +3412,7 @@ export const JobExplorerView: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-[#1e3a8a] border border-blue-200">
                         {job.sourcePlatform || '全網求職'}
                       </span>
+                      {!job.fullMatch && job.missed.length > 0 && <MissedBadge missed={job.missed}  inCardHeader />}
                       {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
@@ -3239,19 +3497,21 @@ export const JobExplorerView: React.FC = () => {
                     </div>
                   </div>
                 </a>
+                </React.Fragment>
               );
             })}
           </div>
         ) : (
           /* 條列式 */
           <div className="bg-white rounded-2xl border border-stone-200/90 divide-y divide-stone-200/80 overflow-hidden shadow-2xs">
-            {filteredAndSortedJobs.map((job) => {
+            {filteredAndSortedJobs.map((job, idx) => {
               const isSaved = Boolean(savedJobsMap[job.id]);
               const extraText = getExtraText(job);
 
               return (
+                <React.Fragment key={job.id}>
+                {idx === filterStatsRef.current.full && idx < filteredAndSortedJobs.length && !showSavedOnly && <PartialDivider variant="row" fullCount={filterStatsRef.current.full} />}
                 <a
-                  key={job.id}
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -3262,6 +3522,7 @@ export const JobExplorerView: React.FC = () => {
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 text-[#1e3a8a] border border-blue-200">
                         {job.sourcePlatform || '全網求職'}
                       </span>
+                      {!job.fullMatch && job.missed.length > 0 && <MissedBadge missed={job.missed} />}
                       <h3 className="text-sm sm:text-base font-bold text-[#165dff] group-hover:underline truncate">
                         {job.title}
                       </h3>
@@ -3315,6 +3576,7 @@ export const JobExplorerView: React.FC = () => {
                     </button>
                   </div>
                 </a>
+                </React.Fragment>
               );
             })}
           </div>

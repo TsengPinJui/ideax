@@ -83,7 +83,7 @@ export const CustomerServiceModal: React.FC = () => {
 
   // AI Agent Chat State
   const [messages, setMessages] = useState<CustomerSupportMessage[]>([]);
-  // 多慧回答使用者的問題（操作引導）才出聲；開場打招呼不出聲
+  // 多慧的每一則回答都出聲；開場打招呼不出聲
   const spokenIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -320,6 +320,7 @@ export const CustomerServiceModal: React.FC = () => {
         userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
       });
       setFaqConsultResults((prev) => ({ ...prev, [faq.id]: result }));
+      if (soundOn) duohuiSpeak(String(result?.explanation || faq.question)); // 多慧的回答都伴隨音效
     } catch (e) {
       console.warn('FAQ Agent consult error:', e);
     } finally {
@@ -344,6 +345,7 @@ export const CustomerServiceModal: React.FC = () => {
         userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
       });
       setCustomConsultResult(result);
+      if (soundOn) duohuiSpeak(String(result?.explanation || query)); // 多慧的回答都伴隨音效
 
       // 自動記錄至後台收集池供管理員 AI 聚類彙整
       recordCollectedQuestion({
@@ -417,7 +419,7 @@ export const CustomerServiceModal: React.FC = () => {
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
                 <span>交易安全託管・專屬資料庫查詢・爭議調處</span>
                 {currentUser && (
-                  <CopyableUserId userId={currentUser.id} prefix="UID: " className="text-[9.5px] py-0 px-1 bg-stone-100" />
+                  <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-[9.5px] py-0 px-1 bg-stone-100" />
                 )}
               </div>
             </div>
