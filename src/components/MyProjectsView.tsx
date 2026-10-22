@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Question, Answer } from '../types';
 import { isPainPointQuestion } from '../utils/questionUtils';
+import { ProjectPlanExportButton } from './ProjectPlanExportButton';
 import { 
   HelpCircle, 
   Briefcase, 
@@ -261,6 +262,12 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
                   <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed">
                     {q.description}
                   </p>
+                  {q.authorId === currentUser.id && !q.isSimulated &&
+                    (q.postType === 'vibecoding_app' || q.postType === 'innovation_proposal') && (
+                      <div className="pt-1.5">
+                        <ProjectPlanExportButton project={q} compact />
+                      </div>
+                    )}
                 </div>
 
                 <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2 text-xs text-stone-500">

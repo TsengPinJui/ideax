@@ -33,6 +33,7 @@ import {
   Image as ImageIcon,
   ZoomIn,
   Trash2,
+  Gift,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -67,6 +68,7 @@ import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
+import { claimSignupBonus } from '../services/signupBonusService';
 
 // 管理員 Email 白名單：共用 services/accountGuard（切換帳號的安全檢查也用同一份）
 import { isAllowlistedAdminEmail, isLocalDevHost } from '../services/accountGuard';
@@ -1228,6 +1230,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         syncUserToFirestore(newUser).catch((syncErr) => console.warn('User cloud sync notice:', syncErr)),
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
+      let signupBonusGranted = false;
+      let signupBonusError = false;
+      if (registeredUid && !isLocalDevHost()) {
+        try {
+          const bonus = await claimSignupBonus();
+          newUser.balance = bonus.balance;
+          signupBonusGranted = bonus.granted;
+        } catch (bonusErr) {
+          signupBonusError = true;
+          console.warn('Signup bonus notice:', bonusErr);
+        }
+      }
       setCurrentUser(newUser);
       setAvailableUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
       recordTermsAgreement('general', CURRENT_TERMS_VERSION);
@@ -1254,7 +1268,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         );
       }
 
-      setSuccessMsg('一般用戶註冊完成，已為您開通全站功能並自動登入！');
+      setSuccessMsg(
+        signupBonusGranted
+          ? '註冊完成，已入帳 200 平台點並自動登入！平台點與創星幣分開計算。'
+          : signupBonusError
+          ? '註冊完成並已自動登入；200 平台點入帳確認中，請稍後查看餘額。平台點與創星幣分開計算。'
+          : '註冊完成並已自動登入！'
+      );
 
       setTimeout(() => {
         onClose();
@@ -1979,6 +1999,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* ============================================================== */}
         {mode === 'register' && (
           <div className="space-y-4 flex-1 flex flex-col justify-center my-auto">
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-left shadow-sm">
+              <Gift className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div>
+                <p className="text-xs font-black text-amber-950">新用戶註冊即贈 200 平台點</p>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900">平台點與創星幣分開計算；一般用戶創星幣新手福利為 100,000 創星幣。</p>
+              </div>
+            </div>
             <div className="flex items-center justify-between pb-1 border-b border-stone-100">
               <div className="flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center">
