@@ -490,6 +490,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         <AdminSiteTrafficChart
           totalViewsCount={siteVisitsCount || 0}
           onlineUsersCount={onlineUsersCount || 1}
+          registeredUsersCount={availableUsers.filter((u) => isRealRegisteredUser(u)).length}
         />
 
         {/* 成長趨勢：註冊會員、不重複訪客 */}

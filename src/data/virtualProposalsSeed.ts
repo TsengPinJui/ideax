@@ -3784,6 +3784,7 @@ export function generateSimulatedTipsForQuestion(q: Question): {
 
   const tipsHistory: NonNullable<Question['tipsHistory']> = [];
   let totalPoints = 0;
+  const postMs = Date.parse(q.createdAt || '') || (SEED_TIME_ANCHOR_MS - 7 * 86400000);
 
   for (let i = 0; i < count; i++) {
     const personaIdx = ((seed + i * 7) % VIRTUAL_PERSONAS.length) + 1;
@@ -3795,6 +3796,10 @@ export function generateSimulatedTipsForQuestion(q: Question): {
     const msg = msgPool[(seed + i * 2) % msgPool.length];
     totalPoints += ptsAmount;
 
+    // 模擬打賞與留言時間：必定在貼文發布之後（逐步遞增，絕不早於貼文自身）
+    const tipMs = postMs + (i + 1) * 3600000 * 3 + ((seed + i * 11) % 45) * 60000 + 1800000;
+    const safeTipMs = Math.max(postMs + (i + 1) * 1800000, Math.min(Date.now(), tipMs));
+
     tipsHistory.push({
       id: `tip-sim-${q.id}-${i + 1}`,
       userId: tipper.id,
@@ -3802,7 +3807,7 @@ export function generateSimulatedTipsForQuestion(q: Question): {
       userAvatar: tipper.avatar,
       amount: ptsAmount,
       message: msg,
-      createdAt: daysAgo(i + 1, 2 + i),
+      createdAt: new Date(safeTipMs).toISOString(),
       isSimulated: true,
     });
   }
@@ -3876,13 +3881,12 @@ function buildSimulatedAnswersForQuestion(q: Question): Answer[] {
   const seed = hashSeedStr(`ans-v3-${q.id}`);
   const results: Answer[] = [];
 
-  // 留言時間排在貼文之後：依序往後推幾小時到一天多，但不超過示範資料的時間錨點
-  const postMs = Date.parse(q.createdAt || '') || SEED_TIME_ANCHOR_MS - 7 * 86400000;
-  const latestMs = Math.max(SEED_TIME_ANCHOR_MS - 20 * 60000, postMs + 15 * 60000);
+  // 留言時間排在貼文之後：依序往後推幾小時到一天多，嚴格晚於貼文發布時間
+  const postMs = Date.parse(q.createdAt || '') || (SEED_TIME_ANCHOR_MS - 7 * 86400000);
   let cursor = postMs;
   const nextTime = (i: number) => {
-    const gapH = 1 + ((seed >>> (i % 16)) % 30); // 1～30 小時
-    cursor = Math.min(latestMs, cursor + gapH * 3600000 + ((seed + i * 17) % 50) * 60000);
+    const gapMinutes = 40 + ((seed >>> (i % 16)) % 360) + i * 50; // 發布後 40 分鐘至數小時逐步遞增
+    cursor = Math.max(cursor + 25 * 60000, postMs + gapMinutes * 60000);
     return new Date(cursor).toISOString();
   };
 
@@ -3959,17 +3963,28 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
   if (proposalTitleOrPurged === true) return [];
   const proposalTitle = typeof proposalTitleOrPurged === 'string' ? proposalTitleOrPurged : undefined;
   const matchedAns = ALL_VIRTUAL_ANSWERS_SEED.filter((a) => a.questionId === proposalId && a.type === 'discussion');
+  
+  // 取得該提案的基準發布時間，確保留言時間嚴格晚於提案自身
+  const seedQ = [...RAW_VIRTUAL_PROPOSALS_SEED, ...DEFAULT_VIBECODING_APPS].find((x) => x.id === proposalId);
+  const postMs = Date.parse(seedQ?.createdAt || '') || (SEED_TIME_ANCHOR_MS - 5 * 86400000);
+
   if (matchedAns.length > 0) {
-    return matchedAns.map((a, idx) => ({
-      id: a.id,
-      proposalId,
-      authorId: a.solverId,
-      authorName: a.solverTitle ? `${a.solverName} ｜ ${a.solverTitle}` : a.solverName,
-      authorAvatar: a.solverAvatar,
-      authorRole: 'user',
-      content: a.freePreview,
-      createdAt: a.createdAt || new Date(SEED_TIME_ANCHOR_MS - (matchedAns.length - idx) * 43200000).toISOString(),
-    }));
+    return matchedAns.map((a, idx) => {
+      const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const safeCreatedAt = aTime > postMs
+        ? a.createdAt
+        : new Date(postMs + (idx + 1) * 3600000 * 2 + 1800000).toISOString();
+      return {
+        id: a.id,
+        proposalId,
+        authorId: a.solverId,
+        authorName: a.solverTitle ? `${a.solverName} ｜ ${a.solverTitle}` : a.solverName,
+        authorAvatar: a.solverAvatar,
+        authorRole: 'user',
+        content: a.freePreview,
+        createdAt: safeCreatedAt,
+      };
+    });
   }
 
   // 只有示範提案才補示範留言；真實用戶的提案絕不放假留言
@@ -3979,6 +3994,7 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
   const seed = hashSeedStr(proposalId || proposalTitle || 'default-prop');
   return thread.c.map(([by, text], i) => {
     const p = P(by);
+    const safeCreatedAt = new Date(postMs + (i + 1) * 3600000 * 3 + ((seed + i * 17) % 45) * 60000 + 1800000).toISOString();
     return {
       id: `sim-pcomm-${proposalId}-${i + 1}`,
       proposalId,
@@ -3987,7 +4003,7 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
       authorAvatar: p.avatar,
       authorRole: 'user',
       content: text,
-      createdAt: new Date(SEED_TIME_ANCHOR_MS - (thread.c!.length - i) * (30 + (seed % 20)) * 3600000).toISOString(),
+      createdAt: safeCreatedAt,
     };
   });
 }

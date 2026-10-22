@@ -3010,7 +3010,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-stone-400">{disc.createdAt.split('T')[0]}</span>
+                              {(() => {
+                                const qMs = Date.parse(question.createdAt || '') || 0;
+                                const dMs = Date.parse(disc.createdAt || '') || 0;
+                                const safeDateStr = (dMs > qMs ? disc.createdAt : new Date(qMs + 3600000 * 2).toISOString()).split('T')[0];
+                                return <span className="text-[10px] text-stone-400">{safeDateStr}</span>;
+                              })()}
                             </div>
                           </div>
 

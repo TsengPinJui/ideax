@@ -25,7 +25,13 @@ import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
 import { processAndUploadExpertCredentialImage } from '../utils/idCardImageHelper';
 
-export const ExpertCertificationTab: React.FC = () => {
+interface ExpertCertificationTabProps {
+  onNavigateToRealName?: () => void;
+}
+
+export const ExpertCertificationTab: React.FC<ExpertCertificationTabProps> = ({
+  onNavigateToRealName,
+}) => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal, answers } = useApp();
 
   const userAcceptedAnswers = answers.filter((a) => a.solverId === currentUser.id && a.isAccepted);
@@ -338,7 +344,7 @@ export const ExpertCertificationTab: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                認證標準：(1) 通過平台官方<strong className="font-semibold text-stone-800">實名審核</strong>與<strong className="font-semibold text-stone-800">專業證明核驗</strong>，或 (2) 在平台累計<strong className="font-semibold text-stone-800">採納方案數達 50 份以上且評分 ≥ 4 星</strong>
+                提供專門證照或資歷證明，審查通過即享認證專家標章與優先推薦。
               </p>
             </div>
           </div>
@@ -358,104 +364,57 @@ export const ExpertCertificationTab: React.FC = () => {
           </div>
         )}
 
-        {/* Real Name Verification Prerequisite Warning */}
+        {/* Real Name Verification Prerequisite Alert (簡潔提醒) */}
         {currentUser.realNameAuthStatus !== 'verified' && (
-          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-950">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs sm:text-sm font-semibold text-rose-950">
-                   申請專家認證前必須先完成實名認證
-                </h4>
-                <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
-                  依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。
-                </p>
-              </div>
+          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>依合規要求，送出專家審查前請先完成<strong>實名認證</strong>。</span>
             </div>
+            {onNavigateToRealName && (
+              <button
+                type="button"
+                onClick={onNavigateToRealName}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-bold shrink-0 transition-colors cursor-pointer"
+              >
+                前往實名認證 →
+              </button>
+            )}
           </div>
         )}
 
         {/* Approved Card */}
         {isApproved && (
-          <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-xs text-emerald-950">
-              <strong className="block text-sm font-semibold">
-                您已具備「IdeaX 認證專家」資格
-              </strong>
-              <p className="text-emerald-800">
-                {currentUser.verifiedExpert || currentUser.verifiedBadge
-                  ? '您的專業資歷與實名證件已通過官方認證。'
-                  : '您在平台累計採納之落地方案已達 50 份以上且評分 ≥ 4 星，系統已自動為您解鎖認證專家標章。'}
-                全站問題頁將享有 AI 優先推薦與首頁專家智庫曝光權益。
-              </p>
+          <div className="mt-3 p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="text-xs text-emerald-950">
+              <strong className="font-semibold">您已具備「IdeaX 認證專家」資格</strong>
+              <p className="text-emerald-800 text-[11px] mt-0.5">全站問題頁將享有 AI 優先推薦與專家標章曝光。</p>
             </div>
           </div>
         )}
 
         {/* Pending Card */}
         {isPending && (
-          <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-xs text-amber-950">
-              <strong className="block text-sm font-semibold">
-                您的專家審查表單已送出，官方審核中
-              </strong>
-              <p className="text-amber-800">
-                送件時間：{currentUser.lastExpertAppliedAt ? new Date(currentUser.lastExpertAppliedAt).toLocaleString() : '最近'}
-                。官方審查小組將於 1~2 個工作天內核對您的專業證照與佐證資料，核驗完成後將即時通知。
-              </p>
+          <div className="mt-3 p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-3">
+            <Clock className="w-5 h-5 text-amber-700 shrink-0" />
+            <div className="text-xs text-amber-950">
+              <strong className="font-semibold">專家審查表單已送出，官方審核中</strong>
+              <p className="text-amber-800 text-[11px] mt-0.5">預計 1~2 個工作天內核對完畢並發布結果通知。</p>
             </div>
           </div>
         )}
 
         {/* Cooldown notice */}
         {isWithinCooldown && (
-          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-stone-200 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-xs text-rose-950">
-              <strong className="block text-sm font-semibold">
-                尚在 7 日重新申請冷卻期內
-              </strong>
-              <p className="text-rose-800">
-                依平台審核規範，未通過者需間隔 7 日方可再次送件。剩餘冷卻時間：約 {remainingDays} 天。
-              </p>
+          <div className="mt-3 p-3.5 rounded-xl bg-rose-50 border border-stone-200 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div className="text-xs text-rose-950">
+              <strong className="font-semibold">尚在 7 日重新申請冷卻期內</strong>
+              <p className="text-rose-800 text-[11px] mt-0.5">剩餘冷卻時間：約 {remainingDays} 天。</p>
             </div>
           </div>
         )}
-      </div>
-
-      {/* 實名與專家認證分流說明公告卡 */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 text-xs text-stone-800 space-y-2.5 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-amber-950 font-semibold text-sm">
-            <Award className="w-5 h-5 text-amber-600 shrink-0" />
-            <span>【分流說明】實名認證 與 專家證照認證 為完全獨立分開之審核流程</span>
-          </div>
-          <span className="text-[11px] bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto border border-stone-200">
-            證件獨立分開 · 專屬審查
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] leading-relaxed">
-          <div className="p-3 rounded-2xl bg-white/90 border border-stone-200 space-y-1">
-            <strong className="block text-emerald-800 font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span> 1. 實名身分認證（KYC 法定真實身分）</span>
-            </strong>
-            <p className="text-stone-600">
-              專用於確認個人真實姓名、身分證字號與第三方金流提領撥付（<strong>國民身分證/居留證正反面</strong>）。如尚未完成，請至左側<strong>「實名認證」</strong>分頁獨立辦理。
-            </p>
-          </div>
-          <div className="p-3 rounded-2xl bg-white/90 border border-stone-200 space-y-1">
-            <strong className="block text-amber-900 font-semibold flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-600" />
-              <span> 2. 專家資格認證（專業領域實務執照）</span>
-            </strong>
-            <p className="text-stone-600">
-              此處專門上傳您的<strong>國家專技執照、律師證、醫師執照、建築師/會計師執照、PMP、技術認證或學經歷證書</strong>。<span className="text-rose-600 font-semibold">請勿在此上傳身分證照片</span>。
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Expert Application Form */}
@@ -615,57 +574,28 @@ export const ExpertCertificationTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. 上傳相關證件與資歷證明 (非身分證，專家專業證照專區) */}
-        <div className="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
+        {/* 2. 上傳相關證件與資歷證明 */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3.5 shadow-2xs">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-3 gap-2">
+            <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-semibold flex items-center justify-center shrink-0">
                 2
               </span>
               <h4 className="font-semibold text-sm text-stone-900">
-                上傳【專家專業證照與專技執照】
+                上傳專業證照與資歷證明
               </h4>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
-                 專門審查專家資格 · 非身分證
-              </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-stone-200">
-                 Firebase Storage 雲端建檔
-              </span>
-              <HelpTooltip
-                title="【專家證照個資與安全儲存政策】"
-                content={
-                  <div className="space-y-1.5 text-[11px] leading-relaxed">
-                    <p>
-                      • <strong>專門審查專家資格：</strong>此處專門上傳能證明您在該領域具備深厚專業能力的證書與執照，<strong>僅供官方管理員查核專業真實性，絕不對外公開</strong>。
-                    </p>
-                    <p>
-                      • <strong>智慧安全壓縮：</strong>圖片將自動壓縮至安全值（1600px 解析度、畫質 0.84，體積僅 200~350KB），文字印章清晰可辨且不占空間。
-                    </p>
-                    <p>
-                      • <strong>與實名認證（身分證）分開：</strong>國民身分證/居留證請至「實名認證」分頁辦理，切勿在此混淆上傳。
-                    </p>
-                  </div>
-                }
-              />
             </div>
-            <span className="text-[11px] text-stone-400 tabular-nums">支援 JPG, PNG, PDF (智慧安全壓縮)</span>
+            <span className="text-[11px] text-stone-400">支援 JPG、PNG、PDF</span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-[11px] text-stone-600 leading-relaxed space-y-1">
-            <p>
-              請上傳可佐證您專業能力與執業資格之憑證（如：<strong>國家級/國際專技執照、律師證、醫師執照、建築師執照、會計師執照、PMP、AWS/Google Cloud 專業認證、畢業學位證書、在職或離職證明、名片、受聘合約</strong>等，機密財務數字請自行遮蔽）。
-            </p>
-            <p className="text-amber-800 font-bold">
-               提醒：本處為「專家專業證照」，請勿上傳身分證。實名身分核驗請至「實名認證」分頁辦理。
-            </p>
-          </div>
+          <p className="text-xs text-stone-500 leading-relaxed">
+            請上傳專技執照、專業證照、在職證明或學歷證書（機密資訊請自行遮蔽）。僅供官方審查專業資格，絕不對外公開。
+          </p>
 
           <label className="border-2 border-dashed border-stone-200 hover:border-amber-500 bg-stone-50 hover:bg-stone-50 rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
             <Upload className="w-6 h-6 text-amber-600 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-semibold text-stone-800">點擊或拖曳上傳【專業證照 / 執照】檔案</span>
-            <span className="text-[11px] text-stone-500">
-              支援 JPG / PNG 照片（自動進行安全防過度壓縮與 Storage 建檔）及 PDF 文件
-            </span>
+            <span className="text-xs font-semibold text-stone-800">點擊或拖曳上傳證照 / 執照檔案</span>
+            <span className="text-[11px] text-stone-400">單檔上限 10MB</span>
             <input
               type="file"
               multiple
@@ -676,9 +606,9 @@ export const ExpertCertificationTab: React.FC = () => {
           </label>
 
           {isProcessingCredential && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-stone-200 text-xs text-amber-900 flex items-center justify-center gap-2 animate-pulse font-bold">
-              <Clock className="w-4 h-4 text-amber-600 animate-spin" />
-              <span>正在執行證照影像安全清晰壓縮（文字清晰可辨、體積約 200~350KB）並存入專屬雲端 Storage...</span>
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-stone-200 text-xs text-amber-900 flex items-center justify-center gap-2 animate-pulse font-bold">
+              <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+              <span>證照檔案處理中...</span>
             </div>
           )}
 
@@ -866,50 +796,30 @@ export const ExpertCertificationTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 4. 法規勾選與 7 日申請規定 */}
-        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-amber-950 font-semibold text-xs">
-            <ShieldCheck className="w-4 h-4 text-amber-600" />
-            <span>法規遵循與誠實信用保證</span>
-          </div>
-
+        {/* 4. 保證與同意 */}
+        <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200">
           <label className="flex items-start gap-2 text-xs text-stone-700 cursor-pointer">
             <input
               type="checkbox"
-              checked={agreedPrivacy}
-              onChange={(e) => setAgreedPrivacy(e.target.checked)}
+              checked={agreedPrivacy && agreedHonesty}
+              onChange={(e) => {
+                setAgreedPrivacy(e.target.checked);
+                setAgreedHonesty(e.target.checked);
+              }}
               className="w-4 h-4 accent-amber-600 rounded cursor-pointer mt-0.5"
             />
             <span>
-              我已閱讀並同意遵守<strong>《個人資料保護法》</strong>及
+              我保證所填經歷與上傳證明均屬本人真實資歷，並同意依照
               <button
                 type="button"
                 onClick={() => openAboutModal('privacy_policy')}
                 className="text-amber-800 underline font-bold inline-flex items-center mx-1"
               >
-                平台隱私權政策
+                隱私權政策
               </button>
-              ，同意 IdeaX 僅將所提供證件及有利證明用於身分與資歷審查核驗。
+              由官方進行資格審查。
             </span>
           </label>
-
-          <label className="flex items-start gap-2 text-xs text-stone-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={agreedHonesty}
-              onChange={(e) => setAgreedHonesty(e.target.checked)}
-              className="w-4 h-4 accent-amber-600 rounded cursor-pointer mt-0.5"
-            />
-            <span>
-              我保證所填寫之經歷、上傳之證件與實戰證明均屬本人真實資歷，絕無虛偽不實或侵權情事。
-            </span>
-          </label>
-        </div>
-
-        {/* 7 日申請規定提示條 */}
-        <div className="text-[11px] text-stone-500 flex items-center gap-1.5 justify-center">
-          <Clock className="w-3.5 h-3.5 text-stone-400" />
-          <span>送件後官方將於 1~2 個工作天內完成審查；依規範審查未通過者每 7 日可再次申請一次。</span>
         </div>
 
         {/* Submit Actions */}

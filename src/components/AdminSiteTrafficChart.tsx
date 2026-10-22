@@ -10,6 +10,8 @@ import {
   Layers,
   ShieldCheck,
 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { isRealRegisteredUser } from '../data/mockData';
 
 export interface TrafficDataPoint {
   key: string;
@@ -155,12 +157,20 @@ export function recordUtc8SiteVisitBucket(): RealSiteTrafficStatsPayload {
 interface AdminSiteTrafficChartProps {
   totalViewsCount: number;
   onlineUsersCount?: number;
+  registeredUsersCount?: number;
 }
 
 export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
   totalViewsCount,
   onlineUsersCount = 1,
+  registeredUsersCount,
 }) => {
+  const { availableUsers } = useApp();
+  const registeredCount = useMemo(() => {
+    if (typeof registeredUsersCount === 'number') return registeredUsersCount;
+    return (availableUsers || []).filter(isRealRegisteredUser).length;
+  }, [registeredUsersCount, availableUsers]);
+
   const [granularity, setGranularity] = useState<'hourly' | 'daily'>('hourly');
   const [dailyRange, setDailyRange] = useState<7 | 14 | 30>(14);
   const [isOverlayMode, setIsOverlayMode] = useState<boolean>(true);
@@ -591,20 +601,35 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
       {/* 指標摘要：瀏覽量與不重複訪客數分開呈現 */}
       {(() => {
         const todayKey = getUtc8Parts(Date.now()).dateKey;
+        const uniqueVisitors = trafficStats.uniqueVisitorsTotal || 0;
+        const regRate = uniqueVisitors > 0
+          ? ((registeredCount / uniqueVisitors) * 100).toFixed(1)
+          : '0.0';
+
         const tiles = [
           { label: '累計瀏覽量', value: (trafficStats.totalVisits || 0).toLocaleString(), hint: '每次開啟網站算一次' },
           { label: '今日瀏覽量', value: (trafficStats.daily?.[todayKey] || 0).toLocaleString(), hint: '台灣時間今日' },
           { label: '累計不重複訪客', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
           { label: '今日不重複訪客', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
           { label: '即時在線', value: `${trafficStats.onlineUsersCount || onlineUsersCount}`, hint: '最近 75 秒內在線' },
+          {
+            label: '註冊率',
+            value: `${regRate}%`,
+            hint: `註冊數 / 不重複訪客 (${registeredCount.toLocaleString()} / ${uniqueVisitors.toLocaleString()})`,
+            tooltip: `註冊率 = 註冊數 (${registeredCount.toLocaleString()} 位) ÷ 累計不重複訪客 (${uniqueVisitors.toLocaleString()} 位) = ${regRate}%`,
+          },
         ];
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {tiles.map((t) => (
-              <div key={t.label} className="rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-2.5">
+              <div
+                key={t.label}
+                className="rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-2.5"
+                title={(t as any).tooltip}
+              >
                 <p className="text-[11px] font-bold text-stone-500">{t.label}</p>
                 <p className="text-lg font-semibold text-stone-900 tabular-nums leading-tight mt-0.5">{t.value}</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">{t.hint}</p>
+                <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">{t.hint}</p>
               </div>
             ))}
           </div>

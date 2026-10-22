@@ -534,42 +534,31 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                 </div>
               </div>
 
-              {/* 2. 上傳相關證件 (專家專業資格證照，非身分證) */}
-              <div className="space-y-3 p-4 rounded-2xl bg-amber-50/40 border border-amber-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-200/80 pb-2 gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
+              {/* 2. 上傳相關證件 */}
+              <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                  <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center shrink-0">
                       2
                     </span>
-                    <h3 className="text-xs font-black text-stone-900">上傳【專家專業證照與專技執照】</h3>
+                    <h3 className="text-xs font-black text-stone-900">上傳專業證照或資歷證明</h3>
                     <span className="text-rose-500 text-xs">*</span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                      👑 專業資歷 · 非身分證
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                      ☁️ Firebase Storage
-                    </span>
                   </div>
-                  <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF (智慧安全壓縮)</span>
+                  <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF</span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-stone-600 leading-relaxed space-y-1">
-                  <p>
-                    請上傳可佐證您專業能力與執業資格之憑證（如：<strong>國家級/國際專技執照、律師證、醫師執照、建築師執照、會計師執照、PMP、技術認證、畢業證書、在職證明</strong>等）。
-                  </p>
-                  <p className="text-amber-800 font-bold">
-                    💡 提醒：本處為「專家專業證照」，請勿上傳身分證。實名身分核驗請至「實名認證」獨立辦理。
-                  </p>
-                </div>
+                <p className="text-[11px] text-stone-500 leading-relaxed">
+                  請上傳專技執照、專業證照、在職證明或學歷證書（機密資訊請自行遮蔽）。僅供官方審查專業資格，絕不對外公開。
+                </p>
 
                 {/* Upload Box */}
-                <label className="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-white hover:bg-amber-50/40 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
+                <label className="border-2 border-dashed border-stone-300 hover:border-amber-500 bg-white hover:bg-stone-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
                   <Upload className="w-6 h-6 text-amber-600 group-hover:scale-110 transition-transform" />
                   <span className="text-xs font-black text-stone-800">
-                    點擊或拖曳上傳【專業證照 / 執照】檔案
+                    點擊或拖曳上傳證照 / 執照檔案
                   </span>
-                  <span className="text-[10px] text-stone-500">
-                    支援 JPG/PNG 照片（自動安全壓縮至約 200~350KB 存入 Storage）及 PDF 文件
+                  <span className="text-[10px] text-stone-400">
+                    單檔上限 10MB
                   </span>
                   <input
                     type="file"
@@ -581,9 +570,9 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                 </label>
 
                 {isProcessingCredential && (
-                  <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-2 animate-pulse">
-                    <Clock className="w-4 h-4 animate-spin" />
-                    <span>正在執行安全清晰壓縮並存入雲端 Storage (expert_credentials/)...</span>
+                  <div className="p-2.5 rounded-xl bg-amber-50 text-amber-900 text-xs font-bold flex items-center justify-center gap-2 animate-pulse">
+                    <Clock className="w-4 h-4 animate-spin text-amber-600" />
+                    <span>證照檔案處理中...</span>
                   </div>
                 )}
 
@@ -758,50 +747,30 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                 </div>
               </div>
 
-              {/* 4. 條款勾選與規範 */}
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2.5">
-                <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
-                  <ShieldCheck className="w-4 h-4 text-amber-600" />
-                  <span>法規遵循與誠實信用保證</span>
-                </div>
-
+              {/* 4. 保證與同意 */}
+              <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200">
                 <label className="flex items-start gap-2 text-xs text-stone-700 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={agreedPrivacy}
-                    onChange={(e) => setAgreedPrivacy(e.target.checked)}
+                    checked={agreedPrivacy && agreedHonesty}
+                    onChange={(e) => {
+                      setAgreedPrivacy(e.target.checked);
+                      setAgreedHonesty(e.target.checked);
+                    }}
                     className="w-4 h-4 accent-amber-600 rounded cursor-pointer mt-0.5"
                   />
                   <span>
-                    我已閱讀並同意{' '}
+                    我保證所填經歷與上傳證明均屬本人真實資歷，並同意依照{' '}
                     <button
                       type="button"
                       onClick={() => openAboutModal('privacy_policy')}
                       className="text-amber-800 underline font-bold inline-flex items-center"
                     >
-                      《平台隱私權政策》
+                      《隱私權政策》
                     </button>
-                    。
+                    由官方進行資格審查。
                   </span>
                 </label>
-
-                <label className="flex items-start gap-2 text-xs text-stone-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreedHonesty}
-                    onChange={(e) => setAgreedHonesty(e.target.checked)}
-                    className="w-4 h-4 accent-amber-600 rounded cursor-pointer mt-0.5"
-                  />
-                  <span>
-                    我保證所填寫之經歷、上傳之證件與實戰證明均屬本人真實資歷，絕無虛偽不實或侵權情事。
-                  </span>
-                </label>
-              </div>
-
-              {/* 7 日申請規定提示條 */}
-              <div className="text-[11px] text-stone-500 flex items-center gap-1.5 justify-center">
-                <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>送出後官方將於 1~2 個工作天內完成審查；依規範審查未通過者每 7 日可再次申請一次。</span>
               </div>
 
               {/* Actions Footer */}

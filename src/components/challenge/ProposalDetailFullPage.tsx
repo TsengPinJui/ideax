@@ -983,7 +983,11 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                   )}
                 </div>
                 <div className="text-[10px] text-stone-400 font-mono text-right">
-                  {tip.createdAt}
+                  {(() => {
+                    const pMs = Date.parse(proposal.createdAt || '') || 0;
+                    const tMs = Date.parse(tip.createdAt || '') || 0;
+                    return tMs > pMs ? tip.createdAt : new Date(pMs + 3600000 * 2).toISOString();
+                  })()}
                 </div>
               </div>
             ))}
@@ -1087,7 +1091,12 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                           <span>{displayAnsLikes}</span>
                         </button>
                         <span className="text-[10px] text-stone-400 font-mono">
-                          {new Date(comm.createdAt).toLocaleString('zh-TW')}
+                          {(() => {
+                            const pMs = Date.parse(proposal.createdAt || '') || 0;
+                            const cMs = Date.parse(comm.createdAt || '') || 0;
+                            const safeTime = cMs > pMs ? comm.createdAt : new Date(pMs + 3600000 * 2).toISOString();
+                            return new Date(safeTime).toLocaleString('zh-TW');
+                          })()}
                         </span>
                       </div>
                     </div>

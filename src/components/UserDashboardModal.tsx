@@ -2439,6 +2439,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <AdminSiteTrafficChart
                   totalViewsCount={totalViewsCount || 0}
                   onlineUsersCount={liveOnlineUsersCount || 1}
+                  registeredUsersCount={adminTotalRegisteredUsersCount}
                 />
 
                 {/* 成長趨勢：註冊會員、不重複訪客 */}
@@ -5435,7 +5436,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {activeTab === 'real_name_auth' && <RealNameAuthTab />}
 
         {/* TAB: 專家認證資格審查 */}
-        {activeTab === 'expert_certification' && <ExpertCertificationTab />}
+        {activeTab === 'expert_certification' && (
+          <ExpertCertificationTab onNavigateToRealName={() => setActiveTab('real_name_auth')} />
+        )}
 
         {/* TAB: 個人數據與榮譽牆（只顯示真實數據；還沒達成的徽章標示未解鎖） */}
         {activeTab === 'honors_achievements' && (() => {
