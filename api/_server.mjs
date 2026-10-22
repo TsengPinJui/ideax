@@ -166306,6 +166306,18 @@ function applyPayloadToLocalDoc(colName, docId, data, merge = true) {
   localDbStore[colName][docId] = existing;
   scheduleSaveLocalDbStore();
 }
+function patchMirrorDoc(colName, docId, patch, deletes = []) {
+  const cur = localDbStore[colName]?.[docId];
+  if (!cur) return;
+  const next = { ...cur, ...JSON.parse(JSON.stringify(patch)) };
+  for (const k of deletes) delete next[k];
+  localDbStore[colName][docId] = next;
+  scheduleSaveLocalDbStore();
+}
+async function getServiceFirestore() {
+  if (!hasAdminCredentials) return null;
+  return loadServerFs();
+}
 function deleteLocalDoc(colName, docId) {
   if (localDbStore[colName] && localDbStore[colName][docId]) {
     delete localDbStore[colName][docId];
@@ -171417,6 +171429,196 @@ async function getPublicFeatureTotals() {
   return totals;
 }
 
+// src/utils/surveyData.ts
+var REGISTRATION_DEFAULTS = {
+  willingQuestionBudget: "2000_5000",
+  willingToProvideSolutions: "very_willing",
+  usageFrequency: "few_times_weekly",
+  willingToBeSideHustle: "considering",
+  willingToSubscribeSolverPlan: "depends_profit"
+};
+function isRegistrationDefaultSurvey(s2) {
+  if (!s2) return false;
+  if (s2.source === "survey_form") return false;
+  return Object.entries(REGISTRATION_DEFAULTS).every(([k, v]) => s2[k] === v);
+}
+
+// src/utils/dataRepair.ts
+var REPAIR_CATEGORY_LABELS = {
+  survey_default: "\u9810\u8A2D\u554F\u5377\u8207\u6C92\u554F\u904E\u7684\u6027\u5225\u3001\u5E74\u85AA",
+  skipped_profile: "\u7565\u904E\u500B\u4EBA\u8CC7\u6599\u6642\u7CFB\u7D71\u88DC\u7684\u5E74\u9F61\u3001\u884C\u696D\u3001\u8077\u7A31",
+  fake_rating: "\u6C92\u6709\u8A55\u50F9\u537B\u986F\u793A 5 \u661F\u6216 100% \u63A1\u7D0D\u7387",
+  placeholder_bio: "\u7CFB\u7D71\u81EA\u52D5\u7522\u751F\u7684\u500B\u4EBA\u7C21\u4ECB",
+  unreviewed_verification: "\u8A3B\u518A\u6642\u672A\u7D93\u5BE9\u6838\u5C31\u6210\u70BA\u5DF2\u8A8D\u8B49",
+  fake_answer_defaults: "\u7559\u8A00\uFF0F\u65B9\u6848\u88AB\u9810\u8A2D\u7684\u5047\u8B9A\u6578\u3001\u652F\u6301\u9EDE\u6578\u3001\u7559\u8A00\u6578\u8207\u5C01\u9762",
+  fake_solver_rating: "\u89E3\u7B54\u4E0A\u9810\u8A2D\u7684 4.9 \u661F\u8A55\u5206"
+};
+var CLIENT_SAFE_CATEGORIES = ["survey_default", "skipped_profile", "fake_rating", "placeholder_bio"];
+var FAKE_STAR_SEASON_COVER = "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80";
+var SKIPPED_DEFAULTS = {
+  ageGroup: "25_34",
+  industry: "\u8CC7\u8A0A\u79D1\u6280 / \u8EDF\u9AD4\u4E92\u806F\u7DB2",
+  jobTitle: "\u81EA\u7531\u5275\u696D\u8005",
+  title: "\u65B0\u9032\u63D0\u554F\u8005"
+};
+var hasRealSurvey = (s2) => Boolean(s2 && !isRegistrationDefaultSurvey(s2));
+var near = (a, b, ms = 2 * 60 * 1e3) => {
+  const x2 = Date.parse(a || ""), y = Date.parse(b || "");
+  return Number.isFinite(x2) && Number.isFinite(y) && Math.abs(x2 - y) <= ms;
+};
+function findUserFixes(u, priv = {}, categories = CLIENT_SAFE_CATEGORIES) {
+  if (!u || u.isSimulated || u.id === "user-guest") return [];
+  const on = (c) => categories.includes(c);
+  const fixes = [];
+  const survey = priv.surveyData ?? u.surveyData;
+  const realSurvey = hasRealSurvey(survey);
+  if (on("survey_default")) {
+    if (survey && !realSurvey) fixes.push({ field: "surveyData", from: "\u9810\u8A2D\u554F\u5377", to: void 0, category: "survey_default" });
+    if (!realSurvey && (u.gender === "male" || u.gender === "undisclosed")) fixes.push({ field: "gender", from: u.gender, to: void 0, category: "survey_default" });
+    const salary = priv.annualSalary ?? u.annualSalary;
+    if (!realSurvey && salary === "undisclosed") fixes.push({ field: "annualSalary", from: salary, to: void 0, category: "survey_default" });
+  }
+  if (on("skipped_profile") && u.hasCompletedProfile === false) {
+    for (const [k, v] of Object.entries(SKIPPED_DEFAULTS)) {
+      if (u[k] === v) fixes.push({ field: k, from: v, to: void 0, category: "skipped_profile" });
+    }
+  }
+  if (on("fake_rating")) {
+    const reviews = Number(u.reviewCount || 0);
+    if (!reviews && u.rating && Number(u.rating) >= 4.9) fixes.push({ field: "rating", from: u.rating, to: 0, category: "fake_rating" });
+    const submitted = Number(u.submittedSolutionsCount || 0);
+    if (!submitted && String(u.acceptanceRate ?? "") === "100") fixes.push({ field: "acceptanceRate", from: u.acceptanceRate, to: void 0, category: "fake_rating" });
+  }
+  if (on("placeholder_bio") && typeof u.bio === "string" && u.name) {
+    const b = u.bio.trim();
+    if (b === `${u.name} \u7684\u500B\u4EBA\u7C21\u4ECB\u3002` || b === `${u.name} \u7684\u5168\u65B0\u8A3B\u518A\u500B\u4EBA\u5E33\u865F\u3002`) fixes.push({ field: "bio", from: b, to: "", category: "placeholder_bio" });
+  }
+  if (on("unreviewed_verification")) {
+    const rn = priv.realNameAuthData || u.realNameAuthData;
+    if (u.realNameAuthStatus === "verified" && rn && near(rn.verifiedAt, rn.appliedAt)) {
+      const hasDocs = Boolean(rn.idCardFrontFile || rn.idCardBackFile || u.hasIdDocuments);
+      fixes.push({ field: "realNameAuthStatus", from: "verified", to: hasDocs ? "pending" : "none", category: "unreviewed_verification" });
+      if (u.expertCertStatus !== "verified") {
+        if (u.verifiedExpert) fixes.push({ field: "verifiedExpert", from: true, to: false, category: "unreviewed_verification" });
+        if (u.verifiedBadge) fixes.push({ field: "verifiedBadge", from: u.verifiedBadge, to: void 0, category: "unreviewed_verification" });
+      }
+    }
+  }
+  return fixes;
+}
+function findAnswerFixes(a, solverRealRating, categories) {
+  if (!a || a.isSimulated) return [];
+  const fixes = [];
+  if (categories.includes("fake_answer_defaults") && !a.fakeDefaultsFixed && a.coverImageUrl === FAKE_STAR_SEASON_COVER) {
+    const sp = Math.max(0, (Number(a.supportPoints) || 0) - 12e4);
+    fixes.push({ field: "likes", from: a.likes, to: Math.max(0, (Number(a.likes) || 0) - 28), category: "fake_answer_defaults" });
+    fixes.push({ field: "supportPoints", from: a.supportPoints, to: sp || void 0, category: "fake_answer_defaults" });
+    fixes.push({ field: "commentsCount", from: a.commentsCount, to: Math.max(0, (Number(a.commentsCount) || 0) - 12), category: "fake_answer_defaults" });
+    fixes.push({ field: "coverImageUrl", from: a.coverImageUrl, to: void 0, category: "fake_answer_defaults" });
+    fixes.push({ field: "fakeDefaultsFixed", from: void 0, to: true, category: "fake_answer_defaults" });
+  }
+  if (categories.includes("fake_solver_rating") && Number(a.solverRating) === 4.9 && !solverRealRating) {
+    fixes.push({ field: "solverRating", from: a.solverRating, to: 0, category: "fake_solver_rating" });
+  }
+  return fixes;
+}
+
+// server/dataRepair.ts
+var PRIVATE_FIELDS = /* @__PURE__ */ new Set(["surveyData", "annualSalary", "realNameAuthData"]);
+var ALL_REPAIR_CATEGORIES = Object.keys(REPAIR_CATEGORY_LABELS);
+var show = (v) => v === void 0 ? "\uFF08\u79FB\u9664\uFF09" : typeof v === "object" ? JSON.stringify(v).slice(0, 40) : v;
+async function runDataRepair(apply, categories) {
+  const report = { applied: apply, counts: {}, samples: [], totalDocs: 0 };
+  const svc = await getServiceFirestore();
+  if (!svc) return { ...report, error: "\u4F3A\u670D\u5668\u6C92\u6709\u8A2D\u5B9A\u670D\u52D9\u5E33\u6236\uFF08FIREBASE_SERVICE_ACCOUNT\uFF09\uFF0C\u7121\u6CD5\u4FEE\u6B63\u8CC7\u6599\u5EAB" };
+  const { fs: fs5, FV } = svc;
+  for (const c of categories) report.counts[c] = { docs: 0, fields: 0 };
+  const count2 = (fixes) => {
+    const seen = /* @__PURE__ */ new Set();
+    for (const f3 of fixes) {
+      report.counts[f3.category].fields += 1;
+      if (!seen.has(f3.category)) {
+        report.counts[f3.category].docs += 1;
+        seen.add(f3.category);
+      }
+    }
+  };
+  const addSample = (collection2, id, name4, fixes) => {
+    if (report.samples.length < 60) report.samples.push({ collection: collection2, id, name: name4, fixes: fixes.map((f3) => ({ ...f3, from: show(f3.from), to: show(f3.to) })) });
+  };
+  let batch = fs5.batch();
+  let ops = 0;
+  const flush = async () => {
+    if (ops) {
+      await batch.commit();
+      batch = fs5.batch();
+      ops = 0;
+    }
+  };
+  const write = async (ref, data) => {
+    batch.set(ref, data, { merge: true });
+    ops += 1;
+    if (ops >= 400) await flush();
+  };
+  const userCats = categories.filter((c) => c !== "fake_answer_defaults" && c !== "fake_solver_rating");
+  const usersSnap = await fs5.collection("users").get();
+  const privSnap = await fs5.collection("user_private").get();
+  const privMap = new Map(privSnap.docs.map((d) => [d.id, d.data()]));
+  const ratingOf = /* @__PURE__ */ new Map();
+  for (const doc3 of usersSnap.docs) {
+    const u = { ...doc3.data(), id: doc3.id };
+    const priv = privMap.get(doc3.id) || {};
+    const fixes = userCats.length ? findUserFixes(u, priv, userCats) : [];
+    const ratingFixed = fixes.find((f3) => f3.field === "rating");
+    ratingOf.set(doc3.id, ratingFixed ? 0 : Number(u.rating || 0) * (Number(u.reviewCount || 0) > 0 ? 1 : 0));
+    if (!fixes.length) continue;
+    report.totalDocs += 1;
+    count2(fixes);
+    addSample("users", doc3.id, u.name, fixes);
+    if (!apply) continue;
+    const pub = {};
+    const prv = {};
+    const mirrorPatch = {};
+    const mirrorDel = [];
+    for (const f3 of fixes) {
+      const val = f3.to === void 0 ? FV.delete() : f3.to;
+      if (PRIVATE_FIELDS.has(f3.field)) prv[f3.field] = val;
+      pub[f3.field] = val;
+      if (f3.to === void 0) mirrorDel.push(f3.field);
+      else mirrorPatch[f3.field] = f3.to;
+    }
+    pub.dataRepairedAt = (/* @__PURE__ */ new Date()).toISOString();
+    await write(fs5.collection("users").doc(doc3.id), pub);
+    if (Object.keys(prv).length && privMap.has(doc3.id)) await write(fs5.collection("user_private").doc(doc3.id), prv);
+    patchMirrorDoc("users", doc3.id, mirrorPatch, mirrorDel);
+  }
+  const ansCats = categories.filter((c) => c === "fake_answer_defaults" || c === "fake_solver_rating");
+  if (ansCats.length) {
+    const ansSnap = await fs5.collection("answers").get();
+    for (const doc3 of ansSnap.docs) {
+      const a = { ...doc3.data(), id: doc3.id };
+      const fixes = findAnswerFixes(a, ratingOf.get(a.solverId) ?? null, ansCats);
+      if (!fixes.length) continue;
+      report.totalDocs += 1;
+      count2(fixes);
+      addSample("answers", doc3.id, a.solverName, fixes);
+      if (!apply) continue;
+      const patch = {};
+      const mirrorPatch = {};
+      const mirrorDel = [];
+      for (const f3 of fixes) {
+        patch[f3.field] = f3.to === void 0 ? FV.delete() : f3.to;
+        if (f3.to === void 0) mirrorDel.push(f3.field);
+        else mirrorPatch[f3.field] = f3.to;
+      }
+      await write(fs5.collection("answers").doc(doc3.id), patch);
+      patchMirrorDoc("answers", doc3.id, mirrorPatch, mirrorDel);
+    }
+  }
+  if (apply) await flush();
+  return report;
+}
+
 // server/docText.ts
 var import_jszip = __toESM(require_lib6(), 1);
 var MAX_DOC_BYTES = 4 * 1024 * 1024;
@@ -171751,7 +171953,7 @@ function pickJobLinkFromHtml(html, baseUrl, title, company) {
       continue;
     }
     if (!looksLikeJobPage(u)) continue;
-    const near = (needle) => {
+    const near2 = (needle) => {
       if (needle.length < 2) return 0;
       const from = Math.max(0, m2.index - 600), win = text.slice(from, m2.index + 600);
       let best2 = -1, i2 = win.indexOf(needle);
@@ -171762,7 +171964,7 @@ function pickJobLinkFromHtml(html, baseUrl, title, company) {
       }
       return best2 < 0 ? 0 : 2 + (600 - best2) / 600;
     };
-    const nt = near(t2), nc = near(c);
+    const nt = near2(t2), nc = near2(c);
     const both = t2.length >= 2 && c.length >= 2;
     if (both ? !(nt > 0 && nc > 0) : nt + nc <= 0) continue;
     const score = nt + nc;
@@ -175498,6 +175700,21 @@ app.post("/api/me/active", async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ ok: false });
+  }
+});
+app.post("/api/admin/data-repair", async (req, res) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization);
+    if (!au || !await isVerifiedAdmin(au.uid)) return res.status(403).json({ ok: false, error: "\u53EA\u6709\u7BA1\u7406\u54E1\u53EF\u4EE5\u4F7F\u7528" });
+    const wanted = Array.isArray(req.body?.categories) ? req.body.categories.map(String) : ALL_REPAIR_CATEGORIES;
+    const categories = ALL_REPAIR_CATEGORIES.filter((c) => wanted.includes(c));
+    if (!categories.length) return res.status(400).json({ ok: false, error: "\u8ACB\u81F3\u5C11\u9078\u4E00\u500B\u985E\u5225" });
+    const report = await runDataRepair(req.body?.apply === true, categories);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: !report.error, ...report });
+  } catch (err) {
+    console.warn("[Data Repair] error:", String(err?.message || err).slice(0, 200));
+    res.status(500).json({ ok: false, error: "\u4FEE\u6B63\u6642\u767C\u751F\u932F\u8AA4\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
   }
 });
 app.get("/api/admin/user-activity", async (req, res) => {

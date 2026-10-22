@@ -1171,17 +1171,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         pendingEarnings: 0,
         reputation: isExpert ? 120 : 100,
         joinedDate: new Date().toISOString().split('T')[0],
-        bio: isExpert
-          ? `${finalName} 專家顧問。領域：${industry}。專長：${chosenDomains.join('、')}。`
-          : `${finalName} 的個人簡介。`,
+        // 自我介紹留白，讓使用者自己寫（不再自動產生「XXX 的個人簡介。」）
+        bio: '',
         email: regEmail.trim() || `${finalUsername}@ideax.user`,
         phone: effectivePhone,
         // 略過或沒選的欄位存成未填寫，不再補假資料
-        gender: isQuestionerSkipped ? 'undisclosed' : gender,
+        gender: undefined, // 註冊表單沒有問性別，留空（問卷再填）
         ageGroup: isQuestionerSkipped || !ageGroup ? undefined : ageGroup,
         industry: isQuestionerSkipped || !industry ? undefined : industry,
         jobTitle: isQuestionerSkipped ? undefined : jobTitle.trim() || undefined,
-        annualSalary,
+        annualSalary: undefined, // 註冊表單沒有問年薪，留空（問卷再填）
         company: company.trim() || undefined,
         domain: (chosenDomains[0] as Category) || '創新創業',
         domains: chosenDomains as Category[],
@@ -1189,24 +1188,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         interests: chosenDomains,
         hasCompletedProfile: !isQuestionerSkipped,
         subscriptionTier: 'free',
-        verifiedExpert: isExpert,
-        verifiedBadge: isExpert ? '認證專家' : undefined,
-        realNameAuthStatus: isExpert ? 'verified' : 'none',
+        // 註冊為解答者只是送出資料，要等管理員審核才算通過（不再註冊當下就變成已認證）
+        verifiedExpert: false,
+        verifiedBadge: undefined,
+        realNameAuthStatus: isExpert && (idCardFront || idCardBack) ? 'pending' : 'none',
         realNameAuthData: isExpert
           ? {
               legalName: regRealLegalName.trim() || regName.trim(),
               idNumber: regIdNumber.trim(),
               nationality: '中華民國 (Taiwan)',
-              birthDate: '1990-01-01',
-              phoneNumber: effectivePhone || '0900000000',
+              birthDate: '', // 註冊沒有問生日，留空
+              phoneNumber: effectivePhone || '',
               email: regEmail.trim() || `${regUsername.trim()}@ideax.user`,
               idCardFrontFile: idCardFront || undefined,
               idCardBackFile: idCardBack || undefined,
               appliedAt: new Date().toISOString(),
-              verifiedAt: new Date().toISOString(),
             }
           : undefined,
-        rating: 5.0,
+        rating: 0, // 還沒有任何評價
         reviewCount: 0,
         acceptedSolutionsCount: 0,
         submittedSolutionsCount: 0,
