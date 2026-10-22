@@ -170,7 +170,6 @@ export const BaiMiaoZoneWalker: React.FC = () => {
     const s = st();
     s.greets += 1;
     go('hi');
-    const intro = s.greets % 3 === 2;
     const next = () => {
       setBubble(null);
       if (s.greets >= LAPS_BEFORE_NAP * 2) {
@@ -179,14 +178,23 @@ export const BaiMiaoZoneWalker: React.FC = () => {
         later(() => { go('sleep'); later(() => wake('嗨！睡飽了～'), SLEEP_MS); }, DOZE_MS);
       } else startWalking(s.dir === 1 ? -1 : 1);
     };
-    if (intro) sayIntro(next);
-    else { say('嗨！'); later(next, 2600); }
+    // 依使用者需求：巡邏到達端點時只簡單打招呼，自我介紹改為只有使用者點擊時才會觸發
+    say('嗨！');
+    later(next, 2400);
   };
   const poke = () => {
     const s = st();
     if (!['walk', 'hi', 'doze', 'sleep', 'cheer'].includes(s.phase)) return;
-    if (s.phase === 'doze' || s.phase === 'sleep') { wake('嗯…？嗨！'); return; }
     clearTimers();
+    if (s.phase === 'doze' || s.phase === 'sleep') {
+      go('cheer');
+      say('嗯…？醒來了～');
+      later(() => {
+        go('hi');
+        sayIntro(() => { setBubble(null); startWalking(s.dir === 1 ? -1 : 1); });
+      }, 1200);
+      return;
+    }
     go('hi');
     sayIntro(() => { setBubble(null); startWalking(s.dir); });
   };
@@ -500,7 +508,7 @@ export const BaiMiaoZoneWalker: React.FC = () => {
           bubble={phase === 'inTrash' ? null : bubble}
           bubbleAlign={edge}
           onPokeCharacter={poke}
-          ariaLabel="市場顧問白喵（點我打招呼）"
+          ariaLabel="市場顧問白喵（點我自我介紹）"
         />
       </div>
       {/* 老鼠（躲在垃圾桶裡，不能拖） */}
