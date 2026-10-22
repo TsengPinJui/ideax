@@ -69,7 +69,12 @@ import { recordUserBoard, recordUserSpecialZone } from '../services/recommendati
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
 // 管理員 Email 白名單：共用 services/accountGuard（切換帳號的安全檢查也用同一份）
-import { isAllowlistedAdminEmail, isLocalDevHost } from '../services/accountGuard';
+import { isAllowlistedAdminEmail, isLocalDevHost, ADMIN_LOGIN_EMAIL } from '../services/accountGuard';
+/**
+ * 管理員帳號 admin_001：只是登入時的別名，實際用綁定信箱（白名單第一個）的 Firebase 帳號與密碼驗證，
+ * 前端不保存、不比對任何管理員密碼。
+ */
+const isAdminLoginAlias = (id: string): boolean => ['admin_001', 'admin001'].includes(id.trim().toLowerCase());
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -398,7 +403,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const identifier = loginIdentifier.trim();
+    // 輸入 admin_001：換成綁定的管理員信箱，照一般 Email 登入流程用 Firebase 驗證密碼
+    const typedIdentifier = loginIdentifier.trim();
+    const identifier = isAdminLoginAlias(typedIdentifier) ? ADMIN_LOGIN_EMAIL : typedIdentifier;
     const password = loginPassword.trim();
 
     if (!identifier) {
@@ -432,13 +439,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       //    伺服器才能確認身分（後台工具、補齊帳號對照、AI 特助值班都需要）。
       const idLower = identifier.toLowerCase().trim();
       const isLegacyAdminIdentifier =
-        idLower === 'admin_001' ||
         idLower === 'admin' ||
         idLower === 'user-admin' ||
-        idLower === 'a000000001' ||
-        idLower === 'admin001';
+        idLower === 'a000000001';
       if (isLegacyAdminIdentifier) {
-        setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
+        setErrorMsg('管理員請用 admin_001（或已授權的管理員 Email）與密碼登入。');
         setIsLoading(false);
         return;
       }
@@ -590,7 +595,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       //    由伺服器查出對應 Email 並驗證密碼（Email 屬私密資料，前端不會拿到）
       const finishLogin = (u: any, rememberIdentifier: string, authenticatedUid?: string) => {
         if (u.role === 'admin') {
-          setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
+          setErrorMsg('管理員請用 admin_001（或已授權的管理員 Email）與密碼登入。');
           setIsLoading(false);
           return;
         }

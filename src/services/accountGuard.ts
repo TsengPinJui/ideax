@@ -6,10 +6,13 @@ import type { User as FbUser } from 'firebase/auth';
  */
 
 // 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'john25893619@gmail.com')
+const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'ideax.office@gmail.com')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
+
+/** 管理員帳號 admin_001 登入時實際使用的信箱（白名單第一個） */
+export const ADMIN_LOGIN_EMAIL = ADMIN_EMAIL_ALLOWLIST[0] || 'ideax.office@gmail.com';
 
 export const isAllowlistedAdminEmail = (email: string): boolean => ADMIN_EMAIL_ALLOWLIST.includes(String(email || '').trim().toLowerCase());
 
