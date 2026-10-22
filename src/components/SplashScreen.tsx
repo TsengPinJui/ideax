@@ -173,7 +173,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
 
         <div className="mt-1 text-[11px] font-medium text-stone-400">
-          版本 v{APP_VERSION} • 線上 {Math.max(1, onlineUsersCount || 1)} 人
+          v{APP_VERSION} • {Math.max(1, onlineUsersCount || 1)}
         </div>
       </div>
     </div>
