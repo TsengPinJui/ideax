@@ -776,7 +776,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   // 依使用者指示：用戶申請任何驗證時，絕對不自動帶入虛擬測試資料
   const isMockBankAccount = Boolean(
     currentUser.bankAccount && (
-      currentUser.bankAccount.bankCode === '822' ||
       currentUser.bankAccount.accountNumber?.includes('123456789012') ||
       currentUser.bankAccount.accountHolder?.includes('創點子股份有限公司') ||
       currentUser.bankAccount.accountHolder?.includes('IdeaX 創點子團隊') ||
@@ -971,19 +970,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [showQuestionerBio, setShowQuestionerBio] = useState(currentUser.showQuestionerBio ?? false);
 
   // Featured Case and Core Skills (精選案例經驗 & 核心領域與精通技能)
-  const [featuredCaseTitle, setFeaturedCaseTitle] = useState(currentUser.featuredCase?.title || '校園商圈特約加盟條款+分潤模型 Excel 試算包');
-  const [featuredCaseDescription, setFeaturedCaseDescription] = useState(currentUser.featuredCase?.description || '成功為12家校園新創餐飲品牌提供精準的股權分配、加盟合約範本以及多階段利潤分潤模型，實質降低加盟糾紛。');
+  const [featuredCaseTitle, setFeaturedCaseTitle] = useState(currentUser.featuredCase?.title || '');
+  const [featuredCaseDescription, setFeaturedCaseDescription] = useState(currentUser.featuredCase?.description || '');
   const [featuredCaseFiles, setFeaturedCaseFiles] = useState<Array<{ name: string; size?: string; url?: string }>>(
-    currentUser.featuredCase?.files || [
-      { name: '校園特約加盟協議與分潤試算模型.xlsx', size: '2.4 MB' },
-      { name: 'B2B商圈拓展實務落地指南.pdf', size: '1.8 MB' }
-    ]
+    currentUser.featuredCase?.files || []
   );
   const [featuredCaseImages, setFeaturedCaseImages] = useState<Array<{ url: string; caption?: string }>>(
-    currentUser.featuredCase?.images || [
-      { url: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&auto=format&fit=crop&q=80', caption: '商圈流量與營收實務指標分析' },
-      { url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80', caption: '分潤模型試算介面' }
-    ]
+    currentUser.featuredCase?.images || []
   );
   const [newFileName, setNewFileName] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -1514,13 +1507,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       showAvgSolutionBounty,
       showQuestionerTitle,
       showQuestionerBio,
-      featuredCase: {
-        title: featuredCaseTitle,
-        description: featuredCaseDescription,
-        outcome: currentUser.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
-        files: featuredCaseFiles,
-        images: featuredCaseImages,
-      },
+      // 沒填精選案例就不存（不再寫入預設的範例內容）
+      featuredCase: featuredCaseTitle.trim()
+        ? {
+            title: featuredCaseTitle.trim(),
+            description: featuredCaseDescription,
+            outcome: currentUser.featuredCase?.outcome || '',
+            files: featuredCaseFiles,
+            images: featuredCaseImages,
+          }
+        : undefined,
       showRecentSolutions,
     };
 
@@ -1605,13 +1601,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       showAvgSolutionBounty,
       showQuestionerTitle,
       showQuestionerBio,
-      featuredCase: {
-        title: featuredCaseTitle,
-        description: featuredCaseDescription,
-        outcome: currentUser.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
-        files: featuredCaseFiles,
-        images: featuredCaseImages,
-      },
+      // 沒填精選案例就不存（不再寫入預設的範例內容）
+      featuredCase: featuredCaseTitle.trim()
+        ? {
+            title: featuredCaseTitle.trim(),
+            description: featuredCaseDescription,
+            outcome: currentUser.featuredCase?.outcome || '',
+            files: featuredCaseFiles,
+            images: featuredCaseImages,
+          }
+        : undefined,
       showRecentSolutions,
     };
 
@@ -5912,485 +5911,182 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             />
 
             {currentUser.role === 'admin' ? (
-              /* 管理員專屬：席位與安全治理設定（支援改名、換頭像與官方職稱設定） */
-              <div className="space-y-6 animate-in fade-in duration-150">
-                {/* 1. 管理員席位身份卡片 */}
-                <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-stone-900 via-purple-950 to-stone-950 text-white border border-purple-800/40 shadow-lg space-y-4">
-                  <div className="flex flex-row items-center justify-between gap-3 border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative shrink-0 group">
-                        <img
-                          src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
-                          alt={currentUser.name}
-                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          className="absolute inset-0 bg-stone-950/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
-                          title="點擊選取新管理員頭像 (限 6MB)"
-                        >
-                          <Camera className="w-5 h-5 text-white" />
-                        </button>
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 border-2 border-stone-900 flex items-center justify-center text-white text-[10px]">
-                          <ShieldCheck className="w-3 h-3" />
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-base sm:text-lg font-black text-white truncate">{name || currentUser.name}</h3>
-                          <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/30 shrink-0">
-                            平台超級管理員席位
-                          </span>
-                          <CopyableUserId userId={currentUser.id} prefix="ID: " className="bg-purple-950/70 text-purple-200 border-purple-500/40 hover:bg-purple-900" />
-                          <button
-                            type="button"
-                            onClick={() => avatarInputRef.current?.click()}
-                            className="px-2.5 py-0.5 rounded-full bg-purple-600/40 hover:bg-purple-600/60 text-purple-200 border border-purple-400/40 text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1"
-                            title="更換管理員頭像照片 (限 6MB)"
-                          >
-                            <Camera className="w-3 h-3" />
-                            <span>更換頭像</span>
-                          </button>
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-purple-200/80 mt-0.5 line-clamp-2">
-                          {title || '最高系統權限 (Super Administrator) · 全站治理、仲裁調解、金流託管與風控中樞'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-mono block">席位安全識別號</span>
-                      <span className="text-[10px] sm:text-xs font-mono font-black text-amber-400 whitespace-nowrap">ROOT-SEC-ADMIN-001</span>
-                    </div>
-                  </div>
-
-                  {/* 席位特權與治理範圍 (手機版與電腦版皆為 3 欄並排) */}
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1">
-                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span className="truncate">治理權限範圍</span>
-                      </span>
-                      <p className="text-[11px] sm:text-xs font-bold text-white truncate">全域覆蓋</p>
-                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">題目稽核、用戶審查、全站營運</span>
-                    </div>
-
-                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-purple-400 shrink-0" />
-                        <span className="truncate">雙因子 (2FA)</span>
-                      </span>
-                      <p className="text-[11px] sm:text-xs font-bold text-emerald-400 flex items-center gap-1 truncate">
-                        <span>已強制啟用</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                      </p>
-                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">硬體憑證與受信任連線</span>
-                    </div>
-
-                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <Coins className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span className="truncate">每日治理配額</span>
-                      </span>
-                      <p className="text-[11px] sm:text-xs font-mono font-bold text-amber-300 truncate">50,000 點 / 日</p>
-                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">活動激勵、爭議補償專用</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. 管理員顯示名稱與頭像更換設定表單 */}
-                <form onSubmit={handleSaveAdminProfile} className="p-4 sm:p-6 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">
+              /* 管理員設定：個人資料、平台模式（帳號管理在頁面下方，與一般會員共用） */
+              <div className="space-y-5">
+                {/* 個人資料 */}
+                <form onSubmit={handleSaveAdminProfile} className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-black text-stone-900 flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-purple-700" />
-                        <span>管理員顯示名稱與頭像設定</span>
-                      </h4>
-                      <p className="text-xs text-stone-500 mt-0.5">
-                        自訂管理員於全站、公告發布、審核紀錄、案件仲裁與私訊對話中所呈現之對外名稱與頭像。
-                      </p>
+                      <h3 className="text-[15px] font-semibold text-stone-900">個人資料</h3>
+                      <p className="text-[12.5px] text-stone-500 mt-0.5">公告、審核紀錄、案件仲裁與私訊裡顯示的名稱與頭像。</p>
                     </div>
-
                     {basicSaveSuccessMsg && (
-                      <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-1.5 animate-in fade-in">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{basicSaveSuccessMsg}</span>
-                      </div>
+                      <span className="shrink-0 inline-flex items-center gap-1 text-[12.5px] text-emerald-700">
+                        <CheckCircle2 className="w-4 h-4" />
+                        {basicSaveSuccessMsg}
+                      </span>
                     )}
                   </div>
 
                   {avatarError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
+                    <p className="flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <span>{avatarError}</span>
-                    </div>
+                      {avatarError}
+                    </p>
                   )}
 
-                  {/* 管理員頭像更換區塊 */}
-                  <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="relative group shrink-0">
-                        <img
-                          src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
-                          alt={currentUser.name}
-                          className="w-14 h-14 rounded-2xl object-cover ring-2 ring-purple-300 shadow-2xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          className="absolute inset-0 bg-stone-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
-                          title="點擊選取新管理員頭像照片"
-                        >
-                          <Camera className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <h5 className="text-xs font-bold text-stone-900">管理員個人頭像照片</h5>
-                        <p className="text-[11px] text-stone-500">
-                          支援常見圖檔（單檔 6MB 內），更換時自動覆蓋原檔案並全站即時生效。
-                        </p>
+                  <div className="flex items-center gap-3.5">
+                    <img
+                      src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
+                      alt=""
+                      className="w-14 h-14 rounded-full object-cover border border-stone-200 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-medium text-stone-900 truncate">{name || currentUser.name}</p>
+                      <div className="mt-0.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] text-stone-500 min-w-0">
+                        <span className="whitespace-nowrap">管理員</span>
+                        <CopyableUserId userId={currentUser.id} prefix="ID " className="text-[10.5px] py-0 px-1.5 shrink-0" />
                       </div>
                     </div>
-
-                    <div className="shrink-0 self-stretch sm:self-auto flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => avatarInputRef.current?.click()}
-                        className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-purple-700" />
-                        <span>更換頭像照片 (限 6MB)</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      aria-label="更換頭像"
+                      className="shrink-0 h-9 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <Camera className="w-4 h-4 text-stone-500" />
+                      <span className="hidden sm:inline">更換頭像</span>
+                    </button>
                   </div>
 
-                  {/* 管理員名稱與職稱 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                        管理員顯示名稱 <span className="text-rose-500">*</span>
-                      </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
+                    <label className="block">
+                      <span className="block text-[13px] text-stone-700 mb-1">顯示名稱 <span className="text-rose-500">*</span></span>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="請輸入管理員顯示名稱"
+                        placeholder="管理員顯示名稱"
                         required
-                        className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                        className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-[14px] text-stone-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
                       />
-                      <p className="text-[10px] text-stone-400 mt-1">
-                        此名稱將在全站公告、用戶管理、審查紀錄及私訊對話中顯示。
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                        管理員對外職稱
-                      </label>
+                    </label>
+                    <label className="block">
+                      <span className="block text-[13px] text-stone-700 mb-1">職稱</span>
                       <input
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="例如：平台總管 / 審核與治理總監"
-                        className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                        placeholder="例如：平台營運"
+                        className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-[14px] text-stone-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
                       />
-                      <p className="text-[10px] text-stone-400 mt-1">
-                        管理員席位對外展示之專業職銜。
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                        管理員官方 Email
-                      </label>
+                    </label>
+                    <label className="block">
+                      <span className="block text-[13px] text-stone-700 mb-1">聯絡 Email</span>
                       <input
                         type="email"
                         value={userEmail}
                         onChange={(e) => setUserEmail(e.target.value)}
-                        placeholder="operations@ideax.io"
-                        className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                        placeholder="name@example.com"
+                        className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-[14px] text-stone-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                        管理員聯繫電話
-                      </label>
+                    </label>
+                    <label className="block">
+                      <span className="block text-[13px] text-stone-700 mb-1">聯絡電話</span>
                       <input
                         type="tel"
                         value={userPhone}
                         onChange={(e) => setUserPhone(e.target.value)}
-                        placeholder="0912-345-678"
-                        className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                        placeholder="09xx-xxx-xxx"
+                        className="w-full h-10 px-3 rounded-lg border border-stone-300 bg-white text-[14px] text-stone-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
                       />
-                    </div>
+                    </label>
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
+                  <div className="flex justify-end pt-1">
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                      className="h-10 px-5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[13.5px] font-medium cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <Save className="w-4 h-4" />
-                      <span>儲存管理員名稱與頭像</span>
+                      儲存
                     </button>
                   </div>
                 </form>
 
-                {/* 2. 系統安全與敏感操作防護狀態 (手機版與電腦版皆為 2 欄並排) */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0" />
-                      <h4 className="text-xs sm:text-sm font-black text-stone-900">
-                        管理員安全與底層運營防護機制
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 shrink-0">
-                      安全狀態正常
-                    </span>
+                {/* 平台模式 */}
+                <section id="environment-controls-section-admin" className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4">
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-stone-900">平台模式</h3>
+                    <p className="text-[12.5px] text-stone-500 mt-0.5">運營模式四選一，全站立即生效；切換前會再確認一次。</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-xs">
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2">
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                        <Sliders className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-bold text-stone-900 block text-[11px] sm:text-xs truncate">二次確認保護</span>
-                        <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-snug">
-                          開啟關閉測試環境與隱藏測試帳號受二次確認保護。
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2">
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 mt-0.5">
-                        <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-bold text-stone-900 block text-[11px] sm:text-xs truncate">裁決派發郵件</span>
-                        <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-snug">
-                          案件裁決自動生成罐頭文字派發至信箱與通知中心。
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. 管理員功能中心快捷入口 (手機版與電腦版皆為 3 欄 6 宮格並排) */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
-                  <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700 shrink-0" />
-                    <span>管理員後台樞紐快捷入口</span>
-                  </h4>
-
-                  <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('overview')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">管理儀表板</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">環境開關與營運概覽</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('admin_mail_disputes')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('overview')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">管理儀表板</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">全站營運大盤與指標</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('admin_user_analytics')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <BarChart3 className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">用戶習慣與調研</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">圖表分析與 Excel 匯出</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('points_receivables')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <Coins className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">點數與應收帳款</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">帳目託管與提領審核</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('admin_certifications')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <BadgeCheck className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">受理認證審核</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">實名與專家資格審批</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 4. 特殊環境開關 (共用相對開關 + 權限範圍) */}
-                <div id="environment-controls-section-admin" className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-800/80 pb-2">
-                    <div className="flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="font-bold text-stone-200 text-xs">特殊環境開關控制</span>
-                    </div>
-                    <span className="text-[10px] text-stone-400">
-                      運營模式全站生效 • 測試環境僅管理員視角
-                    </span>
+                  <div role="radiogroup" aria-label="運營模式" className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {([
+                      {
+                        key: 'norm', label: '正常營運', hint: '保留點數與金流',
+                        active: !isRaceMode && !isNoPaymentMode && !isDemoMode,
+                        onPick: () => { if (isRaceMode || isNoPaymentMode || isDemoMode) setPendingModeConfirm({ type: 'liveOperation', nextState: true }); },
+                      },
+                      {
+                        key: 'free', label: '無金流', hint: '全站免點數、隱藏金流',
+                        active: !isRaceMode && isNoPaymentMode && !isDemoMode,
+                        onPick: () => { if (!isNoPaymentMode || isRaceMode || isDemoMode) setPendingModeConfirm({ type: 'noPayment', nextState: true }); },
+                      },
+                      {
+                        key: 'test', label: '測試環境', hint: '顯示預設測試資料',
+                        active: !isRaceMode && isDemoMode,
+                        onPick: () => { if (!isDemoMode || isRaceMode || isNoPaymentMode) setPendingModeConfirm({ type: 'demo', nextState: true }); },
+                      },
+                      {
+                        key: 'race', label: '競賽模式', hint: '創星季與競賽專屬入口',
+                        active: isRaceMode,
+                        onPick: () => { if (!isRaceMode) setPendingModeConfirm({ type: 'race', nextState: true }); },
+                      },
+                    ]).map((m) => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={m.active}
+                        onClick={m.onPick}
+                        className={`text-left rounded-xl border px-3 py-2.5 transition-colors cursor-pointer ${
+                          m.active ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white hover:bg-stone-50 text-stone-800'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 text-[14px] font-medium">
+                          <span className={`w-2 h-2 rounded-full ${m.active ? 'bg-emerald-400' : 'bg-stone-300'}`} />
+                          {m.label}
+                        </span>
+                        <span className={`block mt-0.5 text-[12px] ${m.active ? 'text-stone-300' : 'text-stone-500'}`}>{m.hint}</span>
+                      </button>
+                    ))}
                   </div>
 
-                  {/* 四大平台運營模式切換：正式營運 (NORM) vs 無金流 (FREE) vs 測試環境 (TEST) vs 競賽模式 (RACE) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-stone-300">平台運營模式（四選一專屬模式切換）</span>
-                      <span className="text-[10px] text-amber-400 font-mono font-bold">
-                        {isRaceMode ? '🏎️ RACE (競賽專屬)' : isDemoMode ? '🧪 TEST (預設測試中)' : isNoPaymentMode ? 'FREE (無金流)' : 'NORM (正常營運)'}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
-                      {/* 🟢 正式營運模式 (NORM) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isRaceMode || isNoPaymentMode || isDemoMode) {
-                            setPendingModeConfirm({ type: 'liveOperation', nextState: true });
-                          }
-                        }}
-                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                          !isRaceMode && !isNoPaymentMode && !isDemoMode
-                            ? 'bg-emerald-500 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
-                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                        }`}
-                        title="切換至正常營運模式 (保留點數機制，純淨交易額)"
-                      >
-                        <span>🟢 正常營運</span>
-                        <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
-                      </button>
-
-                      {/* ⚡ 無金流模式 (FREE) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isNoPaymentMode || isRaceMode || isDemoMode) {
-                            setPendingModeConfirm({ type: 'noPayment', nextState: true });
-                          }
-                        }}
-                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                          !isRaceMode && isNoPaymentMode && !isDemoMode
-                            ? 'bg-rose-500 text-white shadow-md font-black ring-1 ring-rose-400'
-                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                        }`}
-                        title="切換至無金流模式 (全站免點數，隱藏金流)"
-                      >
-                        <span>⚡ 無金流</span>
-                        <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
-                      </button>
-
-                      {/* 🧪 測試環境 (TEST) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isDemoMode || isRaceMode || isNoPaymentMode) {
-                            setPendingModeConfirm({ type: 'demo', nextState: true });
-                          }
-                        }}
-                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                          !isRaceMode && isDemoMode
-                            ? 'bg-amber-400 text-stone-950 shadow-md font-black ring-1 ring-amber-300'
-                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                        }`}
-                        title={isDemoMode ? '目前處於測試環境' : '切換至測試環境'}
-                      >
-                        <span>🧪 測試環境</span>
-                        <span className="text-[9px] opacity-80 font-mono">(TEST)</span>
-                      </button>
-
-                      {/* 🏎️ 競賽模式 (RACE) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!isRaceMode) {
-                            setPendingModeConfirm({ type: 'race', nextState: true });
-                          }
-                        }}
-                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                          isRaceMode
-                            ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
-                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                        }`}
-                        title="切換至競賽模式 (舊站提供創星季、創點子/痛點集與L0討論區專屬入口捷徑、獨立方案卡片與專屬網址)"
-                      >
-                        <span>🏎️ 競賽模式</span>
-                        <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-stone-800/60">
-                    {/* 測試環境（僅管理員畫面） */}
-                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
-                        <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+                  <div className="divide-y divide-stone-100 border-t border-stone-100">
+                    {([
+                      { label: '測試環境', hint: '只影響管理員自己的畫面', on: isDemoMode, onToggle: () => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode }) },
+                      { label: '隱藏測試帳號', hint: '全站清單與統計不顯示測試帳號', on: isHideTestAccounts, onToggle: () => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts }) },
+                    ]).map((r) => (
+                      <div key={r.label} className="flex items-center justify-between gap-3 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[14px] text-stone-900">{r.label}</p>
+                          <p className="text-[12px] text-stone-500">{r.hint}</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={r.on}
+                          aria-label={r.label}
+                          onClick={r.onToggle}
+                          className={`relative w-11 h-6 rounded-full shrink-0 transition-colors cursor-pointer ${r.on ? 'bg-emerald-500' : 'bg-stone-300'}`}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${r.on ? 'translate-x-5' : ''}`} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
-                        className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                          isDemoMode
-                            ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
-                            : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                        }`}
-                      >
-                        {isDemoMode ? '已開啟' : '開啟'}
-                      </button>
-                    </div>
-
-                    {/* 隱藏測試帳號 */}
-                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
-                        <span className="text-[9px] text-stone-500">全站平台同步</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                        className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
-                          isHideTestAccounts
-                            ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
-                            : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                        }`}
-                      >
-                        {isHideTestAccounts ? 'HIDE' : 'SHOW'}
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                </div>
+                </section>
               </div>
             ) : (
               /* 一般會員（提問者 / 解答者）個人資料設定、問卷、專家審查與條款簽署 */
@@ -6424,46 +6120,33 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 )}
 
-                {/* 身份切換區域 */}
+                {/* 身分切換：提問者／解答者 */}
                 {profileSubTab === 'basic' && profileSection === 'basic' && (
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 text-stone-400" />
-                    <span className="text-[14px] text-stone-800">
-                      目前身分：{currentUser.role === 'solver' ? '解答者' : '提問者'}
-                    </span>
-                    <HelpTooltip
-                      title="身份切換說明"
-                      content="一般會員帳號可隨時在提問者與解答者身份間切換，無須額外註冊。提問發布與方案解題隨時無縫使用。"
-                    />
+                  <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[14px] text-stone-800">使用身分</span>
+                      <HelpTooltip
+                        title="身分切換"
+                        content="同一個帳號可以隨時在提問者與解答者之間切換，不用另外註冊。"
+                      />
+                    </div>
+                    <div role="radiogroup" aria-label="使用身分" className="inline-flex p-1 rounded-lg bg-stone-100">
+                      {([['questioner', '提問者'], ['solver', '解答者']] as const).map(([r, label]) => (
+                        <button
+                          key={r}
+                          type="button"
+                          role="radio"
+                          aria-checked={currentUser.role === r}
+                          onClick={() => { if (currentUser.role !== r) switchRole(r); }}
+                          className={`h-8 px-3.5 rounded-md text-[13px] cursor-pointer transition-colors ${
+                            currentUser.role === r ? 'bg-white text-stone-900 font-semibold shadow-sm' : 'text-stone-500 hover:text-stone-800'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => switchRole('questioner')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        currentUser.role === 'questioner'
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
-                      }`}
-                    >
-                      提問者身份
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => switchRole('solver')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        currentUser.role === 'solver'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
-                      }`}
-                    >
-                      解答者身份
-                    </button>
-                  </div>
-                </div>
-
                 )}
 
             {/* 雙欄主容器：大螢幕時問卷位於基本資料右側 */}
@@ -6472,7 +6155,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div className={`space-y-6 ${profileSubTab === 'basic' ? 'block' : 'hidden'}`}>
                 {/* 1. 基本帳號資訊 */}
                 {profileSection === 'basic' && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 ">
 
                   {/* 個人頭像照片上傳 */}
                   <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
@@ -6481,7 +6164,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <img
                           src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
                           alt={currentUser.name}
-                          className="w-14 h-14 rounded-2xl object-cover ring-2 ring-stone-200 shadow-2xs"
+                          className="w-14 h-14 rounded-2xl object-cover ring-2 ring-stone-200 "
                         />
                         <button
                           type="button"
@@ -6505,7 +6188,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <button
                         type="button"
                         onClick={() => avatarInputRef.current?.click()}
-                        className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer "
                       >
                         <Upload className="w-3.5 h-3.5 text-amber-600" />
                         <span>更換頭像照片 (限 6MB)</span>
@@ -6765,9 +6448,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveBasicProfile}
-                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-[13px] transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Save className="w-3.5 h-3.5 text-stone-950" />
+                      <Save className="w-3.5 h-3.5" />
                       <span>儲存基本資料</span>
                     </button>
                   </div>
@@ -6776,10 +6459,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
                 {/* 2. 收退款帳戶設定 (全模式配置同步) */}
                 {profileSection === 'payout' && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 ">
                     <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold shadow-2xs">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold ">
                           <Wallet className="w-4 h-4" />
                         </div>
                         <div>
@@ -6805,10 +6488,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           value={bankName}
                           onChange={(e) => {
                             setBankName(e.target.value);
-                            setBankCode(e.target.value.split(' ')[0] || '822');
+                            setBankCode(e.target.value.split(' ')[0] || '');
                           }}
                           className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
                         >
+                          <option value="">請選擇銀行</option>
                           <option value="822 中國信託商業銀行">822 中國信託商業銀行</option>
                           <option value="013 國泰世華商業銀行">013 國泰世華商業銀行</option>
                           <option value="808 玉山商業銀行">808 玉山商業銀行</option>
@@ -6871,9 +6555,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <button
                         type="button"
                         onClick={handleSaveBankSettings}
-                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-[13px] transition-colors flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Save className="w-3.5 h-3.5 text-stone-950" />
+                        <Save className="w-3.5 h-3.5" />
                         <span>儲存收退款帳戶</span>
                       </button>
                     </div>
@@ -6882,10 +6566,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
                 {/* 3. 帳號安全與修改登入密碼 */}
                 {profileSection === 'password' && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 ">
                   <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-semibold shadow-2xs">
+                      <div className="w-8 h-8 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-semibold ">
                         <KeyRound className="w-4 h-4" />
                       </div>
                       <div>
@@ -6997,9 +6681,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <button
                         type="submit"
                         disabled={isChangingPassword}
-                        className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-semibold text-xs  transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
-                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <Lock className="w-3.5 h-3.5" />
                         <span>{isChangingPassword ? '更新中...' : '確認修改密碼'}</span>
                       </button>
                     </div>
@@ -7011,7 +6695,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
               <div className={`space-y-4 ${profileSubTab === 'survey' ? 'block' : 'hidden'}`}>
                 {/* 填問卷得免費會員體驗橫幅 */}
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 shadow-2xs">
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 ">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
                     <h4 className="text-xs sm:text-sm font-semibold text-stone-900">
@@ -7029,7 +6713,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   )}
                 </div>
 
-                <div id="survey-questions-section" className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 shadow-2xs">
+                <div id="survey-questions-section" className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 ">
                   <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5 flex-wrap gap-2">
                     <h3 className="text-xs font-semibold text-stone-900 flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4 text-amber-600" />
@@ -7038,7 +6722,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <button
                       type="button"
                       onClick={handleApplyProfileDataToSurvey}
-                      className="text-[11px] font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 active:scale-95 px-2.5 py-1 rounded-lg border border-stone-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
+                      className="text-[11px] font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 active:scale-95 px-2.5 py-1 rounded-lg border border-stone-200 flex items-center gap-1 transition-all cursor-pointer  shrink-0"
                       title="快速帶入您於帳號設定所填寫的資料"
                     >
                       <UserCheck className="w-3.5 h-3.5 text-amber-900" />
@@ -7387,7 +7071,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                           {RECHARGE_PACKAGES.map((pkg) => (
-                            <div key={pkg.id} className="p-2 rounded-xl bg-white border border-stone-200 shadow-2xs space-y-0.5">
+                            <div key={pkg.id} className="p-2 rounded-xl bg-white border border-stone-200  space-y-0.5">
                               <span className="text-[11px] font-semibold text-amber-800 bg-stone-50 px-1.5 py-0.2 rounded-full inline-block">
                                 {pkg.tag}
                               </span>
@@ -7550,7 +7234,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveSurvey}
-                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs sm:text-sm  transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4 text-stone-950" />
                       <span>送出問卷並領取會員體驗</span>
@@ -7758,7 +7442,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       {featuredCaseImages.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {featuredCaseImages.map((img, idx) => (
-                            <div key={idx} className="group relative rounded-xl overflow-hidden border border-stone-200 bg-white aspect-video shadow-2xs">
+                            <div key={idx} className="group relative rounded-xl overflow-hidden border border-stone-200 bg-white aspect-video ">
                               {img.url ? (
                                 <img src={img.url} alt={img.caption || `成果圖 ${idx + 1}`} className="w-full h-full object-cover" />
                               ) : (
@@ -7791,7 +7475,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             placeholder="先輸入圖說 (選填)，再點擊右側上傳圖片..."
                             className="flex-1 min-w-[160px] px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
                           />
-                          <label className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold shrink-0 cursor-pointer shadow-2xs flex items-center gap-1.5">
+                          <label className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-[13px] font-medium shrink-0 cursor-pointer  flex items-center gap-1.5">
                             <span>+ 上傳圖片（限 {MAX_IMAGE_FILE_SIZE_MB}MB）</span>
                             <input
                               type="file"
@@ -7833,7 +7517,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       {featuredCaseFiles.length > 0 && (
                         <div className="space-y-1.5">
                           {featuredCaseFiles.map((f, idx) => (
-                            <div key={idx} className="p-2 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-2 shadow-2xs text-xs">
+                            <div key={idx} className="p-2 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-2  text-xs">
                               <div className="flex items-center gap-2 min-w-0">
                                 <FileText className="w-4 h-4 text-amber-600 shrink-0" />
                                 <span className="font-bold text-stone-800 truncate">{f.name}</span>
@@ -7869,7 +7553,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 setNewFileName('');
                               }
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold shrink-0 cursor-pointer shadow-2xs"
+                            className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-[13px] font-medium shrink-0 cursor-pointer "
                           >
                             + 新增檔案
                           </button>
@@ -7914,7 +7598,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <label className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
                       <div>
                         <span className="text-xs font-semibold text-stone-800">公開顯示「被採納率」</span>
-                        <p className="text-[11px] text-stone-400">目前採納率：{currentUser.acceptanceRate ?? 88}%</p>
+                        <p className="text-[11px] text-stone-400">目前採納率：{currentUser.acceptanceRate != null ? `${currentUser.acceptanceRate}%` : '尚無資料'}</p>
                       </div>
                       <input
                         type="checkbox"
@@ -7927,7 +7611,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <label className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
                       <div>
                         <span className="text-xs font-semibold text-stone-800">公開顯示「平均方案賞金」</span>
-                        <p className="text-[11px] text-stone-400">目前平均賞金：NT$ {currentUser.avgSolutionBounty ?? 2400}</p>
+                        <p className="text-[11px] text-stone-400">目前平均賞金：{currentUser.avgSolutionBounty ? `NT$ ${currentUser.avgSolutionBounty}` : '尚無資料'}</p>
                       </div>
                       <input
                         type="checkbox"
@@ -7996,7 +7680,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('expert_certification')}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    className="w-full py-2.5 px-4 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 font-medium text-xs sm:text-sm flex items-center justify-center gap-2  transition-all cursor-pointer"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>
@@ -8040,7 +7724,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
                 {/* 1. 一般服務條款 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8074,7 +7758,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     currentUser.hasAgreedQuestionerTerms
                   );
                   return (
-                    <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 shadow-2xs transition-colors ${
+                    <div className={`p-3 rounded-xl border flex items-center justify-between gap-3  transition-colors ${
                       isAgreed ? 'bg-white border-stone-200 hover:border-stone-200' : 'bg-stone-50 border-stone-200'
                     }`}>
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -8120,7 +7804,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     currentUser.hasAgreedSolverTerms
                   );
                   return (
-                    <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 shadow-2xs transition-colors ${
+                    <div className={`p-3 rounded-xl border flex items-center justify-between gap-3  transition-colors ${
                       isAgreed ? 'bg-white border-stone-200 hover:border-stone-200' : 'bg-stone-50 border-stone-200'
                     }`}>
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -8160,7 +7844,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 })()}
 
                 {/* 4. 著作權保護政策 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8188,7 +7872,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 5. 隱私權政策與個資聲明 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8216,7 +7900,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 6. 免責聲明與風險告知 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8244,7 +7928,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 7. 點數儲值與會員方案訂閱服務條款 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8272,7 +7956,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 8. 反詐騙與防制洗錢政策 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8300,7 +7984,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 9. 退款政策與爭議調解辦法 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8328,7 +8012,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 {/* 10. 社群守則與內容管理規範 */}
-                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 shadow-2xs hover:border-stone-200 transition-colors">
+                <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3  hover:border-stone-200 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <input
                       type="checkbox"
@@ -8362,7 +8046,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               type="button"
               onClick={handleSaveProfile}
-              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs  transition-colors cursor-pointer"
             >
               儲存隱私與條款設定
             </button>
@@ -8371,40 +8055,23 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
 
             {(isAdminUser || (profileSubTab === 'basic' && profileSection === 'account')) && (<>
-            {/* 本裝置已登錄帳號（快速切換與管理） */}
-            <div id="account-switch-section" className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-semibold shrink-0 shadow-2xs">
-                    <ArrowLeftRight className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-semibold text-stone-900 flex items-center gap-2">
-                      <span>本裝置已登錄之帳號</span>
-                      <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold">
-                        {deviceAccounts.length} 組帳號
-                      </span>
-                    </h3>
-                    <p className="text-xs text-stone-600 mt-0.5">
-                      本裝置曾登入之帳號均可直接點擊切換；若帳號已登出，重新登入後即可切換。您亦可自此裝置移除其他非使用中之帳號。
-                    </p>
-                  </div>
+            {/* 本裝置的帳號（快速切換與管理） */}
+            <section id="account-switch-section" className="rounded-2xl border border-stone-200 bg-white">
+              <div className="flex items-start justify-between gap-3 px-4 sm:px-5 pt-4 pb-3">
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-stone-900">本裝置的帳號</h3>
+                  <p className="text-[12.5px] text-stone-500 mt-0.5">登入過的帳號可以直接切換；已登出的要重新登入。</p>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() => {
-                    openAuthModal('login', 'switch');
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 hover:border-stone-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-start sm:self-auto"
+                  onClick={() => openAuthModal('login', 'switch')}
+                  className="shrink-0 h-9 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  <UserPlus className="w-3.5 h-3.5 text-amber-600" />
-                  <span>登入其他帳號</span>
+                  <UserPlus className="w-4 h-4 text-stone-500" />
+                  登入其他帳號
                 </button>
               </div>
-
-              {/* 帳號卡片清單（整合本機已登錄帳號與固定保留之 1~3 核心測試身分） */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <ul className="divide-y divide-stone-100 border-t border-stone-100">
                 {(() => {
                   const displayedUserIds = new Set<string>();
                   const accountsToRender: { user: User; isLoggedIn: boolean }[] = [];
@@ -8446,236 +8113,124 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     const aliasId = USER_ALIAS_MAP[u.id];
                     const isCurrent = currentUser.id === u.id || (aliasId !== undefined && currentUser.id === aliasId);
                     const uDisplayName = resolveUserDisplayName(u.id, u.name, availableUsers);
-                    const uNameColorClass = getUserNameColorClass(u.id, availableUsers, u);
-
+                    const roleText = u.role === 'admin' ? '管理員' : u.accountType === 'enterprise' ? '企業' : u.role === 'solver' ? '解答者' : '提問者';
+                    const statusText = isCurrent ? '使用中' : isLogged ? '已登入' : '已登出';
                     return (
-                      <div
-                        key={u.id}
-                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
-                          isCurrent
-                            ? 'bg-stone-50 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
-                            : isLogged
-                            ? 'bg-white border-stone-200 hover:border-stone-200 hover:bg-stone-50 shadow-2xs'
-                            : 'bg-stone-50/80 border-stone-200 opacity-80'
-                        }`}
-                      >
-                      <div className="flex items-start gap-3">
+                      <li key={u.id} className="flex items-center gap-3 px-4 sm:px-5 py-3">
                         <img
-                          src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                          alt={uDisplayName}
-                          className="w-11 h-11 rounded-2xl object-cover ring-1 ring-stone-200 shrink-0"
+                          src={u.avatar || presetAvatarFor(u.id)}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`text-xs font-semibold truncate ${uNameColorClass}`}>{uDisplayName}</span>
-                            {isCurrent && (
-                              <span className="text-[10.5px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
-                                目前使用中
-                              </span>
-                            )}
-                            {!isCurrent && isLogged && (
-                              <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 border border-stone-200 shrink-0">
-                                已登入
-                              </span>
-                            )}
-                            {!isLogged && (
-                              <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded-full bg-stone-200 text-stone-600 shrink-0">
-                                已登出
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-stone-500 mt-1">
-                            <span
-                              className={`px-1.5 py-0.2 rounded font-bold ${
-                                u.role === 'admin'
-                                  ? 'bg-purple-100 text-purple-900 border border-stone-200'
-                                  : u.role === 'solver'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-stone-200 text-stone-700'
-                              }`}
-                            >
-                              {u.role === 'admin' ? '平台管理員' : u.role === 'solver' ? '解答者' : '提問者'}
-                            </span>
-                            <span className="truncate">{u.title || u.email}</span>
-                          </div>
+                          <p className="text-[14px] text-stone-900 truncate">{uDisplayName}</p>
+                          <p className="text-[12px] text-stone-500 truncate">
+                            {roleText}
+                            <span className="mx-1 text-stone-300">·</span>
+                            <span className={isCurrent ? 'text-emerald-700' : ''}>{statusText}</span>
+                          </p>
                         </div>
-                      </div>
-
-                      {/* 底部操作欄 */}
-                      <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs">
-                        <div className="text-[11px] tabular-nums text-stone-500">
-                          {u.role === 'solver'
-                            ? `NT$ ${(u.withheldPoints || 0).toLocaleString()}`
-                            : `${(u.balance || 0).toLocaleString()} 點`}
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          {isCurrent ? (
+                        {isCurrent ? (
+                          <button
+                            type="button"
+                            onClick={() => { logoutAccount(u.id); onClose(); }}
+                            className="shrink-0 h-8 px-3 rounded-lg text-[13px] text-rose-600 hover:bg-rose-50 cursor-pointer"
+                          >
+                            登出
+                          </button>
+                        ) : (
+                          <div className="shrink-0 flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => {
-                                logoutAccount(u.id);
-                                onClose();
+                                if (switchAccount(u.id)) {
+                                  setMsg(`已切換為「${u.name}」`);
+                                  setTimeout(() => setMsg(null), 3000);
+                                }
                               }}
-                              className="px-2.5 py-1 rounded-xl text-rose-600 hover:bg-rose-50 border border-stone-200 font-bold text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
-                              title="登出目前使用之帳號"
+                              className="h-8 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer"
                             >
-                              <LogOut className="w-3 h-3" />
-                              <span>登出</span>
+                              {isLogged ? '切換' : '重新登入'}
                             </button>
-                          ) : isLogged ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  switchAccount(u.id);
-                                  setMsg(`已成功切換為「${u.name}」！`);
-                                  setTimeout(() => setMsg(null), 3000);
-                                }}
-                                className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-[11px] shadow-2xs transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
-                                title="直接切換為此帳號"
-                              >
-                                <span>直接切換</span>
-                                <ArrowRight className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAccountToRemove(u)}
-                                className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="從此裝置移除此帳號"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  switchAccount(u.id);
-                                  setMsg(`已重新登入並切換為「${u.name}」！`);
-                                  setTimeout(() => setMsg(null), 3000);
-                                }}
-                                className="px-3 py-1 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-[11px] shadow-2xs transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
-                                title="重新登入並切換為此帳號"
-                              >
-                                <span>重新登入</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAccountToRemove(u)}
-                                className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="從此裝置移除此帳號"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                });
+                            <button
+                              type="button"
+                              onClick={() => setAccountToRemove(u)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                              aria-label="從此裝置移除這個帳號"
+                              title="從此裝置移除"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  });
                 })()}
-              </div>
-            </div>
+              </ul>
+            </section>
 
-            {/* 2. 註冊新帳號：走正式註冊流程（Firebase 驗證），不在本機直接建立帳號 */}
-            <div className="p-4 rounded-2xl bg-white border border-stone-200 flex items-center justify-between gap-3 flex-wrap">
-              <div className="min-w-0">
-                <h4 className="text-[14px] font-semibold text-stone-900">註冊新帳號</h4>
-                <p className="text-[12.5px] text-stone-500 mt-0.5">用另一個 Email 或手機號碼建立新帳號</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => openAuthModal('register')}
-                className="px-3.5 h-9 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[13px] font-medium transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>註冊</span>
-              </button>
-            </div>
-
-            {/* 3. 登出帳號 */}
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h4 className="text-xs font-bold text-red-950 flex items-center gap-1.5">
-                  <LogOut className="w-4 h-4 text-red-600" />
-                  <span>登出帳號</span>
-                </h4>
-                <p className="text-[11px] text-red-800/80 mt-0.5">
-                  安全登出目前登入身分（{currentUser.name}），切換至訪客瀏覽模式。
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  logoutAccount(currentUser.id);
-                  setMsg('已成功登出帳號，目前為訪客體驗模式。');
-                  setTimeout(() => setMsg(null), 3000);
-                }}
-                className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-red-700 hover:bg-red-50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-              >
-                <LogOut className="w-3.5 h-3.5 text-red-600" />
-                <span>安全登出目前帳號</span>
-              </button>
-            </div>
-
-            {/* 4. 帳號設定最底部：註銷帳號 */}
-            <div id="account-deactivation-section" className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs scroll-mt-20">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-                  <h4 className="text-xs sm:text-sm font-semibold text-stone-900">
-                    註銷帳號
-                  </h4>
+            {/* 註冊、登出、註銷 */}
+            <section id="account-deactivation-section" className="rounded-2xl border border-stone-200 bg-white divide-y divide-stone-100 scroll-mt-20">
+              <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="text-[14px] text-stone-900">註冊新帳號</p>
+                  <p className="text-[12px] text-stone-500">用另一個 Email 或手機號碼建立新帳號</p>
                 </div>
-                {currentUser.isDeactivated ? (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200 animate-pulse">
-                    7 日反悔期進行中
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-bold text-stone-400">
-                    正常使用中
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('register')}
+                  className="shrink-0 h-8 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer"
+                >
+                  註冊
+                </button>
               </div>
-
-              {currentUser.isDeactivated ? (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-stone-200 space-y-2">
-                  <div className="flex items-start gap-2 text-rose-900 text-xs">
+              <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="text-[14px] text-stone-900">登出</p>
+                  <p className="text-[12px] text-stone-500 truncate">登出「{currentUser.name}」，回到訪客模式</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logoutAccount(currentUser.id);
+                    setMsg('已登出，目前為訪客模式。');
+                    setTimeout(() => setMsg(null), 3000);
+                  }}
+                  className="shrink-0 h-8 px-3 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[13px] text-stone-800 cursor-pointer"
+                >
+                  登出
+                </button>
+              </div>
+              <div className="px-4 sm:px-5 py-3.5">
+                {currentUser.isDeactivated ? (
+                  <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-rose-950">
-                        您已於 {currentUser.deactivationRequestedAt ? new Date(currentUser.deactivationRequestedAt).toLocaleString('zh-TW') : '日前'} 提出註銷申請
-                      </p>
-                      <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
-                        系統排定於 <strong>{currentUser.deactivationScheduledPurgeAt ? new Date(currentUser.deactivationScheduledPurgeAt).toLocaleString('zh-TW') : '7 日後'}</strong> 正式註銷。
-                        超過 7 日未登入此帳號將永久刪除相關資料；這 7 日內只要有再次登入本帳號，將自動視為取消註銷。
+                    <div className="min-w-0">
+                      <p className="text-[14px] text-rose-700">註銷申請中（7 日反悔期）</p>
+                      <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">
+                        {currentUser.deactivationRequestedAt ? `${new Date(currentUser.deactivationRequestedAt).toLocaleString('zh-TW')} 提出，` : ''}
+                        預計 {currentUser.deactivationScheduledPurgeAt ? new Date(currentUser.deactivationScheduledPurgeAt).toLocaleString('zh-TW') : '7 日後'} 正式註銷。這段期間再登入一次就會自動取消註銷。
                       </p>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    若您決定停止使用 IdeaX 平台，可在此申請註銷帳號。送出申請後系統將為您安全登出並進入 7 日反悔猶豫期。
-                  </p>
-
-                  <div className="flex justify-end pt-1">
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[14px] text-rose-600">註銷帳號</p>
+                      <p className="text-[12px] text-stone-500">送出後會登出並進入 7 日反悔期</p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsDeactivateModalOpen(true)}
-                      className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-stone-200 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="shrink-0 h-8 px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-[13px] text-rose-600 cursor-pointer"
                     >
-                      <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                      <span>申請註銷</span>
+                      申請註銷
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </section>
             </>)}
           </div>
         )}

@@ -171448,7 +171448,7 @@ var REPAIR_CATEGORY_LABELS = {
   survey_default: "\u9810\u8A2D\u554F\u5377\u8207\u6C92\u554F\u904E\u7684\u6027\u5225\u3001\u5E74\u85AA",
   skipped_profile: "\u7565\u904E\u500B\u4EBA\u8CC7\u6599\u6642\u7CFB\u7D71\u88DC\u7684\u5E74\u9F61\u3001\u884C\u696D\u3001\u8077\u7A31",
   fake_rating: "\u6C92\u6709\u8A55\u50F9\u537B\u986F\u793A 5 \u661F\u6216 100% \u63A1\u7D0D\u7387",
-  placeholder_bio: "\u7CFB\u7D71\u81EA\u52D5\u7522\u751F\u7684\u500B\u4EBA\u7C21\u4ECB",
+  placeholder_bio: "\u7CFB\u7D71\u81EA\u52D5\u7522\u751F\u7684\u500B\u4EBA\u7C21\u4ECB\u8207\u7BC4\u4F8B\u7CBE\u9078\u6848\u4F8B",
   unreviewed_verification: "\u8A3B\u518A\u6642\u672A\u7D93\u5BE9\u6838\u5C31\u6210\u70BA\u5DF2\u8A8D\u8B49",
   fake_answer_defaults: "\u7559\u8A00\uFF0F\u65B9\u6848\u88AB\u9810\u8A2D\u7684\u5047\u8B9A\u6578\u3001\u652F\u6301\u9EDE\u6578\u3001\u7559\u8A00\u6578\u8207\u5C01\u9762",
   fake_solver_rating: "\u89E3\u7B54\u4E0A\u9810\u8A2D\u7684 4.9 \u661F\u8A55\u5206"
@@ -171492,6 +171492,9 @@ function findUserFixes(u, priv = {}, categories = CLIENT_SAFE_CATEGORIES) {
   if (on("placeholder_bio") && typeof u.bio === "string" && u.name) {
     const b = u.bio.trim();
     if (b === `${u.name} \u7684\u500B\u4EBA\u7C21\u4ECB\u3002` || b === `${u.name} \u7684\u5168\u65B0\u8A3B\u518A\u500B\u4EBA\u5E33\u865F\u3002`) fixes.push({ field: "bio", from: b, to: "", category: "placeholder_bio" });
+  }
+  if (on("placeholder_bio") && u.featuredCase && String(u.featuredCase.title || "").startsWith("\u6821\u5712\u5546\u5708\u7279\u7D04\u52A0\u76DF\u689D\u6B3E")) {
+    fixes.push({ field: "featuredCase", from: u.featuredCase.title, to: void 0, category: "placeholder_bio" });
   }
   if (on("unreviewed_verification")) {
     const rn = priv.realNameAuthData || u.realNameAuthData;

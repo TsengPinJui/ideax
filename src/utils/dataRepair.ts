@@ -10,7 +10,7 @@ export type RepairCategory =
   | 'survey_default' // 註冊時自動存的預設問卷、沒問過的性別與年薪
   | 'skipped_profile' // 略過個人資料時系統補的年齡、行業、職稱、頭銜
   | 'fake_rating' // 沒有任何評價卻有 5 星、100% 採納率
-  | 'placeholder_bio' // 系統自動產生的「XXX 的個人簡介。」
+  | 'placeholder_bio' // 系統自動產生的「XXX 的個人簡介。」與解答者預設的範例精選案例
   | 'unreviewed_verification' // 註冊為解答者時沒經過審核就變成「已實名認證／認證專家」
   | 'fake_answer_defaults' // 創星季期間新留言被灌的 28 讚、120,000 支持點數、12 則留言與圖庫封面
   | 'fake_solver_rating'; // 解答上預設的 4.9 星
@@ -19,7 +19,7 @@ export const REPAIR_CATEGORY_LABELS: Record<RepairCategory, string> = {
   survey_default: '預設問卷與沒問過的性別、年薪',
   skipped_profile: '略過個人資料時系統補的年齡、行業、職稱',
   fake_rating: '沒有評價卻顯示 5 星或 100% 採納率',
-  placeholder_bio: '系統自動產生的個人簡介',
+  placeholder_bio: '系統自動產生的個人簡介與範例精選案例',
   unreviewed_verification: '註冊時未經審核就成為已認證',
   fake_answer_defaults: '留言／方案被預設的假讚數、支持點數、留言數與封面',
   fake_solver_rating: '解答上預設的 4.9 星評分',
@@ -80,6 +80,10 @@ export function findUserFixes(
   if (on('placeholder_bio') && typeof u.bio === 'string' && u.name) {
     const b = u.bio.trim();
     if (b === `${u.name} 的個人簡介。` || b === `${u.name} 的全新註冊個人帳號。`) fixes.push({ field: 'bio', from: b, to: '', category: 'placeholder_bio' });
+  }
+  if (on('placeholder_bio') && u.featuredCase && String(u.featuredCase.title || '').startsWith('校園商圈特約加盟條款')) {
+    // 以前「隱私設定」沒改就儲存，會把範例的精選案例存成自己的
+    fixes.push({ field: 'featuredCase', from: u.featuredCase.title, to: undefined, category: 'placeholder_bio' });
   }
   if (on('unreviewed_verification')) {
     const rn = priv.realNameAuthData || u.realNameAuthData;

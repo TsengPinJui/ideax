@@ -265,13 +265,13 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
                   <span className="text-[11px] text-stone-400 block">銀行名稱</span>
                   <span className="font-bold text-stone-800 truncate block">
-                    {selectedUser.bankAccount?.bankName || '822 中國信託商業銀行'}
+                    {selectedUser.bankAccount?.bankName || '未設定'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
                   <span className="text-[11px] text-stone-400 block">銀行代碼</span>
                   <span className="tabular-nums font-bold text-stone-800">
-                    {selectedUser.bankAccount?.bankCode || '822'}
+                    {selectedUser.bankAccount?.bankCode || '—'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
@@ -279,13 +279,13 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                   <span className="tabular-nums font-bold text-stone-800">
                     {selectedUser.bankAccount?.accountNumber
                       ? `•••• ${selectedUser.bankAccount.accountNumber.slice(-4)}`
-                      : '•••• 6789'}
+                      : '未設定'}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-white border border-stone-200">
                   <span className="text-[11px] text-stone-400 block">戶名</span>
                   <span className="font-bold text-stone-800 truncate block">
-                    {selectedUser.bankAccount?.accountHolder || selectedUser.name}
+                    {selectedUser.bankAccount?.accountHolder || '未設定'}
                   </span>
                 </div>
               </div>
