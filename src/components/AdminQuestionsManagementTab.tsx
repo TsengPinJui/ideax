@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { usePagedList, ShowMoreButton } from './ShowMoreList';
+import { formatDateTime } from '../utils/formatDateTime';
 import { useApp } from '../context/AppContext';
 import { Category, Question } from '../types';
 import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
@@ -32,11 +34,11 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_COLORS: Record<Category, { fill: string; hex: string; bg: string; text: string; border: string }> = {
-  '創新創業': { fill: 'text-amber-500', hex: '#f59e0b', bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
-  '專業問題': { fill: 'text-blue-500', hex: '#3b82f6', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
-  '學術探討': { fill: 'text-purple-500', hex: '#8b5cf6', bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' },
-  '日常疑難': { fill: 'text-emerald-500', hex: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
-  '網站程式': { fill: 'text-indigo-500', hex: '#6366f1', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200' },
+  '創新創業': { fill: 'text-amber-500', hex: '#f59e0b', bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-stone-200' },
+  '專業問題': { fill: 'text-blue-500', hex: '#3b82f6', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-stone-200' },
+  '學術探討': { fill: 'text-purple-500', hex: '#8b5cf6', bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-stone-200' },
+  '日常疑難': { fill: 'text-emerald-500', hex: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-stone-200' },
+  '網站程式': { fill: 'text-indigo-500', hex: '#6366f1', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-stone-200' },
 };
 
 const PRESET_VIOLATIONS = [
@@ -171,7 +173,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
     // Send notification to author
     addNotification({
-      title: '⚠️ 提問內容違規下架通知',
+      title: ' 提問內容違規下架通知',
       message: `您發布的問題《${delistingQuestion.title.slice(0, 24)}...》因「${violationReason}」已被平台管理員強制下架（下架暫存保留 7 日，逾期將自動從資料庫永久刪除）。處置反饋說明：${
         adminFeedback.trim() || '請恪守 IdeaX 社群規範，如有疑義請聯繫官方團隊。'
       }`,
@@ -193,7 +195,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     relistQuestion(q.id);
 
     addNotification({
-      title: '🟢 提問已恢復重新上架',
+      title: ' 提問已恢復重新上架',
       message: `您的提問《${q.title.slice(0, 24)}...》經管理員審核已恢復正常上架！`,
       type: 'system',
     });
@@ -267,6 +269,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     }
   };
 
+  const pagedQuestions = usePagedList(filteredQuestions, 20);
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Toast 訊息反饋 */}
@@ -274,8 +277,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 border animate-in fade-in ${
             feedbackToast.isError
-              ? 'bg-rose-50 text-rose-900 border-rose-200'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
+              : 'bg-emerald-50 text-emerald-900 border-stone-200'
           }`}
         >
           {feedbackToast.isError ? (
@@ -290,13 +293,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       {/* 頂部標題與雲端資料庫狀態 / 快速排程工具列 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
+          <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2 flex-wrap">
             <HelpCircle className="w-5 h-5 text-purple-600" />
             <span>問題管理</span>
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-stone-200">
               全站共 {totalCount} 題
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200">
               下架/暫存 {delistedCount} 題 (7日暫存期)
             </span>
           </h3>
@@ -310,7 +313,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold text-stone-700">
             <Database className="w-3.5 h-3.5 text-emerald-600" />
             <span>{isFirestoreConnected ? '雲端即時連線' : '本機快取'}</span>
-            {lastSyncTime && <span className="text-stone-400 font-mono text-[10px]">({lastSyncTime})</span>}
+            {lastSyncTime && <span className="text-stone-400 tabular-nums text-[11px]">({lastSyncTime})</span>}
           </div>
 
           {/* 一鍵清理逾7日項目 */}
@@ -332,7 +335,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             type="button"
             disabled={isSyncing}
             onClick={handleCloudSync}
-            className="px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-stone-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             title="自 Firebase Firestore 即時拉取最新題庫與狀態"
           >
             {isSyncing ? (
@@ -346,27 +349,27 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       </div>
 
       {/* 模擬帳號 / 模擬貼文 / 模擬數據 標籤區隔與一鍵清除控制列 */}
-      <div className="p-4 rounded-3xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300">
-              🧪 模擬數據批次標籤：{SIMULATED_BATCH_ID}
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-stone-200">
+               模擬數據批次標籤：{SIMULATED_BATCH_ID}
             </span>
-            <span className="text-xs font-extrabold text-stone-900">
+            <span className="text-xs font-semibold text-stone-900">
               模擬資料與真實資料嚴格區隔治理
             </span>
             {isSimulatedDataPurged ? (
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
                 ✓ 已全數清除模擬資料（純真實數據狀態）
               </span>
             ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-900 border border-amber-300">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-900 border border-stone-200">
                 目前含模擬帳號 {simulatedStats.simulatedUsersCount} 位 • 模擬貼文 {simulatedStats.simulatedQuestionsCount} 篇 • 模擬討論 {simulatedStats.simulatedAnswersCount} 則
               </span>
             )}
           </div>
           <p className="text-[11px] text-stone-600">
-            所有模擬帳號、模擬痛點/方案、模擬討論留言與模擬打賞均帶有 <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-200">isSimulated: true</code> 與批次標記，可隨時一鍵自本機與雲端 Firestore 資料庫徹底刪除，絕不影響真實註冊會員與真實貼文。
+            所有模擬帳號、模擬痛點/方案、模擬討論留言與模擬打賞均帶有 <code className="tabular-nums bg-white px-1 py-0.5 rounded border border-stone-200">isSimulated: true</code> 與批次標記，可隨時一鍵自本機與雲端 Firestore 資料庫徹底刪除，絕不影響真實註冊會員與真實貼文。
           </p>
         </div>
 
@@ -376,7 +379,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               type="button"
               disabled={isSyncing}
               onClick={() => setConfirmPurgeSimulatedModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>一鍵刪除全部模擬資料</span>
@@ -398,7 +401,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                   setTimeout(() => setFeedbackToast(null), 4000);
                 }
               }}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>還原預設模擬資料</span>
@@ -410,13 +413,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       {/* 核心看板：各類問題數量圓餅圖與 KPI */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 1. 各類問題數量圓餅圖 */}
-        <div className="lg:col-span-2 p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-4">
+        <div className="lg:col-span-2 p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
               <PieChartIcon className="w-4 h-4 text-purple-600" />
-              <h4 className="font-extrabold text-sm text-stone-900">各類問題數量分佈圓餅圖</h4>
+              <h4 className="font-semibold text-sm text-stone-900">各類問題數量分佈圓餅圖</h4>
             </div>
-            <span className="text-[11px] text-stone-400 font-mono">實時分類統計</span>
+            <span className="text-[11px] text-stone-400 tabular-nums">實時分類統計</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-6 justify-around pt-1">
@@ -448,10 +451,10 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               </svg>
               {/* Center text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-black text-stone-900 font-mono leading-none">
+                <span className="text-2xl font-semibold text-stone-900 tabular-nums leading-none">
                   {totalCount}
                 </span>
-                <span className="text-[10px] text-stone-400 font-bold mt-1">問題總數</span>
+                <span className="text-[11px] text-stone-400 font-bold mt-1">問題總數</span>
               </div>
             </div>
 
@@ -466,7 +469,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                     onClick={() => setSelectedCategory(isSelected ? 'all' : s.category)}
                     className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-200'
+                        ? 'border-purple-600 bg-stone-50 ring-2 ring-purple-200'
                         : 'border-stone-100 hover:border-stone-200 bg-stone-50/50'
                     }`}
                   >
@@ -474,8 +477,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color.hex }} />
                       <span className="text-xs font-bold text-stone-800 truncate">{s.category}</span>
                     </div>
-                    <div className="flex items-baseline justify-between text-[11px] text-stone-500 font-mono">
-                      <span className="font-extrabold text-stone-900">{s.count} 題</span>
+                    <div className="flex items-baseline justify-between text-[11px] text-stone-500 tabular-nums">
+                      <span className="font-semibold text-stone-900">{s.count} 題</span>
                       <span>{s.percentage}%</span>
                     </div>
                   </button>
@@ -486,10 +489,10 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         </div>
 
         {/* 2. 狀態指標卡 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs flex flex-col justify-between space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <h4 className="font-extrabold text-sm text-stone-900">狀態總覽與下架保留</h4>
-            <span className="text-[10px] text-stone-400 font-mono">30日自動清除機制</span>
+            <h4 className="font-semibold text-sm text-stone-900">狀態總覽與下架保留</h4>
+            <span className="text-[11px] text-stone-400 tabular-nums">30日自動清除機制</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
@@ -502,8 +505,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                   : 'border-stone-100 bg-stone-50/50 hover:bg-stone-100/70'
               }`}
             >
-              <span className="text-[10px] text-stone-500 font-bold block">招募中</span>
-              <span className="text-lg font-black text-emerald-700 font-mono">{openCount}</span>
+              <span className="text-[11px] text-stone-500 font-bold block">招募中</span>
+              <span className="text-lg font-semibold text-emerald-700 tabular-nums">{openCount}</span>
             </button>
 
             <button
@@ -515,8 +518,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                   : 'border-stone-100 bg-stone-50/50 hover:bg-stone-100/70'
               }`}
             >
-              <span className="text-[10px] text-stone-500 font-bold block">已結案</span>
-              <span className="text-lg font-black text-blue-700 font-mono">{solvedCount}</span>
+              <span className="text-[11px] text-stone-500 font-bold block">已結案</span>
+              <span className="text-lg font-semibold text-blue-700 tabular-nums">{solvedCount}</span>
             </button>
 
             <button
@@ -525,23 +528,23 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                 selectedStatus === 'delisted'
                   ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200'
-                  : 'border-rose-100 bg-rose-50/40 hover:bg-rose-100/60'
+                  : 'border-stone-200 bg-stone-50 hover:bg-stone-50'
               }`}
             >
-              <span className="text-[10px] text-rose-600 font-bold block">違規下架</span>
-              <span className="text-lg font-black text-rose-700 font-mono">{delistedCount}</span>
+              <span className="text-[11px] text-rose-600 font-bold block">違規下架</span>
+              <span className="text-lg font-semibold text-rose-700 tabular-nums">{delistedCount}</span>
             </button>
           </div>
 
-          <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
-            <span className="font-bold block mb-0.5">📌 平台下架/刪除暫存與永久抹除守則：</span>
+          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-[11px] text-amber-900 leading-relaxed">
+            <span className="font-bold block mb-0.5"> 平台下架/刪除暫存與永久抹除守則：</span>
             被管理員違規下架或刪除之問題，將暫存保留於本管理專區 <strong>7 日</strong>。期間管理員可隨時執行「恢復上架」；滿 7 日後系統自動執行永久刪除並自資料庫徹底抹除。管理員亦可於下方手動提前執行「立即永久刪除」。
           </div>
         </div>
       </div>
 
       {/* 搜尋與篩選列 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-4 rounded-3xl border border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-4 rounded-2xl border border-stone-200">
         {/* 關鍵字搜尋 */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -584,8 +587,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
           >
             <option value="all">全部來源 (真實 + 模擬)</option>
-            <option value="real">🟢 僅真實貼文</option>
-            <option value="simulated">🧪 僅模擬資料 ({simulatedStats.simulatedQuestionsCount})</option>
+            <option value="real"> 僅真實貼文</option>
+            <option value="simulated"> 僅模擬資料 ({simulatedStats.simulatedQuestionsCount})</option>
           </select>
 
           {/* 狀態下拉 */}
@@ -625,14 +628,14 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         </div>
 
         {filteredQuestions.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-stone-200 text-stone-400 space-y-2">
+          <div className="p-12 text-center bg-white rounded-2xl border border-stone-200 text-stone-400 space-y-2">
             <HelpCircle className="w-8 h-8 text-stone-300 mx-auto" />
             <p className="text-xs font-bold">查無相符的問題記錄</p>
             <span className="text-[11px]">請嘗試更換搜尋關鍵字或分類狀態篩選條件。</span>
           </div>
         ) : (
           <div className="space-y-2.5">
-            {filteredQuestions.map((q) => {
+            {pagedQuestions.visible.map((q) => {
               const catColor = CATEGORY_COLORS[q.category] || { hex: '#888', bg: 'bg-stone-100', text: 'text-stone-700', border: 'border-stone-200' };
               const isDelisted = q.status === 'delisted';
               const daysLeft = isDelisted ? getRetentionDaysLeft(q.delistedAt) : 30;
@@ -642,8 +645,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                   key={q.id}
                   className={`p-4 rounded-2xl bg-white border transition-all ${
                     isDelisted
-                      ? 'border-rose-300 bg-rose-50/20'
-                      : 'border-stone-200 hover:border-purple-300 hover:shadow-2xs'
+                      ? 'border-stone-200 bg-stone-50'
+                      : 'border-stone-200 hover:border-stone-200 hover:shadow-2xs'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -651,32 +654,32 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* 狀態標籤 */}
                         {isDelisted ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200 flex items-center gap-1">
                             <ShieldAlert className="w-3 h-3" />
                             違規已下架
                           </span>
                         ) : q.status === 'solved' ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-stone-200">
                             已結案
                           </span>
                         ) : (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
                             招募中
                           </span>
                         )}
 
                         {/* 分類 */}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${catColor.bg} ${catColor.text} border ${catColor.border}`}>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${catColor.bg} ${catColor.text} border ${catColor.border}`}>
                           {q.category}
                         </span>
 
                         {/* 懸賞點數 */}
                         {!isNoPaymentMode && q.bounty > 0 ? (
-                          <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                          <span className="text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
                             NT$ {q.bounty.toLocaleString()}
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
                             免費交流
                           </span>
                         )}
@@ -691,25 +694,25 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           const isPain = q.postType === 'pain_point' || isPainPointQuestion(q);
                           const isL0 = isL0DiscussionQuestion(q);
                           const typeLabel = isSoftware
-                            ? '💻 軟體刊登'
+                            ? ' 軟體刊登'
                             : isProposal
-                            ? '🚀 創新提案'
+                            ? ' 創新提案'
                             : isPain
-                            ? '🔥 痛點'
+                            ? ' 痛點'
                             : isL0
-                            ? '💬 L0 討論'
-                            : '❓ 問題類型';
+                            ? ' L0 討論'
+                            : ' 問題類型';
                           const feedbackLabel = isSoftware || isProposal
-                            ? '⭐ 收藏 + ❤️ Like'
+                            ? ' 收藏 +  Like'
                             : isL0
-                            ? '⭐ 收藏 + 👍 按讚'
-                            : '⭐ 收藏 + 🔥 +1 附議';
+                            ? ' 收藏 +  按讚'
+                            : ' 收藏 +  +1 附議';
                           return (
                             <>
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-stone-200">
                                 {typeLabel}
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-50 text-stone-600 border border-stone-200">
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-50 text-stone-600 border border-stone-200">
                                 回饋：{feedbackLabel}
                               </span>
                             </>
@@ -718,20 +721,20 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
                         {/* 真實 / 模擬來源區隔標籤 */}
                         {isSimulatedQuestion(q) ? (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                            🧪 模擬資料
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-stone-200">
+                             模擬資料
                           </span>
                         ) : (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
-                            🟢 真實貼文
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-stone-200">
+                             真實貼文
                           </span>
                         )}
 
-                        <span className="text-[10px] text-stone-400 font-mono">ID: {q.id}</span>
+                        <span className="text-[11px] text-stone-400 tabular-nums">ID: {q.id}</span>
                       </div>
 
                       {/* 標題 */}
-                      <h4 className="font-extrabold text-sm text-stone-900 hover:text-purple-700 transition-colors line-clamp-1">
+                      <h4 className="font-semibold text-sm text-stone-900 hover:text-purple-700 transition-colors line-clamp-1">
                         {q.title}
                       </h4>
 
@@ -746,16 +749,16 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           <span className="font-bold text-stone-700">{q.authorName}</span>
                         </div>
                         <span>•</span>
-                        <span>{q.createdAt}</span>
+                        <span>{formatDateTime(q.createdAt)}</span>
                         <span>•</span>
                         <span>{q.answersCount || 0} 則討論/方案</span>
                         <span>•</span>
                         <span>
                           {q.postType === 'vibecoding_app' || q.category === '網站程式' || q.specialZone === 'vibecoding' || q.postType === 'innovation_proposal'
-                            ? `❤️ Like ${q.likes ?? 0}`
+                            ? ` Like ${q.likes ?? 0}`
                             : isL0DiscussionQuestion(q)
-                            ? `👍 按讚 ${q.likes ?? 0}`
-                            : `🔥 +1 附議 ${(q.secondedCount ?? 0) + (q.sameQuestionCount ?? 0)}`}
+                            ? ` 按讚 ${q.likes ?? 0}`
+                            : ` +1 附議 ${(q.secondedCount ?? 0) + (q.sameQuestionCount ?? 0)}`}
                         </span>
                         <span>•</span>
                         <span>{q.views || 0} 次瀏覽</span>
@@ -763,13 +766,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
                       {/* 違規下架事由與 7 日保留倒數 */}
                       {isDelisted && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
+                        <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-stone-200 text-xs text-rose-900 space-y-1.5">
                           <div className="flex items-center justify-between flex-wrap gap-1">
                             <div className="flex items-center gap-1.5 font-bold text-rose-950">
                               <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                               <span>下架事由：{q.delistedReason || '違反平台內容審核守則'}</span>
                             </div>
-                            <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-950 border border-rose-300">
+                            <span className="text-[11px] tabular-nums font-semibold px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-950 border border-stone-200">
                               ⏳ 暫存剩餘 {daysLeft} 天（7日後自動永久抹除）
                             </span>
                           </div>
@@ -788,7 +791,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedQuestion(q)}
-                        className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50 text-stone-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-stone-200 hover:bg-purple-50 text-stone-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                         title="查閱問題詳細內容"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -849,6 +852,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                 </div>
               );
             })}
+        <ShowMoreButton remaining={pagedQuestions.remaining} onClick={pagedQuestions.showMore} />
           </div>
         )}
       </div>
@@ -856,11 +860,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       {/* 違規下架與用戶反饋 Modal */}
       {delistingQuestion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2 text-rose-600">
                 <ShieldAlert className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900">違規問題下架與處置反饋</h4>
+                <h4 className="font-semibold text-base text-stone-900">違規問題下架與處置反饋</h4>
               </div>
               <button
                 type="button"
@@ -873,8 +877,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
             {/* 問題概要預覽 */}
             <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1">
-              <span className="text-[10px] text-stone-400 font-bold block">處置對象問題：</span>
-              <p className="font-extrabold text-stone-900 line-clamp-1">{delistingQuestion.title}</p>
+              <span className="text-[11px] text-stone-400 font-bold block">處置對象問題：</span>
+              <p className="font-semibold text-stone-900 line-clamp-1">{delistingQuestion.title}</p>
               <div className="flex items-center gap-2 text-stone-500 text-[11px] pt-1">
                 <span>提問用戶：<strong className="text-stone-800">{delistingQuestion.authorName}</strong></span>
                 <span>•</span>
@@ -886,7 +890,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-stone-800 flex items-center justify-between">
                 <span>選擇主要違規事由：</span>
-                <span className="text-[10px] text-rose-600 font-bold">*必填</span>
+                <span className="text-[11px] text-rose-600 font-bold">*必填</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {PRESET_VIOLATIONS.map((reason) => (
@@ -910,7 +914,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-stone-800 flex items-center justify-between">
                 <span>給予提問者之處置說明與改善反饋（將發送系統通知）：</span>
-                <span className="text-[10px] text-stone-400">可選填具體處置建議</span>
+                <span className="text-[11px] text-stone-400">可選填具體處置建議</span>
               </label>
               <textarea
                 rows={3}
@@ -921,8 +925,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               />
             </div>
 
-            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
-              ℹ️ <strong>下架暫存保留政策：</strong>下架後將暫存 7 日於管理員問題管理專區供追蹤申訴，滿 7 日將自動從資料庫永久抹除。
+            <div className="p-3 rounded-2xl bg-amber-50 border border-stone-200 text-[11px] text-amber-900">
+              ℹ <strong>下架暫存保留政策：</strong>下架後將暫存 7 日於管理員問題管理專區供追蹤申訴，滿 7 日將自動從資料庫永久抹除。
             </div>
 
             {/* 底部按鈕 */}
@@ -937,7 +941,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmDelist}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
                 <span>確認下架並發送反饋通知</span>
@@ -950,11 +954,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       {/* 永久刪除確認 Modal */}
       {deletingQuestion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-rose-200">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
               <div className="flex items-center gap-2 text-rose-600">
                 <Trash2 className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900">永久刪除問題確認</h4>
+                <h4 className="font-semibold text-base text-stone-900">永久刪除問題確認</h4>
               </div>
               <button
                 type="button"
@@ -965,13 +969,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
-              <p className="font-extrabold line-clamp-2">{deletingQuestion.title}</p>
-              <span className="text-[10px] text-rose-700 font-mono block">ID: {deletingQuestion.id} · 提問者: {deletingQuestion.authorName}</span>
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-stone-200 text-xs text-rose-900 space-y-1.5">
+              <p className="font-semibold line-clamp-2">{deletingQuestion.title}</p>
+              <span className="text-[11px] text-rose-700 tabular-nums block">ID: {deletingQuestion.id} · 提問者: {deletingQuestion.authorName}</span>
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
-              ⚠️ <strong>警告：</strong>此操作將從平台與 <strong>Firebase Cloud Firestore 雲端資料庫</strong> 同步<strong>永久抹除</strong>此問題及其關聯提案，<strong>此操作不可逆</strong>，該問題將永不再出現。
+               <strong>警告：</strong>此操作將從平台與 <strong>Firebase Cloud Firestore 雲端資料庫</strong> 同步<strong>永久抹除</strong>此問題及其關聯提案，<strong>此操作不可逆</strong>，該問題將永不再出現。
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
@@ -987,7 +991,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="px-5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5 disabled:opacity-60"
+                className="px-5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-60"
               >
                 {isDeleting ? (
                   <>
@@ -1009,11 +1013,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       {/* 一鍵刪除全部模擬資料確認 Modal */}
       {confirmPurgeSimulatedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-rose-200">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
               <div className="flex items-center gap-2 text-rose-600">
                 <Trash2 className="w-5 h-5" />
-                <h4 className="font-black text-base text-stone-900">一鍵刪除全部模擬資料確認</h4>
+                <h4 className="font-semibold text-base text-stone-900">一鍵刪除全部模擬資料確認</h4>
               </div>
               <button
                 type="button"
@@ -1024,8 +1028,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1.5">
-              <p className="font-extrabold">即將清除批次：{SIMULATED_BATCH_ID}</p>
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-stone-200 text-xs text-amber-950 space-y-1.5">
+              <p className="font-semibold">即將清除批次：{SIMULATED_BATCH_ID}</p>
               <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-900">
                 <li>模擬帳號：{simulatedStats.simulatedUsersCount} 位虛擬角色帳號</li>
                 <li>模擬貼文/方案：{simulatedStats.simulatedQuestionsCount} 篇模擬痛點與提案</li>
@@ -1035,7 +1039,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
-              此操作會將所有標記為 <code className="font-mono bg-stone-100 px-1 py-0.5 rounded">isSimulated: true</code> 之模擬帳號、模擬貼文、模擬討論與模擬打賞自本機與 <strong>Firebase Cloud Firestore 資料庫</strong> 同步刪除，<strong>所有真實註冊會員與真實發布內容均完整保留不受影響</strong>。
+              此操作會將所有標記為 <code className="tabular-nums bg-stone-100 px-1 py-0.5 rounded">isSimulated: true</code> 之模擬帳號、模擬貼文、模擬討論與模擬打賞自本機與 <strong>Firebase Cloud Firestore 資料庫</strong> 同步刪除，<strong>所有真實註冊會員與真實發布內容均完整保留不受影響</strong>。
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
@@ -1069,7 +1073,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                     setTimeout(() => setFeedbackToast(null), 5000);
                   }
                 }}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5 disabled:opacity-60"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-60"
               >
                 {isSyncing ? (
                   <>

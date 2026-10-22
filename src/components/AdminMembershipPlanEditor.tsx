@@ -140,7 +140,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     });
 
     setFeedbackMsg({
-      text: `🎉 平台基準抽成已成功儲存並生效！基準抽成率已更新為 ${sliderRate}%。`,
+      text: ` 平台基準抽成已成功儲存並生效！基準抽成率已更新為 ${sliderRate}%。`,
       isError: false,
     });
     setConfirmSaveModal(null);
@@ -164,7 +164,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     });
 
     setFeedbackMsg({
-      text: `🎉 平台抽成與方案價格設定已成功儲存！基準抽成設定為 ${sliderRate}%，全站會員方案費率與價格已即時同步更新！`,
+      text: ` 平台抽成與方案價格設定已成功儲存！基準抽成設定為 ${sliderRate}%，全站會員方案費率與價格已即時同步更新！`,
       isError: false,
     });
     setConfirmSaveModal(null);
@@ -178,7 +178,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       }
     });
     setFeedbackMsg({
-      text: '🎉 已成功儲存全體會員方案特權文案！全站即刻生效。',
+      text: ' 已成功儲存全體會員方案特權文案！全站即刻生效。',
       isError: false,
     });
     setConfirmSaveModal(null);
@@ -197,10 +197,10 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     const effectiveFee = sliderRate - newPlanRebate;
     const sellerPayout = 100 - effectiveFee;
     const badgeClasses = {
-      blue: 'bg-blue-50 text-blue-800 border-blue-200 font-bold',
-      purple: 'bg-purple-50 text-purple-900 border-purple-200 font-bold',
-      amber: 'bg-amber-100 text-amber-900 border-amber-300 font-black',
-      emerald: 'bg-emerald-50 text-emerald-900 border-emerald-300 font-bold',
+      blue: 'bg-blue-50 text-blue-800 border-stone-200 font-bold',
+      purple: 'bg-purple-50 text-purple-900 border-stone-200 font-bold',
+      amber: 'bg-amber-100 text-amber-900 border-stone-200 font-semibold',
+      emerald: 'bg-emerald-50 text-emerald-900 border-stone-200 font-bold',
       stone: 'bg-stone-100 text-stone-700 border-stone-200 font-bold',
     };
 
@@ -229,7 +229,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
 
     const res = addSubscriptionPlan(newPlanObj);
     if (res.success) {
-      setFeedbackMsg({ text: `🎉 成功新增自訂方案「${newPlanObj.name}」！`, isError: false });
+      setFeedbackMsg({ text: ` 成功新增自訂方案「${newPlanObj.name}」！`, isError: false });
       setIsAddModalOpen(false);
       setNewPlanName('');
       setNewPlanId('');
@@ -266,8 +266,8 @@ export const AdminMembershipPlanEditor: React.FC = () => {
         <div
           className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 border ${
             feedbackMsg.isError
-              ? 'bg-rose-50 text-rose-900 border-rose-200'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              ? 'bg-rose-50 text-rose-900 border-stone-200'
+              : 'bg-emerald-50 text-emerald-900 border-stone-200'
           }`}
         >
           {feedbackMsg.isError ? (
@@ -283,11 +283,11 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2">
               <Crown className="w-5 h-5 text-purple-600" />
               <span>會員方案與費率管理</span>
             </h3>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-stone-200">
               管理員專屬
             </span>
           </div>
@@ -357,10 +357,10 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       {activeSubTab === 'commission_and_plans' && (
         <div className="space-y-6">
           {/* 1. 核心基準平台抽成設定 (0% ~ 30%，預設 10%) */}
-          <div className="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-4">
+          <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="font-extrabold text-sm sm:text-base text-purple-950 flex items-center gap-2">
+                <h4 className="font-semibold text-sm sm:text-base text-purple-950 flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-purple-600" />
                   <span>平台基準抽成比例設定（目前：{sliderRate}%）</span>
                 </h4>
@@ -370,7 +370,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
               </div>
 
               <div className="text-right">
-                <span className="text-2xl font-black text-purple-900 font-mono">{sliderRate}%</span>
+                <span className="text-2xl font-semibold text-purple-900 tabular-nums">{sliderRate}%</span>
               </div>
             </div>
 
@@ -384,7 +384,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                 onChange={(e) => setSliderRate(Number(e.target.value))}
                 className="w-full accent-purple-600 cursor-pointer h-2 bg-purple-200 rounded-lg"
               />
-              <div className="flex justify-between text-[11px] text-purple-900/70 font-semibold font-mono">
+              <div className="flex justify-between text-[11px] text-purple-900/70 font-semibold tabular-nums">
                 <span>0% (免抽成)</span>
                 <span>10% (預設)</span>
                 <span>20% (標準)</span>
@@ -398,7 +398,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
           <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-2">
+                <h4 className="font-semibold text-sm sm:text-base text-stone-900 flex items-center gap-2">
                   <Percent className="w-4 h-4 text-amber-600" />
                   <span>各方案價格、減免抽成率與訂閱人數管理</span>
                 </h4>
@@ -437,14 +437,14 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                     key={plan.id}
                     className={`p-3.5 rounded-2xl border space-y-3 flex flex-col justify-between transition-all ${
                       plan.id === 'master'
-                        ? 'bg-gradient-to-br from-amber-50 to-orange-50/50 border-amber-300'
+                        ? 'bg-white border-stone-200'
                         : plan.id === 'authority'
-                        ? 'bg-purple-50/50 border-purple-200'
+                        ? 'bg-stone-50 border-stone-200'
                         : plan.id === 'expert' || plan.id === 'pro'
-                        ? 'bg-blue-50/50 border-blue-200'
+                        ? 'bg-stone-50 border-stone-200'
                         : isFree
                         ? 'bg-white border-stone-200'
-                        : 'bg-emerald-50/40 border-emerald-200'
+                        : 'bg-stone-50 border-stone-200'
                     }`}
                   >
                     <div className="space-y-2.5">
@@ -454,7 +454,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                           {plan.id === 'master' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />}
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-stone-700 border border-stone-200/60 shadow-2xs">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-stone-700 border border-stone-200/60 shadow-2xs">
                             {count} 人
                           </span>
                           {!isFree && (
@@ -485,7 +485,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                               type="number"
                               value={plan.monthlyPrice}
                               onChange={(e) => handleFieldChange(plan.id, 'monthlyPrice', Number(e.target.value))}
-                              className="w-full px-2 py-1 bg-white border border-stone-300 focus:border-purple-500 rounded-lg text-xs font-mono font-bold"
+                              className="w-full px-2 py-1 bg-white border border-stone-300 focus:border-purple-500 rounded-lg text-xs tabular-nums font-bold"
                             />
                           </div>
                           <div className="flex items-center gap-2">
@@ -494,7 +494,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                               type="number"
                               value={plan.rebatePercent}
                               onChange={(e) => handleFieldChange(plan.id, 'rebatePercent', Number(e.target.value))}
-                              className="w-full px-2 py-1 bg-white border border-stone-300 focus:border-purple-500 rounded-lg text-xs font-mono font-bold"
+                              className="w-full px-2 py-1 bg-white border border-stone-300 focus:border-purple-500 rounded-lg text-xs tabular-nums font-bold"
                             />
                           </div>
                         </div>
@@ -509,7 +509,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                             ? `+${Math.abs(effectiveFee)}% BONUS`
                             : '0% (免服務費)'
                           : `${effectiveFee}%`}{' '}
-                        <span className="text-[10px] text-stone-400 font-normal">
+                        <span className="text-[11px] text-stone-400 font-normal">
                           (實收 {100 - effectiveFee}%)
                         </span>
                       </strong>
@@ -526,7 +526,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       {activeSubTab === 'copy_editor' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs text-stone-500 uppercase tracking-wider">
+            <h4 className="font-bold text-xs text-stone-500">
               各方案前台名稱、副標與待遇文案編輯
             </h4>
             <button
@@ -543,16 +543,16 @@ export const AdminMembershipPlanEditor: React.FC = () => {
             {activePlanList.filter((p) => p.id !== 'free').map((plan) => (
               <div
                 key={plan.id}
-                className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-4"
+                className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4"
               >
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-black">
+                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-semibold">
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-black text-sm text-stone-900">{plan.name}</h4>
-                      <span className="text-[10px] text-stone-500 font-bold">
+                      <h4 className="font-semibold text-sm text-stone-900">{plan.name}</h4>
+                      <span className="text-[11px] text-stone-500 font-bold">
                         代號：{plan.id}・{getSubscriberCount(plan.id)} 人訂閱
                       </span>
                     </div>
@@ -614,7 +614,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
 
       {/* SUB-TAB 3: 前台視圖預覽 */}
       {activeSubTab === 'preview' && (
-        <div className="p-4 rounded-3xl bg-stone-50 border border-stone-200 space-y-3">
+        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>以下為前台使用者看到的「解答者會員方案視覺化對比」與更改方案介面：</span>
           </div>
@@ -627,11 +627,11 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       {/* ========================================================================= */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <Crown className="w-5 h-5 text-emerald-600" />
-                <h4 className="font-extrabold text-base text-stone-900">新增解答者會員方案</h4>
+                <h4 className="font-semibold text-base text-stone-900">新增解答者會員方案</h4>
               </div>
               <button
                 type="button"
@@ -663,7 +663,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                     placeholder="例：elite_consultant"
                     value={newPlanId}
                     onChange={(e) => setNewPlanId(e.target.value)}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-mono text-stone-900 outline-none"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl tabular-nums text-stone-900 outline-none"
                   />
                 </div>
               </div>
@@ -677,7 +677,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                     required
                     value={newPlanMonthlyPrice}
                     onChange={(e) => setNewPlanMonthlyPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-mono font-bold text-stone-900 outline-none"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl tabular-nums font-bold text-stone-900 outline-none"
                   />
                 </div>
 
@@ -690,9 +690,9 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                     required
                     value={newPlanRebate}
                     onChange={(e) => setNewPlanRebate(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-mono font-bold text-stone-900 outline-none"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl tabular-nums font-bold text-stone-900 outline-none"
                   />
-                  <span className="text-[10px] text-stone-500 mt-0.5 block">
+                  <span className="text-[11px] text-stone-500 mt-0.5 block">
                     實質抽成 = 基準 {sliderRate}% - 減免 {newPlanRebate}% = {sliderRate - newPlanRebate}%
                   </span>
                 </div>
@@ -714,7 +714,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                       onClick={() => setNewPlanBadgeColor(color.id as any)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         newPlanBadgeColor === color.id
-                          ? 'border-emerald-600 ring-2 ring-emerald-400 font-black'
+                          ? 'border-emerald-600 ring-2 ring-emerald-400 font-semibold'
                           : 'border-stone-200 hover:bg-stone-100'
                       } ${color.cls}`}
                     >
@@ -755,7 +755,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>建立並開通方案</span>
@@ -771,13 +771,13 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       {/* ========================================================================= */}
       {confirmSaveModal && confirmSaveModal.isOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <h3 className="text-base font-black text-stone-900">
+                <h3 className="text-base font-semibold text-stone-900">
                   {confirmSaveModal.type === 'commission_only'
                     ? `確認儲存平台基準抽成為 ${confirmSaveModal.targetRate || sliderRate}%？`
                     : confirmSaveModal.type === 'copy_only'
@@ -827,7 +827,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
                     executeSaveCommissionAndPlans();
                   }
                 }}
-                className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
                 確認儲存
               </button>
@@ -838,10 +838,10 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       {/* ========================================================================= */}
       {deleteTargetPlan && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-rose-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h4 className="font-black text-base text-stone-900">確認刪除此方案？</h4>
+              <h4 className="font-semibold text-base text-stone-900">確認刪除此方案？</h4>
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
@@ -859,7 +859,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
                 確認刪除
               </button>
