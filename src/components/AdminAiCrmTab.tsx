@@ -207,7 +207,6 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
   const [difyForm, setDifyForm] = useState<DifyConfig>(getDifyConfig);
   const [difyConfigSavedNotice, setDifyConfigSavedNotice] = useState<string | null>(null);
   const [explorerPresetCategory, setExplorerPresetCategory] = useState<'all' | 'strictness' | 'semantics' | 'parameters'>('all');
-  const [explorerMultiBatchMode, setExplorerMultiBatchMode] = useState(true);
   const [explorerBatchProgressText, setExplorerBatchProgressText] = useState<string>('');
 
   // 1. 客服特助 Agent 測試狀態
@@ -409,81 +408,27 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           });
           return;
         }
-      }
 
-      // 若為搜職 Agent 且開啟「分批多次串流整合模式」，直接呼叫多批次串流端點，前端即時聚合顯示！
-      if (targetAgent === 'explorer_agent' && explorerMultiBatchMode) {
-        setExplorerBatchProgressText(' 正在啟動多批次串流分流檢索（防止單次輸出超長）...');
-        try {
-          const streamRes = await fetch('/api/job-explorer/search-stream', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: q, filters: {} }),
-          });
-
-          if (streamRes.ok && streamRes.body) {
-            const reader = streamRes.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let buffer = '';
-            let accumulatedJobs: any[] = [];
-            const seen = new Set<string>();
-            let lastReply = '';
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const parts = buffer.split('\n\n');
-              buffer = parts.pop() || '';
-
-              for (const part of parts) {
-                const trimmed = part.trim();
-                if (!trimmed.startsWith('data: ')) continue;
-                try {
-                  const event = JSON.parse(trimmed.slice(6));
-                  if (event.type === 'batch' && Array.isArray(event.jobs)) {
-                    for (const j of event.jobs) {
-                      const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-                      if (!seen.has(k)) {
-                        seen.add(k);
-                        accumulatedJobs.push(j);
-                      }
-                    }
-                    lastReply = event.reply || lastReply;
-                    setExplorerBatchProgressText(`✓ 已送達第 ${event.batchIndex} 批職缺（目前累計整合 ${accumulatedJobs.length} 筆）...`);
-                    setDifyLiveResponse({
-                      success: true,
-                      source: 'multi-batch-stream',
-                      agentKey: 'Explorer Multi-Batch Stream (零長度超限)',
-                      notice: ` 已啟用「分批次多次串流整合」：後端分批即時檢索、前端逐批聚合，已整合第 ${event.batchIndex} 批（共 ${accumulatedJobs.length} 筆真實職缺），徹底避免長度超限！`,
-                      latencyMs: Date.now() - startTime,
-                      rawOutput: JSON.stringify({ reply: lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
-                      parsedJson: { reply: lastReply, jobs: accumulatedJobs },
-                    });
-                  } else if (event.type === 'done') {
-                    setExplorerBatchProgressText(`✓ 全網職缺多批次檢索整合完成，共 ${accumulatedJobs.length} 筆真實職缺！`);
-                    setDifyLiveResponse({
-                      success: true,
-                      source: 'multi-batch-stream',
-                      agentKey: 'Explorer Multi-Batch Stream (整合完成)',
-                      notice: ` 多批次分開回傳與前端整合檢索完成！共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺（Yes123、Cake、1111、104等），無長度限制問題。`,
-                      latencyMs: Date.now() - startTime,
-                      rawOutput: JSON.stringify({ reply: event.reply || lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
-                      parsedJson: { reply: event.reply || lastReply, jobs: accumulatedJobs },
-                    });
-                  }
-                } catch {}
-              }
-            }
-
-            if (accumulatedJobs.length > 0) {
-              setDifyTesting(false);
-              return;
-            }
-          }
-        } catch (streamErr) {
-          console.warn('Admin multi-batch stream error, falling back to direct:', streamErr);
-        }
+        setExplorerBatchProgressText('正在整理來源網站搜尋入口…');
+        const sourceRes = await fetch('/api/job-explorer/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, filters: {} }),
+        });
+        const sourceData = await sourceRes.json().catch(() => null);
+        if (!sourceRes.ok || !sourceData?.success) throw new Error(sourceData?.error || '整理搜尋入口失敗');
+        const sourceCount = Array.isArray(sourceData.sources) ? sourceData.sources.length : 0;
+        setExplorerBatchProgressText(`已整理 ${sourceCount} 個來源網站搜尋入口。`);
+        setDifyLiveResponse({
+          success: true,
+          source: 'source-links-only',
+          agentKey: 'IdeaX 求職網站搜尋入口',
+          notice: `此流程只產生 ${sourceCount} 個來源網站搜尋連結，不擷取或保存第三方職缺明細。`,
+          latencyMs: Date.now() - startTime,
+          rawOutput: JSON.stringify(sourceData, null, 2),
+          parsedJson: sourceData,
+        });
+        return;
       }
 
       // 步驟 1：優先透過瀏覽器發起 CORS 串流直連 Dify 官方 API（https://api.dify.ai/v1）
@@ -494,7 +439,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           agentType: targetAgent,
           query: q,
           user: `admin_tester_${Date.now()}`,
-          timeoutMs: targetAgent === 'explorer_agent' ? 120000 : 35000,
+          timeoutMs: 35000,
         });
 
         if (directResult && directResult.success) {
@@ -512,17 +457,12 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
         // 步驟 2：若瀏覽器直連受限（例如 udify.app Web 端點或外掛攔截），透過 Node Express 代理端點呼叫
         let serverSuccess = false;
         try {
-          const customKey =
-            targetAgent === 'explorer_agent'
-              ? difyConfig.explorerKey || difyConfig.explorerWebUrl
-              : undefined;
           const res = await fetch('/api/admin/test-dify-agent', {
             method: 'POST',
             headers: await getAuthHeaders(),
             body: JSON.stringify({
               agentType: targetAgent,
               query: q,
-              customKey,
             }),
           });
           if (res.ok) {
@@ -1122,7 +1062,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       type="button"
                       onClick={() => {
                         setDifyTestAgentType('explorer_agent');
-                        const defaultPrompt = '請幫我搜尋台南市餐飲門市人員的真實職缺，月薪 32,000 元以上，特別在意工作環境與福利待遇。';
+                        const defaultPrompt = '台南市餐飲門市正職，月薪 32,000 元以上，重視工作環境與福利待遇。';
                         setDifyTestQuery(defaultPrompt);
                         setDifyLiveResponse(null);
                       }}
@@ -1513,9 +1453,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badge: '嚴苛高薪門檻',
                           badgeColor: 'bg-rose-100 text-rose-800 border-stone-200',
                           label: ' 雙北雲端架構師（多重硬性指標）',
-                          desc: '月薪 90K+、經歷 5 年+、Kubernetes+AWS，嚴厲要求不可已下架',
-                          query: '請幫我搜尋台北市或新北市的「資深雲端架構師／DevOps 工程師」真實職缺。嚴格條件：月薪 90,000 元以上、經歷要求 5 年以上、具備 Kubernetes 與 AWS 實務經驗。特別規定：絕對不行使用已關閉、已結束或已下架的職缺，並列出真實有效的求職網網址。',
-                          paramsTag: '薪資≥90K / 經歷≥5年 / 嚴格在招',
+                          desc: '月薪 90K+、經歷 5 年+、Kubernetes+AWS',
+                          query: '請找台北市或新北市的資深雲端架構師或 DevOps 工程師，月薪 90,000 元以上、5 年以上經驗，熟悉 Kubernetes 與 AWS。',
+                          paramsTag: '薪資≥90K / 經歷≥5年 / 技能條件',
                         },
                         {
                           dim: 'strictness',
@@ -1523,7 +1463,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badgeColor: 'bg-emerald-100 text-emerald-800 border-stone-200',
                           label: ' 全台無經驗友善（門檻極低寬鬆）',
                           desc: '全台不拘、無經驗可、學歷不拘、今日刊登，測試 Agent 對寬鬆條件的召回率',
-                          query: '全台灣地區皆可，搜尋適合社會新鮮人、無經驗可、學歷不拘的行政助理或客服人員職缺，月薪 30,000 元以上，請列出至少 8 筆當下開放應徵中的最新職缺。',
+                          query: '全台灣皆可，找適合社會新鮮人的行政助理或客服工作，無經驗可、學歷不拘，月薪 30,000 元以上。',
                           paramsTag: '無經驗可 / 學歷不拘 / 今日刊登',
                         },
                         {
@@ -1532,7 +1472,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badgeColor: 'bg-amber-100 text-amber-800 border-stone-200',
                           label: ' 花東離島偏遠（冷門與相鄰擴展）',
                           desc: '花東地區軟體/資訊維護職缺，考驗冷門條件與自動兜底檢索',
-                          query: '請搜尋花蓮縣或台東地區的資訊工程師、系統維護或可全遠端工作的軟體職缺，待遇面議或 40,000 元以上。若該地區職缺稀少，請自動擴展相鄰縣市或完全遠端之當下有效職缺，至少提供 3 筆真實職缺。',
+                          query: '找花蓮縣或台東的資訊工程師、系統維護或可全遠端工作，薪資 40,000 元以上。',
                           paramsTag: '偏遠地區 / 遠端兜底 / 最少3筆',
                         },
                         {
@@ -1541,7 +1481,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badgeColor: 'bg-lime-100 text-lime-800 border-stone-200',
                           label: '⏰ 台南門市彈性兼職（時薪200+ / 學生與二度就業）',
                           desc: '時薪制、日班、自由排班、學生或二度就業友善',
-                          query: '搜尋台南市東區或中西區的餐飲或超商門市兼職／工讀人員職缺。條件：時薪 200 元以上、排班彈性、歡迎學生或二度就業。請列出當下正在開放應徵中的真實職缺，包含 Yes123 或 518 等平台真實網址。',
+                          query: '找台南市東區或中西區餐飲或超商門市兼職／工讀，時薪 200 元以上、排班彈性，優先看 Yes123 或 518。',
                           paramsTag: '時薪200+ / 彈性排班 / 門市人員',
                         },
 
@@ -1597,10 +1537,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           dim: 'parameters',
                           badge: '跨平台來源',
                           badgeColor: 'bg-fuchsia-100 text-fuchsia-800 border-stone-200',
-                          label: ' 跨平台真實求職（Yes123 / Cake / 1111 / 104 / 518）',
-                          desc: '廣泛檢索全網各大求職站真實職缺，要求直接真實頁面網址，拒絕單一平台局限',
-                          query: '請幫我全網搜尋新北市或台北市的「數位行銷企劃」或「專案經理 PM」真實職缺。來源平台要求多元化：請同時列出來自 Yes123、Cake、Yourator、1111人力銀行、104人力銀行 等各站當下開放應徵的職缺，每筆都必須是該站真實存在且有效的直接應徵連結。',
-                          paramsTag: '多站來源 / Yes123+Cake+1111+104 / 跨站真實連結',
+                          label: ' 跨平台搜尋入口（Yes123 / Cake / 1111 / 104 / 518）',
+                          desc: '整理求職條件並提供多個來源網站搜尋入口，不收集職缺明細',
+                          query: '找新北市或台北市的數位行銷企劃或專案經理 PM，優先看 Yes123、Cake、Yourator、1111、104。',
+                          paramsTag: '多站來源 / 搜尋入口 / 不擷取明細',
                         },
                         {
                           dim: 'parameters',
@@ -1608,7 +1548,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badgeColor: 'bg-red-100 text-red-800 border-stone-200',
                           label: ' 雙北 UI/UX 設計師（防過期/404下架過濾）',
                           desc: '指定熱門職缺，嚴厲約束絕對不可包含停止徵才、已額滿或已關閉之過期職缺',
-                          query: '請搜尋台北市與新北市「UI / UX 產品設計師」的真實職缺。特別檢驗約束：請逐筆驗證職缺連結與徵才狀態，絕對不可包含已額滿、停止招募、頁面 404 或已結束徵才的職缺！每一筆都必須保證當下可即刻投遞。',
+                          query: '找台北市與新北市的 UI／UX 產品設計師工作，優先看 104、1111、Cake 與 Yourator。',
                           paramsTag: '有效性校驗 / 嚴禁過期 / 即時開放中',
                         },
                         {
@@ -1616,9 +1556,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           badge: '大數量提取',
                           badgeColor: 'bg-cyan-100 text-cyan-800 border-stone-200',
                           label: ' 台北餐飲門市主管（3 ~ 100 筆批量壓力）',
-                          desc: '要求檢索 15 ~ 30 筆真實職缺，測試 Agent 提取數量上限與結構化能力',
-                          query: '搜尋台北市各大知名連鎖餐飲品牌的門市主管、店長或儲備幹部職缺。請進行深度全網檢索，盡可能列出 15 ~ 30 筆不同的當下開放職缺，包含完整公司名稱、薪資待遇、經歷要求與真實連結。',
-                          paramsTag: '批量檢索 (15~30筆) / 完整格式驗證',
+                          desc: '檢查多個職稱與地區能否組成搜尋條件',
+                          query: '找台北市連鎖餐飲品牌的門市主管、店長或儲備幹部工作。',
+                          paramsTag: '多職稱 / 來源搜尋入口',
                         },
                         {
                           dim: 'parameters',
@@ -1673,45 +1613,33 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 )}
               </div>
 
-              {/* 搜職 Agent 專屬：分批多次串流整合開關與說明 */}
+              {/* 匯職缺測試說明 */}
               {difyTestAgentType === 'explorer_agent' && (
                 <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                     <div className="space-y-0.5">
                       <span className="text-xs font-semibold text-blue-950 flex items-center gap-1.5">
-                        <span>分批多次回傳與前端整合模式 (Multi-Batch Progressive Integration)</span>
-                        <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                          推薦開啟
-                        </span>
+                        <span>來源網站搜尋入口模式</span>
                       </span>
                       <p className="text-[11px] text-stone-600 leading-tight">
-                        由後端自動分 2 ~ 3 批次快速回傳（每批 3 ~ 6 筆），前端逐批累計整合顯示，徹底根除「超過最大輸出長度／迭代上限」問題！
+                        只依條件產生求職網站搜尋連結，不請求來源網站頁面、不收集或保存職缺明細。
                       </p>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-stone-800 cursor-pointer self-end sm:self-auto shrink-0 bg-white px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
-                    <input
-                      type="checkbox"
-                      checked={explorerMultiBatchMode}
-                      onChange={(e) => setExplorerMultiBatchMode(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer w-4 h-4"
-                    />
-                    <span>分批多次整合</span>
-                  </label>
                 </div>
               )}
 
               {/* 輸入自訂 Query 與觸發 */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-stone-850">
-                  傳送給 Dify Agent 的 Query 提示詞：
+                  {difyTestAgentType === 'explorer_agent' ? '輸入求職搜尋條件：' : '傳送給 Dify Agent 的 Query 提示詞：'}
                 </label>
                 <textarea
                   rows={3}
                   value={difyTestQuery}
                   onChange={(e) => setDifyTestQuery(e.target.value)}
-                  placeholder="輸入任意 Prompt 傳送給 Dify Agent..."
+                  placeholder={difyTestAgentType === 'explorer_agent' ? '輸入職務、地區、薪資或其他條件…' : '輸入任意 Prompt 傳送給 Dify Agent...'}
                   className="w-full text-xs p-3 rounded-xl border border-stone-300 focus:border-amber-500 outline-none bg-stone-50 tabular-nums leading-relaxed"
                 />
 
@@ -1737,7 +1665,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       {difyTesting ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>分批檢索中...</span>
+                          <span>測試執行中...</span>
                         </>
                       ) : (
                         <>
@@ -1766,7 +1694,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         : difyTestAgentType === 'aicrm_agent'
                         ? 'AICRM 三合一Agent(雷達&軍師&特助)'
                         : difyTestAgentType === 'explorer_agent'
-                        ? 'Explorer Agent (匯職缺 Agent / 搜搜)'
+                        ? 'IdeaX 求職網站搜尋入口'
                         : 'CS Agent (官方客服)'}
                     </code>
                   </span>
@@ -2283,103 +2211,23 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           </div>
                         )}
 
-                        {/* 4.5 全網真實職缺聚合列表 (parsed.jobs) */}
-                        {parsed && parsed.jobs && Array.isArray(parsed.jobs) && parsed.jobs.length > 0 && (
+                        {/* 匯職缺測試：只顯示來源搜尋入口 */}
+                        {parsed && Array.isArray(parsed.sources) && parsed.sources.length > 0 && (
                           <div className="space-y-3.5">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
-                              <div className="space-y-0.5">
-                                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                                  <Briefcase className="w-4 h-4 text-amber-400" />
-                                  <span>全網在招真實職缺（分批整合完成，共 {parsed.jobs.length} 筆）：</span>
-                                </span>
-                                <p className="text-[11px] text-stone-400">
-                                  來源跨 Yes123、Cake、1111、Yourator、104、518 及企業官網，每一筆皆具備即時直接網址。
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyText(JSON.stringify(parsed.jobs, null, 2), 'jobs-json')}
-                                className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 self-start sm:self-auto"
-                              >
-                                {difyCopiedText === 'jobs-json' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                                <span>{difyCopiedText === 'jobs-json' ? '已複製 JSON' : '複製職缺 JSON'}</span>
-                              </button>
+                            <div className="border-b border-stone-800 pb-3">
+                              <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                                <Briefcase className="w-4 h-4 text-amber-400" />
+                                <span>來源網站搜尋入口（{parsed.sources.length} 個）</span>
+                              </span>
+                              <p className="mt-1 text-[11px] text-stone-400">點選後前往來源網站查看最新職缺；IdeaX 不收集或保存職缺明細。</p>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {parsed.jobs.map((job: any, jIdx: number) => {
-                                const platform = job.sourcePlatform || '全網真實求職';
-                                const isCake = platform.toLowerCase().includes('cake');
-                                const isYes123 = platform.toLowerCase().includes('yes123');
-                                const is1111 = platform.toLowerCase().includes('1111');
-                                const isYourator = platform.toLowerCase().includes('yourator');
-                                const is104 = platform.toLowerCase().includes('104');
-                                const is518 = platform.toLowerCase().includes('518');
-
-                                const badgeClass = isCake
-                                  ? 'bg-stone-50 text-emerald-300 border-emerald-500/40'
-                                  : isYes123
-                                  ? 'bg-stone-50 text-blue-300 border-blue-500/40'
-                                  : is1111
-                                  ? 'bg-stone-50 text-orange-300 border-orange-500/40'
-                                  : isYourator
-                                  ? 'bg-stone-50 text-teal-300 border-teal-500/40'
-                                  : is104
-                                  ? 'bg-stone-50 text-sky-300 border-sky-500/40'
-                                  : is518
-                                  ? 'bg-stone-50 text-amber-300 border-amber-500/40'
-                                  : 'bg-stone-800 text-stone-300 border-stone-700';
-
-                                return (
-                                  <div
-                                    key={job.id || jIdx}
-                                    className="p-4 rounded-2xl bg-stone-900 border border-stone-800 hover:border-amber-400/50 transition-all flex flex-col justify-between space-y-3"
-                                  >
-                                    <div className="space-y-1.5">
-                                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${badgeClass}`}>
-                                          {platform}
-                                        </span>
-                                        <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-stone-50 text-emerald-300">
-                                          在招中
-                                        </span>
-                                      </div>
-
-                                      <h5 className="text-sm font-semibold text-white line-clamp-1">{job.title}</h5>
-                                      <p className="text-xs text-amber-300/90 font-medium line-clamp-1">{job.company}</p>
-
-                                      <div className="flex items-center gap-1.5 text-[11px] text-stone-400 pt-1">
-                                        <span>{job.location || job.city || '工作地點'}</span>
-                                        <span>•</span>
-                                        <span>{job.experience || '經歷不拘'}</span>
-                                        <span>•</span>
-                                        <span>{job.education || '學歷不拘'}</span>
-                                      </div>
-
-                                      {job.description && (
-                                        <p className="text-[11px] text-stone-400 line-clamp-2 leading-relaxed pt-1">
-                                          {job.description}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    <div className="pt-2 border-t border-stone-800 flex items-center justify-between gap-2">
-                                      <span className="text-xs font-semibold text-amber-400">{job.salaryText || '待遇面議'}</span>
-                                      {job.url && (
-                                        <a
-                                          href={job.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-[11px] flex items-center gap-1 transition-all shadow-xs"
-                                        >
-                                          <span>直達職缺</span>
-                                          <ExternalLink className="w-3 h-3" />
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                              {parsed.sources.map((source: any) => (
+                                <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-stone-700 bg-stone-900 px-3 py-2.5 hover:border-amber-400/50 transition-colors">
+                                  <span className="block text-xs font-bold text-stone-100">{source.site}</span>
+                                  <span className="block mt-1 text-[11px] text-stone-400">{source.actionLabel}</span>
+                                </a>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -2460,7 +2308,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         {difyLiveResponse.rawOutput && (
                           <div className="space-y-1.5">
                             <span className="text-xs font-bold text-amber-300 block">
-                               Dify 串流原生回傳文字 (Raw Output Stream)：
+                               回傳文字 (Raw Output)：
                             </span>
                             <div className="p-3.5 bg-stone-900 rounded-xl border border-stone-800 text-stone-200 tabular-nums text-xs leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
                               {difyLiveResponse.rawOutput}

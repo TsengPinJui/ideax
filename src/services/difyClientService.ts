@@ -165,6 +165,32 @@ export interface DifyDirectCallResult {
 export async function callDifyClientDirect(params: DifyDirectCallParams): Promise<DifyDirectCallResult> {
   const config = getDifyConfig();
   const agentType = params.agentType || 'aicrm_agent';
+  if (agentType === 'explorer_agent') {
+    const startedAt = Date.now();
+    const response = await fetch('/api/job-explorer/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: params.query, filters: {} }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.success) throw new Error(data?.error || '整理搜尋入口失敗');
+    const payload = {
+      mode: 'source-links-only',
+      reply: data.reply,
+      sources: Array.isArray(data.sources) ? data.sources : [],
+    };
+    return {
+      success: true,
+      source: 'source-links-only',
+      rawOutput: JSON.stringify(payload, null, 2),
+      parsedJson: payload,
+      latencyMs: Date.now() - startedAt,
+      messageId: `source-links-${Date.now()}`,
+      conversationId: params.conversationId || '',
+      agentKey: 'IdeaX 求職網站搜尋入口',
+      notice: '只產生來源網站搜尋連結，不擷取或保存第三方職缺明細。',
+    };
+  }
   const apiKey = params.apiKey || getDifyKeyForAgent(agentType);
   const baseUrl = config.baseUrl;
 
@@ -176,86 +202,6 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
   const maskedKey = apiKey.length > 10
     ? `${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}`
     : '已配置金鑰';
-
-  // 分批檢索並於前端統一整合之輔助函式（徹底解決單次超過最大輸出長度問題）
-  const runMultiBatchAggregation = async (queryStr: string): Promise<DifyDirectCallResult> => {
-    const streamRes = await fetch('/api/job-explorer/search-stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: queryStr, filters: {} }),
-    });
-    if (!streamRes.ok || !streamRes.body) {
-      throw new Error('分批串流檢索端點無法連線');
-    }
-    const reader = streamRes.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buf = '';
-    const accumulatedJobs: any[] = [];
-    const seen = new Set<string>();
-    let batchCount = 0;
-    let lastReply = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const parts = buf.split('\n\n');
-      buf = parts.pop() || '';
-      for (const part of parts) {
-        const line = part.trim();
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const ev = JSON.parse(line.slice(6));
-          if (ev.type === 'batch' && Array.isArray(ev.jobs)) {
-            batchCount = ev.batchIndex || batchCount + 1;
-            for (const j of ev.jobs) {
-              const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-              if (!seen.has(k)) {
-                seen.add(k);
-                accumulatedJobs.push(j);
-              }
-            }
-            lastReply = normalizeIdeaXBrand(ev.reply || lastReply);
-            if (params.onChunk) {
-              params.onChunk(
-                `\n[第 ${batchCount} 批回傳：新增 ${ev.jobs.length} 筆，前端累計統一整合 ${accumulatedJobs.length} 筆]`,
-                JSON.stringify({ reply: lastReply, jobs: accumulatedJobs }, null, 2)
-              );
-            }
-          }
-        } catch {}
-      }
-    }
-
-    const mergedPayload = {
-      platform: 'IdeaX創點子',
-      reply: `【IdeaX創點子 匯職缺】已分 ${batchCount || 2} 批次檢索回傳並由前端統一整合顯示，共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺！`,
-      batchesMerged: batchCount || 2,
-      totalJobs: accumulatedJobs.length,
-      jobs: accumulatedJobs,
-    };
-
-    return {
-      success: true,
-      source: 'dify-multi-batch',
-      rawOutput: JSON.stringify(mergedPayload, null, 2),
-      parsedJson: mergedPayload,
-      latencyMs: Date.now() - startTime,
-      messageId: `batch-merged-${Date.now()}`,
-      conversationId: params.conversationId || '',
-      agentKey: maskedKey,
-      notice: `⚡ 已採用「分批多次回傳＋前端統一整合顯示」模式（共分 ${batchCount || 2} 批回傳、合併 ${accumulatedJobs.length} 筆真實職缺），徹底避免單次超過最大輸出長度上限！`,
-    };
-  };
-
-  // 針對匯職缺 Agent (explorer_agent)，預設直接啟用分批多次回傳並由前端統一顯示，避免 Dify 單次工具迴圈超長報錯！
-  if (agentType === 'explorer_agent') {
-    try {
-      return await runMultiBatchAggregation(params.query);
-    } catch (batchErr) {
-      console.warn('Multi-batch stream fallback to direct:', batchErr);
-    }
-  }
 
   // 若為 udify.app 網址或代碼，交由後端代理認證串流以免瀏覽器 CORS 阻擋
   if (/udify\.app\/(?:agent|chat)\/([A-Za-z0-9_-]+)/i.test(apiKey)) {
@@ -293,9 +239,6 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      if (agentType === 'explorer_agent' && /exceeded|max|length|retries|400|504/i.test(errText)) {
-        return await runMultiBatchAggregation(params.query);
-      }
       let errorMsg = `Dify API 回應錯誤 (HTTP ${res.status}): ${errText || res.statusText}`;
       try {
         const errJson = JSON.parse(errText);
@@ -376,11 +319,6 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
 
     const finalOutput = normalizeIdeaXBrand(agentAnswer.trim() || workflowAnswer.trim());
 
-    // 若觸發單次輸出長度上限且為搜職任務，自動啟動分批檢索並由前端統一整合！
-    if ((hitLengthLimit || !finalOutput) && agentType === 'explorer_agent') {
-      return await runMultiBatchAggregation(params.query);
-    }
-
     if (!finalOutput && !thoughts) {
       throw new Error('Dify Agent 執行完畢但未回傳文字內容，請檢查 Agent 提示詞或工作流發布設定。');
     }
@@ -401,11 +339,6 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
     };
   } catch (err: any) {
     clearTimeout(timer);
-    if (agentType === 'explorer_agent') {
-      try {
-        return await runMultiBatchAggregation(params.query);
-      } catch {}
-    }
     if (err.name === 'AbortError') {
       throw new Error(`連線 Dify 超時（已等待超過 ${Math.round(timeoutMs / 1000)} 秒），請檢查網路或稍後再試。`);
     }

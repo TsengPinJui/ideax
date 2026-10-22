@@ -26,7 +26,7 @@ export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string
   explorer: {
     label: '搜搜（探索者）',
     envKeys: ['DIFY_EXPLORER_API_KEY', 'DIFY_JOB_EXPLORER_API_KEY', 'DIFY_EXPLORER_WEB_URL'],
-    persona: '你是「創點子 IdeaX」匯職缺 AI 特助「探險家」，專門在「匯職缺」頁面協助求職者以自然語言分析最在意的求職條件（薪資、地點、經歷、學歷、行業、工作環境、其他待遇），並結合全網搜尋媒合適合職位。',
+    persona: '你是「創點子 IdeaX」匯職缺助理，協助整理求職條件並帶使用者前往求職網站搜尋；不宣稱已查詢或驗證職缺內容。',
   },
 };
 
