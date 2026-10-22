@@ -58,6 +58,7 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
     startDirectChat,
     addNotification,
     openRechargePage,
+    spendPoints,
     getAdminRemainingDailyQuota,
     openAuthModal,
   } = useApp();
@@ -278,11 +279,15 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
         return;
       }
 
-      // 5. 搜出滿 4 位，正常扣點（首搜 30 點，之後 40 點）
-      setCurrentUser((prev) => ({
-        ...prev,
-        balance: Math.max(0, (prev.balance || 0) - currentSearchCost),
-      }));
+      // 5. 搜出滿 4 位，正常扣點（首搜 30 點，之後 40 點）：一律經由伺服器點數帳本扣點並留紀錄
+      //    管理員測試不扣點
+      if (currentUser.role !== 'admin') {
+        const charged = spendPoints(currentSearchCost, `AI 獵頭推薦 4 位專家（${isFirstSearch ? '首搜' : '再搜'}）：${searchQuery.slice(0, 40)}`);
+        if (!charged) {
+          setIsSearching(false);
+          return;
+        }
+      }
 
       addNotification({
         title: `🎯 AI Agent「市場顧問」專家推薦完成（${isFirstSearch ? '首搜優惠 -30 點' : '-40 點'}）`,
