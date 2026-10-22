@@ -2021,7 +2021,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         { key: 'overview', label: '總覽', icon: LayoutGrid, onSelect: openTab('overview'), active: activeTab === 'overview', sidebarOnly: true },
       ],
     },
-    {
+    ...(!isRaceMode ? [{
       title: '帳務',
       items: [
         {
@@ -2042,7 +2042,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           active: activeTab === 'ai_crm' || activeTab === 'ai_assistant_settings',
         },
       ],
-    },
+    }] : []),
     {
       title: '我的內容',
       items: [

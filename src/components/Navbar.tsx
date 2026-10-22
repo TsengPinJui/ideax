@@ -1607,106 +1607,108 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   <div className="py-1 divide-y divide-stone-100">
 
-                  {/* 區塊 1：資產與帳務 (全模式配置同步) */}
-                  <div className="py-1.5 px-1.5 space-y-0.5">
-                    <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                      資產與帳務
-                    </p>
-                    <button
-                      onClick={() => handleOpenDashboard('points_receivables')}
-                      className={`w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold flex items-center justify-between cursor-pointer group transition-all ${
-                        currentUser.role === 'solver'
-                          ? 'text-blue-950 bg-blue-50/80 hover:bg-blue-100'
-                          : 'text-amber-950 bg-amber-50/80 hover:bg-amber-100'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                  {/* 區塊 1：資產與帳務 (競賽模式下隱藏) */}
+                  {!isRaceMode && (
+                    <div className="py-1.5 px-1.5 space-y-0.5">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        資產與帳務
+                      </p>
+                      <button
+                        onClick={() => handleOpenDashboard('points_receivables')}
+                        className={`w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold flex items-center justify-between cursor-pointer group transition-all ${
                           currentUser.role === 'solver'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'text-blue-950 bg-blue-50/80 hover:bg-blue-100'
+                            : 'text-amber-950 bg-amber-50/80 hover:bg-amber-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                            currentUser.role === 'solver'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {currentUser.role === 'solver' ? (
+                              <Building2 className="w-3.5 h-3.5" />
+                            ) : (
+                              <Coins className="w-3.5 h-3.5" />
+                            )}
+                          </div>
+                          <span>點數 & 收支</span>
+                        </div>
+                        <span className={`font-mono font-black text-xs ${
+                          currentUser.role === 'solver' ? 'text-blue-950' : 'text-amber-900'
                         }`}>
-                          {currentUser.role === 'solver' ? (
-                            <Building2 className="w-3.5 h-3.5" />
-                          ) : (
-                            <Coins className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                        <span>點數 & 收支</span>
-                      </div>
-                      <span className={`font-mono font-black text-xs ${
-                        currentUser.role === 'solver' ? 'text-blue-950' : 'text-amber-900'
-                      }`}>
-                        {currentUser.role === 'solver'
-                          ? (isNoPaymentMode ? '尚未開放' : `NT$ ${(currentUser?.withheldPoints || 0).toLocaleString()}`)
-                          : (isNoPaymentMode ? '免點數' : `${(currentUser?.balance || 0).toLocaleString()} 點`)}
-                      </span>
-                    </button>
+                          {currentUser.role === 'solver'
+                            ? (isNoPaymentMode ? '尚未開放' : `NT$ ${(currentUser?.withheldPoints || 0).toLocaleString()}`)
+                            : (isNoPaymentMode ? '免點數' : `${(currentUser?.balance || 0).toLocaleString()} 點`)}
+                        </span>
+                      </button>
 
-                    <button
-                      onClick={() => handleOpenDashboard('points_receivables', 'transactions-section')}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-orange-50/80 hover:text-orange-950 flex items-center gap-2.5 cursor-pointer group transition-all"
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-orange-100/80 text-orange-800 group-hover:bg-orange-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                        <Clock className="w-3.5 h-3.5" />
-                      </div>
-                      <span>交易紀錄</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setActiveTab('membership');
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                          <Crown className="w-3.5 h-3.5" />
+                      <button
+                        onClick={() => handleOpenDashboard('points_receivables', 'transactions-section')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-orange-50/80 hover:text-orange-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-orange-100/80 text-orange-800 group-hover:bg-orange-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                          <Clock className="w-3.5 h-3.5" />
                         </div>
-                        <span>會員方案</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                        獨立頁
-                      </span>
-                    </button>
+                        <span>交易紀錄</span>
+                      </button>
 
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setActiveTab('topup');
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                          <CreditCard className="w-3.5 h-3.5" />
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setActiveTab('membership');
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Crown className="w-3.5 h-3.5" />
+                          </div>
+                          <span>會員方案</span>
                         </div>
-                        <span>點數儲值中心</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                        帶入身份
-                      </span>
-                    </button>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                          獨立頁
+                        </span>
+                      </button>
 
-                    <button
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        if (onOpenAiCrm) onOpenAiCrm();
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-800 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 group-hover:scale-105 flex items-center justify-center shrink-0 shadow-2xs font-bold">
-                          <Crown className="w-3.5 h-3.5 fill-stone-950" />
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setActiveTab('topup');
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <CreditCard className="w-3.5 h-3.5" />
+                          </div>
+                          <span>點數儲值中心</span>
                         </div>
-                        <span>AI-CRM 客戶關係管理</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                        大師專屬
-                      </span>
-                    </button>
-                  </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                          帶入身份
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          if (onOpenAiCrm) onOpenAiCrm();
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-800 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 group-hover:scale-105 flex items-center justify-center shrink-0 shadow-2xs font-bold">
+                            <Crown className="w-3.5 h-3.5 fill-stone-950" />
+                          </div>
+                          <span>AI-CRM 客戶關係管理</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                          大師專屬
+                        </span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* 區塊 2：帳號管理 */}
                   <div className="py-1.5 px-1.5 space-y-0.5">
