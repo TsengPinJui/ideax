@@ -9388,9 +9388,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       )}
 
 
-      {/* 頁尾版本號（環境代碼只給管理員看） */}
+      {/* 頁尾：版本號、更新日與目前模式（所有人都看得到） */}
       <div className={`lg:col-span-2 py-2 text-center border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none bg-white rounded-b-2xl sm:rounded-b-3xl`}>
-        v{APP_VERSION} • {APP_RELEASE_DATE}{isAdminUser ? ` • ${isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-${isHideTestAccounts ? 'HIDE' : 'SHOW'}` : ''}
+        v{APP_VERSION} • {APP_RELEASE_DATE} • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
 
       {/* 平台內部清單 (規格書、操作手冊、ZIP/Word/PDF打包下載與檔案上傳) Modal */}
