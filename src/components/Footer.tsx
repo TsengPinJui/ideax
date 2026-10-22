@@ -256,8 +256,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
 
           <div className="font-mono text-[10px] text-stone-600 select-none">
             v{APP_VERSION} ({APP_RELEASE_DATE})
-            {/* 環境代碼只給管理員看 */}
-            {currentUser?.role === 'admin' && <> · {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}</>}
+            {/* 版本號、更新日與目前模式：所有人都看得到 */}
+            {' · '}{isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
           </div>
         </div>
       </div>
