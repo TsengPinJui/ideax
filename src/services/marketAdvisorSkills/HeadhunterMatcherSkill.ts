@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../authHeader';
 import { IAgentSkill, HeadhunterMatcherInput, HeadhunterMatcherOutput, MarketAdvisorHeadhunterMatch } from './types';
 
 /**
@@ -15,7 +16,7 @@ export class HeadhunterMatcherSkill implements IAgentSkill<HeadhunterMatcherInpu
     try {
       const res = await fetch('/api/agent/market-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'headhunter',
           payload: { query, solvers: candidatePool },
@@ -56,7 +57,7 @@ export class HeadhunterMatcherSkill implements IAgentSkill<HeadhunterMatcherInpu
     try {
       const res = await fetch('/api/ai/headhunter-search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ query, solvers: candidatePool }),
       });
       if (res.ok) {

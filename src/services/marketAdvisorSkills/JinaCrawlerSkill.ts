@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../authHeader';
 import { IAgentSkill, JinaCrawlerInput, JinaCrawlerOutput } from './types';
 
 /**
@@ -16,7 +17,7 @@ export class JinaCrawlerSkill implements IAgentSkill<JinaCrawlerInput, JinaCrawl
     try {
       const res = await fetch('/api/agent/market-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'jina_crawl',
           payload: { url, query },

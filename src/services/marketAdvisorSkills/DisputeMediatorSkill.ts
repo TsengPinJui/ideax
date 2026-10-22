@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../authHeader';
 import { IAgentSkill, DisputeMediatorInput, DisputeMediatorOutput } from './types';
 import { mediateDisputeWithAI } from '../aiService';
 
@@ -24,7 +25,7 @@ export class DisputeMediatorSkill implements IAgentSkill<DisputeMediatorInput, D
     try {
       const res = await fetch('/api/agent/market-advisor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'mediate_dispute',
           payload: {

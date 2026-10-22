@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './authHeader';
 /**
  * IdeaX 專屬 AI Agent：「AICRM 專家賦能與業務增長顧問」
  * 
@@ -138,7 +139,7 @@ export class AiCrmAgent {
     try {
       const res = await fetch('/api/agent/aicrm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'radar_scan',
           payload: params,
@@ -220,7 +221,7 @@ export class AiCrmAgent {
     try {
       const res = await fetch('/api/agent/aicrm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'bounty_hunter',
           payload: params,
@@ -284,7 +285,7 @@ export class AiCrmAgent {
     try {
       const res = await fetch('/api/agent/aicrm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           mode: 'assistant_outreach',
           payload: params,

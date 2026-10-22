@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './authHeader';
 import { Category, ProblemLevel, Solver, Question, AIPreliminaryReport, AiCrmLead, AiCrmPushNotification, Assistant24hrConfig } from '../types';
 
 export interface AIAnalysisResult {
@@ -22,7 +23,7 @@ export async function analyzeQuestionWithAI(title: string, description: string):
   try {
     const res = await fetch('/api/ai/analyze-question', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ title, description }),
     });
 
@@ -200,7 +201,7 @@ export async function matchSolversWithAI(question: Question, solvers: Solver[]):
   try {
     const res = await fetch('/api/ai/match-solvers', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ question, solvers }),
     });
 
@@ -318,7 +319,7 @@ export async function mediateDisputeWithAI(
   try {
     const res = await fetch('/api/ai/mediate-dispute', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         questionTitle,
         questionDescription,
@@ -435,7 +436,7 @@ export async function generatePreliminaryReportWithAI(question: Question): Promi
   try {
     const response = await fetch('/api/ai/preliminary-report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         questionTitle: title,
         questionDescription: desc,
@@ -580,7 +581,7 @@ export async function restructureSolutionWithAI(
   try {
     const response = await fetch('/api/ai/restructure-solution', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ content: rawText, questionTitle }),
     });
 
@@ -681,7 +682,7 @@ export async function adaptAudienceComprehensionWithAI(params: {
   try {
     const response = await fetch('/api/ai/adapt-comprehension', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         content: rawText,
         questionTitle,
@@ -1131,7 +1132,7 @@ export async function generate24hrAssistantReply(options: {
   try {
     const res = await fetch('/api/ai/assistant-24hr-reply', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         solverName: options.solverName,
         solverTitle: options.solverTitle,
@@ -1204,7 +1205,7 @@ export async function generateExpertChatAdvice(options: {
   try {
     const res = await fetch('/api/ai/expert-chat-advice', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         solverName: options.solverName,
         solverTitle: options.solverTitle,

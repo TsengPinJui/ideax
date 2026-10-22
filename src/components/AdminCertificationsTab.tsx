@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDateTime } from '../utils/formatDateTime';
 import { usePagedList, ShowMoreButton } from './ShowMoreList';
 import { useApp } from '../context/AppContext';
 import { User } from '../types';
@@ -748,7 +749,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <span className="text-[11px] tabular-nums text-stone-400">ID: {inspectUser.id}</span>
                   </div>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    {inspectUser.title || '平台註冊用戶'} · 註冊時間：{inspectUser.joinedDate || '2025'}
+                    {inspectUser.title || '平台註冊用戶'} · 註冊時間：{formatDateTime(inspectUser.joinedDate) || '未記錄'}
                   </p>
                 </div>
               </div>

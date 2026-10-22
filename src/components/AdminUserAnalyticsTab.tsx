@@ -1,3 +1,4 @@
+import { getAuthHeaders } from '../services/authHeader';
 import { realAgeGroup, realIndustry, realJobTitle, realSurvey, UNFILLED_COLOR, UNFILLED_LABEL } from '../utils/surveyData';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -113,7 +114,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
 
       const res = await fetch('/api/ai/customer-analytics', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 

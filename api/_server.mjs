@@ -169824,6 +169824,19 @@ async function requireAdminMiddleware(req, res, next) {
     return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u8A8D\u8B49\u7BA1\u7406\u54E1" });
   }
 }
+var PUBLIC_AI_PATHS = /* @__PURE__ */ new Set(["/api/ai/customer-support-chat", "/api/ai/faq-agent-consult"]);
+async function requireSignedInForAi(req, res, next) {
+  const path4 = (req.originalUrl || req.url || "").split("?")[0];
+  if (PUBLIC_AI_PATHS.has(path4)) return next();
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u5148\u767B\u5165\u518D\u4F7F\u7528 AI \u529F\u80FD" });
+    req.authUser = authUser;
+    next();
+  } catch {
+    return res.status(401).json({ success: false, error: "\u8ACB\u5148\u767B\u5165\u518D\u4F7F\u7528 AI \u529F\u80FD" });
+  }
+}
 
 // server/backfillAuthUids.ts
 async function runAuthUidBackfill(apply) {
@@ -172278,6 +172291,8 @@ var PORT = 3e3;
 app.set("trust proxy", true);
 app.use(import_express3.default.json());
 app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40, name: "ai" }));
+app.use(["/api/ai", "/api/agent"], requireSignedInForAi);
+app.use("/api/ai/customer-analytics", requireAdminMiddleware);
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
 app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));

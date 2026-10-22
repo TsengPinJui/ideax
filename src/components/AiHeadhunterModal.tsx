@@ -224,7 +224,7 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
           // 3. 實戰口碑與評價 (0 ~ 12 pts)
           let trackScore = 0;
           if (hasRelevance) {
-            trackScore = Math.round(((solver.rating || 4.5) / 5) * 8) + Math.round(((solver.acceptedRate || 80) / 100) * 4);
+            trackScore = Math.round(((solver.rating || 0) / 5) * 8) + Math.round(((solver.acceptedRate || 0) / 100) * 4);
           }
 
           // 4. 專家資格認證 (0 ~ 8 pts)
@@ -426,6 +426,12 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
             </div>
           </div>
 
+          {/* 智庫還沒有專家：先告知，不讓使用者白跑一趟 */}
+          {solvers.length === 0 && (
+            <p className="rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-[13px] text-stone-600">
+              專家智庫正在召集第一批專家，名單公布後才能配對；目前搜尋不會扣點，也不會有推薦結果。
+            </p>
+          )}
           {/* Points Status & Action Button */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
             {/* Top row: [左: 深度媒合4位專家 + ?鍵詳細說明]  [右上角小小的: 餘額: 1000點] */}
