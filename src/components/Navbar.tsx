@@ -41,7 +41,7 @@ import {
   LogOut,
   Users,
   Check,
-  LogIn,
+  Gift,
   ChevronRight,
   Trophy,
   HelpCircle,
@@ -1188,12 +1188,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => {
-                openAuthModal('login', 'email');
+                openAuthModal('register', 'email');
               }}
-              className="px-3.5 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 border border-stone-300 active:scale-95 text-stone-900 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 border border-amber-600 active:scale-95 text-white text-[11px] sm:text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              title="新用戶註冊即贈 200 平台點"
             >
-              <LogIn className="w-3.5 h-3.5 text-amber-600" />
-              <span>登入</span>
+              <Gift className="w-3.5 h-3.5" />
+              <span>註冊送 200 點</span>
             </button>
           ) : (
             <div className="relative hidden sm:block" ref={userMenuRef}>

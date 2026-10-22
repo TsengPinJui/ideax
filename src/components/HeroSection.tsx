@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { isRealRegisteredUser } from '../data/mockData';
 import { getCachedRealTrafficStats } from './AdminSiteTrafficChart';
-import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift } from 'lucide-react';
 import { Category } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
@@ -43,6 +43,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     onlineUsersCount,
     realRegisteredUsersCount,
     availableUsers,
+    currentUser,
+    openAuthModal,
   } = useApp();
 
   const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
@@ -321,6 +323,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {!homeShowcaseConfig.hideHeroTitles && (
             <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
               <span>痛點許願 · 創新提案 · 專家懸賞</span>
+            </div>
+          )}
+          {!isRealRegisteredUser(currentUser) && (
+            <div className="mt-3 sm:mt-4 w-full max-w-xl rounded-2xl border border-amber-300/90 bg-white/90 p-3 sm:p-4 shadow-md shadow-amber-100/60 backdrop-blur-sm">
+              <div className="flex flex-col items-center justify-center gap-2.5 sm:flex-row sm:gap-4">
+                <div className="flex items-center gap-2 text-left">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Gift className="h-5 w-5" /></span>
+                  <div>
+                    <p className="text-sm sm:text-base font-black text-stone-900">新用戶註冊即贈 <span className="text-amber-700">200 平台點</span></p>
+                    <p className="text-[10px] sm:text-xs text-stone-500">另有 100,000 創星幣新手福利，兩種點數分開計算</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('register', 'email')}
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-amber-500 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-amber-600 active:scale-[0.98]"
+                >
+                  免費註冊領取 <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </div>

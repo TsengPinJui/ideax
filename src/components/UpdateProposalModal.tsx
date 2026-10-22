@@ -33,6 +33,7 @@ import {
 import { MindMapEditor } from './mindmap/MindMapEditor';
 import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import type { MindMapData } from '../types';
+import { ProjectPlanExportButton } from './ProjectPlanExportButton';
 
 interface UpdateProposalModalProps {
   question: Question;
@@ -47,7 +48,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { updateProposalContent, openAboutModal } = useApp();
+  const { currentUser, updateProposalContent, openAboutModal } = useApp();
   const isVibeCoding = question.postType === 'vibecoding_app';
 
   const getInitialCats = () => {
@@ -914,7 +915,29 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 <span>{error}</span>
               </div>
             )}
-            <div className="flex items-center justify-end gap-2.5">
+            <div className="flex flex-wrap items-center justify-end gap-2.5">
+              {(question.postType === 'vibecoding_app' || question.postType === 'innovation_proposal') &&
+                question.authorId === currentUser.id && !question.isSimulated && (
+                  <ProjectPlanExportButton
+                    project={{
+                      id: question.id,
+                      postType: question.postType,
+                      title,
+                      appName,
+                      description,
+                      referencedPainPoint,
+                      targetGoal,
+                      techArchitecture,
+                      proposalProgressStage: String(proposalProgressStage || ''),
+                      currentVersion: version,
+                      category: question.category,
+                      subcategory: selectedCategories[0] || question.subcategory,
+                      tags: question.tags,
+                      mindMap: sanitizeMindMap(mindMap),
+                      publishedPlatforms,
+                    }}
+                  />
+                )}
               <button
                 type="button"
                 onClick={(e) => {

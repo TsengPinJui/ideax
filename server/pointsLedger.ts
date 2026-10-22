@@ -9,6 +9,7 @@
  * 增加點數只有管理員能做（儲值金流上線前暫停自助儲值）。
  */
 import { getApps } from 'firebase-admin/app';
+import { createHash } from 'node:crypto';
 import firebaseConfigJson from '../firebase-applet-config.json';
 import { hasAdminCredentials, isVerifiedAdmin } from './competitionService';
 import { SUBSCRIPTION_PLANS } from '../src/types';
@@ -70,6 +71,110 @@ export async function applyPointsOp(auth: { uid: string; email?: string; emailVe
   const { db, FieldValue } = await getAdminDb();
   const isAdmin = await isVerifiedAdmin(auth.uid);
   return applyPointsOpWith({ db, FieldValue, isAdmin }, auth, input);
+}
+
+/** 新帳號註冊獎勵：只增加平台點 balance，與創星幣帳本分開。 */
+export async function grantSignupBonus(auth: { uid: string; email?: string; emailVerified?: boolean }) {
+  const { db } = await getAdminDb();
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError('找不到您的會員資料，請稍後重新整理', 404);
+
+  const userSnap = await userRef.get();
+  const createdAtMs = userSnap.createTime?.toMillis?.();
+  // Firebase 帳號可能早已存在但尚未完成 IdeaX 註冊；以會員文件建立時間限定真正的新註冊，避免舊會員補領。
+  if (!userSnap.exists || !createdAtMs || Date.now() - createdAtMs > 24 * 60 * 60 * 1000) {
+    throw new PointsError('此註冊獎勵僅提供新註冊會員領取', 403);
+  }
+
+  const bonusId = createHash('sha256').update(`signup-platform-points:${userRef.id}`).digest('hex');
+  const ledgerRef = db.collection('points_ledger').doc(`signup_bonus_${bonusId}`);
+  return db.runTransaction(async (tx: any) => {
+    const [freshUser, priorBonus] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)]);
+    if (!freshUser.exists) throw new PointsError('找不到您的會員資料', 404);
+    const balance = Number(freshUser.get('balance')) || 0;
+    if (priorBonus.exists) return { userId: userRef.id, balance, granted: false };
+    const next = balance + 200;
+    tx.update(userRef, { balance: next });
+    tx.create(ledgerRef, {
+      userId: userRef.id,
+      op: 'earn',
+      source: 'signup_bonus',
+      delta: 200,
+      balanceAfter: next,
+      note: '新註冊平台點獎勵',
+      createdAt: new Date().toISOString(),
+    });
+    return { userId: userRef.id, balance: next, granted: true };
+  });
+}
+
+/** 企劃書匯出專用扣點，requestId 作為冪等鍵；帳本只存扣點資訊，不存生成內容。 */
+export async function spendProjectPlanExport(
+  auth: { uid: string; email?: string; emailVerified?: boolean },
+  input: { projectId: string; requestId: string }
+) {
+  const { db } = await getAdminDb();
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError('找不到您的會員資料，請重新登入', 404);
+  const key = createHash('sha256').update(`${userRef.id}:${input.projectId}:${input.requestId}`).digest('hex');
+  const ledgerRef = db.collection('points_ledger').doc(`project_plan_${key}`);
+  return db.runTransaction(async (tx: any) => {
+    const [userSnap, prior] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)]);
+    if (!userSnap.exists) throw new PointsError('找不到您的會員資料', 404);
+    if (prior.exists) throw new PointsError('這次匯出請求已處理，請重新操作', 409);
+    const balance = Number(userSnap.get('balance')) || 0;
+    if (balance < 50) throw new PointsError(`平台點不足（目前 ${balance} 點，匯出需 50 點）`, 402);
+    const next = balance - 50;
+    tx.update(userRef, { balance: next });
+    tx.create(ledgerRef, {
+      userId: userRef.id,
+      op: 'spend',
+      purpose: 'project_plan_export',
+      projectId: input.projectId,
+      requestId: input.requestId,
+      delta: -50,
+      balanceAfter: next,
+      status: 'processing',
+      createdAt: new Date().toISOString(),
+    });
+    return { userId: userRef.id, balance: next, ledgerId: ledgerRef.id };
+  });
+}
+
+/** Gemini 失敗時退還企劃書匯出點數；同一筆扣款只會退還一次。 */
+export async function refundProjectPlanExport(ledgerId: string) {
+  const { db } = await getAdminDb();
+  const ledgerRef = db.collection('points_ledger').doc(ledgerId);
+  return db.runTransaction(async (tx: any) => {
+    const ledgerSnap = await tx.get(ledgerRef);
+    if (!ledgerSnap.exists) throw new PointsError('找不到匯出扣點紀錄', 404);
+    const ledger = ledgerSnap.data() || {};
+    if (ledger.status === 'refunded') return { refunded: false, balance: Number(ledger.refundBalanceAfter) || 0 };
+    if (ledger.status !== 'processing') throw new PointsError('匯出扣點紀錄狀態不正確', 409);
+    const userRef = db.collection('users').doc(String(ledger.userId || ''));
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) throw new PointsError('找不到會員資料，無法退還點數', 404);
+    const next = (Number(userSnap.get('balance')) || 0) + 50;
+    tx.update(userRef, { balance: next });
+    tx.update(ledgerRef, { status: 'refunded', refundedAt: new Date().toISOString(), refundBalanceAfter: next });
+    const refundRef = db.collection('points_ledger').doc();
+    tx.create(refundRef, {
+      userId: userRef.id,
+      op: 'earn',
+      source: 'project_plan_export_refund',
+      refId: ledgerRef.id,
+      delta: 50,
+      balanceAfter: next,
+      note: '企劃書生成失敗退還平台點',
+      createdAt: new Date().toISOString(),
+    });
+    return { refunded: true, balance: next };
+  });
+}
+
+export async function completeProjectPlanExport(ledgerId: string): Promise<void> {
+  const { db } = await getAdminDb();
+  await db.collection('points_ledger').doc(ledgerId).update({ status: 'completed', completedAt: new Date().toISOString() });
 }
 
 /** 可注入資料庫的實作（方便測試） */
