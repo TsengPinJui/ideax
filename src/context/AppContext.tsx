@@ -79,6 +79,7 @@ import { getFormattedPlatformId, generatePlatformUserId } from '../services/user
 import {
   testFirestoreConnection,
   syncUserToFirestore,
+  syncAdminDocToFirestore,
   migrateUserInFirestore,
   syncUsersToFirestore,
   syncQuestionToFirestore,
@@ -2377,7 +2378,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   setFirestoreDataScope({
     userId: isScopeGuest ? null : currentUser.id,
     userName: isScopeGuest ? undefined : currentUser.name,
-    isAdmin: !isScopeGuest && currentUser.role === 'admin',
+    isAdmin: !isScopeGuest && (currentUser.role === 'admin' || isInitialAdmin(currentUser)),
   });
 
   // 站內帳號 ↔ Firebase 登入帳號對照（資料庫以 Firebase 帳號判斷誰能讀寫私訊、通知、交易）
@@ -4157,7 +4158,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       migrateUserInFirestore(oldUserId, updatedUser);
     } else {
       // ID 未變更，直接將身分標記寫入 Firestore
-      syncUserToFirestore(updatedUser);
+      syncUserToFirestore(updatedUser, { forceAdminScope: true });
+    }
+
+    // 同步更新 /admins 集合中的授權紀錄，確保安全規則與後端即刻識別新管理員
+    const targetAuthUid = targetUser.authUid || (targetUser.id.length > 20 ? targetUser.id : undefined);
+    if (targetAuthUid) {
+      syncAdminDocToFirestore(targetAuthUid, sites.length > 0, sites);
+    }
+    if (targetUser.id && targetUser.id !== targetAuthUid) {
+      syncAdminDocToFirestore(targetUser.id, sites.length > 0, sites);
+    }
+    if (newUserId && newUserId !== targetAuthUid && newUserId !== targetUser.id) {
+      syncAdminDocToFirestore(newUserId, sites.length > 0, sites);
     }
 
     // 4. 寫入管理員授權稽核紀錄

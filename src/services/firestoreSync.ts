@@ -29,6 +29,7 @@ import {
   Solver,
   CustomerSupportTicket,
   CustomerSupportConversation,
+  AdminSite,
 } from '../types';
 import {
   recordUtc8SiteVisitBucket,
@@ -697,7 +698,10 @@ export async function getUserPrivateData(userId: string): Promise<{ realNameAuth
   }
 }
 
-export async function syncUserToFirestore(user: User): Promise<void> {
+export async function syncUserToFirestore(
+  user: User,
+  options?: { forceAdminScope?: boolean }
+): Promise<void> {
   if (!user || !user.id || isQuotaExhausted) return;
   try {
     const userRef = doc(db, 'users', user.id);
@@ -747,7 +751,8 @@ export async function syncUserToFirestore(user: User): Promise<void> {
     }
 
     // 一般會員寫入時移除點數與權限欄位（只能由伺服器帳本或管理員異動，資料庫規則也會擋）
-    if (!currentDataScope.isAdmin) {
+    const effectiveIsAdmin = Boolean(options?.forceAdminScope || currentDataScope.isAdmin);
+    if (!effectiveIsAdmin) {
       for (const f of PROTECTED_USER_FIELDS) delete firestoreData[f];
       if (firestoreData.role === 'admin') delete firestoreData.role;
       if (firestoreData.accountType === 'admin') delete firestoreData.accountType;
@@ -776,7 +781,7 @@ export async function syncUserToFirestore(user: User): Promise<void> {
           userRole: user.role,
           realNameAuthStatus: user.realNameAuthStatus || 'unverified',
           expertCertStatus: user.expertCertStatus || 'unverified',
-                    expertCertData: user.expertCertData || null,
+          expertCertData: user.expertCertData || null,
           updatedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -784,6 +789,38 @@ export async function syncUserToFirestore(user: User): Promise<void> {
     }
   } catch (err) {
     handleFirestoreError(`Failed to sync user ${user.id}`, err);
+  }
+}
+
+/**
+ * 同步更新 /admins/{adminId} 集合中的授權紀錄，讓 Firestore 規則與後端 isVerifiedAdmin 立即生效
+ */
+export async function syncAdminDocToFirestore(
+  adminId: string,
+  isAdminRole: boolean,
+  sites: AdminSite[] = ['site_a', 'site_b']
+): Promise<void> {
+  if (!adminId || isQuotaExhausted) return;
+  try {
+    const adminRef = doc(db, 'admins', adminId);
+    if (isAdminRole) {
+      await setDoc(
+        adminRef,
+        {
+          id: adminId,
+          authUid: adminId,
+          admin: true,
+          role: 'admin',
+          sites,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } else {
+      await deleteDoc(adminRef);
+    }
+  } catch (err) {
+    console.warn(`[Firestore] Failed to update admin doc for ${adminId}:`, err);
   }
 }
 
