@@ -947,7 +947,11 @@ export interface Question {
   phases?: DeliveryPhase[]; // 多階段交付計畫
   isPhasedDelivery?: boolean; // 是否啟用多階段交付
   isOfficial?: boolean; // 是否為平台官方貼文 (💡IdeaX 官方帳號💡)
-  publishIdentity?: 'admin' | 'platform'; // 發布身分（管理員個人身分 / 平台官方身分）
+  publishIdentity?: 'admin' | 'platform' | 'user'; // 發布身分（管理員個人身分 / 平台官方身分 / 用戶個人身分）
+  isTransferred?: boolean; // 是否已轉移給用戶名下
+  isOwnershipTransferred?: boolean; // 所有權是否已移轉給用戶
+  transferredToUserId?: string; // 轉移接管之用戶 ID
+  transferredAt?: string; // 所有權轉移時間戳記
   aiAnalysis?: {
     summary: string;
     structuredNeed: string[];
@@ -959,6 +963,7 @@ export interface Question {
   isStarSeason?: boolean;
   starSeasonProposalId?: string;
   supportPoints?: number; // 獲得讀者支持打賞總點數
+  supportPointsWithdrawn?: number; // 該作品/提案累積已提領之打賞金額（已提領者不計入轉移後新受讓者之可提領賞金）
   tippersCount?: number; // 打賞支持人數
   supporterCount?: number; // 痛點附議或支持者計數
   screenshots?: string[]; // 截圖清單（相容 galleryImages）

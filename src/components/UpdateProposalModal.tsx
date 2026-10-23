@@ -54,7 +54,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { currentUser, updateProposalContent, openAboutModal, showCenterToast } = useApp();
+  const { currentUser, updateProposalContent, openAboutModal, showCenterToast, deleteQuestionPermanently } = useApp();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isVibeCoding =
     question.postType === 'vibecoding_app' ||
     question.postType === 'innovation_proposal' ||
@@ -569,7 +571,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     setSubmitting(true);
     try {
       const resolvedCardImage = showCardImage
-        ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '')
+        ? (coverImage.trim() || selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : '') || '')
         : '';
       const optimizedImages = await optimizeProposalImages({
         coverImage: coverImage.trim(),
@@ -1364,26 +1366,6 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
 
           {/* Pinned Footer Actions */}
           <div className="px-5 py-3.5 border-t border-stone-200 bg-white shrink-0 space-y-2.5">
-            {/* 授權條款告知 */}
-            <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-stone-700 text-xs flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-amber-900 bg-amber-200/70 px-1.5 py-0.5 rounded text-[10.5px]">條款規範</span>
-                <span className="font-bold text-stone-900">發佈內容即同意授權IdeaX作為行銷宣傳使用</span>
-                <span className="text-stone-500 text-[11px]">（包含官方社群、電子報、精選案例與展會宣傳等推廣用途）</span>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openAboutModal?.('general_terms');
-                }}
-                className="text-xs text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer"
-              >
-                服務條款詳情
-              </button>
-            </div>
-
             {isVibeCoding && (
               <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -1396,74 +1378,88 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 <span>{error}</span>
               </div>
             )}
-            <div className="flex flex-wrap items-center justify-end gap-2.5">
-              {(question.postType === 'vibecoding_app' || question.postType === 'innovation_proposal') &&
-                question.authorId === currentUser.id && !question.isSimulated && (
-                  <ProjectPlanExportButton
-                    project={{
-                      id: question.id,
-                      postType: question.postType,
-                      title,
-                      appName,
-                      description,
-                      referencedPainPoint,
-                      targetGoal,
-                      techArchitecture,
-                      proposalProgressStage: String(proposalProgressStage || ''),
-                      currentVersion: version,
-                      category: question.category,
-                      subcategory: selectedCategories[0] || question.subcategory,
-                      tags: question.tags,
-                      mindMap: sanitizeMindMap(mindMap),
-                      publishedPlatforms,
-                    }}
-                  />
-                )}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              {/* 左側：永久刪除作品／提案 */}
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-stone-600 text-xs font-bold hover:bg-stone-100 hover:text-stone-900 active:bg-stone-200 transition-colors cursor-pointer"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-3.5 py-2 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs group"
+                title="永久刪除此作品／提案"
               >
-                取消
+                <Trash2 className="w-3.5 h-3.5 text-rose-600 group-hover:text-white" />
+                <span>刪除{isVibeCoding ? '作品' : '提案'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft}
-                className="px-4 py-2 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                title="暫存目前編輯內容為草稿"
-              >
-                <Bookmark className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{isSavingDraft ? '儲存中...' : '存為草稿'}</span>
-              </button>
+              {/* 右側按鈕群 */}
+              <div className="flex flex-wrap items-center justify-end gap-2.5">
+                {(question.postType === 'vibecoding_app' || question.postType === 'innovation_proposal') &&
+                  question.authorId === currentUser.id && !question.isSimulated && (
+                    <ProjectPlanExportButton
+                      project={{
+                        id: question.id,
+                        postType: question.postType,
+                        title,
+                        appName,
+                        description,
+                        referencedPainPoint,
+                        targetGoal,
+                        techArchitecture,
+                        proposalProgressStage: String(proposalProgressStage || ''),
+                        currentVersion: version,
+                        category: question.category,
+                        subcategory: selectedCategories[0] || question.subcategory,
+                        tags: question.tags,
+                        mindMap: sanitizeMindMap(mindMap),
+                        publishedPlatforms,
+                      }}
+                    />
+                  )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-stone-600 text-xs font-bold hover:bg-stone-100 hover:text-stone-900 active:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  取消
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(true)}
-                className="px-4 py-2 rounded-lg border-2 border-indigo-500 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                title="預覽更新後的展示效果"
-              >
-                <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                <span>預覽效果</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft}
+                  className="px-4 py-2 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="暫存目前編輯內容為草稿"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isSavingDraft ? '儲存中...' : '存為草稿'}</span>
+                </button>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                onClick={() => handleSubmit()}
-                className={`px-5 py-2 rounded-lg border-2 border-emerald-600 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
-                  submitting
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{submitting ? '儲存發布中...' : '儲存並發布更新'}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="px-4 py-2 rounded-lg border-2 border-indigo-500 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="預覽更新後的展示效果"
+                >
+                  <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>預覽效果</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  onClick={() => handleSubmit()}
+                  className={`px-5 py-2 rounded-lg border-2 border-emerald-600 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                    submitting
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{submitting ? '儲存發布中...' : '儲存並發布更新'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -1526,6 +1522,59 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         onConfirm={handleCropperConfirm}
         onSkip={handleCropperSkip}
       />
+
+      {/* 刪除作品／提案二次確認彈窗 */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">確定要永久刪除此{isVibeCoding ? '作品' : '提案'}？</h3>
+                <p className="text-xs text-stone-500">此動作無法復原，請再次確認</p>
+              </div>
+            </div>
+            <div className="p-3.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-800 space-y-1.5 leading-relaxed">
+              <p className="font-bold">《{question.title}》</p>
+              <p>確認刪除後，該{isVibeCoding ? '作品' : '提案'}將自平台完全移除，包含所有展示資料與關聯更新歷程紀錄。</p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    await deleteQuestionPermanently(question.id);
+                    showCenterToast?.(`${isVibeCoding ? '作品' : '提案'}已永久刪除`, 'success');
+                    setShowDeleteConfirm(false);
+                    onClose();
+                  } catch (err: any) {
+                    console.error(err);
+                    setError(err?.message || '刪除失敗，請稍後再試');
+                    setIsDeleting(false);
+                    setShowDeleteConfirm(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? '刪除中...' : '確認刪除'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

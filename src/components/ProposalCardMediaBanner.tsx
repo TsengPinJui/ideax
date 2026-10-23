@@ -42,9 +42,9 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
     return unique.length > 0 ? unique : [fallbackImage];
   }, [coverImage, galleryImages, fallbackImage]);
 
-  // 決定靜態封面圖：若作者選擇「直接用 YouTube 影片當封面」且有有效 videoId，使用 YouTube 縮圖；否則使用自訂封面圖
+  // 決定靜態封面圖：若作者選擇「直接用 YouTube 影片當封面」且有有效 videoId，使用 YouTube 縮圖；否則嚴格使用原設定之自訂封面圖
   const useYoutubeAsCover = coverMode === 'youtube_video' && Boolean(videoId && ytThumb);
-  const staticCoverSrc = useYoutubeAsCover && ytThumb ? ytThumb : allImages[0] || fallbackImage;
+  const staticCoverSrc = useYoutubeAsCover && ytThumb ? ytThumb : (coverImage && coverImage.trim()) || allImages[0] || fallbackImage;
 
   // 決定滑鼠移到卡片時的動態行為：
   // - 若作者明確選擇 'image_carousel'，或沒有 YouTube 影片但有多張圖片 -> 滑鼠移到時圖片輪播

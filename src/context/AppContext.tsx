@@ -331,8 +331,11 @@ interface AppContextType {
   ) => Promise<{ success: boolean; ok?: boolean; message: string; reason?: string; updatedQuestion?: Question }>;
   transferQuestionOwnership: (
     questionId: string,
-    newOwnerUser: User
-  ) => Promise<{ success: boolean; message: string; updatedQuestion?: Question }>;
+    newOwnerUser: User,
+    options?: {
+      alreadyWithdrawnPoints?: number;
+    }
+  ) => Promise<{ success: boolean; message: string; updatedQuestion?: Question; transferredWithdrawableTips?: number }>;
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -3395,6 +3398,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   restoreCanonicalUserIdentity({
                     ...cu,
                     ...local,
+                    // 雲端權限身分權威覆蓋：避免本地快取覆蓋雲端指派的管理員身分
+                    role: cu.role || local.role,
+                    accountType: cu.accountType || local.accountType,
+                    adminSites: cu.adminSites !== undefined ? cu.adminSites : local.adminSites,
+                    memberId: cu.memberId || local.memberId,
+                    title: cu.title || local.title,
+                    isInitialAdmin: cu.isInitialAdmin !== undefined ? cu.isInitialAdmin : local.isInitialAdmin,
                     isDeactivated: finalDeact,
                     deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
                     deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
@@ -3438,7 +3448,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } catch {}
             return uniqueUsers;
           });
-          setCurrentUser((prev) => (prev && prev.id !== 'user-guest' ? restoreCanonicalUserIdentity(prev) : prev));
+          setCurrentUser((prev) => {
+            if (!prev || prev.id === 'user-guest') return prev;
+            const matchedCloud = updatedCloudUsers.find(
+              (cu) =>
+                cu.id === prev.id ||
+                (cu.authUid && prev.authUid && cu.authUid === prev.authUid) ||
+                (cu.email && prev.email && cu.email.toLowerCase() === prev.email.toLowerCase())
+            );
+            if (matchedCloud) {
+              const updated = restoreCanonicalUserIdentity({
+                ...prev,
+                ...matchedCloud,
+                role: matchedCloud.role || prev.role,
+                accountType: matchedCloud.accountType || prev.accountType,
+                adminSites: matchedCloud.adminSites !== undefined ? matchedCloud.adminSites : prev.adminSites,
+                memberId: matchedCloud.memberId || prev.memberId,
+                title: matchedCloud.title || prev.title,
+                isInitialAdmin: matchedCloud.isInitialAdmin !== undefined ? matchedCloud.isInitialAdmin : prev.isInitialAdmin,
+              });
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updated));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            }
+            return restoreCanonicalUserIdentity(prev);
+          });
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
         if (mounted) {
@@ -4225,6 +4261,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (newUserId && newUserId !== targetAuthUid && newUserId !== targetUser.id) {
       syncAdminDocToFirestore(newUserId, sites.length > 0, sites);
     }
+
+    // 呼叫特權後端端點以管理端權限確保 /admins 與 /users 寫入及 Custom Claims 部署
+    import('../services/authHeader')
+      .then(({ getAuthHeaders }) => getAuthHeaders())
+      .then((headers) =>
+        fetch('/api/admin/assign-role', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetUserId: newUserId,
+            sites,
+            newRole: updatedUser.role,
+            newMemberId: updatedUser.memberId,
+            title: updatedUser.title,
+          }),
+        })
+      )
+      .then((res) => res.json())
+      .then((resData) => {
+        if (!resData.success) {
+          console.warn('[Admin Role Server Sync Warning]', resData.error);
+        }
+      })
+      .catch((e) => console.warn('[Admin Role Server Sync Network Warning]', e));
 
     // 4. 寫入管理員授權稽核紀錄
     syncAuditLogsToFirestore([
@@ -5553,14 +5613,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const currentQ = questions[targetIndex];
-    // 權限檢查：僅該提案或內容的發布者本人或管理員可編輯更新，其餘人僅能於頁尾瀏覽版本更新紀錄
+    // 權限檢查：僅該提案或內容的發布者本人或未轉移作品的管理員可編輯更新；
+    // 注意：若作品已正式轉交給用戶（isTransferred / isOwnershipTransferred / transferredToUserId），平台不再擁有編輯權限，只有新擁有者本人可編輯！
+    const isTransferredWork = Boolean(
+      currentQ.isTransferred ||
+      currentQ.isOwnershipTransferred ||
+      currentQ.transferredToUserId
+    );
     const isAuthor = Boolean(
       currentUser?.id &&
       currentUser.id !== 'user-guest' &&
-      (currentQ.authorId === currentUser.id || currentUser.role === 'admin')
+      (currentQ.authorId === currentUser.id || (!isTransferredWork && currentUser.role === 'admin'))
     );
     if (!isAuthor) {
-      const msg = '此功能只限該提案或內容的發布者或管理員編輯，其他人只能於頁尾查看版本更新紀錄';
+      const msg = isTransferredWork && currentUser.role === 'admin'
+        ? '此作品已正式轉移至用戶名下，平台管理員不再擁有編輯權限'
+        : '此功能只限該提案或內容的發布者本人編輯，其他人只能於頁尾查看版本更新紀錄';
       return { success: false, ok: false, message: msg, reason: msg };
     }
 
@@ -5690,8 +5758,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Action: Transfer question/work ownership to a specific user (管理員將平台刊登作品所有權轉移給指定用戶，等同用戶自己提案)
   const transferQuestionOwnership = async (
     questionId: string,
-    newOwnerUser: User
-  ): Promise<{ success: boolean; message: string; updatedQuestion?: Question }> => {
+    newOwnerUser: User,
+    options?: {
+      alreadyWithdrawnPoints?: number;
+    }
+  ): Promise<{ success: boolean; message: string; updatedQuestion?: Question; transferredWithdrawableTips?: number }> => {
     if (currentUser.role !== 'admin') {
       return { success: false, message: '權限不足，僅管理員可執行所有權轉移操作' };
     }
@@ -5707,16 +5778,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date();
     const formattedDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
 
+    // 關鍵規範：問題、作品或提案附帶獲得的打賞金額，如果已經提領，則不會算在新受讓者的「可提領賞金」內
+    const totalTips = targetQ.supportPoints || 0;
+    const alreadyWithdrawn = typeof options?.alreadyWithdrawnPoints === 'number'
+      ? Math.max(0, options.alreadyWithdrawnPoints)
+      : (targetQ.supportPointsWithdrawn || 0);
+
+    const unwithdrawnTips = Math.max(0, totalTips - alreadyWithdrawn);
+
     const newTransferLog: ProposalUpdateLog = {
       id: `log-transfer-${Date.now()}`,
       timestamp: formattedDate,
       version: targetQ.currentVersion || 'v1.0.0',
-      content: `【所有權移轉】平台管理員已正式將此作品所有權轉交給會員「${cleanNewName}」名下。`,
+      content: `【所有權移轉】平台管理員已正式將此作品所有權轉交給會員「${cleanNewName}」名下。${totalTips > 0 ? `（累積打賞 ${totalTips} 點，已提領 ${alreadyWithdrawn} 點，實轉入可提領賞金 ${unwithdrawnTips} 點）` : ''}`,
       note: `轉移日期：${formattedDate} · 移交執行：IdeaX 管理員`,
       authorId: currentUser.id,
       authorName: currentUser.name || '管理員',
       authorAvatar: currentUser.avatar,
-      updatedFields: ['作品所有權', '發布者'],
+      updatedFields: ['作品所有權', '發布者', '可提領打賞結算'],
     };
 
     const updatedQ: Question = {
@@ -5727,9 +5806,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       authorTitle: newOwnerUser.jobTitle || newOwnerUser.title || '',
       authorAuthUid: (newOwnerUser as any).firebaseUid || (newOwnerUser as any).authUid || undefined,
       isOfficial: false,
-      publishIdentity: undefined,
+      publishIdentity: 'user',
+      isTransferred: true,
+      isOwnershipTransferred: true,
+      transferredToUserId: newOwnerUser.id,
+      transferredAt: new Date().toISOString(),
+      supportPointsWithdrawn: alreadyWithdrawn,
       updateLogs: [newTransferLog, ...(targetQ.updateLogs || [])],
     };
+
+    // 若有尚未提領的打賞金額，轉移至新受讓者的可提領賞金 (tipReceivablesPoints)
+    if (unwithdrawnTips > 0) {
+      setAvailableUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === newOwnerUser.id) {
+            const nextTipReceivables = (u.tipReceivablesPoints || 0) + unwithdrawnTips;
+            const nextThisWeek = (u.thisWeekTipPoints || 0) + unwithdrawnTips;
+            return {
+              ...u,
+              tipReceivablesPoints: nextTipReceivables,
+              thisWeekTipPoints: nextThisWeek,
+            };
+          }
+          return u;
+        })
+      );
+
+      if (currentUser?.id === newOwnerUser.id) {
+        setCurrentUser((prev) => ({
+          ...prev,
+          tipReceivablesPoints: (prev.tipReceivablesPoints || 0) + unwithdrawnTips,
+          thisWeekTipPoints: (prev.thisWeekTipPoints || 0) + unwithdrawnTips,
+        }));
+      }
+
+      // 產生一筆打賞權利繼承交易流水
+      const tipTx: Transaction = {
+        id: `tx-transfer-tip-${Date.now()}`,
+        type: '痛點讀者打賞',
+        amount: unwithdrawnTips,
+        platformFee: 0,
+        netAmount: unwithdrawnTips,
+        fromUserName: 'IdeaX 平台所有權移轉',
+        toUserName: cleanNewName,
+        relatedQuestionId: targetQ.id,
+        relatedQuestionTitle: targetQ.appName || targetQ.title,
+        createdAt: new Date().toISOString(),
+        note: `【所有權移轉打賞結算】接收作品《${targetQ.appName || targetQ.title}》，累積打賞 ${totalTips} 點，扣除已提領 ${alreadyWithdrawn} 點，實轉入可提領賞金 ${unwithdrawnTips} 點`,
+        status: '已完成',
+        payoutStatus: '安全託管中（應收帳款）',
+      };
+
+      setTransactions((prev) => [tipTx, ...prev]);
+    }
 
     setQuestions((prev) => {
       const next = prev.map((q) => (q.id === questionId ? updatedQ : q));
@@ -5746,22 +5875,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // 發送系統推播通知給新所有者
+    const tipMsg = totalTips > 0
+      ? `附帶打賞結算：累積獲得打賞 ${totalTips} 點${alreadyWithdrawn > 0 ? `（其中 ${alreadyWithdrawn} 點已由原發布者提領，不計入可提領額度）` : ''}，實轉入可提領賞金 ${unwithdrawnTips} 點。`
+      : '';
+
     addNotification({
       title: '🎉 作品所有權移轉成功',
-      message: `管理員已將軟體作品《${targetQ.appName || targetQ.title}》所有權移轉至您的帳號名下！您現在可在「個人中心 > 我的提案」直接檢視並自由事後編輯、發布更新日誌與維護規格。`,
+      message: `管理員已將軟體作品《${targetQ.appName || targetQ.title}》所有權移轉至您的帳號名下！${tipMsg}您現在可在「個人中心 > 我的提案」直接檢視並自由事後編輯、發布更新日誌與維護規格。`,
       type: 'system',
     });
 
     showCenterToast(
       '所有權轉移完成！',
-      `《${targetQ.appName || targetQ.title}》已移交給【${cleanNewName}】，用戶現在擁有完全編輯權限`,
-      { type: 'success', duration: 4000 }
+      `《${targetQ.appName || targetQ.title}》已移交給【${cleanNewName}】${unwithdrawnTips > 0 ? `（轉入可提領賞金 ${unwithdrawnTips} 點）` : ''}，用戶現在擁有完全編輯權限`,
+      { type: 'success', duration: 4500 }
     );
 
     return {
       success: true,
-      message: `已成功將所有權移轉至 ${cleanNewName}`,
+      message: `已成功將所有權移轉至 ${cleanNewName}${unwithdrawnTips > 0 ? `，轉入可提領打賞 ${unwithdrawnTips} 點` : ''}`,
       updatedQuestion: updatedQ,
+      transferredWithdrawableTips: unwithdrawnTips,
     };
   };
 

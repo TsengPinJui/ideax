@@ -647,9 +647,37 @@ export function deduplicateUsersList(
 /**
  * 判斷作品是否為「平台刊登的作品」
  * 包含：由管理員/官方上架至軟體作品/網站專區、標示 isOfficial、publishIdentity === 'platform'、authorId 為 platform/admin，或作者標記為平台官方/平台嚴選
+ * 注意：一旦作品轉移給用戶（isTransferred / isOwnershipTransferred / transferredToUserId），作品即屬於實實在在的用戶名下，絕不再判定為「平台嚴選」！
  */
 export function isPlatformPublishedWork(q?: Partial<Question> | null): boolean {
   if (!q) return false;
+
+  // 1. 若作品已被轉移給用戶名下，或是用戶身分發布，絕非平台刊登作品
+  if (
+    q.isTransferred ||
+    q.isOwnershipTransferred ||
+    Boolean(q.transferredToUserId) ||
+    q.publishIdentity === 'user'
+  ) {
+    return false;
+  }
+
+  // 2. 若 authorId 是一般用戶且不是 platform/admin，且未明確標記 platform，則為用戶自己的作品
+  if (
+    q.authorId &&
+    q.authorId !== 'platform' &&
+    q.authorId !== 'admin' &&
+    q.authorId !== 'user-admin' &&
+    q.authorId !== 'a000000001' &&
+    !q.isOfficial &&
+    q.publishIdentity !== 'platform' &&
+    q.authorName !== '平台嚴選' &&
+    q.authorName !== '平台官方' &&
+    q.authorName !== '💡IdeaX 官方帳號💡'
+  ) {
+    return false;
+  }
+
   const isWork =
     q.postType === 'vibecoding_app' ||
     q.specialZone === 'vibecoding' ||
@@ -987,3 +1015,82 @@ export function hasFilledRequiredProfile(u: Partial<User> | null | undefined): b
   const titleOk = Boolean(u.industry || u.jobTitle || u.title);
   return u.hasCompletedProfile === true ? Boolean(u.phone || u.email) : phoneOk && titleOk;
 }
+
+/**
+ * 站內任何搜索用戶的通用比對函式
+ * 嚴格支援：ID、Email、帳號代碼 (memberId / username)、姓名 (name / displayName / legalName / realName)
+ */
+export function matchUserSearch(
+  user: {
+    id?: string;
+    authUid?: string;
+    email?: string;
+    memberId?: string;
+    username?: string;
+    name?: string;
+    displayName?: string;
+    title?: string;
+    phone?: string;
+    skills?: string[];
+    domain?: string;
+    bio?: string;
+    realNameAuthData?: any;
+    userObj?: any;
+    [key: string]: any;
+  } | null | undefined,
+  query: string
+): boolean {
+  if (!user || !query) return false;
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const cleanQ = q.replace(/^@/, '');
+
+  // 1. ID 比對 (id, authUid, aliasId)
+  const id = (user.id || '').toLowerCase();
+  const authUid = (user.authUid || user.userObj?.authUid || '').toLowerCase();
+  if (id.includes(q) || (cleanQ && id.includes(cleanQ))) return true;
+  if (authUid && (authUid.includes(q) || (cleanQ && authUid.includes(cleanQ)))) return true;
+  const alias = USER_ALIAS_MAP[user.id || '']?.toLowerCase();
+  if (alias && (alias.includes(q) || (cleanQ && alias.includes(cleanQ)))) return true;
+
+  // 2. Email 比對
+  const email = (user.email || user.userObj?.email || '').toLowerCase();
+  if (email && (email.includes(q) || (cleanQ && email.includes(cleanQ)))) return true;
+
+  // 3. 帳號代碼比對 (memberId, username)
+  const memberId = (user.memberId || user.userObj?.memberId || '').toLowerCase();
+  if (memberId && (memberId.includes(q) || (cleanQ && memberId.includes(cleanQ)))) return true;
+
+  const username = (user.username || user.userObj?.username || '').toLowerCase();
+  if (username && (username.includes(q) || (cleanQ && username.includes(cleanQ)))) return true;
+
+  // 4. 名字比對 (name, displayName, 實名驗證真實姓名)
+  const name = (user.name || user.displayName || user.userObj?.name || '').toLowerCase();
+  if (name && (name.includes(q) || (cleanQ && name.includes(cleanQ)))) return true;
+
+  const realNameData = user.realNameAuthData || user.userObj?.realNameAuthData;
+  const legalName = (realNameData?.legalName || realNameData?.realName || '').toLowerCase();
+  if (legalName && (legalName.includes(q) || (cleanQ && legalName.includes(cleanQ)))) return true;
+
+  // 5. 手機號碼
+  const phone = (user.phone || user.userObj?.phone || '').toLowerCase();
+  if (phone && (phone.includes(q) || (cleanQ && phone.replace(/[\s-]/g, '').includes(cleanQ.replace(/[\s-]/g, ''))))) return true;
+
+  // 6. 頭銜、專長與領域
+  const title = (user.title || user.userObj?.title || '').toLowerCase();
+  if (title && title.includes(q)) return true;
+
+  const domain = (user.domain || user.userObj?.domain || '').toLowerCase();
+  if (domain && domain.includes(q)) return true;
+
+  const bio = (user.bio || user.userObj?.bio || '').toLowerCase();
+  if (bio && bio.includes(q)) return true;
+
+  const skills = user.skills || user.userObj?.skills;
+  if (Array.isArray(skills) && skills.some((sk: string) => (sk || '').toLowerCase().includes(q) || (cleanQ && (sk || '').toLowerCase().includes(cleanQ)))) {
+    return true;
+  }
+
+  return false;
+}
+

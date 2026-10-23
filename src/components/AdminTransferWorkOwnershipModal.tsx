@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   UserCheck,
@@ -11,6 +11,7 @@ import {
   Layers,
   FileEdit,
   User as UserIcon,
+  Coins,
 } from 'lucide-react';
 import { Question, User } from '../types';
 import { useApp } from '../context/AppContext';
@@ -20,6 +21,7 @@ import {
   getUserNameColorClass,
   isUserAccountDeactivated,
   isGuestUser,
+  matchUserSearch,
 } from '../utils/userDisplay';
 
 interface AdminTransferWorkOwnershipModalProps {
@@ -41,20 +43,28 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const totalTips = question?.supportPoints || 0;
+  const initialWithdrawn = question?.supportPointsWithdrawn || 0;
+  const [withdrawnAmountInput, setWithdrawnAmountInput] = useState<string>(String(initialWithdrawn));
+
+  useEffect(() => {
+    if (question) {
+      setWithdrawnAmountInput(String(question.supportPointsWithdrawn || 0));
+    }
+  }, [question?.id, question?.supportPointsWithdrawn]);
+
+  const parsedWithdrawn = Math.min(totalTips, Math.max(0, parseInt(withdrawnAmountInput, 10) || 0));
+  const transferableTips = Math.max(0, totalTips - parsedWithdrawn);
+
   // 過濾可用用戶清單（排除訪客與已註銷帳號）
   const eligibleUsers = useMemo(() => {
     return (availableUsers || []).filter((u) => {
       if (!u || !u.id) return false;
       if (isGuestUser(u)) return false;
       if (isUserAccountDeactivated(u.id, availableUsers)) return false;
-      // 搜尋條件
+      // 搜尋條件：支援 ID、Email、帳號代碼、姓名
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const name = (u.name || '').toLowerCase();
-        const email = (u.email || '').toLowerCase();
-        const memberId = (u.memberId || '').toLowerCase();
-        const id = (u.id || '').toLowerCase();
-        return name.includes(q) || email.includes(q) || memberId.includes(q) || id.includes(q);
+        return matchUserSearch(u, searchQuery);
       }
       return true;
     });
@@ -76,7 +86,9 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
     setIsSubmitting(true);
 
     try {
-      const res = await transferQuestionOwnership(question.id, selectedUser);
+      const res = await transferQuestionOwnership(question.id, selectedUser, {
+        alreadyWithdrawnPoints: parsedWithdrawn,
+      });
       if (res.success && res.updatedQuestion) {
         if (onSuccess) {
           onSuccess(res.updatedQuestion);
@@ -160,6 +172,55 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 附帶打賞金流與可提領額度結算 */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-bold text-amber-950">
+              <span className="flex items-center gap-1.5">
+                <Coins className="w-4 h-4 text-amber-600" />
+                <span>附帶打賞金額與可提領額度結算</span>
+              </span>
+              <span className="text-[11px] font-mono text-amber-800">
+                累積獲得打賞：<strong>{totalTips.toLocaleString()}</strong> 點
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-white/90 border border-stone-200 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-stone-500">
+                  <span>原發布者已提領金額：</span>
+                  <span className="text-[10px] text-rose-600 font-mono font-bold">(不計入新受讓者)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={totalTips}
+                    value={withdrawnAmountInput}
+                    onChange={(e) => setWithdrawnAmountInput(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg border border-stone-200 text-xs font-mono font-bold text-stone-700 focus:border-amber-500 focus:outline-hidden bg-stone-50"
+                  />
+                  <span className="text-xs text-stone-500 shrink-0 font-medium">點</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 space-y-1">
+                <span className="text-[11px] text-emerald-800 font-bold block">新受讓者之可提領賞金：</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-black font-mono text-emerald-700">
+                    +{transferableTips.toLocaleString()} 點
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-medium">
+                    {parsedWithdrawn > 0 ? `(已扣除 ${parsedWithdrawn} 點已提領)` : '(全額未提領)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-amber-900/80 leading-relaxed">
+              ⚖️ <strong>提領規範</strong>：問題、作品或提案附帶獲得的打賞金額，如果已經提領，則<strong>絕不會</strong>算在新受讓者的「可提領賞金」內；新受讓者僅繼承尚未提領之餘額。
+            </p>
           </div>
 
           {/* 轉移功能規則告知 */}

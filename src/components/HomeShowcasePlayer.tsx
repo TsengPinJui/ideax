@@ -33,7 +33,14 @@ type Slide = { q: Question; mode: HomeShowcaseMode; image: string; isVideo: bool
 
 const imageOf = (q: Question): { image: string; isVideo: boolean } => {
   const yt = q.youtubeUrl || (q as any).vibeCodingData?.youtubeUrl;
-  const pick = q.cardDisplayImage || q.coverImage || q.galleryImages?.[0] || q.screenshots?.[0] || (q as any).vibeCodingData?.screenshots?.[0];
+  const pick =
+    (q.coverImage && q.coverImage.trim()) ||
+    (q as any).vibeCodingData?.coverImageUrl ||
+    (q.cardDisplayImage && q.cardDisplayImage.trim()) ||
+    q.galleryImages?.[0] ||
+    q.screenshots?.[0] ||
+    (q as any).vibeCodingData?.screenshots?.[0] ||
+    '';
   if (q.coverMode === 'youtube_video' && yt) return { image: getYoutubeThumbnailUrl(yt) || pick || '', isVideo: true };
   if (pick) return { image: pick, isVideo: false };
   if (yt) return { image: getYoutubeThumbnailUrl(yt) || '', isVideo: true };

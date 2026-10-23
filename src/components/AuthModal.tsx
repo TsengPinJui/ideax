@@ -70,8 +70,7 @@ import { recordUserBoard, recordUserSpecialZone } from '../services/recommendati
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 import { claimSignupBonus } from '../services/signupBonusService';
 
-// 管理員 Email 白名單：共用 services/accountGuard（切換帳號的安全檢查也用同一份）
-import { isAllowlistedAdminEmail, isLocalDevHost } from '../services/accountGuard';
+import { isAllowlistedAdminEmail, isLocalDevHost, isAuthorizedForAccount } from '../services/accountGuard';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -497,8 +496,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             email: identifier,
           };
 
-          // 安全性：資料庫中標記為管理員的帳號，只有白名單內且已驗證信箱的 Email 才能登入
-          if (matched.role === 'admin') {
+          // 安全性：若帳號具備管理員權限，只有授權本人或白名單管理員才能登入
+          if (matched.role === 'admin' && !isAuthorizedForAccount(matched, fbUser)) {
             setErrorMsg('此帳號需使用已授權且已驗證的管理員 Email 登入。');
             setIsLoading(false);
             return;
@@ -656,8 +655,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         (u) => u.id === fbUser.uid || u.authUid === fbUser.uid || (!!fbUser.email && u.email?.toLowerCase() === fbUser.email.toLowerCase())
       );
     if (existing) {
-      // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
-      if (existing.role === 'admin' && !(fbUser.email && isAllowlistedAdminEmail(fbUser.email))) {
+      // 安全性：若帳號具備管理員權限，只有授權本人或白名單管理員才能登入
+      if (existing.role === 'admin' && !isAuthorizedForAccount(existing, fbUser)) {
         setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
         return;
       }

@@ -220,7 +220,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                 <CopyableUserId userId={user.id} prefix="用戶ID: " />
                 {user.memberId && (
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-stone-300">
-                    規範會員碼: {user.memberId}
+                    帳號代碼: {user.memberId}
                   </span>
                 )}
                 {user.username && (

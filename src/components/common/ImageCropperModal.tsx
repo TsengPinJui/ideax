@@ -805,17 +805,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             </div>
           </div>
 
-          {/* 頂部顯眼確認與關閉按鈕（保證在任何螢幕高度下都能直接看見並點擊） */}
+          {/* 頂部關閉按鈕 */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleConfirmCrop}
-              className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs sm:text-sm font-black shadow-lg shadow-amber-500/25 flex items-center gap-1.5 transition-all cursor-pointer ring-2 ring-amber-400/50"
-              title="確認裁切並套用儲存（亦可按鍵盤 Enter）"
-            >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>確認儲存</span>
-            </button>
             <button
               type="button"
               onClick={onClose}
@@ -1061,16 +1052,6 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             </div>
           )}
 
-          {/* 畫布內懸浮快捷確認按鈕 */}
-          <button
-            type="button"
-            onClick={handleConfirmCrop}
-            className="absolute bottom-3 right-3 sm:right-4 z-20 px-3.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black shadow-xl flex items-center gap-1.5 border border-amber-300/80 cursor-pointer active:scale-95 backdrop-blur-sm transition-all ring-2 ring-amber-400/40"
-            title="點擊確認裁切範圍（Enter）"
-          >
-            <Check className="w-3.5 h-3.5 stroke-[3]" />
-            <span>完成此處裁切</span>
-          </button>
         </div>
 
         {/* 底部控制工具列 */}

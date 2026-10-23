@@ -4,6 +4,7 @@ import { usePagedList, ShowMoreButton } from './ShowMoreList';
 import { useApp } from '../context/AppContext';
 import { User } from '../types';
 import { getUserPrivateData } from '../services/firestoreSync';
+import { matchUserSearch } from '../utils/userDisplay';
 import {
   BadgeCheck,
   ShieldCheck,
@@ -130,14 +131,9 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
       if (u.realNameAuthStatus === 'verified' || u.verifiedExpert) return false;
     }
 
-    // 搜尋比對
+    // 搜尋比對：支援 ID、Email、帳號代碼、姓名
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = (u.name || '').toLowerCase().includes(q);
-      const matchEmail = (u.email || '').toLowerCase().includes(q);
-      const matchTitle = (u.title || '').toLowerCase().includes(q);
-      const matchId = (u.id || '').toLowerCase().includes(q);
-      return matchName || matchEmail || matchTitle || matchId;
+      return matchUserSearch(u, searchQuery);
     }
 
     return true;

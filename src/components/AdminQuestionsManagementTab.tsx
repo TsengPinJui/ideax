@@ -825,8 +825,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>檢視</span>
                       </button>
 
-                      {/* 編輯提案/作品內容 (管理員直接編輯) */}
-                      {!isDelisted && (
+                      {/* 編輯提案/作品內容 (管理員直接編輯：僅限未轉移之官方/平台作品，一旦轉移至用戶名下，平台不再擁有編輯權限) */}
+                      {!isDelisted && !q.isTransferred && !q.isOwnershipTransferred && !q.transferredToUserId && (
                         <button
                           type="button"
                           onClick={() => setEditingProposalQuestion(q)}
@@ -838,8 +838,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         </button>
                       )}
 
-                      {/* 轉移所有權給用戶（若是平台刊登之作品或官方發布） */}
-                      {(isPlatformPublishedWork(q) || q.publishIdentity === 'platform' || q.isOfficial || q.authorId === 'platform') && !isDelisted && (
+                      {/* 轉移所有權給用戶（若是平台刊登之作品或官方發布，且尚未轉移） */}
+                      {(isPlatformPublishedWork(q) || q.publishIdentity === 'platform' || q.isOfficial || q.authorId === 'platform') && !q.isTransferred && !q.transferredToUserId && !isDelisted && (
                         <button
                           type="button"
                           onClick={() => setTransferringQuestion(q)}
@@ -849,6 +849,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           <UserCheck className="w-3.5 h-3.5" />
                           <span>轉移所有權</span>
                         </button>
+                      )}
+
+                      {(q.isTransferred || q.isOwnershipTransferred || q.transferredToUserId) && (
+                        <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1" title="此作品已轉移至會員名下，發布者為該會員，平台無編輯權限">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>已轉移用戶名下</span>
+                        </span>
                       )}
 
                       {/* 下架 / 恢復上架 / 永久刪除 */}

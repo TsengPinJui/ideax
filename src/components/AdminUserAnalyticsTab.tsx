@@ -45,7 +45,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
 
-  // AI 客群分析與建議 State (讀取上次分析結果與時間)
+  // AI 客群分析與建議 State (讀取上次分析結果與時間，未手動執行過時保持為 null)
   const [aiAnalytics, setAiAnalytics] = useState<AiCustomerAnalyticsData | null>(() => {
     try {
       const saved = localStorage.getItem('ideax_admin_ai_customer_analytics');
@@ -53,37 +53,15 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
-    // 非測試模式下（營運模式與無金流模式），未執行過 AI 分析時保持為空，不呈現模擬預算與數據
-    if (localStorage.getItem('ideax_demo_mode') !== 'true') {
-      return null;
-    }
-    return {
-      cohortSummary:
-        'IdeaX 目前用戶畫像呈現高收入、高決策力、高接案意願之雙向智庫生態。主要集中於 25~44 歲之資訊科技工程師、創辦人與主管，具備強勁之 NT$ 2,000~20,000 懸賞預算，且超過 85% 有意願將知識經驗轉化為有償副業。',
-      demographicInsights: [
-        '中高收入與高決策層佔比達 75%+：年薪超過 100 萬與企業 C-Level/主管級用戶為主要骨幹，痛點具高度商業價值。',
-        '高供給彈性與副業潛力：超過 8 成用戶願意為他人解答或發展為主力副業，種子專家儲備充沛。',
-        '預算集中於中高階懸賞：超過 65% 用戶願為單次高價值問題支付 NT$ 2,000 ~ 20,000 懸賞金。',
-      ],
-      growthOpportunities: [
-        '推出「權威/大師方案」專家訂閱制：提供抽成減免與 AI CRM 客戶自動媒合功能。',
-        '主打「高價值專案客製化落地」標籤：引導 C-Level 與創辦人發布 NT$ 5,000+ 的進階懸賞。',
-        '社群裂變與企業合夥人計畫：透過「前 500 名免費體驗」機制誘發口碑擴散。',
-      ],
-      recommendedActionPlans: [
-        '行動一：精準導流年薪 100 萬以上用戶試用「權威方案」，鎖定首批高價值解答專家。',
-        '行動二：在問答首頁設置「企業創新與 AI 科技」高價值懸賞專區，對接最大宗用戶需求。',
-        '行動三：建立智慧合約履約與 AI 仲裁保障，消除高金額懸賞的信任摩擦。',
-      ],
-      platformHealthScore: 94,
-    };
+    // 規範：不再自動分析，必須由管理員手動點擊產出，未手動執行過時保持為 null
+    return null;
   });
 
-  const [aiAnalyticsLastAnalyzedAt, setAiAnalyticsLastAnalyzedAt] = useState<string>(() => {
+  const [aiAnalyticsLastAnalyzedAt, setAiAnalyticsLastAnalyzedAt] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('ideax_admin_ai_customer_analytics_time') || new Date().toLocaleString('zh-TW');
+      return localStorage.getItem('ideax_admin_ai_customer_analytics_time') || null;
     } catch (e) {
-      return new Date().toLocaleString('zh-TW');
+      return null;
     }
   });
 
@@ -856,35 +834,67 @@ export const AdminUserAnalyticsTab: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setIsAiReportExpanded(!isAiReportExpanded)}
-              className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
-                isAiReportExpanded
-                  ? 'bg-amber-400 text-stone-950 border-stone-200 hover:bg-amber-300'
-                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>{isAiReportExpanded ? '收合 AI 報告' : '查看前次報告'}</span>
-              {isAiReportExpanded ? (
-                <ChevronUp className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-              )}
-            </button>
+            {aiAnalytics && (
+              <button
+                type="button"
+                onClick={() => setIsAiReportExpanded(!isAiReportExpanded)}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
+                  isAiReportExpanded
+                    ? 'bg-amber-400 text-stone-950 border-stone-200 hover:bg-amber-300'
+                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>{isAiReportExpanded ? '收合 AI 報告' : '查看前次分析報告'}</span>
+                {isAiReportExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-amber-300" />
+                )}
+              </button>
+            )}
 
             <button
               type="button"
               onClick={runAiCustomerAnalytics}
               disabled={isAnalyzingCustomer}
-              className="px-3.5 py-2 rounded-xl bg-stone-50 hover:bg-stone-50 active:scale-95 text-purple-200 font-bold text-xs flex items-center gap-1.5 transition-all border border-purple-400/30 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
             >
               <Sparkles className={`w-3.5 h-3.5 ${isAnalyzingCustomer ? 'animate-spin' : ''}`} />
-              <span>{isAnalyzingCustomer ? 'AI 分析運算中...' : '重新產出 AI 分析'}</span>
+              <span>
+                {isAnalyzingCustomer
+                  ? 'AI 分析運算中...'
+                  : aiAnalytics
+                  ? '手動重新產出 AI 分析'
+                  : '手動開始 AI 客群分析'}
+              </span>
             </button>
           </div>
         </div>
+
+        {/* 尚未手動分析時顯示之提示卡片（不再自動分析） */}
+        {!aiAnalytics && (
+          <div className="p-4 rounded-xl bg-purple-950/70 border border-purple-400/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>【手動分析模式】AI 客群結構分析不再自動分析，需手動執行</span>
+              </div>
+              <p className="text-purple-200/90 text-[11px] leading-relaxed">
+                依平台最新規範，為確保分析數據精確並節省運算資源，AI 客群結構分析與營運戰略建議<strong>不再自動於進入時或背景發起分析</strong>，需由管理員點擊手動執行產出。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={runAiCustomerAnalytics}
+              disabled={isAnalyzingCustomer}
+              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 shrink-0"
+            >
+              <Sparkles className={`w-4 h-4 ${isAnalyzingCustomer ? 'animate-spin' : ''}`} />
+              <span>{isAnalyzingCustomer ? 'AI 深度運算中...' : '立即手動開始 AI 客群分析'}</span>
+            </button>
+          </div>
+        )}
 
         {/* 展開時顯示詳細 AI 報告內容 */}
         {isAiReportExpanded && (

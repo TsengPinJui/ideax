@@ -5581,6 +5581,95 @@ app.post('/api/admin/account-notice', async (req: Request, res: Response) => {
   }
 });
 
+// 管理員：雙站管理員權限指派與撤銷特權端點（寫入 Firestore /users 與 /admins，並同步 Custom Claims）
+app.post('/api/admin/assign-role', async (req: Request, res: Response) => {
+  try {
+    const { targetUserId, sites, newRole, newMemberId, title } = req.body;
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'targetUserId is required' });
+    }
+
+    const sitesArray: string[] = Array.isArray(sites) ? sites : [];
+    const isGrantingAdmin = sitesArray.length > 0;
+    const finalRole = isGrantingAdmin ? 'admin' : (newRole || 'questioner');
+    const finalAccountType = isGrantingAdmin ? 'admin' : 'user';
+
+    // 1. 讀取目標用戶既有資料
+    const userDocRef = adminDb.collection('users').doc(targetUserId);
+    const userSnap = await userDocRef.get();
+    const currentData = userSnap.exists ? (userSnap.data() || {}) : {};
+
+    const targetAuthUid = currentData.authUid || (targetUserId.length > 20 ? targetUserId : undefined);
+
+    const updatedFields: any = {
+      role: finalRole,
+      accountType: finalAccountType,
+      adminSites: sitesArray,
+      updatedAt: new Date().toISOString(),
+    };
+    if (newMemberId) updatedFields.memberId = newMemberId;
+    if (title) updatedFields.title = title;
+
+    // 2. 更新 users/{targetUserId}
+    await userDocRef.set(updatedFields, { merge: true });
+
+    // 3. 管理 /admins 集合
+    const adminDocsToUpdate = Array.from(new Set([targetUserId, targetAuthUid].filter(Boolean) as string[]));
+    for (const adminId of adminDocsToUpdate) {
+      const adminDocRef = adminDb.collection('admins').doc(adminId);
+      if (isGrantingAdmin) {
+        await adminDocRef.set({
+          id: adminId,
+          authUid: targetAuthUid || adminId,
+          role: 'admin',
+          admin: true,
+          sites: sitesArray,
+          assignedAt: new Date().toISOString(),
+        }, { merge: true });
+      } else {
+        await adminDocRef.delete().catch(() => {});
+      }
+    }
+
+    // 4. 若目標用戶擁有 Firebase Auth UID，同步 Custom Claims (admin)
+    if (targetAuthUid) {
+      try {
+        const { adminAuth } = await import('./server/competitionService');
+        await adminAuth.setCustomUserClaims(targetAuthUid, {
+          admin: isGrantingAdmin,
+          sites: sitesArray,
+        });
+      } catch (e: any) {
+        console.warn('[Admin Role] Failed to set custom user claims:', e?.message);
+      }
+    }
+
+    // 5. 寫入審核稽核紀錄
+    try {
+      await adminDb.collection('audit_logs').add({
+        action: isGrantingAdmin ? 'GRANT_ADMIN_ROLE' : 'REVOKE_ADMIN_ROLE',
+        targetUserId,
+        targetAuthUid: targetAuthUid || null,
+        sites: sitesArray,
+        role: finalRole,
+        performedBy: (req as any).authUser?.email || 'admin',
+        createdAt: new Date().toISOString(),
+      });
+    } catch {}
+
+    return res.json({
+      success: true,
+      message: isGrantingAdmin ? '已成功賦予管理員身分' : '已成功撤銷管理員身分',
+      targetUserId,
+      updatedRole: finalRole,
+      adminSites: sitesArray,
+    });
+  } catch (err: any) {
+    console.error('[Admin Role Assignment Error]', err);
+    return res.status(500).json({ success: false, error: err?.message || '指派管理員失敗' });
+  }
+});
+
 // 管理員：替舊資料補上 Firebase 帳號對照（apply=false 只試算不寫入）
 app.post('/api/admin/backfill-auth-uids', async (req: Request, res: Response) => {
   try {

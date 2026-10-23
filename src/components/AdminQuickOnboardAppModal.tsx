@@ -21,6 +21,7 @@ import {
   Send,
   ArrowRight,
   Layers,
+  Upload,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Question } from '../types';
@@ -64,13 +65,6 @@ interface ScrapedData {
   };
 }
 
-const QUICK_EXAMPLES = [
-  { label: '2048 益智遊戲', url: 'https://play2048.co', category: '小遊戲' },
-  { label: 'Excalidraw 線上手繪白板', url: 'https://excalidraw.com', category: '網站程式' },
-  { label: 'v0 by Vercel AI', url: 'https://v0.dev', category: 'AI工具' },
-  { label: 'Hugging Face 開源模型庫', url: 'https://huggingface.co', category: 'AI工具' },
-];
-
 export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps> = ({
   isOpen,
   onClose,
@@ -88,8 +82,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   const [reviewedData, setReviewedData] = useState<ScrapedData | null>(null);
   const [newTagInput, setNewTagInput] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  const [activeImageTab, setActiveImageTab] = useState<'screenshot' | 'og' | 'custom'>('screenshot');
-  const [customImageUrl, setCustomImageUrl] = useState('');
+  const [activeImageTab, setActiveImageTab] = useState<'screenshot' | 'og' | 'upload'>('screenshot');
 
   if (!isOpen) return null;
 
@@ -102,12 +95,25 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     setLoadingStep(1);
   };
 
-  const handleSelectExample = (url: string, cat?: string) => {
-    setInputUrl(url);
-    if (cat && CATEGORY_OPTIONS.some((c) => c.id === cat)) {
-      setSelectedCategory(cat as SoftwareCategory);
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('請選擇有效的圖片檔案 (JPG、PNG、WebP 等)');
+      return;
     }
-    setErrorMessage('');
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const dataUrl = uploadEvent.target?.result as string;
+      if (dataUrl && reviewedData) {
+        setReviewedData({
+          ...reviewedData,
+          coverImage: dataUrl,
+        });
+        setActiveImageTab('upload');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleStartScrape = async () => {
@@ -144,7 +150,6 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       const data: ScrapedData = resData.data;
       setReviewedData(data);
       setActiveImageTab('screenshot');
-      setCustomImageUrl(data.coverImage);
     } catch (err: any) {
       console.error('[Admin Quick Onboard Scrape Error]', err);
       setErrorMessage(err?.message || '讀取網站內容失敗，請確認網址是否可公開存取');
@@ -433,26 +438,6 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                 </div>
               </div>
 
-              {/* 快速示範與常用網站 */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-stone-500 flex items-center gap-1">
-                  <span>💡 快速測試範例（點擊直接帶入測試）：</span>
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_EXAMPLES.map((ex) => (
-                    <button
-                      key={ex.label}
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => handleSelectExample(ex.url, ex.category)}
-                      className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold border border-stone-200 transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>{ex.label}</span>
-                      <span className="text-[10px] text-stone-400">({ex.category})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Loading 動態進度狀態 */}
               {isLoading && (
@@ -654,41 +639,32 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                       <button
                         type="button"
                         onClick={() => {
-                          setActiveImageTab('custom');
+                          setActiveImageTab('upload');
                         }}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer border ${
-                          activeImageTab === 'custom'
+                          activeImageTab === 'upload'
                             ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
                             : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
                         }`}
                       >
-                        <span>🔗 自訂網址</span>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>📤 上傳圖片</span>
                       </button>
                     </div>
 
-                    {activeImageTab === 'custom' && (
-                      <div className="pt-1 flex gap-1.5">
-                        <input
-                          type="url"
-                          value={customImageUrl}
-                          onChange={(e) => setCustomImageUrl(e.target.value)}
-                          placeholder="輸入圖片網址 (https://...)"
-                          className="w-full px-2.5 py-1 rounded-lg border border-stone-300 text-xs outline-hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (customImageUrl.trim()) {
-                              setReviewedData({
-                                ...reviewedData,
-                                coverImage: customImageUrl.trim(),
-                              });
-                            }
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-stone-800 text-white text-xs font-bold shrink-0 cursor-pointer"
-                        >
-                          套用
-                        </button>
+                    {activeImageTab === 'upload' && (
+                      <div className="pt-2">
+                        <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-purple-300 hover:border-purple-500 rounded-xl bg-purple-50/50 hover:bg-purple-50 transition-colors cursor-pointer group">
+                          <Upload className="w-5 h-5 text-purple-600 group-hover:scale-110 transition-transform mb-1" />
+                          <span className="text-xs font-bold text-stone-800">點擊選擇圖片檔案上傳</span>
+                          <span className="text-[10px] text-stone-500 mt-0.5">支援 JPG、PNG、WebP 等圖檔</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverImageUpload}
+                            className="hidden"
+                          />
+                        </label>
                       </div>
                     )}
                   </div>

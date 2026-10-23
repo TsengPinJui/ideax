@@ -257,7 +257,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const effectiveSolutionsCount = solutionsCount ?? question.answersCount ?? 0;
   const hasSolutions = effectiveSolutionsCount > 0;
   const allowCardImage = question.showCardImage !== false;
-  const effectiveDisplayImage = question.cardDisplayImage || question.coverImage || question.vibeCodingData?.coverImageUrl;
+  // 封面優先採用作者上傳/設定之 coverImage，避免被自動爬取的舊截圖蓋過
+  const effectiveDisplayImage = question.coverImage || question.cardDisplayImage || question.vibeCodingData?.coverImageUrl;
+  const effectiveGalleryImages = (question.galleryImages && question.galleryImages.length > 0)
+    ? question.galleryImages
+    : (question.screenshots && question.screenshots.length > 0)
+    ? question.screenshots
+    : (question.vibeCodingData?.screenshots && question.vibeCodingData.screenshots.length > 0)
+    ? question.vibeCodingData.screenshots
+    : (question.cardDisplayImage ? [question.cardDisplayImage] : []);
 
   // =========================================================================
   // 3. 方格式 (Grid Mode - 雙欄緊湊卡片，適合手機與快速瀏覽)
@@ -302,7 +310,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             coverMode={effectiveCoverMode}
             cardHoverMode={effectiveCardHoverMode}
             coverImage={effectiveDisplayImage}
-            galleryImages={question.cardDisplayImage ? [question.cardDisplayImage] : (question.galleryImages || question.screenshots || question.vibeCodingData?.screenshots)}
+            galleryImages={effectiveGalleryImages}
             fallbackImage={gridFallbackImg}
             onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
             title={question.title}
@@ -862,7 +870,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             coverMode={effectiveCoverMode}
             cardHoverMode={effectiveCardHoverMode}
             coverImage={effectiveDisplayImage}
-            galleryImages={question.cardDisplayImage ? [question.cardDisplayImage] : (question.galleryImages || question.screenshots || question.vibeCodingData?.screenshots)}
+            galleryImages={effectiveGalleryImages}
             fallbackImage={fallbackCoverImg}
             onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
             title={question.title}

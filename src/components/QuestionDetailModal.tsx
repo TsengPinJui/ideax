@@ -414,10 +414,15 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
   const isAuthorUser = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const isTransferredWork = Boolean(
+    liveQuestion?.isTransferred ||
+    liveQuestion?.isOwnershipTransferred ||
+    liveQuestion?.transferredToUserId
+  );
   const isProposalPublisher = Boolean(
     currentUser?.id &&
     currentUser.id !== 'user-guest' &&
-    (currentUser.role === 'admin' || (liveQuestion?.authorId && currentUser.id === liveQuestion.authorId))
+    ((liveQuestion?.authorId && currentUser.id === liveQuestion.authorId) || (!isTransferredWork && currentUser.role === 'admin'))
   );
   const canUpdateProposal = (
     (liveQuestion?.postType === 'innovation_proposal' ||
@@ -927,6 +932,20 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <span className="font-black text-white">招募中</span>
               </span>
             ) : null}
+            {isAdmin && question.status !== 'delisted' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUnifiedActionTab('violation');
+                  setIsUnifiedActionModalOpen(true);
+                }}
+                className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="管理員：違規下架處置"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                <span>違規下架</span>
+              </button>
+            )}
           </div>
 
           {/* 違規下架官方處置說明 */}
@@ -3159,6 +3178,20 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-nowrap overflow-x-auto">
+          {isAdmin && question.status !== 'delisted' && (
+            <button
+              type="button"
+              onClick={() => {
+                setUnifiedActionTab('violation');
+                setIsUnifiedActionModalOpen(true);
+              }}
+              className="px-3 sm:px-3.5 py-2 rounded-xl border-2 border-rose-600 bg-white text-rose-700 hover:bg-rose-600 hover:text-white active:bg-rose-700 active:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap shadow-xs"
+              title="管理員違規處置：將此提問／作品／提案強制下架"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>違規下架</span>
+            </button>
+          )}
           {canUpdateProposal && (
             <button
               type="button"

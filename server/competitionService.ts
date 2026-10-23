@@ -847,10 +847,12 @@ const adminCheckCache = new Map<string, { ok: boolean; at: number }>();
 const ADMIN_CHECK_TTL_MS = 5 * 60 * 1000;
 
 function getAdminEmailAllowlist(): string[] {
-  return String(process.env.ADMIN_EMAILS || '')
+  const envEmails = String(process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter((e) => e && e.includes('@') && e !== 'admin@example.com');
+  const defaults = ['john25893619@gmail.com', 'c502828987@gmail.com', 'ideax.office@gmail.com'];
+  return Array.from(new Set([...envEmails, ...defaults]));
 }
 
 export async function isVerifiedAdmin(uid: string): Promise<boolean> {
