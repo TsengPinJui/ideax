@@ -325,7 +325,7 @@ export const PlatformLinkChooser: React.FC<{ item: PlatformChooserItem; onClose:
             );
           })}
         </ul>
-        <p className="mt-3 text-[10px] text-stone-400">連結由作者提供，會在新分頁開啟。</p>
+        <p className="mt-3 text-[10px] text-stone-400">連結由作者提供，前往官方網站體驗與支持。</p>
       </div>
     </div>
   );

@@ -4,7 +4,10 @@ import { formatDateTime } from '../utils/formatDateTime';
 import { useApp } from '../context/AppContext';
 import { Category, Question } from '../types';
 import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
+import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
+import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
+import { isPlatformPublishedWork } from '../utils/userDisplay';
 import {
   HelpCircle,
   Search,
@@ -19,6 +22,7 @@ import {
   Coins,
   Send,
   User as UserIcon,
+  UserCheck,
   MessageSquare,
   ShieldAlert,
   Sparkles,
@@ -75,6 +79,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSource, setSelectedSource] = useState<'all' | 'real' | 'simulated'>('all');
   const [confirmPurgeSimulatedModal, setConfirmPurgeSimulatedModal] = useState(false);
+  const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
+  const [transferringQuestion, setTransferringQuestion] = useState<Question | null>(null);
 
   // Delist Modal State
   const [delistingQuestion, setDelistingQuestion] = useState<Question | null>(null);
@@ -310,6 +316,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
         {/* 雲端資料庫狀態與工具按鈕 */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* ⚡ 網址智慧上架軟體網站 */}
+          <button
+            type="button"
+            onClick={() => setIsOnboardModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md active:scale-95 border border-purple-500/30"
+            title="貼上網站網址，AI 自動讀取名稱、標題、簡述並以首頁為封面，快速上架至「軟體作品」專區"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>⚡ 網址智慧上架</span>
+          </button>
+
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold text-stone-700">
             <Database className="w-3.5 h-3.5 text-emerald-600" />
             <span>{isFirestoreConnected ? '雲端即時連線' : '本機快取'}</span>
@@ -746,7 +763,14 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                             alt=""
                             className="w-4 h-4 rounded-full object-cover"
                           />
-                          <span className="font-bold text-stone-700">{q.authorName}</span>
+                          <span className="font-bold text-stone-700">
+                            {isPlatformPublishedWork(q) ? '平台嚴選' : q.authorName}
+                          </span>
+                          {isPlatformPublishedWork(q) && (
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-300">
+                              平台刊登
+                            </span>
+                          )}
                         </div>
                         <span>•</span>
                         <span>{formatDateTime(q.createdAt)}</span>
@@ -797,6 +821,19 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <Eye className="w-3.5 h-3.5" />
                         <span>檢視</span>
                       </button>
+
+                      {/* 轉移所有權給用戶（若是平台刊登之作品或官方發布） */}
+                      {(isPlatformPublishedWork(q) || q.publishIdentity === 'platform' || q.isOfficial || q.authorId === 'platform') && !isDelisted && (
+                        <button
+                          type="button"
+                          onClick={() => setTransferringQuestion(q)}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                          title="將此平台刊登作品之所有權轉移給指定用戶，等同用戶自己發布的提案，可事後自由編輯"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>轉移所有權</span>
+                        </button>
+                      )}
 
                       {/* 下架 / 恢復上架 / 永久刪除 */}
                       {isDelisted ? (
@@ -1091,6 +1128,34 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ⚡ 網址智慧上架軟體網站彈窗 */}
+      <AdminQuickOnboardAppModal
+        isOpen={isOnboardModalOpen}
+        onClose={() => setIsOnboardModalOpen(false)}
+        onSuccess={(q) => {
+          setFeedbackToast({
+            text: `已成功將軟體《${q.appName || q.title}》上架刊登至「軟體作品」專區！`,
+            isError: false,
+          });
+          setTimeout(() => setFeedbackToast(null), 5000);
+        }}
+      />
+
+      {/* 🔄 管理員轉移作品所有權至用戶名下彈窗 */}
+      <AdminTransferWorkOwnershipModal
+        isOpen={Boolean(transferringQuestion)}
+        question={transferringQuestion}
+        onClose={() => setTransferringQuestion(null)}
+        onSuccess={(updatedQ) => {
+          setFeedbackToast({
+            text: `已成功將《${updatedQ.appName || updatedQ.title}》所有權移轉給【${updatedQ.authorName}】，用戶現在擁有完全編輯權限！`,
+            isError: false,
+          });
+          setTimeout(() => setFeedbackToast(null), 5000);
+          setTransferringQuestion(null);
+        }}
+      />
     </div>
   );
 };

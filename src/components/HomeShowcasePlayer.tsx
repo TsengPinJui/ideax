@@ -21,7 +21,7 @@ const MODE_META: Record<HomeShowcaseMode, { label: string; icon: React.ReactNode
 };
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創點子提案',
-  vibecoding_app: 'VibeCoding 作品',
+  vibecoding_app: '軟體網站作品',
   pain_point: '痛點',
   seek_solution: '提問',
   chat_discussion: '討論',

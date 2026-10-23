@@ -1,9 +1,12 @@
-import { User } from '../types';
+import { User, Question } from '../types';
 import { repairUserForDisplay } from './dataRepair';
 import { resolveIdCategory, getFormattedPlatformId, UserIdentificationLike } from '../services/userIdService';
 import { VIRTUAL_PERSONAS } from '../data/virtualProposalsSeed';
 
 export const DEACTIVATED_USER_NAME = '此帳號已註銷';
+export const PLATFORM_CURATED_NAME = '平台嚴選';
+export const PLATFORM_CURATED_AVATAR =
+  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80';
 
 // 灰色中性匿名頭像
 export const DEACTIVATED_USER_AVATAR =
@@ -642,6 +645,50 @@ export function deduplicateUsersList(
 }
 
 /**
+ * 判斷作品是否為「平台刊登的作品」
+ * 包含：由管理員/官方上架至軟體作品/網站專區、標示 isOfficial、publishIdentity === 'platform'、authorId 為 platform/admin，或作者標記為平台官方/平台嚴選
+ */
+export function isPlatformPublishedWork(q?: Partial<Question> | null): boolean {
+  if (!q) return false;
+  const isWork =
+    q.postType === 'vibecoding_app' ||
+    q.specialZone === 'vibecoding' ||
+    Boolean(q.appName) ||
+    Boolean(q.tags && q.tags.some((t) => t === '軟體作品' || t === '軟體網站' || t === '網站程式'));
+
+  if (!isWork) return false;
+
+  return Boolean(
+    q.publishIdentity === 'platform' ||
+    q.isOfficial ||
+    q.authorId === 'platform' ||
+    q.authorId === 'admin' ||
+    q.authorId === 'user-admin' ||
+    q.authorName === '平台嚴選' ||
+    q.authorName === '平台官方' ||
+    q.authorName === '💡IdeaX 官方帳號💡' ||
+    q.authorName === '管理員' ||
+    q.authorTitle === '官方審核精選' ||
+    q.authorTitle === '平台嚴選'
+  );
+}
+
+/**
+ * 取得作品或問題的作者顯示名稱：
+ * 若是平台刊登的作品，在作者（用戶）的位置寫「平台嚴選」
+ */
+export function resolveQuestionAuthorDisplayName(
+  question?: Partial<Question> | null,
+  availableUsers?: User[]
+): string {
+  if (!question) return '創作者';
+  if (isPlatformPublishedWork(question)) {
+    return PLATFORM_CURATED_NAME;
+  }
+  return resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
+}
+
+/**
  * 取得顯示的使用者名稱（若已註銷則顯示「此帳號已註銷」）
  * 支援全站即時連動：無論在導覽列、問題卡片、解答列表、聊天室、交易紀錄或帳號切換器，皆優先顯示使用者最新修改之名稱
  */
@@ -650,6 +697,9 @@ export function resolveUserDisplayName(
   fallbackName?: string,
   usersList?: User[]
 ): string {
+  if (fallbackName === PLATFORM_CURATED_NAME || userId === 'platform') {
+    return PLATFORM_CURATED_NAME;
+  }
   if (fallbackName === DEACTIVATED_USER_NAME || fallbackName === '此帳號已註銷') {
     return DEACTIVATED_USER_NAME;
   }
@@ -753,6 +803,14 @@ export function getUserNameColorClass(
 
   const effectiveId = userId || targetUser?.id || '';
   const idCategory = resolveIdCategory(targetUser || { id: effectiveId });
+
+  // 0. 平台嚴選 -> 琥珀金 (text-amber-700 font-bold)
+  if (
+    targetUser?.name === '平台嚴選' ||
+    (targetUser?.name && targetUser.name.includes('平台嚴選'))
+  ) {
+    return 'text-amber-700 font-bold';
+  }
 
   // 1. 管理員 -> 紫色 (text-purple-700 font-bold)
   if (
@@ -861,6 +919,9 @@ export function resolveUserAvatar(
   fallbackAvatar?: string,
   usersList?: User[]
 ): string {
+  if (userId === 'platform' || fallbackAvatar === PLATFORM_CURATED_AVATAR) {
+    return PLATFORM_CURATED_AVATAR;
+  }
   if (fallbackAvatar === DEACTIVATED_USER_AVATAR) {
     return DEACTIVATED_USER_AVATAR;
   }

@@ -1270,9 +1270,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setSuccessMsg(
         signupBonusGranted
-          ? '註冊完成，已入帳 200 平台點並自動登入！平台點與創星幣分開計算。'
+          ? '註冊完成，已入帳 100 平台點並自動登入！首次發文即再加贈 200 點！'
           : signupBonusError
-          ? '註冊完成並已自動登入；200 平台點入帳確認中，請稍後查看餘額。平台點與創星幣分開計算。'
+          ? '註冊完成並已自動登入；100 平台點入帳確認中，請稍後查看餘額。'
           : '註冊完成並已自動登入！'
       );
 
@@ -2002,8 +2002,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-left shadow-sm">
               <Gift className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div>
-                <p className="text-xs font-black text-amber-950">新用戶註冊即贈 200 平台點</p>
-                <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900">平台點與創星幣分開計算；一般用戶創星幣新手福利為 100,000 創星幣。</p>
+                <p className="text-xs font-black text-amber-950">新用戶註冊即贈 100 平台點，首次發文再送 200 點！</p>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900">平台點可用於懸賞提問、諮詢或支持優質創作者；與創星幣分開計算。</p>
               </div>
             </div>
             <div className="flex items-center justify-between pb-1 border-b border-stone-100">

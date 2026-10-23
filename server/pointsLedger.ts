@@ -73,7 +73,7 @@ export async function applyPointsOp(auth: { uid: string; email?: string; emailVe
   return applyPointsOpWith({ db, FieldValue, isAdmin }, auth, input);
 }
 
-/** 新帳號註冊獎勵：只增加平台點 balance，與創星幣帳本分開。 */
+/** 新帳號註冊獎勵：只增加平台點 balance，與創星幣帳本分開。註冊贈送 100 點。 */
 export async function grantSignupBonus(auth: { uid: string; email?: string; emailVerified?: boolean }) {
   const { db } = await getAdminDb();
   const userRef = await findUserDocByAuth(auth, { db });
@@ -93,15 +93,45 @@ export async function grantSignupBonus(auth: { uid: string; email?: string; emai
     if (!freshUser.exists) throw new PointsError('找不到您的會員資料', 404);
     const balance = Number(freshUser.get('balance')) || 0;
     if (priorBonus.exists) return { userId: userRef.id, balance, granted: false };
-    const next = balance + 200;
+    const next = balance + 100;
     tx.update(userRef, { balance: next });
     tx.create(ledgerRef, {
       userId: userRef.id,
       op: 'earn',
       source: 'signup_bonus',
+      delta: 100,
+      balanceAfter: next,
+      note: '新註冊平台點獎勵 100 點',
+      createdAt: new Date().toISOString(),
+    });
+    return { userId: userRef.id, balance: next, granted: true };
+  });
+}
+
+/** 首次發文獎勵：會員完成首篇發文（問題/痛點/提案等）再贈送 200 點，防重複發放。 */
+export async function grantFirstPostBonus(auth: { uid: string; email?: string; emailVerified?: boolean }) {
+  const { db } = await getAdminDb();
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError('找不到您的會員資料，請稍後重新整理', 404);
+
+  const bonusId = createHash('sha256').update(`first-post-bonus:${userRef.id}`).digest('hex');
+  const ledgerRef = db.collection('points_ledger').doc(`first_post_bonus_${bonusId}`);
+  return db.runTransaction(async (tx: any) => {
+    const [freshUser, priorBonus] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)]);
+    if (!freshUser.exists) throw new PointsError('找不到您的會員資料', 404);
+    const balance = Number(freshUser.get('balance')) || 0;
+    if (priorBonus.exists || freshUser.get('hasReceivedFirstPostBonus')) {
+      return { userId: userRef.id, balance, granted: false };
+    }
+    const next = balance + 200;
+    tx.update(userRef, { balance: next, hasReceivedFirstPostBonus: true });
+    tx.create(ledgerRef, {
+      userId: userRef.id,
+      op: 'earn',
+      source: 'first_post_bonus',
       delta: 200,
       balanceAfter: next,
-      note: '新註冊平台點獎勵',
+      note: '首次發文獎勵贈送 200 平台點',
       createdAt: new Date().toISOString(),
     });
     return { userId: userRef.id, balance: next, granted: true };

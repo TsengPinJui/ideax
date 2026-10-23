@@ -2,7 +2,14 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Question, MarketViewMode, getInnovationProgressStageMeta } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
-import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
+import {
+  resolveUserDisplayName,
+  resolveUserAvatar,
+  getUserNameColorClass,
+  isPlatformPublishedWork,
+  PLATFORM_CURATED_NAME,
+  PLATFORM_CURATED_AVATAR,
+} from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Star, Heart, Share2, Check, Hand, ThumbsUp, Coins, Flame } from 'lucide-react';
 import { getQuestionShareUrl } from '../services/seoService';
@@ -174,7 +181,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     question.postType === 'vibecoding_app' ||
     question.specialZone === 'vibecoding';
   const isInnovationProposal = question.postType === 'innovation_proposal';
-  const displayCategoryLabel = isVibeCoding ? 'VibeCoding' : question.category;
+  const displayCategoryLabel = isVibeCoding ? '軟體網站' : question.category;
   const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(question);
   const referencedPainPointObj = findReferencedPainPoint(question, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(question, questions) : [];
@@ -183,13 +190,20 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     [answers, question.id]
   );
 
-  const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
-  const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
-  const authorColorClass = getUserNameColorClass(question.authorId, availableUsers, {
-    isOfficial: question.isOfficial,
-    name: question.authorName,
-    title: question.authorTitle,
-  });
+  const isPlatformWork = isPlatformPublishedWork(question);
+  const authorDisplayName = isPlatformWork
+    ? PLATFORM_CURATED_NAME
+    : resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
+  const authorDisplayAvatar = isPlatformWork
+    ? PLATFORM_CURATED_AVATAR
+    : resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
+  const authorColorClass = isPlatformWork
+    ? 'text-amber-800 font-bold'
+    : getUserNameColorClass(question.authorId, availableUsers, {
+        isOfficial: question.isOfficial,
+        name: question.authorName,
+        title: question.authorTitle,
+      });
 
   const handleCategoryClick = (e: React.MouseEvent) => {
     if (onSelectCategory) {

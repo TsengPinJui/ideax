@@ -678,6 +678,9 @@ export interface User {
   subscriptionExpiresAt?: string; // 訂閱到期日
   nextSubscriptionTier?: SubscriptionTier; // 下個期間生效之方案（轉換為一般會員視為取消資格）
   nextSubscriptionCycle?: 'monthly' | 'semi_annual' | 'annual'; // 下個期間計費週期
+
+  // 點數獎勵紀錄
+  hasReceivedFirstPostBonus?: boolean; // 是否已領取首次發文加碼 200 點獎勵
   nextSubscriptionEffectiveAt?: string; // 下個期間生效日期 (到期日即為下期起算日)
   totalWithdrawn?: number; // 累積撥款入帳金額 NT$
   withheldPoints?: number; // 託管中懸賞金額 NT$

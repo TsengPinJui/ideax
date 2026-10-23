@@ -526,7 +526,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-purple-700 transition-colors flex items-center gap-1.5 flex-wrap">
-                    <span>VibeCoding 作品牆</span>
+                    <span>軟體網站作品牆</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shrink-0">NEW</span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">

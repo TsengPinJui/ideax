@@ -1,4 +1,5 @@
 import { VibeCodingExhibitionView } from './components/VibeCodingExhibitionView';
+import { FullscreenAppEmbedView } from './components/FullscreenAppEmbedView';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
@@ -139,6 +140,7 @@ function MainContent() {
     likedQuestionIds,
     secondedQuestionIds,
     sameQuestionIds,
+    allowGuestPosting,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
@@ -517,6 +519,29 @@ function MainContent() {
       }
     } catch {}
     scrollToIdeasSearch();
+  };
+
+  // 軟體作品試玩體驗視窗（點擊作品卡片直接進入試玩體驗）
+  const [fullscreenEmbedApp, setFullscreenEmbedApp] = useState<Question | null>(null);
+
+  const handleOpenAppEmbed = (app: Question) => {
+    recordUserViewedQuestion(currentUser.id, app);
+    setUserProfileVersion((v) => v + 1);
+    setFullscreenEmbedApp(app);
+  };
+
+  const handleViewAppDescription = (app: Question) => {
+    setFullscreenEmbedApp(null);
+    recordUserViewedQuestion(currentUser.id, app);
+    setUserProfileVersion((v) => v + 1);
+    setSelectedQuestion(app);
+    setActiveTab('question_detail');
+    try {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', `/?question=${encodeURIComponent(app.id)}`);
+      }
+    } catch {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // 首次使用引導教學狀態（手動由頁尾、平台介紹或導覽點擊啟動）
@@ -1161,11 +1186,18 @@ function MainContent() {
 
   // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
   useEffect(() => {
-    if (currentUser.id === 'user-guest' && (activeTab === 'create_question' || activeTab === 'user_dashboard' || activeTab === 'my_projects')) {
+    if (
+      currentUser.id === 'user-guest' &&
+      (activeTab === 'user_dashboard' || activeTab === 'my_projects' || (!allowGuestPosting && activeTab === 'create_question'))
+    ) {
       setActiveTab('explore');
-      promptLogin('訪客模式請先登入帳號以繼續操作');
+      promptLogin(
+        !allowGuestPosting && activeTab === 'create_question'
+          ? '目前平台設定為「登入才能發文」，請先登入或註冊會員後再進行發布'
+          : '訪客模式請先登入帳號以繼續操作'
+      );
     }
-  }, [currentUser.id, activeTab, promptLogin]);
+  }, [currentUser.id, activeTab, allowGuestPosting, promptLogin]);
 
   const prevSelectedQuestionIdRef = React.useRef<string | null>(null);
 
@@ -1941,8 +1973,15 @@ function MainContent() {
 
   const handleOpenCreateWithType = (type: PostType = 'seek_solution', identity?: 'admin' | 'platform') => {
     if (currentUser.id === 'user-guest') {
-      promptLogin('訪客模式請先登入帳號以發布問題');
-      return;
+      if (!allowGuestPosting) {
+        promptLogin('目前平台設定為「登入才能發文」，請先登入或註冊會員後再進行發布');
+        return;
+      }
+      // 當開啟訪客發文時，無點數/無金流活動（痛點、作品、自由交流討論）允許發布；若為懸賞提問才需要阻擋
+      if (type === 'seek_solution') {
+        promptLogin('懸賞提問涉及點數交易，請先登入或註冊會員以進行發布');
+        return;
+      }
     }
     if (currentUser.isBlocked) {
       alert(`⚠️ 您的帳號已被管理員執行停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發布新問題或痛點！如有疑問請聯繫客服。`);
@@ -2136,8 +2175,7 @@ function MainContent() {
                 {specialZone === 'vibecoding' && (
                   <VibeCodingExhibitionView
                     onSelectApp={(app) => {
-                      setSelectedQuestion(app);
-                      setActiveTab('question_detail');
+                      handleOpenAppEmbed(app);
                     }}
                     onOpenCreateApp={() => handleOpenCreateWithType('vibecoding_app')}
                     onCloseZone={() => {
@@ -2879,10 +2917,14 @@ function MainContent() {
                                 }}
                                 onSearchTag={handleSearchTag}
                                 onClick={() => {
-                                  recordUserViewedQuestion(currentUser.id, q);
-                                  setUserProfileVersion((v) => v + 1);
-                                  setSelectedQuestion(q);
-                                  setActiveTab('question_detail');
+                                  if (q.postType === 'vibecoding_app' || (q as any).isVibeCodingApp) {
+                                    handleOpenAppEmbed(q);
+                                  } else {
+                                    recordUserViewedQuestion(currentUser.id, q);
+                                    setUserProfileVersion((v) => v + 1);
+                                    setSelectedQuestion(q);
+                                    setActiveTab('question_detail');
+                                  }
                                 }}
                               />
                             );
@@ -3605,6 +3647,15 @@ function MainContent() {
       {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站不顯示） */}
       <MascotHost hidden={activeTab === 'star_season'} />
 
+
+      {/* 軟體作品試玩體驗畫面（含右下角查看作品說明按鍵） */}
+      {fullscreenEmbedApp && (
+        <FullscreenAppEmbedView
+          question={fullscreenEmbedApp}
+          onClose={() => setFullscreenEmbedApp(null)}
+          onViewDescription={handleViewAppDescription}
+        />
+      )}
 
       {/* 專家評分回饋彈窗 */}
       <RatingModal />

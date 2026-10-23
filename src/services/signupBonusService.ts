@@ -5,9 +5,9 @@ export interface SignupBonusResult {
   granted: boolean;
 }
 
-/** 新註冊平台點獎勵由伺服器按 Firebase 身分與一次性帳本核發。 */
+/** 新註冊平台點獎勵由伺服器按 Firebase 身分與一次性帳本核發（100 點）。 */
 export async function claimSignupBonus(): Promise<SignupBonusResult> {
-  let lastError = '200 平台點尚未入帳，請稍後重新登入再試';
+  let lastError = '100 平台點尚未入帳，請稍後重新登入再試';
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       const response = await fetch('/api/auth/claim-signup-bonus', {
@@ -22,9 +22,38 @@ export async function claimSignupBonus(): Promise<SignupBonusResult> {
       lastError = data.error || `註冊獎勵入帳失敗（${response.status}）`;
       if (response.status !== 404 && response.status < 500) break;
     } catch {
-      lastError = '目前無法連線確認 200 平台點入帳，請稍後再試';
+      lastError = '目前無法連線確認 100 平台點入帳，請稍後再試';
     }
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+  throw new Error(lastError);
+}
+
+export interface FirstPostBonusResult {
+  balance: number;
+  granted: boolean;
+}
+
+/** 首次發文平台點獎勵（200 點）由伺服器一次性核發。 */
+export async function claimFirstPostBonus(): Promise<FirstPostBonusResult> {
+  let lastError = '首次發文 200 平台點尚未入帳，請稍後查看';
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch('/api/points/first-post-bonus', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) {
+        return { balance: Number(data.balance) || 0, granted: Boolean(data.granted) };
+      }
+      lastError = data.error || `首次發文獎勵入帳失敗（${response.status}）`;
+      if (response.status !== 404 && response.status < 500) break;
+    } catch {
+      lastError = '目前無法連線確認首次發文 200 平台點入帳';
+    }
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
   }
   throw new Error(lastError);
 }

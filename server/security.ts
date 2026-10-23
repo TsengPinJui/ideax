@@ -69,7 +69,7 @@ export async function requireAdminMiddleware(req: Request, res: Response, next: 
  * 需要登入的 AI 端點：要有有效的 Firebase 登入憑證（訪客不能直接呼叫，避免被拿去免費使用付費 AI 功能或灌爆用量）。
  * 客服對話與常見問題（訪客也要能問）不在此限。
  */
-const PUBLIC_AI_PATHS = new Set(['/api/ai/customer-support-chat', '/api/ai/faq-agent-consult']);
+const PUBLIC_AI_PATHS = new Set(['/api/ai/customer-support-chat', '/api/ai/faq-agent-consult', '/api/ai/scrape-website', '/api/scrape-website']);
 export async function requireSignedInForAi(req: Request, res: Response, next: NextFunction) {
   const path = (req.originalUrl || req.url || '').split('?')[0];
   if (PUBLIC_AI_PATHS.has(path)) return next();

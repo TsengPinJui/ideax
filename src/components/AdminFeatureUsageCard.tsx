@@ -18,7 +18,7 @@ type UsageResp = { labels: Record<string, string>; days: Array<{ day: string; co
 const POST_TYPE_LABEL: Record<string, string> = {
   pain_point: '痛點',
   innovation_proposal: '創點子提案',
-  vibecoding_app: 'VibeCoding 作品',
+  vibecoding_app: '軟體網站作品',
   seek_solution: '提問（找解答）',
   chat_discussion: '討論',
 };

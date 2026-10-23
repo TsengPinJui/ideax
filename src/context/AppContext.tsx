@@ -37,7 +37,14 @@ import {
   isSiteBAdmin,
   getAdminSiteLabel,
 } from '../utils/adminPermissions';
-import { restoreCanonicalUserIdentity, USER_ALIAS_MAP, deduplicateUsersList, isGuestUser } from '../utils/userDisplay';
+import {
+  restoreCanonicalUserIdentity,
+  USER_ALIAS_MAP,
+  deduplicateUsersList,
+  isGuestUser,
+  resolveUserDisplayName,
+  resolveUserAvatar,
+} from '../utils/userDisplay';
 import {
   MOCK_QUESTIONS,
   MOCK_SOLVERS,
@@ -138,6 +145,7 @@ function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
   return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, hideHeroTitles: raw?.hideHeroTitles === true, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
 }
 import { getStoredTickets } from '../services/customerSupportService';
+import { claimFirstPostBonus } from '../services/signupBonusService';
 import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
@@ -321,6 +329,10 @@ interface AppContextType {
       changelogNote?: string;
     }
   ) => Promise<{ success: boolean; ok?: boolean; message: string; reason?: string; updatedQuestion?: Question }>;
+  transferQuestionOwnership: (
+    questionId: string,
+    newOwnerUser: User
+  ) => Promise<{ success: boolean; message: string; updatedQuestion?: Question }>;
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -550,6 +562,11 @@ interface AppContextType {
   isRaceMode: boolean;
   setRaceMode: (enabled: boolean) => void;
   toggleRaceMode: () => void;
+
+  // Allow Guest Posting (訪客發文開關：false = 登入才能發文，true = 訪客也能發文，訪客可從事無點數或金流活動)
+  allowGuestPosting: boolean;
+  setAllowGuestPosting: (allowed: boolean) => void;
+  toggleAllowGuestPosting: () => void;
 
   // Device Logged-In Accounts Management (本裝置曾經登錄的帳號)
   deviceAccounts: DeviceAccount[];
@@ -1005,6 +1022,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleRaceMode = () => {
     setRaceMode(!isRaceMode);
   };
+
+  // Allow Guest Posting (訪客發文開關：false = 登入才能發文，true = 訪客也能發文，訪客可從事無點數或金流活動)
+  const [allowGuestPosting, setAllowGuestPostingState] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}allow_guest_posting`);
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return false; // 預設「登入才能發文」
+  });
+
+  const setAllowGuestPosting = (allowed: boolean) => {
+    setAllowGuestPostingState(allowed);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}allow_guest_posting`, String(allowed));
+    } catch {}
+    syncPlatformSettingsToFirestore({ allowGuestPosting: allowed });
+  };
+
+  const toggleAllowGuestPosting = () => {
+    setAllowGuestPosting(!allowGuestPosting);
+  };
+
+  // 實時監聽全站發文權限設定
+  useEffect(() => {
+    const unsub = subscribePlatformSettingsFromFirestore((settings) => {
+      if (settings && typeof settings.allowGuestPosting === 'boolean') {
+        setAllowGuestPostingState(settings.allowGuestPosting);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}allow_guest_posting`, String(settings.allowGuestPosting));
+        } catch {}
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
 
   // Load initial state with localStorage support (依使用者要求：絕對不預設任何帳號登入，一律以未登入訪客開始)
   const [currentUser, setCurrentUser] = useState<User>(() => {
@@ -4613,9 +4666,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return prev;
     });
 
-    // 3. 撥入提案者（作者）的【點數收支 > 應收帳款】（而非直接存為錢包可用點數）
+    // 3. 撥入提案者（作者）的【點數收支 > 應收帳款】（若作者為訪客則先暫存，不可提領，待登入後自動轉為可提領）
     const author = availableUsers.find((u) => u.id === q.authorId);
     const authorName = author?.name || q.authorName || '提案者';
+    const isGuestAuthor = q.authorId === 'user-guest' || q.authorId === 'guest';
+
+    if (isGuestAuthor) {
+      try {
+        const prevPending = Number(localStorage.getItem(`${STORAGE_KEY_PREFIX}guest_pending_tips`) || 0);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}guest_pending_tips`, String(prevPending + cleanAmount));
+      } catch {}
+    }
 
     setAvailableUsers((prev) =>
       prev.map((u) => {
@@ -4669,9 +4730,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       relatedQuestionTitle: q.title,
       relatedQuestionId: q.id,
       status: '處理中',
-      payoutStatus: '安全託管中（應收帳款）',
+      payoutStatus: isGuestAuthor ? '訪客暫存打賞（登入後自動轉為可提領）' : '安全託管中（應收帳款）',
       createdAt: new Date().toISOString(),
-      note: `【痛點打賞收益】來自讀者「${currentUser.name}」之支持點數 ${cleanAmount} 點（已存入應收帳款，週結撥款）。`,
+      note: isGuestAuthor
+        ? `【痛點打賞收益】來自讀者「${currentUser.name}」之支持點數 ${cleanAmount} 點（訪客帳戶暫存，登入後自動轉為可提領打賞收益）。`
+        : `【痛點打賞收益】來自讀者「${currentUser.name}」之支持點數 ${cleanAmount} 點（已存入應收帳款，週結撥款）。`,
     };
 
     setTransactions((prev) => [readerTx, authorTx, ...prev]);
@@ -4682,7 +4745,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userId: q.authorId,
       category: 'personal',
       title: '🎉 您的痛點獲得讀者打賞支持！',
-      message: `用戶「${currentUser.name}」打賞支持了您的痛點《${q.title}》${cleanAmount} 點！款項已存入您的【點數收支 > 應收帳款】，一週結算一次。${message ? `讀者留言：「${message}」` : ''}`,
+      message: isGuestAuthor
+        ? `用戶「${currentUser.name}」打賞支持了您的痛點《${q.title}》${cleanAmount} 點！款項已暫存於訪客帳戶，登入或註冊會員後將自動轉為可提領之打賞收益。${message ? `讀者留言：「${message}」` : ''}`
+        : `用戶「${currentUser.name}」打賞支持了您的痛點《${q.title}》${cleanAmount} 點！款項已存入您的【點數收支 > 應收帳款】，一週結算一次。${message ? `讀者留言：「${message}」` : ''}`,
       type: 'payment_unlocked',
       linkQuestionId: q.id,
       createdAt: new Date().toISOString(),
@@ -4696,10 +4761,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // 申請撥款（需實名身分核驗與收款帳戶，非直接點數額度，扣除手續費後以法幣電匯撥款）
+  // 申請撥款（需實名身分核驗與收款帳戶，非直接點數額度，扣除手續費後以法幣電匯撥款；訪客不可提領）
   const requestTipPayout = (amountPoints: number): { success: boolean; message: string; netCash?: number } => {
-    if (!currentUser || currentUser.id === 'guest') {
-      return { success: false, message: '請先登入帳號！' };
+    if (!currentUser || currentUser.id === 'guest' || currentUser.id === 'user-guest') {
+      return {
+        success: false,
+        message: '訪客獲得的打賞點數已安全留存，暫不可提領。待您登入或註冊成為正式會員後，系統將自動為您轉為可提領打賞收益！',
+      };
     }
     if (currentUser.realNameAuthStatus !== 'verified') {
       return { success: false, message: '依合規要求，需先完成實名身分核驗 (KYC) 始能申請撥款！' };
@@ -4973,6 +5041,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [...prev, { userId: effectiveUser.id, isLoggedIn: true, lastLoginAt: now }];
     });
+
+    // 訪客打賞自動轉入：若訪客期間曾獲得打賞，於登錄正式帳號後自動轉入應收帳款（可提領）
+    if (effectiveUser.id !== 'user-guest') {
+      try {
+        const pendingTips = Number(localStorage.getItem(`${STORAGE_KEY_PREFIX}guest_pending_tips`) || 0);
+        if (pendingTips > 0) {
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}guest_pending_tips`);
+          const creditedUser: User = {
+            ...effectiveUser,
+            tipReceivablesPoints: (effectiveUser.tipReceivablesPoints || 0) + pendingTips,
+            thisWeekTipPoints: (effectiveUser.thisWeekTipPoints || 0) + pendingTips,
+          };
+          setCurrentUser(creditedUser);
+          setAvailableUsers((prev) => prev.map((u) => (u.id === effectiveUser.id ? creditedUser : u)));
+          syncUserToFirestore(creditedUser);
+
+          const claimTx: Transaction = {
+            id: `tx-guest-tip-claim-${Date.now()}`,
+            fromUserId: 'guest',
+            fromUserName: '訪客暫存帳戶',
+            toUserId: effectiveUser.id,
+            toUserName: effectiveUser.name,
+            userId: effectiveUser.id,
+            type: '提痛點打賞收益',
+            amount: pendingTips,
+            platformFee: 0,
+            netAmount: pendingTips,
+            status: '處理中',
+            payoutStatus: '安全託管中（應收帳款）',
+            createdAt: new Date().toISOString(),
+            note: `【訪客打賞自動轉入】您在訪客期間獲得之打賞支持金 ${pendingTips.toLocaleString()} 點已自動轉為正式會員可提領打賞收益！`,
+          };
+          setTransactions((prev) => [claimTx, ...prev]);
+          syncTransactionsToFirestore([claimTx]);
+
+          setNotifications((prev) => [
+            {
+              id: `notif-guest-claim-${Date.now()}`,
+              userId: effectiveUser.id,
+              category: 'personal',
+              title: '🎉 訪客打賞已自動轉入可提領收益！',
+              message: `系統偵測到您在訪客期間曾獲得讀者打賞支持 ${pendingTips.toLocaleString()} 點，現已自動存入您的【點數收支 > 應收帳款】，可於每週結算申請提領！`,
+              type: 'payment_unlocked',
+              createdAt: new Date().toISOString(),
+              read: false,
+            },
+            ...prev,
+          ]);
+
+          setTimeout(() => {
+            showCenterToast(
+              '🎉 訪客打賞已自動轉入！',
+              `訪客期間累積之 ${pendingTips.toLocaleString()} 點打賞已存入您的應收帳款，可於週結申請撥款！`,
+              { type: 'success', duration: 4500 }
+            );
+          }, 600);
+        }
+      } catch (e) {
+        console.warn('Guest pending tips transfer notice:', e);
+      }
+    }
+
     return true;
   };
 
@@ -5089,7 +5219,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCenterToast('帳號停權中，暫時無法發布', currentUser.blockedReason || '如有疑問請聯繫客服', { type: 'warning', duration: 4000 });
       return null as any;
     }
-    if (currentUser.role !== 'admin' && currentUser.role !== 'questioner') {
+
+    const isGuest = currentUser.id === 'user-guest' || currentUser.id === 'guest';
+    const isPainPoint = newQ.postType === 'pain_point';
+    const isRaceModeActive = isRaceMode && isPainPoint;
+    const finalLevel = isRaceModeActive ? 'L0' : (newQ.level || 'L2');
+    const finalBounty = isRaceModeActive ? 0 : (newQ.bounty ?? (finalLevel === 'L0' ? 0 : 1000));
+
+    // 訪客發文限制：依後台開關控制，且訪客僅能從事無點數/無金流活動
+    if (isGuest) {
+      if (!allowGuestPosting) {
+        promptLogin('目前平台設定為「登入才能發文」，請先登入或註冊會員後再進行發布');
+        return null as any;
+      }
+      if (finalBounty > 0) {
+        promptLogin('訪客僅能從事無點數或金流活動（如提出痛點、刊登作品、L0討論），若欲設置懸賞點數請先登入會員帳號');
+        return null as any;
+      }
+    }
+
+    if (!isGuest && currentUser.role !== 'admin' && currentUser.role !== 'questioner') {
       setCurrentUser((prev) => ({
         ...prev,
         role: 'questioner',
@@ -5097,19 +5246,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const qId = `q-${Date.now()}`;
-    // 只依使用者選的發布類型判斷，避免標籤裡剛好有「痛點」字樣而被誤判
-    const isPainPoint = newQ.postType === 'pain_point';
-    const isRaceModeActive = isRaceMode && isPainPoint;
 
     // 關鍵規則：在創點子、痛點提出的內容同步出現於「創新創業」看板，依細分領域分類
     const finalCategory = (isPainPoint || newQ.postType === 'seek_solution' || isRaceMode)
       ? (newQ.category || '創新創業')
       : (newQ.category || '創新創業');
     const finalSubcategory = newQ.subcategory || '資訊科技';
-
-    // 競賽模式規則：從創點子/痛點集提出的問題僅限 L0 且標注綠色「創星季」標籤並擁有獨立網址
-    const finalLevel = isRaceModeActive ? 'L0' : (newQ.level || 'L2');
-    const finalBounty = isRaceModeActive ? 0 : (newQ.bounty ?? (finalLevel === 'L0' ? 0 : 1000));
     
     const baseTags = newQ.tags || ['創新創業', finalSubcategory];
     const tagsSet = new Set(baseTags);
@@ -5301,6 +5443,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
     ]);
 
+    // 首次發文加贈 200 點（限註冊會員，每人限領一次）
+    if (!isGuest && !currentUser.hasReceivedFirstPostBonus) {
+      const updatedUser: User = {
+        ...currentUser,
+        hasReceivedFirstPostBonus: true,
+        balance: (currentUser.balance || 0) + 200,
+      };
+      setCurrentUser(updatedUser);
+      setAvailableUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+      } catch {}
+      syncUserToFirestore(updatedUser);
+      claimFirstPostBonus().catch((err) => console.warn('First post bonus notice:', err));
+
+      const bonusTx: Transaction = {
+        id: `tx-first-post-${Date.now()}`,
+        fromUserId: 'system',
+        fromUserName: 'IdeaX 創點子官方團隊',
+        toUserId: currentUser.id,
+        toUserName: currentUser.name,
+        userId: currentUser.id,
+        type: '首次發文獎勵',
+        amount: 200,
+        platformFee: 0,
+        netAmount: 200,
+        status: '已完成',
+        createdAt: new Date().toISOString(),
+        note: '首次發布成功！加贈新手探索點數 200 點',
+      };
+      setTransactions((prev) => [bonusTx, ...prev]);
+      syncTransactionsToFirestore([bonusTx]);
+
+      setNotifications((prev) => [
+        {
+          id: `notif-first-post-${Date.now()}`,
+          userId: currentUser.id,
+          category: 'personal',
+          title: '🎉 恭喜獲得首次發文獎勵！',
+          message: '感謝您在 IdeaX 社群首次發文！系統已為您加贈 200 平台點，可用於懸賞提問、諮詢或支持優質創作者！',
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+          linkQuestionId: q.id,
+        },
+        ...prev,
+      ]);
+
+      setTimeout(() => {
+        showCenterToast('🎉 首次發文加贈 200 點！', '200 點已存入您的錢包餘額，可自由懸賞或支持好點子！', {
+          type: 'success',
+          duration: 4000,
+        });
+      }, 800);
+    }
+
     return q;
   };
 
@@ -5482,13 +5680,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, ok: true, message: '更新發布成功', updatedQuestion: updatedQ };
   };
 
-  // Action: Submit answer (當回答會自動切換至解答者身份，支持 討論留言 vs 專業方案)
+  // Action: Transfer question/work ownership to a specific user (管理員將平台刊登作品所有權轉移給指定用戶，等同用戶自己提案)
+  const transferQuestionOwnership = async (
+    questionId: string,
+    newOwnerUser: User
+  ): Promise<{ success: boolean; message: string; updatedQuestion?: Question }> => {
+    if (currentUser.role !== 'admin') {
+      return { success: false, message: '權限不足，僅管理員可執行所有權轉移操作' };
+    }
+    const targetQ = questions.find((q) => q.id === questionId);
+    if (!targetQ) {
+      return { success: false, message: '找不到目標作品或題目' };
+    }
+
+    const previousAuthorName = targetQ.authorName || '平台嚴選';
+    const cleanNewName = resolveUserDisplayName(newOwnerUser.id, newOwnerUser.name);
+    const cleanNewAvatar = resolveUserAvatar(newOwnerUser.id, newOwnerUser.avatar);
+
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+
+    const newTransferLog: ProposalUpdateLog = {
+      id: `log-transfer-${Date.now()}`,
+      timestamp: formattedDate,
+      version: targetQ.currentVersion || 'v1.0.0',
+      content: `【所有權移轉】平台管理員已正式將此作品所有權轉交給會員「${cleanNewName}」名下。`,
+      note: `轉移日期：${formattedDate} · 移交執行：IdeaX 管理員`,
+      authorId: currentUser.id,
+      authorName: currentUser.name || '管理員',
+      authorAvatar: currentUser.avatar,
+      updatedFields: ['作品所有權', '發布者'],
+    };
+
+    const updatedQ: Question = {
+      ...targetQ,
+      authorId: newOwnerUser.id,
+      authorName: cleanNewName,
+      authorAvatar: cleanNewAvatar,
+      authorTitle: newOwnerUser.jobTitle || newOwnerUser.title || '',
+      authorAuthUid: (newOwnerUser as any).firebaseUid || (newOwnerUser as any).authUid || undefined,
+      isOfficial: false,
+      publishIdentity: undefined,
+      updateLogs: [newTransferLog, ...(targetQ.updateLogs || [])],
+    };
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => (q.id === questionId ? updatedQ : q));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    try {
+      await syncQuestionToFirestore(updatedQ);
+    } catch (e) {
+      console.warn('Firestore transfer sync warning:', e);
+    }
+
+    // 發送系統推播通知給新所有者
+    addNotification({
+      title: '🎉 作品所有權移轉成功',
+      message: `管理員已將軟體作品《${targetQ.appName || targetQ.title}》所有權移轉至您的帳號名下！您現在可在「個人中心 > 我的提案」直接檢視並自由事後編輯、發布更新日誌與維護規格。`,
+      type: 'system',
+    });
+
+    showCenterToast(
+      '所有權轉移完成！',
+      `《${targetQ.appName || targetQ.title}》已移交給【${cleanNewName}】，用戶現在擁有完全編輯權限`,
+      { type: 'success', duration: 4000 }
+    );
+
+    return {
+      success: true,
+      message: `已成功將所有權移轉至 ${cleanNewName}`,
+      updatedQuestion: updatedQ,
+    };
+  };
+
+  // Action: Submit answer (當回答會自動切換至解答者身份，支持 討論留言 vs 專業方案，訪客可留言交流)
   const submitAnswer = (newAns: Partial<Answer>): Answer => {
     if (currentUser.isBlocked) {
       addNotification('帳號停權警告', `⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法提交方案或留言！如有疑問請聯繫客服。`, 'system');
       return null as any;
     }
-    if (currentUser.role !== 'admin' && currentUser.role !== 'solver') {
+    const isGuest = currentUser.id === 'user-guest' || currentUser.id === 'guest';
+    if (!isGuest && currentUser.role !== 'admin' && currentUser.role !== 'solver') {
       setCurrentUser((prev) => ({
         ...prev,
         role: 'solver',
@@ -5510,8 +5787,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       type: newAns.type || 'solution',
       solverId: currentUser.id,
       solverAuthUid: getMyAuthUid() || undefined,
-      solverName: currentUser.name,
-      solverTitle: currentUser.title || `${currentUser.domain || '創新創業'}專家`,
+      solverName: isGuest ? '訪客' : currentUser.name,
+      solverTitle: isGuest ? '社群訪客' : (currentUser.title || `${currentUser.domain || '創新創業'}專家`),
       solverAvatar: currentUser.avatar,
       solverRating: currentUser.rating || 0, // 沒有評分就是 0（不灌假評分）
       deliveryType: isDiscussion ? '交流探討' : (newAns.deliveryType || '商業策略架構'),
@@ -8367,8 +8644,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
   };
 
-  // Action: Toggle question bookmark
+  // Action: Toggle question bookmark (僅限登錄用戶)
   const toggleBookmarkQuestion = (questionId: string): boolean => {
+    if (!currentUser || currentUser.id === 'user-guest' || currentUser.id === 'guest') {
+      promptLogin('「收藏功能」僅限登入會員使用，登入後即可永久保存喜愛的內容並跨裝置同步');
+      return false;
+    }
+
     const isCurrentlyBookmarked = bookmarkedQuestionIds.includes(questionId);
     const isAdded = !isCurrentlyBookmarked;
     const updatedBookmarks = isAdded
@@ -8379,9 +8661,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(updatedBookmarks));
     } catch {}
-    if (currentUser?.id && currentUser.id !== 'user-guest') {
-      syncBookmarksToFirestore(currentUser.id, updatedBookmarks);
-    }
+    syncBookmarksToFirestore(currentUser.id, updatedBookmarks);
 
     const targetQ = questions.find((q) => q.id === questionId);
     if (isAdded && targetQ) {
@@ -9764,6 +10044,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isRaceMode,
         setRaceMode,
         toggleRaceMode,
+        allowGuestPosting,
+        setAllowGuestPosting,
+        toggleAllowGuestPosting,
         currentUser,
         setCurrentUser,
         availableUsers,
@@ -9844,6 +10127,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closeAuthModal,
         createQuestion,
         updateProposalContent,
+        transferQuestionOwnership,
         submitAnswer,
         unlockAnswer,
         acceptAnswer,

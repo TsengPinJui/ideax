@@ -75,10 +75,19 @@ import { TipPainPointModal } from './TipPainPointModal';
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
 import { UpdateProposalModal } from './UpdateProposalModal';
+import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
 import { shareOrCopyUrl, copyPureUrl } from '../utils/shareUtils';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass } from '../utils/userDisplay';
+import {
+  resolveUserDisplayName,
+  resolveUserAvatar,
+  isUserAccountDeactivated,
+  getUserNameColorClass,
+  isPlatformPublishedWork,
+  PLATFORM_CURATED_NAME,
+  PLATFORM_CURATED_AVATAR,
+} from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
@@ -394,6 +403,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   // Solution answers collapse / expand states (預設收合，點擊向下展開)
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
   const [isDescExpanded, setIsDescExpanded] = useState<boolean>(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
 
   const toggleAnswerExpand = (answerId: string) => {
     setExpandedAnswers((prev) => ({
@@ -591,8 +601,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
   const isOwner = currentUser.id === question.authorId;
   const isAuthor = isOwner || isAdmin;
   const isAuthorDeactivated = isUserAccountDeactivated(question.authorId, availableUsers);
-  const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
-  const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
+  const isPlatformWork = isPlatformPublishedWork(question);
+  const authorDisplayName = isPlatformWork
+    ? PLATFORM_CURATED_NAME
+    : resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
+  const authorDisplayAvatar = isPlatformWork
+    ? PLATFORM_CURATED_AVATAR
+    : resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
 
   const addNotificationRef = useRef(addNotification);
   useEffect(() => {
@@ -800,7 +815,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
   const handleShareQuestion = async () => {
     const shareUrl = getQuestionShareUrl(question.id, question.postType);
     const label = isVibeCodingApp
-      ? 'Vibe Coding 實戰案例'
+      ? '軟體網站實戰案例'
       : question.postType === 'pain_point'
       ? '痛點洞察'
       : '懸賞問題';
@@ -1025,10 +1040,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm">
-                  <span className={`font-bold ${getUserNameColorClass(question.authorId, availableUsers, { isOfficial: question.isOfficial, name: question.authorName, title: question.authorTitle })}`}>
+                  <span className={`font-bold ${isPlatformWork ? 'text-amber-800 font-black' : getUserNameColorClass(question.authorId, availableUsers, { isOfficial: question.isOfficial, name: question.authorName, title: question.authorTitle })}`}>
                     {authorDisplayName}
                   </span>
-                  {authorDisplayName !== '此帳號已註銷' && question.authorTitle && (
+                  {isPlatformWork && (
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-300 ml-1.5">
+                      精選刊登
+                    </span>
+                  )}
+                  {authorDisplayName !== '此帳號已註銷' && question.authorTitle && !isPlatformWork && (
                     <span className="text-stone-500 font-normal"> · {question.authorTitle}</span>
                   )}
                 </span>
@@ -1065,6 +1085,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   >
                     <FileEdit className="w-3 h-3" />
                     <span>更新內容</span>
+                  </button>
+                )}
+
+                {/* 管理員專屬：將平台作品轉移給用戶 */}
+                {isAdmin && isPlatformWork && (
+                  <button
+                    type="button"
+                    onClick={() => setIsTransferModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg border border-amber-500 bg-amber-50 text-amber-900 hover:bg-amber-500 hover:text-stone-950 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    title="將此平台刊登作品之所有權轉移給指定用戶，等同用戶自己發布的提案，可事後自由編輯"
+                  >
+                    <UserCheck className="w-3 h-3 text-amber-700" />
+                    <span>轉移所有權給用戶</span>
                   </button>
                 )}
               </div>
@@ -1345,7 +1378,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                   >
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>前往體驗成果網址</span>
+                    <span>到網站支持</span>
                   </a>
                 </div>
               )}
@@ -2139,7 +2172,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                            {prop.postType === 'vibecoding_app' ? 'VibeCoding 應用' : '創新解方提案'}
+                            {prop.postType === 'vibecoding_app' ? '軟體網站應用' : '創新解方提案'}
                           </span>
                           <span className="text-[10px] font-mono font-bold text-amber-700">
                             🪙 {((prop.supportPoints || 0) * 10).toLocaleString()} 點
@@ -3731,6 +3764,17 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           isOpen={isUpdateModalOpen}
           onClose={() => setIsUpdateModalOpen(false)}
           question={liveQuestion}
+        />
+      )}
+
+      {isTransferModalOpen && (
+        <AdminTransferWorkOwnershipModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          question={liveQuestion || question}
+          onSuccess={() => {
+            setIsTransferModalOpen(false);
+          }}
         />
       )}
     </>

@@ -76,11 +76,11 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
           window.clearTimeout(timeoutId);
           setStatus('blocked');
           if (data.reason === 'x-frame-options' || data.reason === 'csp-frame-ancestors') {
-            setBlockReason('此網站設有安全保護策略（禁止 iframe 內嵌），無法於頁面內直接顯示，請點擊下方按鈕在新分頁開啟體驗。');
+            setBlockReason('此網站設有安全保護策略（禁止 iframe 嵌入），無法於頁面內直接顯示，請點擊下方「到網站支持」按鈕前往體驗。');
           } else if (data.reason === 'demo-placeholder' || data.reason === 'unreachable') {
-            setBlockReason('目前無法於內嵌視窗載入此網址，請直接在新分頁開啟前往。');
+            setBlockReason('目前無法於內嵌視窗載入此網址，請點擊「到網站支持」前往。');
           } else {
-            setBlockReason('目標網站不支援內嵌預覽或連線發生異常，請在新分頁開啟體驗。');
+            setBlockReason('目標網站不支援直接試玩預覽或連線發生異常，請點擊「到網站支持」前往體驗。');
           }
         }
       })
@@ -103,7 +103,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-xs font-black text-indigo-950">
             <Globe className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>作品外部體驗連結</span>
+            <span>作品外部網站連結</span>
           </div>
           <p className="text-xs text-stone-600 truncate font-mono">{cleanUrl}</p>
         </div>
@@ -113,7 +113,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
           rel="noopener noreferrer"
           className="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 shadow-xs transition-colors"
         >
-          <span>在新分頁開啟</span>
+          <span>到網站支持</span>
           <ExternalLink className="w-4 h-4" />
         </a>
       </section>
@@ -139,7 +139,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-black shrink-0">
             <Play className="w-3 h-3 fill-emerald-400 text-emerald-400" />
-            <span>互動預覽區</span>
+            <span>試玩體驗區</span>
           </span>
           {platform && (
             <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-400/40 text-rose-200 text-[11px] font-black shrink-0">
@@ -194,7 +194,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
             rel="noopener noreferrer"
             className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] sm:text-xs font-black inline-flex items-center gap-1 transition-colors"
           >
-            <span>在新分頁開啟</span>
+            <span>到網站支持</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
@@ -225,7 +225,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-sm transition-colors"
             >
               <Globe className="w-4 h-4" />
-              <span>在新分頁開啟</span>
+              <span>到網站支持</span>
               <ExternalLink className="w-4 h-4" />
             </a>
             <button
@@ -250,7 +250,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
             <div className="absolute inset-0 z-10 bg-stone-900/5 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2.5 p-4 text-center">
               <Loader2 className="w-7 h-7 text-indigo-600 animate-spin" />
               <div className="text-xs font-bold text-stone-700">
-                正在載入互動預覽網頁...
+                正在載入試玩體驗網頁...
               </div>
               {platform && (
                 <div className="text-[11px] text-stone-500 max-w-xs leading-relaxed">
@@ -263,7 +263,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
                 rel="noopener noreferrer"
                 className="mt-1 px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white border border-stone-200 text-indigo-700 font-bold text-[11px] inline-flex items-center gap-1 shadow-2xs"
               >
-                <span>若等待過久可直接在新分頁開啟</span>
+                <span>若等待過久可直接「到網站支持」</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -272,7 +272,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
           <iframe
             key={reloadKey}
             src={embedUrl}
-            title={`${title} - 互動預覽`}
+            title={`${title} - 試玩體驗`}
             className="w-full h-full border-0 bg-white"
             allow="clipboard-read; clipboard-write; fullscreen; autoplay; microphone; camera; geolocation"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"
@@ -285,7 +285,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
             onError={() => {
               if (!blockedByServerRef.current) {
                 setStatus('error');
-                setBlockReason('內嵌網頁載入時發生錯誤，請改為在新分頁開啟。');
+                setBlockReason('網頁載入時發生錯誤，請改為「到網站支持」。');
               }
             }}
           />
@@ -304,7 +304,7 @@ export const VibeCodingEmbedPreview: React.FC<VibeCodingEmbedPreviewProps> = ({
             rel="noopener noreferrer"
             className="font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 shrink-0"
           >
-            <span>在新分頁開啟完整網站</span>
+            <span>到網站支持</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

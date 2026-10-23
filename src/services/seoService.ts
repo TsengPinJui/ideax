@@ -490,14 +490,14 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
   },
   {
     id: 'vibecoding',
-    name: 'VibeCoding 展場',
+    name: '軟體網站展場',
     category: 'ideax',
     categoryLabel: 'IdeaX 創點子',
     path: '/vibecoding',
     queryParam: '?zone=vibecoding',
-    title: 'AI VibeCoding 創新應用 — IdeaX 創點子 網站程式與 Web 應用精選',
+    title: '軟體網站創新應用 — IdeaX 創點子 網站程式與 Web 應用精選',
     description: '妳嘔心瀝血開發的的應用還只能放在 Github 只有工程師鑑賞卻無法真正走向大眾嗎？ 或是等待平台上架的繁瑣程序嗎？IdeaX提供給所有創意展示與測試市場的空間，歡迎多加利用！',
-    keywords: ['VibeCoding', '網站程式', 'AI 應用', 'Web 應用', '自動化工具', 'IdeaX 展場'],
+    keywords: ['軟體網站', '網站程式', 'AI 應用', 'Web 應用', '自動化工具', 'IdeaX 展場'],
     icon: 'Terminal',
   },
   {
@@ -508,8 +508,8 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     path: '/vibecoding/publish',
     queryParam: '?action=vibecoding_publish',
     title: '刊登創新應用作品 — IdeaX 創點子 上傳 AI 程式與網站作品',
-    description: '刊登您運用 Vibe Coding 理念與 AI 打造的網站程式與 Web 應用作品，上傳封面圖文、欲解決痛點、技術架構與線上試用網址！',
-    keywords: ['刊登 VibeCoding', '作品刊登', '網站程式刊登', 'AI 應用刊登', 'IdeaX'],
+    description: '刊登您打造的軟體網站程式與 Web 應用作品，上傳封面圖文、欲解決痛點、技術架構與線上試玩網址！',
+    keywords: ['刊登軟體網站', '作品刊登', '網站程式刊登', 'AI 應用刊登', 'IdeaX'],
     icon: 'Terminal',
   },
   {

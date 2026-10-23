@@ -768,7 +768,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
                 onOpenReportModal();
               } else {
                 openCustomerService({
-                  subject: `檢舉 VibeCoding 作品：${appName || question.title} (${question.id})`,
+                  subject: `檢舉軟體網站作品：${appName || question.title} (${question.id})`,
                 });
               }
             }}

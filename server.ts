@@ -10,7 +10,7 @@ import { rateLimit, requireAdminMiddleware, requireSignedInForAi } from './serve
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
-import { applyPointsOp, completeProjectPlanExport, findUserDocByAuth, grantSignupBonus, PointsError, processSubscriptionExpiry, refundProjectPlanExport, spendProjectPlanExport } from './server/pointsLedger';
+import { applyPointsOp, completeProjectPlanExport, findUserDocByAuth, grantSignupBonus, grantFirstPostBonus, PointsError, processSubscriptionExpiry, refundProjectPlanExport, spendProjectPlanExport } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
@@ -1545,6 +1545,277 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
     });
   }
 });
+
+// ==========================================
+// 網址智慧讀取與爬蟲：提取網站名稱、標題、簡述、首頁封面截圖並由 AI 自動歸類
+// ==========================================
+async function handleScrapeWebsite(req: Request, res: Response) {
+  try {
+    let { url, preferredCategory } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, error: '請提供欲分析的網站網址' });
+    }
+
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ success: false, error: '網址格式無效，請確認輸入完整且正確的 URL' });
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    // 阻絕內部或私有 IP (SSRF 防護)
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+      hostname.startsWith('169.254.')
+    ) {
+      return res.status(400).json({ success: false, error: '基於安全性考量，禁止讀取本地端或私有內網網址' });
+    }
+
+    const cleanUrl = parsedUrl.href;
+
+    // 1. 爬蟲獲取目標網頁 HTML 內容
+    let html = '';
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(cleanUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (IdeaX Bot)',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+      });
+      clearTimeout(timeout);
+      if (resp.ok) {
+        html = await resp.text();
+      }
+    } catch (e: any) {
+      console.warn(`[Scrape] Direct fetch failed for ${cleanUrl}:`, e?.message || e);
+    }
+
+    // 2. 解析 HTML Meta 與文字摘錄
+    let rawTitle = '';
+    let rawDescription = '';
+    let rawSiteName = '';
+    let ogImage = '';
+
+    if (html) {
+      // 提取 <title>
+      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      if (titleMatch) rawTitle = titleMatch[1].trim();
+
+      // 提取 og:title
+      const ogTitleMatch =
+        html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']*)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
+      if (ogTitleMatch && ogTitleMatch[1]) rawTitle = ogTitleMatch[1].trim() || rawTitle;
+
+      // 提取 og:site_name
+      const siteNameMatch =
+        html.match(/<meta[^>]+(?:property|name)=["']og:site_name["'][^>]+content=["']([^"']*)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']og:site_name["']/i);
+      if (siteNameMatch && siteNameMatch[1]) rawSiteName = siteNameMatch[1].trim();
+
+      // 提取 description / og:description
+      const descMatch =
+        html.match(/<meta[^>]+(?:property|name)=["'](?:description|og:description|twitter:description)["'][^>]+content=["']([^"']*)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["'](?:description|og:description|twitter:description)["']/i);
+      if (descMatch && descMatch[1]) rawDescription = descMatch[1].trim();
+
+      // 提取 og:image
+      const ogImgMatch =
+        html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["'][^>]+content=["']([^"']*)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["']/i);
+      if (ogImgMatch && ogImgMatch[1]) {
+        const rawImg = ogImgMatch[1].trim();
+        try {
+          ogImage = new URL(rawImg, cleanUrl).href;
+        } catch {}
+      }
+    }
+
+    // 提煉乾淨的內文片段供 AI 研判
+    const cleanedText = html
+      ? html
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+          .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 1800)
+      : '';
+
+    // 首頁快照截圖服務（首頁作為封面）
+    // WordPress mshots 支援任何公開網站的高畫質即時首頁截圖快照
+    const screenshotUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(cleanUrl)}?w=1280&h=720`;
+    // 預設封面：首頁截圖（保證是首頁封面），若有 og:image 則同時提供作為選項
+    const defaultCoverImage = screenshotUrl;
+
+    // 3. 使用 Gemini 3.8 Flash 進行深度語意萃取、命名精簡與軟體類別分類
+    const VALID_CATEGORIES = ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'];
+    const hasValidPreferred = preferredCategory && VALID_CATEGORIES.includes(preferredCategory);
+
+    const prompt = `你是「IdeaX 創點子」軟體網站作品專區的專業審查與產品架構顧問。
+管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」與「軟體分類 (category)」：
+
+【目標網站網址】
+${cleanUrl}
+網域主機：${hostname}
+
+【網頁原始標題】
+${rawTitle || '無'}
+
+【網站名稱 / Site Name】
+${rawSiteName || '無'}
+
+【網頁 Meta 簡介】
+${rawDescription || '無'}
+
+【網頁內容摘要片段】
+${cleanedText || '（無法獲取純靜態 HTML，請依據網域與已知主流網站特性進行辨識）'}
+
+【管理員預先勾選的軟體分類】
+${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特性自動判定最佳分類）'}
+
+【軟體專區五大分類定義】
+1. 「網站程式」：一般網頁應用、SaaS 雲端平台、社群媒體、資訊入口、數位看板、協作平台。
+2. 「AI工具」：包含大語言模型、生成式 AI、AI 對話、文字/圖片/影片生成、AI 智慧助理。
+3. 「小遊戲」：休閒遊戲、網頁互動小遊戲、益智娛樂、RPG/Canvas 網頁遊戲。
+4. 「自動化」：爬蟲工具、流程自動化、Webhook/API 串接整合、定時排程、生產力自動化腳本。
+5. 「擴充功能」：瀏覽器外掛 Extension (Chrome/Edge/Firefox)、VSCode 插件或工具外掛。
+
+【請輸出嚴格 JSON 格式】
+\`\`\`json
+{
+  "appName": "軟體名稱（繁體中文或原創品牌名，如「Cursor」、「Notion」、「Wordle」，12字以內）",
+  "title": "作品精準吸引人的核心標題（例如「Cursor - 專為 AI 時代設計的智慧程式碼編輯器」，28字以內）",
+  "description": "作品繁體中文完整簡述（說明核心功能、解決的痛點、關鍵特色與適合的使用情境，約 80~160 字）",
+  "category": "${hasValidPreferred ? preferredCategory : '必須精準歸入上述五個分類之一：網站程式 / AI工具 / 小遊戲 / 自動化 / 擴充功能'}",
+  "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
+  "techArchitecture": "建議的技術架構（如：Web 全端架構 React / TypeScript）"
+}
+\`\`\``;
+
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        appName: { type: Type.STRING },
+        title: { type: Type.STRING },
+        description: { type: Type.STRING },
+        category: { type: Type.STRING },
+        tags: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+        techArchitecture: { type: Type.STRING },
+      },
+      required: ['appName', 'title', 'description', 'category', 'tags'],
+    };
+
+    let parsedResult: any = await generateWithGeminiFallback(prompt, schema);
+
+    if (!parsedResult) {
+      const rawAiText = await generateRawTextWithGemini(prompt, '你是 IdeaX 軟體網站專案審查顧問，請以合規 JSON 輸出。');
+      if (rawAiText) {
+        parsedResult = extractJsonFromText(rawAiText);
+      }
+    }
+
+    // 4. Heuristic Fallback
+    let appName = parsedResult?.appName;
+    let title = parsedResult?.title;
+    let description = parsedResult?.description;
+    let category = parsedResult?.category;
+    let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0 ? parsedResult.tags : [];
+    let techArchitecture = parsedResult?.techArchitecture || 'Web 網頁應用程式';
+
+    // 若分類不在允許名單中或有指定的分類
+    if (hasValidPreferred) {
+      category = preferredCategory;
+    } else if (!VALID_CATEGORIES.includes(category)) {
+      const lower = `${cleanUrl} ${rawTitle} ${rawDescription} ${cleanedText}`.toLowerCase();
+      if (/game|遊戲|play|puzzle|arcade|2048|chess|rpg/i.test(lower)) {
+        category = '小遊戲';
+      } else if (/ai|gpt|gemini|llm|agent|智能|智慧|機器人|model|copilot/i.test(lower)) {
+        category = 'AI工具';
+      } else if (/auto|workflow|crawler|爬蟲|自動|webhook|schedule|bot|pipeline/i.test(lower)) {
+        category = '自動化';
+      } else if (/extension|plugin|addon|外掛|擴充|chrome-extension|vscode/i.test(lower)) {
+        category = '擴充功能';
+      } else {
+        category = '網站程式';
+      }
+    }
+
+    if (!appName) {
+      if (rawSiteName) {
+        appName = rawSiteName.slice(0, 16);
+      } else {
+        const parts = hostname.replace(/^www\./, '').split('.');
+        appName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '軟體網站';
+      }
+    }
+
+    if (!title) {
+      title = rawTitle ? rawTitle.split(/[-|_]/)[0].trim().slice(0, 32) : `${appName} - 實用線上軟體體驗`;
+    }
+
+    if (!description) {
+      description = rawDescription || `「${appName}」是一款提供高效實用功能的現代化 Web 軟體，具備流暢的使用者互動介面與直覺操作體驗，歡迎點擊進行線上試玩體驗與支持！`;
+    }
+
+    if (tags.length === 0) {
+      tags = [category, 'Web應用', '線上工具', appName];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        websiteUrl: cleanUrl,
+        appName,
+        title,
+        description,
+        category,
+        tags,
+        techArchitecture,
+        coverImage: defaultCoverImage,
+        screenshotUrl,
+        ogImage: ogImage || null,
+        rawMeta: {
+          title: rawTitle,
+          description: rawDescription,
+          siteName: rawSiteName,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('[Scrape Website Endpoint Error]', error);
+    return res.status(500).json({
+      success: false,
+      error: `讀取網站失敗：${error?.message || '伺服器連線異常，請稍後再試'}`,
+    });
+  }
+}
+
+app.post('/api/ai/scrape-website', handleScrapeWebsite);
+app.post('/api/scrape-website', handleScrapeWebsite);
+app.post('/api/admin/scrape-website', handleScrapeWebsite);
 
 // AI Question Analysis: Categorization, Tagging, Level Recommendation, and Structured Breakdown
 app.post('/api/ai/analyze-question', async (req: Request, res: Response) => {
@@ -3288,6 +3559,21 @@ app.post('/api/auth/claim-signup-bonus', async (req: Request, res: Response) => 
     const status = err instanceof PointsError ? err.status : 500;
     if (status >= 500) console.error('[Signup bonus] claim failed');
     res.status(status).json({ success: false, error: err?.message || '註冊獎勵入帳失敗，請稍後重試' });
+  }
+});
+
+// 會員首次發文獎勵：送 200 點平台點（一次性領取，防止重複發放）
+app.post('/api/points/first-post-bonus', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請登入後領取獎勵' });
+    const result = await grantFirstPostBonus(authUser);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    const status = err instanceof PointsError ? err.status : 500;
+    if (status >= 500) console.error('[First post bonus] claim failed');
+    res.status(status).json({ success: false, error: err?.message || '首次發文獎勵入帳失敗' });
   }
 });
 

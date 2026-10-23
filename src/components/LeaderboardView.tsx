@@ -891,7 +891,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 <span>全站打賞榮譽榜</span>
               </h3>
               <p className="text-xs text-amber-900/80">
-                展示發表提案、詢問、痛點洞察、VibeCoding 應用或討論，獲得廣大讀者打賞支持總額最高之創作者與熱門作品排行榜
+                展示發表提案、詢問、痛點洞察、軟體網站應用或討論，獲得廣大讀者打賞支持總額最高之創作者與熱門作品排行榜
               </p>
             </div>
             <span className="text-xs font-mono font-bold text-amber-800 bg-white/80 px-3 py-1 rounded-xl border border-amber-300 shrink-0 self-start sm:self-auto shadow-2xs">

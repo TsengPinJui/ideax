@@ -28116,7 +28116,7 @@
         "L3": 14,
         "L4": 9
       },
-      "updatedAt": "2026-10-19T10:11:50.833Z",
+      "updatedAt": "2026-10-22T15:11:57.145Z",
       "isDeactivated": false,
       "honorLevel": 5,
       "expertCertStatus": "verified",
@@ -28247,7 +28247,8 @@
         "L3": 5,
         "L4": 3
       },
-      "domain": "專業問題"
+      "domain": "專業問題",
+      "dataRepairedAt": "2026-10-22T19:50:34.722Z"
     },
     "c100000001": {
       "assistant24hrConfig": {
@@ -28950,19 +28951,40 @@
         "2026-10-23 06:00": 124,
         "2026-10-23 07:00": 107,
         "2026-10-23 08:00": 112,
-        "2026-10-23 09:00": 108
+        "2026-10-23 09:00": 155,
+        "2026-10-23 10:00": 111,
+        "2026-10-23 11:00": 106,
+        "2026-10-23 12:00": 194,
+        "2026-10-23 13:00": 46,
+        "2026-10-23 14:00": 14,
+        "2026-10-23 15:00": 14,
+        "2026-10-23 16:00": 22,
+        "2026-10-23 17:00": 14,
+        "2026-10-23 18:00": 4,
+        "2026-10-23 19:00": 222,
+        "2026-10-23 20:00": 116,
+        "2026-10-23 21:00": 71,
+        "2026-10-23 22:00": 55,
+        "2026-10-23 23:00": 37,
+        "2026-10-24 00:00": 33,
+        "2026-10-24 01:00": 149,
+        "2026-10-24 02:00": 61,
+        "2026-10-24 03:00": 105,
+        "2026-10-24 04:00": 38,
+        "2026-10-24 05:00": 21
       },
-      "uniqueVisitorsTotal": 4217,
+      "uniqueVisitorsTotal": 5365,
       "visitorsDaily": {
         "2026-10-18": 494,
         "2026-10-19": 176,
         "2026-10-20": 136,
         "2026-10-21": 1144,
         "2026-10-22": 1534,
-        "2026-10-23": 841
+        "2026-10-23": 1696,
+        "2026-10-24": 346
       },
       "pageviewBaselineApplied": true,
-      "lastUpdatedUtc8": "2026/10/23 09:37:34 (UTC+8)",
+      "lastUpdatedUtc8": "2026/10/24 05:32:52 (UTC+8)",
       "visitorsHourly": {
         "2026-10-18 10:00": 26,
         "2026-10-18 11:00": 112,
@@ -29080,7 +29102,27 @@
         "2026-10-23 06:00": 92,
         "2026-10-23 07:00": 76,
         "2026-10-23 08:00": 82,
-        "2026-10-23 09:00": 79
+        "2026-10-23 09:00": 113,
+        "2026-10-23 10:00": 91,
+        "2026-10-23 11:00": 86,
+        "2026-10-23 12:00": 174,
+        "2026-10-23 13:00": 29,
+        "2026-10-23 14:00": 6,
+        "2026-10-23 15:00": 8,
+        "2026-10-23 16:00": 15,
+        "2026-10-23 17:00": 10,
+        "2026-10-23 18:00": 3,
+        "2026-10-23 19:00": 198,
+        "2026-10-23 20:00": 89,
+        "2026-10-23 21:00": 42,
+        "2026-10-23 22:00": 39,
+        "2026-10-23 23:00": 31,
+        "2026-10-24 00:00": 32,
+        "2026-10-24 01:00": 136,
+        "2026-10-24 02:00": 51,
+        "2026-10-24 03:00": 90,
+        "2026-10-24 04:00": 21,
+        "2026-10-24 05:00": 16
       },
       "firstHourKey": "2026-10-18 19:00",
       "totalVisits": 2160,
@@ -29091,14 +29133,233 @@
         "2026-10-20": 461,
         "2026-10-21": 1485,
         "2026-10-22": 1907,
-        "2026-10-23": 1057
+        "2026-10-23": 2130,
+        "2026-10-24": 407
       },
       "firstRecordedAtUtc8": "2026/10/18 19:31:10 (UTC+8)",
       "firstDateKey": "2026-10-18",
       "baseVisits": 2498,
       "newVisitorsDaily": {
         "2026-10-22": 1201,
-        "2026-10-23": 805
+        "2026-10-23": 1637,
+        "2026-10-24": 316
+      }
+    },
+    "global": {
+      "adminDailyGrants": {},
+      "commissionRate": 0.1,
+      "plans": [
+        {
+          "id": "free",
+          "name": "一般會員",
+          "pricingText": "免費使用",
+          "monthlyPrice": 0,
+          "billingCycles": [
+            {
+              "cycle": "monthly",
+              "price": 0,
+              "label": "免費方案",
+              "durationMonths": 1
+            }
+          ],
+          "platformFeeRate": 0.1,
+          "feeDiscountText": "標準 10% 服務費",
+          "sellerPayoutRate": 0.9,
+          "sellerPayoutText": "90%",
+          "effectiveRateText": "10%",
+          "rebatePercent": 0,
+          "badgeClass": "bg-stone-100 text-stone-700 border-stone-200",
+          "tagline": "標準費率，由解答者吸收 10% 服務費",
+          "benefits": [
+            "全站發問與解答提案"
+          ]
+        },
+        {
+          "id": "pro",
+          "name": "達人方案",
+          "pricingText": "$299/月 或 $1,499/半年",
+          "monthlyPrice": 299,
+          "billingCycles": [
+            {
+              "cycle": "monthly",
+              "price": 299,
+              "label": "月繳 NT$ 299/月",
+              "durationMonths": 1
+            },
+            {
+              "cycle": "semi_annual",
+              "price": 1499,
+              "label": "半年繳 NT$ 1,499/半年",
+              "savingsText": "約 $249/月，現省 $295",
+              "durationMonths": 6
+            }
+          ],
+          "platformFeeRate": 0.08,
+          "feeDiscountText": "費率 8%（實收 92%）",
+          "sellerPayoutRate": 0.92,
+          "sellerPayoutText": "92%",
+          "effectiveRateText": "8%",
+          "rebatePercent": 2,
+          "badgeClass": "bg-blue-50 text-blue-800 border-blue-200 font-bold",
+          "tagline": "費率僅 8%！解答者實收高達 92%",
+          "benefits": [
+            "全站發問與解答提案",
+            "AI 初步問題分析報告：免費查看 50 次",
+            "AI 提案架構整理：一鍵整理為 4 層架構"
+          ]
+        },
+        {
+          "id": "expert",
+          "name": "達人方案",
+          "pricingText": "$299/月 或 $1,499/半年",
+          "monthlyPrice": 299,
+          "billingCycles": [
+            {
+              "cycle": "monthly",
+              "price": 299,
+              "label": "月繳 NT$ 299/月",
+              "durationMonths": 1
+            },
+            {
+              "cycle": "semi_annual",
+              "price": 1499,
+              "label": "半年繳 NT$ 1,499/半年",
+              "savingsText": "約 $249/月，現省 $295",
+              "durationMonths": 6
+            }
+          ],
+          "platformFeeRate": 0.08,
+          "feeDiscountText": "費率 8%（實收 92%）",
+          "sellerPayoutRate": 0.92,
+          "sellerPayoutText": "92%",
+          "effectiveRateText": "8%",
+          "rebatePercent": 2,
+          "badgeClass": "bg-blue-50 text-blue-800 border-blue-200 font-bold",
+          "tagline": "費率僅 8%！解答者實收高達 92%",
+          "benefits": [
+            "全站發問與解答提案",
+            "AI 初步問題分析報告：免費查看 50 次",
+            "AI 提案架構整理：一鍵整理為 4 層架構"
+          ]
+        },
+        {
+          "id": "authority",
+          "name": "權威方案",
+          "pricingText": "$599/月 或 $5,990/年",
+          "monthlyPrice": 599,
+          "billingCycles": [
+            {
+              "cycle": "monthly",
+              "price": 599,
+              "label": "月繳 NT$ 599/月",
+              "durationMonths": 1
+            },
+            {
+              "cycle": "annual",
+              "price": 5990,
+              "label": "年繳 NT$ 5,990/年",
+              "savingsText": "年繳現省 NT$ 1,198",
+              "durationMonths": 12
+            }
+          ],
+          "platformFeeRate": 0.05,
+          "feeDiscountText": "服務費 5%（-5% 減免，實收 95%）",
+          "sellerPayoutRate": 0.95,
+          "sellerPayoutText": "95%",
+          "effectiveRateText": "5%",
+          "rebatePercent": 5,
+          "badgeClass": "bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 font-black shadow-2xs",
+          "tagline": "服務費僅 5%（-5%）！實收 95% ＋ 升級無限次 AI 分析報告 ＋ 優先推薦曝光",
+          "benefits": [
+            "全站發問與解答提案",
+            "AI 初步問題分析報告：全站免費無限次查看及下載報告（升級無限次＋下載）",
+            "AI 提案架構整理：一鍵整理為 4 層架構",
+            "✨ 升級高賞提案優先推薦曝光",
+            "💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(權威方案以上)"
+          ]
+        },
+        {
+          "id": "master",
+          "name": "大師方案",
+          "pricingText": "$1,980/月 或 $19,800/年",
+          "monthlyPrice": 1980,
+          "billingCycles": [
+            {
+              "cycle": "monthly",
+              "price": 1980,
+              "label": "月繳 NT$ 1,980/月",
+              "durationMonths": 1
+            },
+            {
+              "cycle": "annual",
+              "price": 19800,
+              "label": "年繳 NT$ 19,800/年",
+              "savingsText": "年繳現省 NT$ 3,960",
+              "durationMonths": 12
+            }
+          ],
+          "platformFeeRate": 0.02,
+          "feeDiscountText": "服務費僅 2%（-8% 減免，實收 98%）",
+          "sellerPayoutRate": 0.98,
+          "sellerPayoutText": "98%",
+          "effectiveRateText": "2%",
+          "rebatePercent": 8,
+          "badgeClass": "bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 text-stone-950 border-amber-500 font-black shadow-sm",
+          "tagline": "極低 2% 服務費！實收高達 98% ＋ AI-CRM 客戶關係管理",
+          "benefits": [
+            "全站發問與解答提案",
+            "AI 初步問題分析報告：全站免費無限次查看及下載報告",
+            "AI 提案架構整理：一鍵整理為 4 層架構",
+            "高賞提案優先推薦",
+            "🎯 24hr巡航雷達：即時客情意向偵測與高潛在客戶巡航(大師專屬)",
+            "💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(大師專屬)",
+            "🧠 24hr策略軍師：心理學談判推演與話術擬定排程代操(大師專屬)",
+            "🤖 24hr AI客服特助：離線主動對談維護客戶＋24hr 自動化代操發送(大師專屬)",
+            "⚡ AI-CRM 客戶關係管理：24hr巡航雷達 ＋ 策略軍師 ＋ 24hr AI客服特助，打造高轉單接案飛輪"
+          ]
+        }
+      ],
+      "aiReasoningEffort": "medium",
+      "aiProviderUpdatedAt": "2026-10-21T12:18:33.427Z",
+      "aiProvider": "openai",
+      "aiEfforts": {
+        "gemini": "medium",
+        "anthropic": "high",
+        "openai": "high"
+      },
+      "publicMetricsConfig": {
+        "showVerifiedSolvers": false,
+        "showTotalGMV": false,
+        "showTotalMembers": false,
+        "showTotalBounty": false,
+        "showHighestBounty": false,
+        "showAvgResponseSpeed": false,
+        "showSolvedCount": false,
+        "showOnlineUsers": false,
+        "showSatisfactionRate": false,
+        "showTotalViews": true,
+        "showQuestionsCount": true,
+        "showTotalDeals": false,
+        "showProposalsCount": true,
+        "showUniqueVisitors": false,
+        "showJobsUsers": false,
+        "showTodayVisitors": false,
+        "showNewMembers7d": false,
+        "showPublicMetrics": true
+      },
+      "updatedAt": "2026-10-21T22:18:40.633Z",
+      "homeShowcaseConfig": {
+        "enabled": true,
+        "modes": [
+          "custom"
+        ],
+        "includeSimulated": true,
+        "hideHeroTitles": true,
+        "customIds": [
+          "q-1792713292577",
+          "q-1792337652478"
+        ],
+        "updatedAt": "2026-10-23T02:27:29.516Z"
       }
     }
   },

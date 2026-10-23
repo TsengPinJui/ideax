@@ -54,7 +54,7 @@ export const PROPOSAL_RATIO_PRESETS: RatioPreset[] = [
     label: '16:9',
     badge: '推薦封面',
     recommendedSize: '1280 × 720 px（或 1920 × 1080）',
-    description: '提案首頁大圖、卡片主視覺與 VibeCoding 展示之黃金比例',
+    description: '提案首頁大圖、卡片主視覺與軟體網站展示之黃金比例',
   },
   {
     key: '4:3',

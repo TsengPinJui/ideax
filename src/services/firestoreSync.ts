@@ -1156,6 +1156,7 @@ export async function syncPlatformSettingsToFirestore(settings: {
   isHideTestAccounts?: boolean;
   isSimulatedDataPurged?: boolean;
   mascotConfig?: any;
+  allowGuestPosting?: boolean;
 }): Promise<void> {
   if (isQuotaExhausted) return;
   try {
@@ -1183,6 +1184,7 @@ export function subscribePlatformSettingsFromFirestore(
     isSimulatedDataPurged?: boolean;
     mascotConfig?: any;
     homeShowcaseConfig?: any;
+    allowGuestPosting?: boolean;
   }) => void
 ): Unsubscribe | null {
   if (isQuotaExhausted) return null;
@@ -1204,6 +1206,7 @@ export function subscribePlatformSettingsFromFirestore(
             isSimulatedDataPurged: data.isSimulatedDataPurged,
             mascotConfig: data.mascotConfig,
             homeShowcaseConfig: data.homeShowcaseConfig,
+            allowGuestPosting: data.allowGuestPosting,
           });
         }
       },

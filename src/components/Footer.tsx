@@ -247,7 +247,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           </div>
         </div>
 
-        <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-stone-500">
+        <div className="pt-4 pb-1 text-[11px] text-stone-500 leading-relaxed border-t border-stone-800/50">
+          <p>
+            <span className="text-amber-500/80 font-medium">【侵權主張與管轄宣告】</span>
+            若有未經授權刊登之提案或作品，請權利人具備完整身分證明與侵權對比證據向IdeaX提出主張，平台將於三日內審核，若屬實將儘速下架該內容。若有法律糾紛將以臺灣臺北地方法院為第一審法院。
+          </p>
+        </div>
+
+        <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-stone-500">
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX</span>
             <span>·</span>

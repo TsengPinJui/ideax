@@ -132,7 +132,7 @@ const getTitlePlaceholder = (type: PostType): string => {
     case 'vibecoding_app':
       return '例如：10分鐘用 AI 生成的早餐店預訂與動態備料 Line Web App';
     case 'chat_discussion':
-      return '例如：大家在進行 VibeCoding 時最常遇到的 Prompt 瓶頸是什麼？';
+      return '例如：大家在進行軟體網站開發時最常遇到的 Prompt 瓶頸是什麼？';
     default:
       return '請輸入標題...';
   }
@@ -182,7 +182,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast, allowGuestPosting } = useApp();
 
   const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
@@ -764,15 +764,23 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return false;
     };
 
-    if (!currentUser || currentUser.id === 'user-guest') {
-      return failWithError('登錄帳號及個人資料為提問之必要條件，請先登入會員帳號（登入即代表同意全站一般服務條款）');
-    }
+    const isGuest = !currentUser || currentUser.id === 'user-guest';
+    const totalRequiredPoints = currentBounty + (isPromotedWithMegaphone ? 50 : 0);
 
-    const isProfileComplete = hasFilledRequiredProfile(currentUser);
-    if (!isProfileComplete) {
-      performAutoSaveDraft();
-      setShowProfileIncompleteModal(true);
-      return failWithError('⚠️ 個人資料為發布之必要條件！系統已自動為您安全儲存當前草稿，請點選彈窗或捷徑前往補填完整個人資料。');
+    if (isGuest) {
+      if (!allowGuestPosting) {
+        return failWithError('目前平台設定為「登入才能發文」，請先登入會員帳號後再進行發布');
+      }
+      if (totalRequiredPoints > 0) {
+        return failWithError('訪客僅能從事無點數或金流活動（如提出痛點、刊登作品、L0討論），若欲設置懸賞點數請先登入會員帳號');
+      }
+    } else {
+      const isProfileComplete = hasFilledRequiredProfile(currentUser);
+      if (!isProfileComplete) {
+        performAutoSaveDraft();
+        setShowProfileIncompleteModal(true);
+        return failWithError('⚠️ 個人資料為發布之必要條件！系統已自動為您安全儲存當前草稿，請點選彈窗或捷徑前往補填完整個人資料。');
+      }
     }
 
     const isL0OrChatType = postType === 'chat_discussion';
@@ -813,7 +821,6 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return failWithError('發布問題前，請先勾選確認已閱讀並同意 《提問會員服務條款》 與 《一般服務條款》');
     }
 
-    const totalRequiredPoints = currentBounty + (isPromotedWithMegaphone ? 50 : 0);
     if (totalRequiredPoints > 0 && (currentUser?.balance || 0) < totalRequiredPoints) {
       return failWithError(`您的帳戶點數餘額不足（目前餘額 ${(currentUser?.balance || 0).toLocaleString()} 點 / 需支付 ${totalRequiredPoints.toLocaleString()} 點）。目前暫時僅支援以平台點數扣點，請調整點數設定。`);
     }
@@ -1665,7 +1672,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     }`}
                   >
                     {postType === 'vibecoding_app'
-                      ? 'VibeCoding 應用多媒體與架構展示'
+                      ? '軟體網站應用多媒體與架構展示'
                       : '展示設定'}
                   </h4>
                 </div>

@@ -28,7 +28,15 @@ import {
   ExternalLink,
   Flame,
 } from 'lucide-react';
-import { isGuestUser, resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
+import {
+  isGuestUser,
+  resolveUserDisplayName,
+  resolveUserAvatar,
+  getUserNameColorClass,
+  isPlatformPublishedWork,
+  PLATFORM_CURATED_NAME,
+  PLATFORM_CURATED_AVATAR,
+} from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { findReferencedPainPoint } from '../utils/painPointLinking';
@@ -255,8 +263,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     e.stopPropagation();
     const url = `${window.location.origin}/?questionId=${q.id}`;
     await shareOrCopyUrl({
-      title: `【IdeaX VibeCoding】${q.title}`,
-      text: `分享 VibeCoding 軟體作品：${q.title}\n${q.description}`,
+      title: `【IdeaX 軟體網站】${q.title}`,
+      text: `分享軟體網站作品：${q.title}\n${q.description}`,
       url,
     });
     if (showCenterToast) showCenterToast('已複製作品網址！');
@@ -268,9 +276,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     const isLiked = isQuestionLiked(app.id);
     const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(app);
     const referencedPainPointObj = findReferencedPainPoint(app, questions);
-    const authorDisplayName = resolveUserDisplayName(app.authorId, app.authorName, availableUsers);
-    const authorDisplayAvatar = resolveUserAvatar(app.authorId, app.authorAvatar, availableUsers);
-    const authorColorClass = getUserNameColorClass(app.authorId, availableUsers, {
+    const isPlatformWork = isPlatformPublishedWork(app);
+    const authorDisplayName = isPlatformWork ? PLATFORM_CURATED_NAME : resolveUserDisplayName(app.authorId, app.authorName, availableUsers);
+    const authorDisplayAvatar = isPlatformWork ? PLATFORM_CURATED_AVATAR : resolveUserAvatar(app.authorId, app.authorAvatar, availableUsers);
+    const authorColorClass = isPlatformWork ? 'text-amber-800 font-black' : getUserNameColorClass(app.authorId, availableUsers, {
       isOfficial: app.isOfficial,
       name: app.authorName,
       title: app.authorTitle,
@@ -330,8 +339,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 {app.description}
               </p>
               <div className="flex items-center gap-2 pt-0.5 text-[10px] sm:text-[11px] text-stone-500">
-                <span className={`font-bold truncate max-w-[100px] ${authorColorClass}`}>
-                  {authorDisplayName}
+                <span className={`truncate max-w-[110px] flex items-center gap-1 ${authorColorClass}`}>
+                  <span>{authorDisplayName}</span>
+                  {isPlatformWork && (
+                    <span className="text-[9px] font-black px-1 rounded bg-amber-50 text-amber-700 border border-amber-300/80">
+                      精選
+                    </span>
+                  )}
                 </span>
                 {app.techArchitecture && (
                   <span className="text-indigo-700 font-semibold truncate max-w-[120px]">
@@ -460,8 +474,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             </div>
 
             <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1 text-[10px]">
-              <span className={`font-bold truncate max-w-[80px] ${authorColorClass}`}>
-                {authorDisplayName}
+              <span className={`truncate max-w-[95px] flex items-center gap-1 ${authorColorClass}`}>
+                <span>{authorDisplayName}</span>
+                {isPlatformWork && (
+                  <span className="text-[8px] font-black px-1 rounded bg-amber-50 text-amber-700 border border-amber-300/80">
+                    精選
+                  </span>
+                )}
               </span>
               <span className="font-mono font-black text-indigo-700 flex items-center gap-0.5 shrink-0">
                 <Coins className="w-3 h-3" />
@@ -508,7 +527,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             {app.demoUrl ? (
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>可線上體驗</span>
+                <span>可試玩體驗</span>
               </span>
             ) : (
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-950/80 backdrop-blur-md text-indigo-200 border border-indigo-700/80 shadow-xs">
@@ -598,11 +617,18 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             <img
               src={authorDisplayAvatar}
               alt={authorDisplayName}
-              className="w-7 h-7 rounded-full object-cover border border-stone-200 shrink-0"
+              className={`w-7 h-7 rounded-full object-cover border shrink-0 ${isPlatformWork ? 'border-amber-400 ring-1 ring-amber-300' : 'border-stone-200'}`}
             />
             <div className="min-w-0 flex-1">
-              <div className={`text-xs font-bold truncate ${authorColorClass}`}>
-                {authorDisplayName}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`text-xs truncate ${authorColorClass}`}>
+                  {authorDisplayName}
+                </span>
+                {isPlatformWork && (
+                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-300/80">
+                    精選刊登
+                  </span>
+                )}
               </div>
               {app.techArchitecture && (
                 <div className="text-[10px] text-indigo-700 font-semibold truncate">
@@ -660,7 +686,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   title="開啟線上試用網址"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  <span>體驗</span>
+                  <span>到網站支持</span>
                 </a>
               )}
               <button
@@ -704,7 +730,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </div>
             <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>VibeCoding 作品牆</span>
+              <span>軟體網站作品牆</span>
               {onTogglePin && (
                 <button
                   type="button"
@@ -943,7 +969,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <GuestBoardGateBlurOverlay
                   remainingCount={filteredApps.length - GUEST_VISIBLE_COUNT}
                   totalCount={filteredApps.length}
-                  boardName="VibeCoding 展場"
+                  boardName="軟體網站展場"
                   onOpenAuth={() => openAuthModal('login')}
                   blurredPreviewChildren={
                     <div

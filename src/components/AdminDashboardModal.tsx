@@ -90,6 +90,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     isRaceMode,
     setRaceMode,
     toggleRaceMode,
+    allowGuestPosting,
+    toggleAllowGuestPosting,
     isSimulatedDataPurged,
     purgeAllSimulatedData,
     restoreAllSimulatedData,
@@ -1787,6 +1789,61 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 >
                   {isHideTestAccounts ? 'HIDE' : 'SHOW'}
                 </button>
+              </div>
+            </div>
+
+            {/* 訪客發文權限開關：登入才能發文 vs. 訪客也能發文 */}
+            <div className="p-3 rounded-xl bg-stone-950/80 border border-stone-800 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-base shrink-0">✍️</span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-xs text-stone-200">全站發文與訪客權限</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        allowGuestPosting
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      }`}>
+                        {allowGuestPosting ? '訪客也能發文' : '登入才能發文'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-1 leading-relaxed">
+                      {allowGuestPosting
+                        ? '✅ 已開放訪客從事無點數/無金流活動（例如提出痛點、刊登作品、L0討論、按讚、留言）；獲得的打賞暫存於訪客帳戶（不可提領），待登錄後自動轉為可提領打賞。收藏功能僅限登入會員。'
+                        : '🔒 目前全站設定為需登入或註冊會員始可發布問題、提案、作品或交流貼文。'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0 bg-stone-900 p-1 rounded-xl border border-stone-700 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (allowGuestPosting) toggleAllowGuestPosting();
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      !allowGuestPosting
+                        ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    登入才能發文
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!allowGuestPosting) toggleAllowGuestPosting();
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      allowGuestPosting
+                        ? 'bg-emerald-500 text-stone-950 font-black shadow-xs'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    訪客也能發文
+                  </button>
+                </div>
               </div>
             </div>
           </div>
