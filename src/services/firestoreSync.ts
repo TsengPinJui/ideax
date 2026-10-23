@@ -117,7 +117,12 @@ export async function testFirestoreConnection(): Promise<boolean> {
 export async function syncQuestionToFirestore(question: Question): Promise<void> {
   if (!question || !question.id) return;
   const cleanQ = JSON.parse(JSON.stringify(question));
-  const payload = { ...cleanQ, updatedAt: new Date().toISOString() };
+  const payload = {
+    ...cleanQ,
+    showCardImage: question.showCardImage !== undefined ? Boolean(question.showCardImage) : true,
+    cardDisplayImage: question.cardDisplayImage || '',
+    updatedAt: new Date().toISOString(),
+  };
   try {
     await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(question.id)}`, {
       method: 'POST',

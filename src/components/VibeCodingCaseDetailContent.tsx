@@ -404,7 +404,10 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
   const demoUrl = workUrl || platformLinksOf(question.publishedPlatforms)[0]?.url || '';
   const previewMode: 'embed' | 'external' =
     question.previewMode || question.vibeCodingData?.previewMode || 'embed';
-  const versionLabel = question.currentVersion || question.version || 'v1.0.0';
+  const versionLabel =
+    (question.title?.includes('老闆不在') || question.appName?.includes('老闆不在'))
+      ? (question.currentVersion && question.currentVersion !== 'v1.0.0' ? question.currentVersion : 'v3.4.8')
+      : (question.currentVersion || question.version || 'v1.0.0');
   const appName = question.appName || question.vibeCodingData?.appName || '';
 
   const handlePrevImage = (e?: React.MouseEvent) => {
@@ -656,19 +659,6 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {demoUrl && (
-            <a
-              href={demoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => platformChooser.onLinkClick(e, chooserItem)}
-              className="px-3.5 py-2 rounded-lg border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
-            >
-              <span>前往網站體驗</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-
           <button
             type="button"
             onClick={onToggleLike}

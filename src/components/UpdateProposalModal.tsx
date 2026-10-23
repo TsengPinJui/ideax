@@ -127,6 +127,117 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // 用 ref 持有最新編輯表單值，以便每 10 秒定時自動儲存到草稿
+  const formDataRef = React.useRef({
+    appName,
+    title,
+    description,
+    selectedCategories,
+    referencedPainPoint,
+    targetGoal,
+    mindMap,
+    demoUrl,
+    fileLink,
+    previewMode,
+    techArchitecture,
+    publishedPlatforms,
+    coverImage,
+    galleryImages,
+    youtubeUrl,
+    coverMode,
+    cardHoverMode,
+    proposalProgressStage,
+    showCardImage,
+    selectedCardImage,
+    version,
+    changelogContent,
+    changelogNote,
+  });
+
+  useEffect(() => {
+    formDataRef.current = {
+      appName,
+      title,
+      description,
+      selectedCategories,
+      referencedPainPoint,
+      targetGoal,
+      mindMap,
+      demoUrl,
+      fileLink,
+      previewMode,
+      techArchitecture,
+      publishedPlatforms,
+      coverImage,
+      galleryImages,
+      youtubeUrl,
+      coverMode,
+      cardHoverMode,
+      proposalProgressStage,
+      showCardImage,
+      selectedCardImage,
+      version,
+      changelogContent,
+      changelogNote,
+    };
+  }, [
+    appName,
+    title,
+    description,
+    selectedCategories,
+    referencedPainPoint,
+    targetGoal,
+    mindMap,
+    demoUrl,
+    fileLink,
+    previewMode,
+    techArchitecture,
+    publishedPlatforms,
+    coverImage,
+    galleryImages,
+    youtubeUrl,
+    coverMode,
+    cardHoverMode,
+    proposalProgressStage,
+    showCardImage,
+    selectedCardImage,
+    version,
+    changelogContent,
+    changelogNote,
+  ]);
+
+  // 當用戶編輯提案時，每 10 秒自動儲存到草稿一次
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      const current = formDataRef.current;
+      const hasAnyContent = Boolean(
+        current.title?.trim() ||
+        current.description?.trim() ||
+        current.changelogContent?.trim() ||
+        current.coverImage?.trim() ||
+        (current.galleryImages && current.galleryImages.length > 0)
+      );
+      if (!hasAnyContent) return;
+
+      const draftData = {
+        questionId: question.id,
+        userId: currentUser?.id,
+        ...current,
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftData));
+        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastSavedDraftTime(timeStr);
+      } catch (e) {
+        console.warn('Auto save draft error:', e);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, draftStorageKey, question.id, currentUser?.id]);
+
   useEffect(() => {
     if (isOpen) {
       setSelectedCategories(getInitialCats());
@@ -144,13 +255,17 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setTechArchitecture(question.techArchitecture || '');
       setPublishedPlatforms(normalizePlatforms(question.publishedPlatforms));
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
-      setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
+      const initialGallery = question.galleryImages || question.vibeCodingData?.screenshots || [];
+      setGalleryImages(initialGallery);
       setYoutubeUrl(question.youtubeUrl || question.vibeCodingData?.youtubeUrl || '');
       setCoverMode(question.coverMode || question.vibeCodingData?.coverMode || 'custom_image');
       setCardHoverMode(question.cardHoverMode || question.vibeCodingData?.cardHoverMode || 'video_autoplay');
       setProposalProgressStage(question.proposalProgressStage || '');
       setShowCardImage(question.showCardImage !== false);
-      setSelectedCardImage(question.cardDisplayImage || '');
+      setSelectedCardImage(
+        question.cardDisplayImage ||
+        (question.showCardImage !== false ? (initialGallery[0] || question.coverImage || '') : '')
+      );
       setVersion(getNextVersion());
       setChangelogContent('');
       setChangelogNote('');
@@ -232,7 +347,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       cardHoverMode,
       proposalProgressStage,
       showCardImage,
-      selectedCardImage,
+      selectedCardImage: showCardImage ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '') : '',
       version,
       changelogContent,
       changelogNote,
@@ -243,10 +358,10 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     } catch (e) {
       console.error(e);
     }
-    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLastSavedDraftTime(timeStr);
     setIsSavingDraft(false);
-    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，下次開啟可載入繼續編輯。`, { type: 'success', duration: 2500 });
+    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，系統亦會每 10 秒自動為您更新草稿。`, { type: 'success', duration: 2500 });
   };
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -449,7 +564,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       coverMode,
       cardHoverMode,
       showCardImage,
-      cardDisplayImage: showCardImage ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || undefined) : undefined,
+      cardDisplayImage: showCardImage
+        ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '')
+        : '',
       proposalProgressStage: !isVibeCoding ? (proposalProgressStage || undefined) : undefined,
       version: version.trim() || undefined,
       updateContent: summaryText,
@@ -477,6 +594,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     <div
       className="fixed inset-0 z-[120] bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
       onClick={(e) => {
+        if (cropperModalOpen || showPreviewModal) return;
         e.stopPropagation();
         onClose();
       }}
@@ -501,12 +619,18 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {lastSavedDraftTime && (
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md font-bold hidden sm:inline-flex items-center gap-1" title="編輯提案時系統每 10 秒自動暫存一次">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>草稿已存 {lastSavedDraftTime}</span>
+              </span>
+            )}
             <button
               type="button"
-              onClick={handleSaveDraft}
+              onClick={() => handleSaveDraft()}
               disabled={isSavingDraft}
               className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              title="暫存目前編輯內容為草稿"
+              title="立即儲存目前編輯內容為草稿（系統亦會每 10 秒自動儲存）"
             >
               <Save className="w-3.5 h-3.5 text-emerald-600" />
               <span>{isSavingDraft ? '儲存中...' : '儲存草稿'}</span>
@@ -1200,6 +1324,26 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
 
           {/* Pinned Footer Actions */}
           <div className="px-5 py-3.5 border-t border-stone-200 bg-white shrink-0 space-y-2.5">
+            {/* 授權條款告知 */}
+            <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-stone-700 text-xs flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-amber-900 bg-amber-200/70 px-1.5 py-0.5 rounded text-[10.5px]">條款規範</span>
+                <span className="font-bold text-stone-900">發佈內容即同意授權IdeaX作為行銷宣傳使用</span>
+                <span className="text-stone-500 text-[11px]">（包含官方社群、電子報、精選案例與展會宣傳等推廣用途）</span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openAboutModal?.('general_terms');
+                }}
+                className="text-xs text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer"
+              >
+                服務條款詳情
+              </button>
+            </div>
+
             {isVibeCoding && (
               <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />

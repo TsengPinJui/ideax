@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Crop,
   RotateCw,
@@ -355,130 +356,150 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     return () => clearTimeout(t);
   }, [updatePreview]);
 
-  // 處理游標與觸控移動
+  // 處理游標與觸控移動（使用 window 層級監聽器，防止指針捕獲失效或事件冒泡造成外部視窗閃退）
   const handlePointerDown = (
     e: React.PointerEvent,
     type: 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e'
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startCrop = { ...cropBox };
+
     dragRef.current = {
       isDragging: true,
       dragType: type,
-      startX: e.clientX,
-      startY: e.clientY,
-      startCrop: { ...cropBox },
+      startX,
+      startY,
+      startCrop,
     };
-  };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragRef.current.isDragging) return;
-    e.preventDefault();
-
-    const { dragType, startX, startY, startCrop } = dragRef.current;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-
+    const targetRatio = getRatioNumber(isAvatar ? '1:1' : aspectRatio);
     const maxW = displaySize.width;
     const maxH = displaySize.height;
     const minSize = 36;
-    const targetRatio = getRatioNumber(isAvatar ? '1:1' : aspectRatio);
 
-    if (dragType === 'move') {
-      const newX = Math.max(0, Math.min(maxW - startCrop.width, startCrop.x + dx));
-      const newY = Math.max(0, Math.min(maxH - startCrop.height, startCrop.y + dy));
+    const onWindowPointerMove = (ev: PointerEvent) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!dragRef.current.isDragging) return;
+
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      if (type === 'move') {
+        const allowedMaxX = Math.max(0, maxW - startCrop.width);
+        const allowedMaxY = Math.max(0, maxH - startCrop.height);
+        const rawNewX = startCrop.x + dx;
+        const rawNewY = startCrop.y + dy;
+        const safeX = Math.round(Math.max(0, Math.min(allowedMaxX, rawNewX)));
+        const safeY = Math.round(Math.max(0, Math.min(allowedMaxY, rawNewY)));
+        setCropBox((prev) => ({
+          ...prev,
+          x: isNaN(safeX) ? 0 : safeX,
+          y: isNaN(safeY) ? 0 : safeY,
+        }));
+        return;
+      }
+
+      let { x, y, width, height } = startCrop;
+
+      if (type === 'se') {
+        let newW = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
+        let newH = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
+        if (targetRatio !== null) {
+          if (newW / newH > targetRatio) {
+            newW = Math.min(maxW - x, newH * targetRatio);
+            newH = newW / targetRatio;
+          } else {
+            newH = Math.min(maxH - y, newW / targetRatio);
+            newW = newH * targetRatio;
+          }
+        }
+        width = newW;
+        height = newH;
+      } else if (type === 'sw') {
+        let newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
+        let newH = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
+        if (targetRatio !== null) {
+          newH = newW / targetRatio;
+          if (y + newH > maxH) {
+            newH = maxH - y;
+            newW = newH * targetRatio;
+          }
+        }
+        x = startCrop.x + (startCrop.width - newW);
+        width = newW;
+        height = newH;
+      } else if (type === 'ne') {
+        let newW = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
+        let newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
+        if (targetRatio !== null) {
+          newW = newH * targetRatio;
+          if (x + newW > maxW) {
+            newW = maxW - x;
+            newH = newW / targetRatio;
+          }
+        }
+        y = startCrop.y + (startCrop.height - newH);
+        width = newW;
+        height = newH;
+      } else if (type === 'nw') {
+        let newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
+        let newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
+        if (targetRatio !== null) {
+          newH = newW / targetRatio;
+          if (newH > startCrop.y + startCrop.height) {
+            newH = startCrop.y + startCrop.height;
+            newW = newH * targetRatio;
+          }
+        }
+        x = startCrop.x + (startCrop.width - newW);
+        y = startCrop.y + (startCrop.height - newH);
+        width = newW;
+        height = newH;
+      } else if (type === 'e' && targetRatio === null) {
+        width = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
+      } else if (type === 's' && targetRatio === null) {
+        height = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
+      } else if (type === 'w' && targetRatio === null) {
+        const newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
+        x = startCrop.x + (startCrop.width - newW);
+        width = newW;
+      } else if (type === 'n' && targetRatio === null) {
+        const newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
+        y = startCrop.y + (startCrop.height - newH);
+        height = newH;
+      }
+
+      const finalX = Math.round(Math.max(0, x));
+      const finalY = Math.round(Math.max(0, y));
+      const finalW = Math.round(Math.min(maxW - finalX, Math.max(minSize, width)));
+      const finalH = Math.round(Math.min(maxH - finalY, Math.max(minSize, height)));
+
       setCropBox({
-        ...startCrop,
-        x: newX,
-        y: newY,
+        x: isNaN(finalX) ? 0 : finalX,
+        y: isNaN(finalY) ? 0 : finalY,
+        width: isNaN(finalW) ? minSize : finalW,
+        height: isNaN(finalH) ? minSize : finalH,
       });
-      return;
-    }
+    };
 
-    let { x, y, width, height } = startCrop;
-
-    if (dragType === 'se') {
-      let newW = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
-      let newH = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
-      if (targetRatio !== null) {
-        if (newW / newH > targetRatio) {
-          newW = Math.min(maxW - x, newH * targetRatio);
-          newH = newW / targetRatio;
-        } else {
-          newH = Math.min(maxH - y, newW / targetRatio);
-          newW = newH * targetRatio;
-        }
-      }
-      width = newW;
-      height = newH;
-    } else if (dragType === 'sw') {
-      let newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
-      let newH = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
-      if (targetRatio !== null) {
-        newH = newW / targetRatio;
-        if (y + newH > maxH) {
-          newH = maxH - y;
-          newW = newH * targetRatio;
-        }
-      }
-      x = startCrop.x + (startCrop.width - newW);
-      width = newW;
-      height = newH;
-    } else if (dragType === 'ne') {
-      let newW = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
-      let newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
-      if (targetRatio !== null) {
-        newW = newH * targetRatio;
-        if (x + newW > maxW) {
-          newW = maxW - x;
-          newH = newW / targetRatio;
-        }
-      }
-      y = startCrop.y + (startCrop.height - newH);
-      width = newW;
-      height = newH;
-    } else if (dragType === 'nw') {
-      let newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
-      let newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
-      if (targetRatio !== null) {
-        newH = newW / targetRatio;
-        if (newH > startCrop.y + startCrop.height) {
-          newH = startCrop.y + startCrop.height;
-          newW = newH * targetRatio;
-        }
-      }
-      x = startCrop.x + (startCrop.width - newW);
-      y = startCrop.y + (startCrop.height - newH);
-      width = newW;
-      height = newH;
-    } else if (dragType === 'e' && targetRatio === null) {
-      width = Math.max(minSize, Math.min(maxW - x, startCrop.width + dx));
-    } else if (dragType === 's' && targetRatio === null) {
-      height = Math.max(minSize, Math.min(maxH - y, startCrop.height + dy));
-    } else if (dragType === 'w' && targetRatio === null) {
-      const newW = Math.max(minSize, Math.min(startCrop.x + startCrop.width, startCrop.width - dx));
-      x = startCrop.x + (startCrop.width - newW);
-      width = newW;
-    } else if (dragType === 'n' && targetRatio === null) {
-      const newH = Math.max(minSize, Math.min(startCrop.y + startCrop.height, startCrop.height - dy));
-      y = startCrop.y + (startCrop.height - newH);
-      height = newH;
-    }
-
-    setCropBox({
-      x: Math.max(0, x),
-      y: Math.max(0, y),
-      width: Math.min(maxW - Math.max(0, x), width),
-      height: Math.min(maxH - Math.max(0, y), height),
-    });
-  };
-
-  const handlePointerUp = () => {
-    if (dragRef.current.isDragging) {
+    const onWindowPointerUp = (ev: PointerEvent) => {
+      ev.preventDefault();
+      ev.stopPropagation();
       dragRef.current.isDragging = false;
       dragRef.current.dragType = null;
-    }
+      window.removeEventListener('pointermove', onWindowPointerMove);
+      window.removeEventListener('pointerup', onWindowPointerUp);
+      window.removeEventListener('pointercancel', onWindowPointerUp);
+    };
+
+    window.addEventListener('pointermove', onWindowPointerMove, { passive: false });
+    window.addEventListener('pointerup', onWindowPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onWindowPointerUp, { passive: false });
   };
 
   // 電腦與滑鼠支援：平滑縮放計算（以指定中心點或裁切框中心為錨點）
@@ -620,14 +641,25 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     }
   }, [displaySize, isAvatar, aspectRatio, initCropBox]);
 
-  // 電腦鍵盤快捷鍵：+ / - 縮放、0 重設、方向鍵微調移動
+  const handleConfirmCropRef = useRef<() => void>(() => {});
+  const onCloseRef = useRef<() => void>(() => {});
+
+  // 電腦鍵盤快捷鍵：+ / - 縮放、0 重設、方向鍵微調移動、Enter 確認、Escape 關閉
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (targetTag === 'input' || targetTag === 'textarea') return;
 
-      if (e.key === '+' || e.key === '=') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirmCropRef.current();
+        return;
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      } else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         applyZoomMultiplier(0.92);
       } else if (e.key === '-' || e.key === '_') {
@@ -718,52 +750,81 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     onConfirm(croppedDataUrl);
   };
 
+  handleConfirmCropRef.current = handleConfirmCrop;
+  onCloseRef.current = onClose;
+
   const currentPresetInfo = useMemo(() => {
     return PROPOSAL_RATIO_PRESETS.find((p) => p.key === aspectRatio) || PROPOSAL_RATIO_PRESETS[0];
   }, [aspectRatio]);
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[140] flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-5 animate-in fade-in duration-200"
-      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-5 animate-in fade-in duration-200"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+      }}
     >
       <div
-        className="relative w-full max-w-4xl rounded-2xl bg-stone-900 border border-stone-800 text-white shadow-2xl flex flex-col max-h-[95vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-4xl rounded-2xl bg-stone-900 border border-stone-700/80 text-white shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-stone-800 bg-stone-900/95 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className={`p-2 rounded-xl ${isAvatar ? 'bg-amber-400 text-stone-950 font-black' : 'bg-blue-600 text-white'}`}>
+        <div className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-stone-800 bg-stone-900/95 shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className={`p-2 rounded-xl shrink-0 ${isAvatar ? 'bg-amber-400 text-stone-950 font-black' : 'bg-blue-600 text-white'}`}>
               <Crop className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black text-white truncate">
                   {title || (isAvatar ? '裁切個人頭像' : '裁切提案圖片／封面')}
                 </h3>
                 {isAvatar && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black shrink-0">
                     必須為 1:1 正方形
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-stone-400">
+              <p className="text-[11px] text-stone-400 truncate hidden sm:block">
                 {isAvatar
                   ? '拖曳方框選取居中範圍，預覽圓形頭像與正方形卡片效果'
                   : '提供多種提案常用與推薦尺寸，完美適配卡片與展示頁面'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          {/* 頂部顯眼確認與關閉按鈕（保證在任何螢幕高度下都能直接看見並點擊） */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleConfirmCrop}
+              className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs sm:text-sm font-black shadow-lg shadow-amber-500/25 flex items-center gap-1.5 transition-all cursor-pointer ring-2 ring-amber-400/50"
+              title="確認裁切並套用儲存（亦可按鍵盤 Enter）"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>確認儲存</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+              title="取消並關閉（Esc）"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* 尺寸與比例選單列 */}
@@ -853,11 +914,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         {/* 核心畫布區域 */}
         <div
           ref={containerRef}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
           onWheel={handleWheel}
-          className="relative flex-1 min-h-[300px] sm:min-h-[360px] max-h-[52vh] w-full bg-stone-950 flex items-center justify-center overflow-hidden select-none touch-none"
+          className="relative flex-1 min-h-[220px] sm:min-h-[280px] max-h-[42vh] sm:max-h-[48vh] w-full bg-stone-950 flex items-center justify-center overflow-hidden select-none touch-none"
         >
           {/* 隱藏的底圖用以獲取 naturalWidth/Height */}
           <img
@@ -1002,6 +1060,17 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* 畫布內懸浮快捷確認按鈕 */}
+          <button
+            type="button"
+            onClick={handleConfirmCrop}
+            className="absolute bottom-3 right-3 sm:right-4 z-20 px-3.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black shadow-xl flex items-center gap-1.5 border border-amber-300/80 cursor-pointer active:scale-95 backdrop-blur-sm transition-all ring-2 ring-amber-400/40"
+            title="點擊確認裁切範圍（Enter）"
+          >
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <span>完成此處裁切</span>
+          </button>
         </div>
 
         {/* 底部控制工具列 */}
@@ -1114,9 +1183,9 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           </div>
         </div>
 
-        {/* 底部動作列 */}
-        <div className="px-4 sm:px-6 py-3 border-t border-stone-800 bg-stone-950/90 flex items-center justify-between gap-2 flex-wrap shrink-0">
-          <div>
+        {/* 底部動作列 (黏著底部，確保隨時可見確認與儲存鍵) */}
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-t-2 border-stone-800 bg-stone-950 sticky bottom-0 z-30 flex items-center justify-between gap-2.5 flex-wrap shrink-0 shadow-2xl">
+          <div className="flex items-center gap-3">
             {onSkip && !isAvatar && (
               <button
                 type="button"
@@ -1126,29 +1195,37 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 跳過裁切（使用原圖）
               </button>
             )}
+            <span className="text-[11px] text-stone-400 hidden sm:inline">
+              提示：可按鍵盤 <kbd className="px-1.5 py-0.5 rounded bg-stone-800 text-stone-300 font-mono text-[10px] border border-stone-700">Enter</kbd> 直接確認儲存，或按 <kbd className="px-1.5 py-0.5 rounded bg-stone-800 text-stone-300 font-mono text-[10px] border border-stone-700">Esc</kbd> 取消
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-stone-700 text-stone-300 hover:bg-stone-800 text-xs font-bold transition-colors cursor-pointer"
+              className="px-3.5 sm:px-4 py-2 rounded-xl border border-stone-700 text-stone-300 hover:bg-stone-800 hover:text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer"
             >
               取消
             </button>
             <button
               type="button"
               onClick={handleConfirmCrop}
-              className="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs font-black shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:brightness-105 active:scale-95 text-stone-950 text-xs sm:text-sm font-black shadow-xl shadow-amber-500/30 flex items-center gap-2 transition-all cursor-pointer ring-2 ring-amber-400/60"
             >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>確認裁切並套用</span>
+              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+              <span>確認裁切並套用儲存</span>
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 };
 
 export default ImageCropperModal;

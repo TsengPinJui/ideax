@@ -1444,10 +1444,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               vibeCodingData: { ...(rawQ.vibeCodingData || seedQ?.vibeCodingData || {}), demoUrl: 'https://ez-cook.onrender.com/' },
             }
           : {}),
+        ...(rawQ.title?.includes('老闆不在') || rawQ.appName?.includes('老闆不在')
+          ? {
+              currentVersion: rawQ.currentVersion && rawQ.currentVersion !== 'v1.0.0' ? rawQ.currentVersion : 'v3.4.8',
+            }
+          : {}),
       };
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
+        showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
+        cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
         title: typeof q.title === 'string' ? q.title : '',
         description: typeof q.description === 'string' ? q.description : '',
         tags: Array.isArray(q.tags) ? q.tags : [],
@@ -2745,6 +2752,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                           vibeCodingData: seedQ.vibeCodingData || q.vibeCodingData,
                         }
                       : {}),
+                    ...(q.title?.includes('老闆不在') || q.appName?.includes('老闆不在')
+                      ? {
+                          currentVersion: q.currentVersion && q.currentVersion !== 'v1.0.0' ? q.currentVersion : 'v3.4.8',
+                        }
+                      : {}),
                   }),
               ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
               tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
@@ -3095,6 +3107,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                           : {}),
                       }),
                   ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
+                  showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
+                  cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
                   views: highestViews,
                   viewsCount: highestViews,
                 };
@@ -5365,8 +5379,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       youtubeUrl: params.youtubeUrl !== undefined ? params.youtubeUrl : currentQ.youtubeUrl,
       coverMode: params.coverMode !== undefined ? params.coverMode : currentQ.coverMode,
       cardHoverMode: params.cardHoverMode !== undefined ? params.cardHoverMode : currentQ.cardHoverMode,
-      showCardImage: params.showCardImage !== undefined ? params.showCardImage : currentQ.showCardImage,
-      cardDisplayImage: params.cardDisplayImage !== undefined ? params.cardDisplayImage : currentQ.cardDisplayImage,
+      showCardImage: typeof params.showCardImage === 'boolean' ? params.showCardImage : (currentQ.showCardImage !== false),
+      cardDisplayImage: params.cardDisplayImage !== undefined
+        ? params.cardDisplayImage
+        : (params.showCardImage === false ? '' : (currentQ.cardDisplayImage || '')),
       proposalProgressStage: params.proposalProgressStage !== undefined ? params.proposalProgressStage : currentQ.proposalProgressStage,
       mindMap: params.mindMap !== undefined ? params.mindMap : currentQ.mindMap,
       vibeCodingData: currentQ.vibeCodingData

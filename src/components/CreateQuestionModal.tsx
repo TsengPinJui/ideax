@@ -2760,6 +2760,22 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         )}
 
+        {/* 授權條款告知 */}
+        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-stone-700 text-xs flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-amber-900 bg-amber-200/70 px-1.5 py-0.5 rounded text-[10.5px]">條款規範</span>
+            <span className="font-bold text-stone-900">發佈內容即同意授權IdeaX作為行銷宣傳使用</span>
+            <span className="text-stone-500 text-[11px]">（包含官方社群、電子報、精選案例與展會宣傳等推廣用途）</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => openAboutModal('general_terms')}
+            className="text-xs text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer"
+          >
+            服務條款詳情
+          </button>
+        </div>
+
         {postType === 'vibecoding_app' && (
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
