@@ -1438,6 +1438,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }),
         // 示範資料一律使用固定的發布時間，避免雲端舊資料讓它們看起來永遠是最新
         ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
+        ...(rawQ.id === 'q-vp-vibe-12' || rawQ.appName?.includes('FridgeChef')
+          ? {
+              demoUrl: 'https://ez-cook.onrender.com/',
+              vibeCodingData: { ...(rawQ.vibeCodingData || seedQ?.vibeCodingData || {}), demoUrl: 'https://ez-cook.onrender.com/' },
+            }
+          : {}),
       };
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {

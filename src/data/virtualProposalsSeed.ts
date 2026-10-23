@@ -2663,10 +2663,10 @@ export const SEED_VIBECODING_APPS: Question[] = [
     targetGoal: '希望 6 個月內達成 40,000 次下載次數，陪伴外食與自煮族每月省下 3,000 元買菜錢',
     coverImage: '/seed-covers/q-vp-vibe-12.jpg',
     galleryImages: ['/seed-covers/q-vp-vibe-12.jpg'],
-    demoUrl: 'https://fridgechef.demo.ideax.tw',
+    demoUrl: 'https://ez-cook.onrender.com/',
     techArchitecture: 'React + PWA + Tailwind CSS + Gemini API',
     vibeCodingData: {
-      demoUrl: 'https://fridgechef.demo.ideax.tw',
+      demoUrl: 'https://ez-cook.onrender.com/',
       coverImageUrl: '/seed-covers/q-vp-vibe-12.jpg',
       appType: '飲食健康與生活工具',
       techStack: ['React', 'PWA', 'Tailwind CSS', 'Gemini API'],
