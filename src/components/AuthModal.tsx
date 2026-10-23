@@ -1169,7 +1169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           : (isQuestionerSkipped ? '新進提問者' : (jobTitle.trim() || '創新專案發起人')),
         avatar: presetAvatarFor(newId),
         role: regRole,
-        balance: 0,
+        balance: 100,
         pendingEarnings: 0,
         reputation: isExpert ? 120 : 100,
         joinedDate: new Date().toISOString().split('T')[0],

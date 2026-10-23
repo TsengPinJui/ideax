@@ -417,8 +417,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const isProposalPublisher = Boolean(
     currentUser?.id &&
     currentUser.id !== 'user-guest' &&
-    liveQuestion?.authorId &&
-    currentUser.id === liveQuestion.authorId
+    (currentUser.role === 'admin' || (liveQuestion?.authorId && currentUser.id === liveQuestion.authorId))
   );
   const canUpdateProposal = (
     (liveQuestion?.postType === 'innovation_proposal' ||

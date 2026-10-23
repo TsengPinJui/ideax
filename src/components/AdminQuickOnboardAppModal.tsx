@@ -54,6 +54,9 @@ interface ScrapedData {
   coverImage: string;
   screenshotUrl: string;
   ogImage: string | null;
+  previewMode?: 'embed' | 'external';
+  authorName?: string;
+  authorTitle?: string;
   rawMeta?: {
     title?: string;
     description?: string;
@@ -205,8 +208,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         cardDisplayImage: reviewedData.coverImage,
         demoUrl: cleanUrl,
         externalLink: cleanUrl,
-        previewMode: 'embed', // 預設試玩體驗模式
-        techArchitecture: reviewedData.techArchitecture || 'Web 網頁應用程式',
+        previewMode: reviewedData.previewMode || 'embed',
+        techArchitecture: (reviewedData.techArchitecture && reviewedData.techArchitecture.trim()) || 'Web 網頁應用程式',
         publishedPlatforms: [
           {
             name: 'Web 網頁版',
@@ -216,8 +219,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         publishIdentity: 'platform',
         isOfficial: true,
         authorId: 'platform',
-        authorName: PLATFORM_CURATED_NAME,
-        authorTitle: '官方審核精選',
+        authorName: (reviewedData.authorName && reviewedData.authorName.trim()) || PLATFORM_CURATED_NAME,
+        authorTitle: (reviewedData.authorTitle && reviewedData.authorTitle.trim()) || '官方審核精選',
         authorAvatar: PLATFORM_CURATED_AVATAR,
         bounty: 0,
         level: 'L1',
@@ -698,7 +701,15 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                       <span>審核並微調欄位內容</span>
                     </span>
-                    <span className="text-[11px] text-stone-400">所有欄位均可直接點擊編輯</span>
+                    <button
+                      type="button"
+                      onClick={() => setReviewedData(null)}
+                      className="text-[11px] text-stone-500 hover:text-indigo-600 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="返回輸入框更換網址重新抓取"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>更換網址重新擷取</span>
+                    </button>
                   </div>
 
                   {/* 軟體名稱 (appName) */}
@@ -802,6 +813,77 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                         setReviewedData({ ...reviewedData, websiteUrl: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs font-mono text-stone-800 outline-hidden bg-stone-50/50"
+                    />
+                  </div>
+
+                  {/* 技術架構 (techArchitecture) */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
+                      <span>技術架構 / 開發環境 (techArchitecture)</span>
+                      <span className="text-[11px] font-normal text-stone-400">
+                        例如：React + TypeScript、Next.js、AI 演算法
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={reviewedData.techArchitecture || ''}
+                      onChange={(e) =>
+                        setReviewedData({ ...reviewedData, techArchitecture: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs font-bold text-stone-900 outline-hidden"
+                      placeholder="例如：Web 網頁應用程式、React + Tailwind CSS"
+                    />
+                  </div>
+
+                  {/* 體驗預覽模式 (previewMode) */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-black text-stone-800">
+                      作品體驗模式 (previewMode)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReviewedData({ ...reviewedData, previewMode: 'embed' })}
+                        className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          reviewedData.previewMode !== 'external'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                        }`}
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current text-emerald-600" />
+                        <span>🎮 內嵌網頁試玩體驗 (預設)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewedData({ ...reviewedData, previewMode: 'external' })}
+                        className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          reviewedData.previewMode === 'external'
+                            ? 'bg-indigo-50 text-indigo-800 border-indigo-300 shadow-2xs'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                        }`}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>🔗 開啟外部專屬網站</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 作者/刊登者標示 (authorName) */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
+                      <span>作者/刊登者標示 (authorName)</span>
+                      <span className="text-[11px] text-amber-700 font-bold">
+                        預設：平台嚴選（可自由自訂或指定）
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={reviewedData.authorName !== undefined ? reviewedData.authorName : '平台嚴選'}
+                      onChange={(e) =>
+                        setReviewedData({ ...reviewedData, authorName: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs font-bold text-amber-900 outline-hidden bg-amber-50/20"
+                      placeholder="平台嚴選"
                     />
                   </div>
 

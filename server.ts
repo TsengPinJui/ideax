@@ -1547,6 +1547,67 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
 });
 
 // ==========================================
+// 繁體中文與原站文字保真模組（嚴禁繁轉簡、嚴禁任意替換語言）
+// ==========================================
+const S2T_CHAR_MAP: Record<string, string> = {
+  '软': '軟', '件': '件', '网': '網', '站': '站', '体': '體', '验': '驗', '创': '創', '点': '點',
+  '设': '設', '计': '計', '视': '視', '频': '頻', '线': '線', '链': '鏈', '接': '接', '应': '應',
+  '用': '用', '户': '戶', '登': '登', '录': '錄', '数': '數', '据': '據', '库': '庫', '系': '系',
+  '统': '統', '智': '智', '发': '發', '布': '布', '题': '題', '标': '標', '简': '簡', '绍': '紹',
+  '优': '優', '化': '化', '选': '選', '择': '擇', '项': '項', '经': '經', '营': '營', '关': '關',
+  '键': '鍵', '词': '詞', '图': '圖', '产': '產', '构': '構', '开': '開', '程': '程', '序': '序',
+  '码': '碼', '协': '協', '专': '專', '业': '業', '问': '問', '学': '學', '术': '術', '讨': '討',
+  '实': '實', '游': '遊', '戏': '戲', '扩': '擴', '充': '充', '进': '進', '资': '資', '讯': '訊',
+  '复': '複', '制': '製', '贴': '貼', '时': '時', '间': '間', '钟': '鐘', '独': '獨', '个': '個',
+  '账': '帳', '号': '號', '注': '註', '册': '冊', '奖': '獎', '励': '勵', '认': '認', '证': '證',
+  '审': '審', '核': '核', '规': '規', '范': '範', '则': '則', '总': '總', '赞': '讚', '转': '轉',
+  '移': '移', '权': '權', '随': '隨', '后': '後', '编': '編', '辑': '輯', '极': '極', '强': '強',
+  '严': '嚴', '推': '推', '荐': '薦', '联': '聯', '络': '絡', '获': '獲', '取': '取', '平': '平',
+  '台': '台', '精': '精', '与': '與', '么': '麼', '从': '從', '会': '會', '传': '傳', '伪': '偽',
+  '写': '寫', '准': '準', '出': '出', '击': '擊', '别': '別', '办': '辦', '动': '動', '势': '勢',
+  '单': '單', '卖': '賣', '历': '歷', '双': '雙', '变': '變', '块': '塊', '声': '聲', '备': '備',
+  '头': '頭', '导': '導', '寻': '尋', '币': '幣', '帮': '幫', '归': '歸', '律': '律', '态': '態',
+  '恋': '戀', '拟': '擬', '摄': '攝', '断': '斷', '显': '顯', '样': '樣', '模': '模', '横': '橫',
+  '测': '測', '满': '滿', '滤': '濾', '现': '現', '环': '環', '电': '電', '画': '畫', '略': '略',
+  '监': '監', '盘': '盤', '确': '確', '礼': '禮', '私': '私', '种': '種', '秒': '秒', '究': '究',
+  '竞': '競', '筹': '籌', '算': '算', '管': '管', '策': '策', '签': '簽', '类': '類', '组': '組',
+  '终': '終', '结': '結', '给': '給', '绝': '絕', '绪': '緒', '续': '續', '维': '維', '罚': '罰',
+  '置': '置', '群': '群', '脚': '腳', '脑': '腦', '装': '裝', '见': '見', '览': '覽',
+  '记': '記', '访': '訪', '评': '評', '试': '試', '话': '話', '语': '語', '误': '誤', '说': '說',
+  '谁': '誰', '调': '調', '论': '論', '赋': '賦', '质': '質', '购': '購', '赏': '賞', '赛': '賽',
+  '赠': '贈', '赢': '贏', '超': '超', '越': '越', '轻': '輕', '载': '載', '运': '運', '过': '過',
+  '达': '達', '速': '速', '配': '配', '铁': '鐵', '销': '銷', '锁': '鎖', '阅': '閱', '集': '集',
+  '需': '需', '面': '面', '顺': '順', '颜': '顏', '风': '風',
+};
+
+function toTraditionalChinese(text: string): string {
+  if (!text || typeof text !== 'string') return text || '';
+  let res = text
+    .replace(/软件/g, '軟體')
+    .replace(/用户/g, '用戶')
+    .replace(/视频/g, '影片')
+    .replace(/智能/g, '智慧')
+    .replace(/链接/g, '連結')
+    .replace(/登录/g, '登入')
+    .replace(/注册/g, '註冊')
+    .replace(/在线/g, '線上')
+    .replace(/游戏/g, '遊戲')
+    .replace(/扩展/g, '擴充功能')
+    .replace(/插件/g, '外掛插件')
+    .replace(/设置/g, '設定')
+    .replace(/网络/g, '網路')
+    .replace(/移动端/g, '行動端')
+    .replace(/客户端/g, '客戶端');
+
+  for (const [s, t] of Object.entries(S2T_CHAR_MAP)) {
+    if (s !== t && res.includes(s)) {
+      res = res.replaceAll(s, t);
+    }
+  }
+  return res;
+}
+
+// ==========================================
 // 網址智慧讀取與爬蟲：提取網站名稱、標題、簡述、首頁封面截圖並由 AI 自動歸類
 // ==========================================
 async function handleScrapeWebsite(req: Request, res: Response) {
@@ -1674,6 +1735,12 @@ async function handleScrapeWebsite(req: Request, res: Response) {
     const prompt = `你是「IdeaX 創點子」軟體網站作品專區的專業審查與產品架構顧問。
 管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」與「軟體分類 (category)」：
 
+【最高強制規範：文字語言與原站文字保真（嚴禁繁轉簡、嚴禁任意改寫）】
+1. 抓取的文字請務必嚴格按照原網站！不要擅自翻譯、簡化或竄改原網站已有名稱、標題與說明文字。
+2. 絕對不可以將繁體中文變成簡體中文！原網站若為繁體中文，必須 100% 保持繁體中文，絕不允許出現任何簡體字。
+3. 絕對不可以被換成其他語言文字：原網頁是繁體中文就保持繁體中文；若原網頁是英文或特定外語，保留原語言品牌名（如 Cursor、Notion、Figma 等），嚴禁翻譯成簡體中文字。
+4. 輸出的所有中文字元一律嚴格遵循臺灣繁體正體字規範。
+
 【目標網站網址】
 ${cleanUrl}
 網域主機：${hostname}
@@ -1704,8 +1771,8 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
 \`\`\`json
 {
   "appName": "軟體名稱（繁體中文或原創品牌名，如「Cursor」、「Notion」、「Wordle」，12字以內）",
-  "title": "作品精準吸引人的核心標題（例如「Cursor - 專為 AI 時代設計的智慧程式碼編輯器」，28字以內）",
-  "description": "作品繁體中文完整簡述（說明核心功能、解決的痛點、關鍵特色與適合的使用情境，約 80~160 字）",
+  "title": "作品核心標題（必須忠於原網站標題，不可繁轉簡，28字以內）",
+  "description": "作品繁體中文完整簡述（優先忠實按照原網站說明，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
   "category": "${hasValidPreferred ? preferredCategory : '必須精準歸入上述五個分類之一：網站程式 / AI工具 / 小遊戲 / 自動化 / 擴充功能'}",
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
   "techArchitecture": "建議的技術架構（如：Web 全端架構 React / TypeScript）"
@@ -1731,19 +1798,38 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
     let parsedResult: any = await generateWithGeminiFallback(prompt, schema);
 
     if (!parsedResult) {
-      const rawAiText = await generateRawTextWithGemini(prompt, '你是 IdeaX 軟體網站專案審查顧問，請以合規 JSON 輸出。');
+      const rawAiText = await generateRawTextWithGemini(prompt, '你是 IdeaX 軟體網站專案審查顧問，請嚴格使用繁體中文，禁止繁轉簡，以合規 JSON 輸出。');
       if (rawAiText) {
         parsedResult = extractJsonFromText(rawAiText);
       }
     }
 
-    // 4. Heuristic Fallback
-    let appName = parsedResult?.appName;
-    let title = parsedResult?.title;
-    let description = parsedResult?.description;
+    // 4. Heuristic Fallback & 文字保真整合
+    // 依使用者指示：「抓取的文字請務必按照原網站，不要繁體變成簡體，或是被換成其他語言文字」
+    // 若原網站已有明確 rawTitle / rawDescription / rawSiteName，一律優先採用原網站原始文字！
+    let appName = rawSiteName
+      ? toTraditionalChinese(rawSiteName.trim().slice(0, 20))
+      : parsedResult?.appName
+      ? toTraditionalChinese(parsedResult.appName.trim())
+      : '';
+
+    let title = rawTitle
+      ? toTraditionalChinese(rawTitle.trim())
+      : parsedResult?.title
+      ? toTraditionalChinese(parsedResult.title.trim())
+      : '';
+
+    let description = rawDescription && rawDescription.trim().length >= 8
+      ? toTraditionalChinese(rawDescription.trim())
+      : parsedResult?.description
+      ? toTraditionalChinese(parsedResult.description.trim())
+      : '';
+
     let category = parsedResult?.category;
-    let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0 ? parsedResult.tags : [];
-    let techArchitecture = parsedResult?.techArchitecture || 'Web 網頁應用程式';
+    let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0
+      ? parsedResult.tags.map((t: string) => toTraditionalChinese(String(t).trim()))
+      : [];
+    let techArchitecture = parsedResult?.techArchitecture ? toTraditionalChinese(parsedResult.techArchitecture.trim()) : 'Web 網頁應用程式';
 
     // 若分類不在允許名單中或有指定的分類
     if (hasValidPreferred) {
@@ -1764,21 +1850,23 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
     }
 
     if (!appName) {
-      if (rawSiteName) {
-        appName = rawSiteName.slice(0, 16);
-      } else {
-        const parts = hostname.replace(/^www\./, '').split('.');
-        appName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '軟體網站';
-      }
+      const parts = hostname.replace(/^www\./, '').split('.');
+      appName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '軟體網站';
     }
 
     if (!title) {
-      title = rawTitle ? rawTitle.split(/[-|_]/)[0].trim().slice(0, 32) : `${appName} - 實用線上軟體體驗`;
+      title = `${appName} - 實用線上軟體體驗`;
     }
 
     if (!description) {
-      description = rawDescription || `「${appName}」是一款提供高效實用功能的現代化 Web 軟體，具備流暢的使用者互動介面與直覺操作體驗，歡迎點擊進行線上試玩體驗與支持！`;
+      description = `「${appName}」是一款提供高效實用功能的現代化 Web 軟體，具備流暢的使用者互動介面與直覺操作體驗，歡迎點擊進行線上試玩體驗與支持！`;
     }
+
+    // 再次確保所有輸出欄位 100% 遵循臺灣繁體正體中文，無簡體字殘留
+    appName = toTraditionalChinese(appName);
+    title = toTraditionalChinese(title);
+    description = toTraditionalChinese(description);
+    techArchitecture = toTraditionalChinese(techArchitecture);
 
     if (tags.length === 0) {
       tags = [category, 'Web應用', '線上工具', appName];

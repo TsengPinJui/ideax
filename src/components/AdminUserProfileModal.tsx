@@ -40,11 +40,12 @@ import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { CopyableUserId } from './CopyableUserId';
 
+import { useUserActivityMap } from '../services/userActivity';
+import { getAdminSiteBadgeClass, getAdminSiteLabel, isInitialAdmin } from '../utils/adminPermissions';
+
 /** 最近上線：登入時間與最近活動時間取比較晚的那個 */
 const latestSeen = (...ts: Array<string | undefined>) =>
   ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
-import { useUserActivityMap } from '../services/userActivity';
-import { getAdminSiteBadgeClass, getAdminSiteLabel } from '../utils/adminPermissions';
 
 interface AdminUserProfileModalProps {
   user: User;
@@ -134,7 +135,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                 alt={user.name}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
               />
-              {user.isInitialAdmin && (
+              {isInitialAdmin(user) && (
                 <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-stone-950 p-1 rounded-full shadow-md" title="初始創始管理員">
                   <Crown className="w-3.5 h-3.5 fill-current" />
                 </span>

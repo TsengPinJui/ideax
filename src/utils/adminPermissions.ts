@@ -3,19 +3,19 @@ import { User, AdminSite } from '../types';
 import { isAllowlistedAdminEmail } from '../services/accountGuard';
 
 /**
- * 判定用戶是否為平台初始創始管理員（唯一具有指派其他用戶管理員權限之最高主管）
- * 包含固定系統初始管理員帳號：a000000001, user-admin, 或 isInitialAdmin: true, 以及白名單最高管理員 Email
+ * 判定用戶是否為平台初始總管理員（唯一具有指派其他用戶管理員權限之最高主管）
+ * 規範：除了帳號 ideax.office@gmail.com 或 admin_001 外，其他人絕對不能用「平台初始總管理員」的標籤
  */
 export function isInitialAdmin(user?: User | null): boolean {
   if (!user) return false;
-  return Boolean(
-    user.isInitialAdmin === true ||
-    user.id === 'a000000001' ||
-    user.id === 'user-admin' ||
-    user.memberId === 'a000000001' ||
-    user.username === 'Admin_001' ||
-    (user.email && isAllowlistedAdminEmail(user.email)) ||
-    user.role === 'admin'
+  const email = (user.email || '').trim().toLowerCase();
+  const username = (user.username || '').trim().toLowerCase();
+  const id = (user.id || '').trim().toLowerCase();
+
+  return (
+    email === 'ideax.office@gmail.com' ||
+    username === 'admin_001' ||
+    id === 'admin_001'
   );
 }
 

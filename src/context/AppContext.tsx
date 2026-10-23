@@ -5443,12 +5443,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
     ]);
 
-    // 首次發文加贈 200 點（限註冊會員，每人限領一次）
-    if (!isGuest && !currentUser.hasReceivedFirstPostBonus) {
+    // 發文點數獎勵（註冊會員）：發布痛點 +100 點，發布創新提案或刊登作品 +200 點
+    const isProposalOrApp = q.postType === 'innovation_proposal' || q.postType === 'vibecoding_app';
+    const bonusAmount = isPainPoint ? 100 : isProposalOrApp ? 200 : 0;
+
+    if (!isGuest && bonusAmount > 0) {
+      const bonusType = isPainPoint ? '發布痛點獎勵' : (q.postType === 'vibecoding_app' ? '刊登作品獎勵' : '發布創新提案獎勵');
+      const bonusNote = isPainPoint
+        ? '發布痛點成功！獲得探索激勵點數 100 點'
+        : (q.postType === 'vibecoding_app' ? '刊登作品成功！獲得創作激勵點數 200 點' : '發布創新提案成功！獲得創新激勵點數 200 點');
+
       const updatedUser: User = {
         ...currentUser,
         hasReceivedFirstPostBonus: true,
-        balance: (currentUser.balance || 0) + 200,
+        balance: (currentUser.balance || 0) + bonusAmount,
       };
       setCurrentUser(updatedUser);
       setAvailableUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
@@ -5456,33 +5464,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
       } catch {}
       syncUserToFirestore(updatedUser);
-      claimFirstPostBonus().catch((err) => console.warn('First post bonus notice:', err));
 
       const bonusTx: Transaction = {
-        id: `tx-first-post-${Date.now()}`,
+        id: `tx-post-${Date.now()}`,
         fromUserId: 'system',
         fromUserName: 'IdeaX 創點子官方團隊',
         toUserId: currentUser.id,
         toUserName: currentUser.name,
         userId: currentUser.id,
-        type: '首次發文獎勵',
-        amount: 200,
+        type: bonusType,
+        amount: bonusAmount,
         platformFee: 0,
-        netAmount: 200,
+        netAmount: bonusAmount,
         status: '已完成',
         createdAt: new Date().toISOString(),
-        note: '首次發布成功！加贈新手探索點數 200 點',
+        note: bonusNote,
       };
       setTransactions((prev) => [bonusTx, ...prev]);
       syncTransactionsToFirestore([bonusTx]);
 
       setNotifications((prev) => [
         {
-          id: `notif-first-post-${Date.now()}`,
+          id: `notif-post-${Date.now()}`,
           userId: currentUser.id,
           category: 'personal',
-          title: '🎉 恭喜獲得首次發文獎勵！',
-          message: '感謝您在 IdeaX 社群首次發文！系統已為您加贈 200 平台點，可用於懸賞提問、諮詢或支持優質創作者！',
+          title: `🎉 恭喜獲得發布獎勵 +${bonusAmount} 點！`,
+          message: `感謝您在 IdeaX 發布內容！系統已存入 ${bonusAmount} 平台點至您的錢包餘額。`,
           type: 'system',
           createdAt: '剛剛',
           read: false,
@@ -5492,7 +5499,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
       setTimeout(() => {
-        showCenterToast('🎉 首次發文加贈 200 點！', '200 點已存入您的錢包餘額，可自由懸賞或支持好點子！', {
+        showCenterToast(`🎉 發布成功加贈 ${bonusAmount} 點！`, `${bonusAmount} 點已存入您的錢包餘額，可自由懸賞或支持好點子！`, {
           type: 'success',
           duration: 4000,
         });
@@ -5546,14 +5553,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const currentQ = questions[targetIndex];
-    // 權限檢查：僅該提案或內容的發布者本人可編輯更新，其餘人僅能於頁尾瀏覽版本更新紀錄
+    // 權限檢查：僅該提案或內容的發布者本人或管理員可編輯更新，其餘人僅能於頁尾瀏覽版本更新紀錄
     const isAuthor = Boolean(
       currentUser?.id &&
       currentUser.id !== 'user-guest' &&
-      currentQ.authorId === currentUser.id
+      (currentQ.authorId === currentUser.id || currentUser.role === 'admin')
     );
     if (!isAuthor) {
-      const msg = '此功能只限該提案或內容的發布者編輯，其他人只能於頁尾查看版本更新紀錄';
+      const msg = '此功能只限該提案或內容的發布者或管理員編輯，其他人只能於頁尾查看版本更新紀錄';
       return { success: false, ok: false, message: msg, reason: msg };
     }
 

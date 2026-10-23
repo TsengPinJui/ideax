@@ -777,7 +777,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         alt={u.name}
                         className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover/user:ring-purple-400 group-hover/user:scale-105 transition-all shrink-0"
                       />
-                      {u.isInitialAdmin && (
+                      {isInitialAdmin(u) && (
                         <span className="absolute -top-1 -right-1 bg-amber-400 text-stone-950 p-0.5 rounded-full shadow-xs" title="初始創始管理員">
                           <Crown className="w-2.5 h-2.5 fill-current" />
                         </span>

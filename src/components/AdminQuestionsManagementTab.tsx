@@ -6,6 +6,7 @@ import { Category, Question } from '../types';
 import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
 import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
 import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
+import { UpdateProposalModal } from './UpdateProposalModal';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { isPlatformPublishedWork } from '../utils/userDisplay';
 import {
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Eye,
+  Edit3,
   Trash2,
   RotateCcw,
   Tag,
@@ -81,6 +83,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
   const [confirmPurgeSimulatedModal, setConfirmPurgeSimulatedModal] = useState(false);
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const [transferringQuestion, setTransferringQuestion] = useState<Question | null>(null);
+  const [editingProposalQuestion, setEditingProposalQuestion] = useState<Question | null>(null);
 
   // Delist Modal State
   const [delistingQuestion, setDelistingQuestion] = useState<Question | null>(null);
@@ -822,6 +825,19 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>檢視</span>
                       </button>
 
+                      {/* 編輯提案/作品內容 (管理員直接編輯) */}
+                      {!isDelisted && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingProposalQuestion(q)}
+                          className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50 text-purple-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          title="管理員編輯此問題、痛點或提案作品"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>編輯</span>
+                        </button>
+                      )}
+
                       {/* 轉移所有權給用戶（若是平台刊登之作品或官方發布） */}
                       {(isPlatformPublishedWork(q) || q.publishIdentity === 'platform' || q.isOfficial || q.authorId === 'platform') && !isDelisted && (
                         <button
@@ -1156,6 +1172,23 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           setTransferringQuestion(null);
         }}
       />
+
+      {/* ✏️ 管理員編輯提案/作品內容彈窗 */}
+      {editingProposalQuestion && (
+        <UpdateProposalModal
+          isOpen={Boolean(editingProposalQuestion)}
+          question={editingProposalQuestion}
+          onClose={() => setEditingProposalQuestion(null)}
+          onSuccess={() => {
+            setFeedbackToast({
+              text: `已成功儲存並發布《${editingProposalQuestion.appName || editingProposalQuestion.title}》的內容更新！`,
+              isError: false,
+            });
+            setTimeout(() => setFeedbackToast(null), 5000);
+            setEditingProposalQuestion(null);
+          }}
+        />
+      )}
     </div>
   );
 };
