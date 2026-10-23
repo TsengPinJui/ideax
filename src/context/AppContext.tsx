@@ -953,13 +953,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           return merged;
         });
-        setConversations((prev) => {
-          const merged = [...prev];
-          MOCK_CONVERSATIONS.forEach((c) => {
-            if (!merged.some((m) => m.id === c.id)) merged.push(c);
-          });
-          return merged;
-        });
+        setConversations((prev) => prev.filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo'));
       }
     }
   };
@@ -1679,36 +1673,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [conversations, setConversations] = useState<ChatConversation[]>(() => {
-    const isDemo = getInitialIsDemoMode();
-    if (!isDemo) {
-      // 非測試環境：不保留任何模擬對話
-      try {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}conversations`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed.filter((c: any) => !isMockConversationId(c.id));
-          }
-        }
-      } catch {
-        // ignore
-      }
-      return [];
-    }
-    // 測試環境 (TEST / DEMO)：加回所有模擬聊天室對話
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}conversations`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const customConv = parsed.filter((c: any) => !isMockConversationId(c.id));
-          return [...MOCK_CONVERSATIONS, ...customConv];
+          return parsed.filter((c: any) => !isMockConversationId(c?.id) && c?.id !== 'conv-tutorial-demo');
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_CONVERSATIONS;
+    return [];
   });
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
@@ -1784,34 +1760,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+          return parsed.filter(
+            (n) =>
+              !isModeOrEnvNotification(n.title, n.message) &&
+              n.id !== 'notif-1' &&
+              n.id !== 'notif-2' &&
+              !n.id?.startsWith('notif-demo-') &&
+              !n.id?.startsWith('notif-mock-')
+          );
         }
       }
     } catch {}
-    const isDemo = getInitialIsDemoMode();
-    if (!isDemo) return [];
-    return [
-      {
-        id: 'notif-1',
-        userId: 'user-chen',
-        title: 'AI 智慧專家媒合推薦',
-        message: '您的問題「校園共享雨傘如何從租借轉向商家合作」已有 3 位推薦解答者，媒合度最高達 96%！',
-        type: 'ai_match',
-        createdAt: '10 分鐘前',
-        read: false,
-        linkQuestionId: 'q-1',
-      },
-      {
-        id: 'notif-2',
-        userId: 'user-chen',
-        title: '新解答方案已提交',
-        message: '柯育任 顧問已為您的懸賞問題提交「商業策略架構」深度方案，歡迎前往查看預覽與解鎖。',
-        type: 'new_answer',
-        createdAt: '1 小時前',
-        read: false,
-        linkQuestionId: 'q-1',
-      },
-    ];
+    return [];
   });
 
   // Selected views
@@ -2236,8 +2196,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [transactions]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(conversations));
+    const clean = (conversations || []).filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo');
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(clean));
   }, [conversations]);
+
+  // 啟動時徹底清理瀏覽器本地可能殘留之虛擬聊天訊息、虛擬示範聊天室與虛擬郵件通知
+  useEffect(() => {
+    try {
+      const convsRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}conversations`);
+      if (convsRaw) {
+        const parsed = JSON.parse(convsRaw);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((c: any) => !isMockConversationId(c?.id) && c?.id !== 'conv-tutorial-demo');
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(cleaned));
+            setConversations(cleaned);
+          }
+        }
+      }
+      const notifsRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}notifications`);
+      if (notifsRaw) {
+        const parsed = JSON.parse(notifsRaw);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(
+            (n: any) =>
+              !isModeOrEnvNotification(n?.title, n?.message) &&
+              n?.id !== 'notif-1' &&
+              n?.id !== 'notif-2' &&
+              !n?.id?.startsWith('notif-demo-') &&
+              !n?.id?.startsWith('notif-mock-')
+          );
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}notifications`, JSON.stringify(cleaned));
+            setNotifications(cleaned);
+          }
+        }
+      }
+      sessionStorage.removeItem('ideax_force_chat_onboarding');
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (activeConversationId) {
@@ -8773,16 +8770,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // 全站統一計算待裁定案件數量：包含 demo 案件與真實問題檢舉，結案後即時歸零並永久同步
+  // 全站統一計算待裁定案件數量：僅採計真實問題檢舉申訴，結案後即時歸零並永久同步
   const pendingDisputesCount = useMemo(() => {
-    const demoPending = resolvedDisputeIds.includes('dispute-demo-1') ? 0 : 1;
     const questionsPending = (questions || []).filter(
       (q) =>
         q.disputeStatus === 'pending_review' &&
         !resolvedDisputeIds.includes(q.id) &&
         !resolvedDisputeIds.includes(`dispute-${q.id}`)
     ).length;
-    return demoPending + questionsPending;
+    return questionsPending;
   }, [questions, resolvedDisputeIds]);
 
   // 全站統一追蹤客服工單受理數量 (pending 狀態之工單)
@@ -9468,10 +9464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const custom = prev.filter((t) => !isMockTransactionId(t.id));
         return [...MOCK_TRANSACTIONS, ...custom];
       });
-      setConversations((prev) => {
-        const custom = prev.filter((c) => !isMockConversationId(c.id));
-        return [...MOCK_CONVERSATIONS, ...custom];
-      });
+      setConversations((prev) => prev.filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo'));
       setAvailableUsers((prev) => {
         const custom = prev.filter((u) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
         return [...MOCK_USERS, ...custom];

@@ -338,56 +338,25 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     }
   };
 
-  // Mock list of user appeals / disputes
+  // List of real user appeals / disputes from questions
   const disputedQuestions = questions.filter(
     (q) => q.disputeStatus === 'pending_review' || q.disputeStatus === 'resolved_refunded'
   );
 
-  // Baseline disputes if none in questions
-  const disputeCasesList = [
-    ...disputedQuestions.map((q) => ({
-      id: `dispute-${q.id}`,
-      questionId: q.id,
-      title: q.title,
-      questionerName: q.authorName,
-      questionerAvatar: q.authorAvatar,
-      solverName: '林智軒 專家',
-      bounty: q.bounty,
-      category: q.category,
-      reason: q.disputeReason || '解答內容與原需求預期交付項目差距甚大，且未按時補充說明。',
-      status: resolvedDisputeIds.includes(`dispute-${q.id}`) || resolvedDisputeIds.includes(q.id) ? 'resolved' : (q.disputeStatus || 'pending_review'),
-      createdAt: '2 小時前',
-      aiSuggestedResolution: '建議退還 70% 懸賞點數予提問方，30% 劃撥予解答方作為前期溝通工時補償。',
-    })),
-    {
-      id: 'dispute-demo-1',
-      questionId: 'q-demo-dispute-1',
-      title: '高分子材料 TFDA 臨床申報專案諮詢履約爭議',
-      questionerName: '張先生',
-      questionerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      solverName: '陳副總',
-      bounty: 6000,
-      category: '專業問題',
-      reason: '解答方提供的第二階段送審補件清單未包含今年度衛福部最新格式，提問方申請裁定和解退款。',
-      status: resolvedDisputeIds.includes('dispute-demo-1') ? 'resolved' : 'pending_review',
-      createdAt: '4 小時前',
-      aiSuggestedResolution: 'AI 分析雙方往來紀錄：解答方已交付第一階段架構，建議雙方簽署 50% / 50% 和解劃撥。',
-    },
-    {
-      id: 'dispute-demo-2',
-      questionId: 'q-demo-dispute-2',
-      title: 'D2C 外送淨利模型試算表交付延遲申訴',
-      questionerName: '李小姐',
-      questionerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-      solverName: '王大衛 總監',
-      bounty: 3500,
-      category: '創新創業',
-      reason: '約定 3 天內交付 Excel 財務模型，已逾期 2 天尚未上傳檔案。',
-      status: 'resolved',
-      createdAt: '昨天',
-      aiSuggestedResolution: '已執行官方全額退款 NT$ 3,500 予提問方。',
-    },
-  ];
+  const disputeCasesList = disputedQuestions.map((q) => ({
+    id: `dispute-${q.id}`,
+    questionId: q.id,
+    title: q.title,
+    questionerName: q.authorName,
+    questionerAvatar: q.authorAvatar,
+    solverName: '林智軒 專家',
+    bounty: q.bounty,
+    category: q.category,
+    reason: q.disputeReason || '解答內容與原需求預期交付項目差距甚大，且未按時補充說明。',
+    status: resolvedDisputeIds.includes(`dispute-${q.id}`) || resolvedDisputeIds.includes(q.id) ? 'resolved' : (q.disputeStatus || 'pending_review'),
+    createdAt: '2 小時前',
+    aiSuggestedResolution: '建議退還 70% 懸賞點數予提問方，30% 劃撥予解答方作為前期溝通工時補償。',
+  }));
 
   // Filtered dispute list
   const filteredDisputes = disputeCasesList.filter((d) => {

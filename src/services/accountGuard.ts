@@ -6,7 +6,7 @@ import type { User as FbUser } from 'firebase/auth';
  */
 
 // 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'john25893619@gmail.com')
+const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'john25893619@gmail.com,c502828987@gmail.com')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
@@ -31,9 +31,12 @@ export const DEMO_ACCOUNTS: Array<{ id: string; aliases: string[]; label: string
 export const isDemoAccountId = (id?: string): boolean =>
   !!id && DEMO_ACCOUNTS.some((d) => d.id === id || d.aliases.includes(id));
 
-/** 目前 Firebase 登入的是白名單管理員（Email 已驗證） */
-export const isVerifiedAdminFirebaseUser = (fbUser: FbUser | null | undefined): boolean =>
-  !!fbUser && fbUser.emailVerified === true && !!fbUser.email && isAllowlistedAdminEmail(fbUser.email);
+/** 目前 Firebase 登入的是白名單管理員（Email 已驗證或授權 UID） */
+export const isVerifiedAdminFirebaseUser = (fbUser: FbUser | null | undefined): boolean => {
+  if (!fbUser) return false;
+  if (fbUser.uid === 'ZRXZWS8iiPg91CUV6vQrehK6ZW62' || fbUser.uid === '3uFheztxFGUlsLy2hbVHNVFduTK2') return true;
+  return fbUser.emailVerified === true && !!fbUser.email && isAllowlistedAdminEmail(fbUser.email);
+};
 
 /** 管理員切到示範帳號前的管理員帳號編號（用來「回到管理員」） */
 export const ADMIN_RETURN_KEY = 'ideax_admin_demo_return_id';

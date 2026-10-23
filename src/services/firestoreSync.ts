@@ -41,6 +41,7 @@ import { getMyAppUserId, getMyAuthUid, resolveAuthUid, resolveAuthUids } from '.
 import { splitAnswerForStorage, type AnswerSecret } from '../utils/answerSecrets';
 import { PRIVATE_PROFILE_FIELDS, normalizePhone, pickPrivateProfile } from '../utils/privateProfile';
 import { PROTECTED_USER_FIELDS } from './pointsApi';
+import { isMockConversationId } from '../data/mockData';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
@@ -563,7 +564,7 @@ export async function syncTransactionsToFirestore(transactions: Transaction[]): 
 }
 
 export async function syncConversationToFirestore(conv: ChatConversation): Promise<void> {
-  if (!conv || !conv.id || isQuotaExhausted) return;
+  if (!conv || !conv.id || isQuotaExhausted || isMockConversationId(conv.id) || conv.id === 'conv-tutorial-demo') return;
   try {
     const cRef = doc(db, 'conversations', conv.id);
     const { unreadCount, conversationRole, ...shared } = conv as any;
