@@ -37,6 +37,7 @@ import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompas
 import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
+import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
@@ -1515,7 +1516,12 @@ function MainContent() {
     const seenIds = new Set<string>();
     return (isDemoMode
       ? questions
-      : questions.filter((q) => Boolean(q && q.id) && !isMockQuestionId(q.id, q.authorId))
+      : questions.filter(
+          (q) =>
+            Boolean(q && q.id) &&
+            !isMockQuestionId(q.id, q.authorId) &&
+            (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId)))
+        )
     ).filter((q) => {
       if (!q || typeof q.id !== 'string' || !q.id.trim() || typeof q.title !== 'string' || !q.title.trim()) {
         return false;
@@ -1534,7 +1540,7 @@ function MainContent() {
       // 3. 已有人提案或接案的問題，只要期限還沒過一樣顯示
       return true;
     });
-  }, [questions, isDemoMode]);
+  }, [questions, isDemoMode, isRaceMode]);
 
   // 各主分類看板之真實問題總數計算（解決非測試環境總題數是零但個別看板錯誤顯示數字之問題）
   const categoryCounts = useMemo(() => {

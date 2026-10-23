@@ -55,6 +55,8 @@ import { DEFAULT_DEMO_PROPOSALS } from '../../data/competitionProposals';
 import { shareOrCopyUrl } from '../../utils/shareUtils';
 import { applyRealClicksToProposals, recordProposalViewClick } from '../../utils/proposalClicks';
 import { ProposalDetailFullPage } from './ProposalDetailFullPage';
+import { isFakeProposal } from './StarSeasonView';
+import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposalsSeed';
 import {
   likeProposal,
   supportProposal,
@@ -114,6 +116,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     isQuestionSeconded,
     getQuestionSecondCount,
     isSimulatedDataPurged,
+    isRaceMode,
   } = useApp();
   const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
 
@@ -166,7 +169,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   useEffect(() => {
     if (initialProposals && initialProposals.length > 0) {
       const merged = initialProposals
-        .filter((p) => !(isSimulatedDataPurged && p.id.startsWith('demo-')))
+        .filter((p) => !(isSimulatedDataPurged && p.id.startsWith('demo-')) && (!isRaceMode || !isFakeProposal(p)))
         .map((p) => {
           const matchedQ = (questions || []).find((q) => q.id === p.id);
           if (matchedQ && typeof matchedQ.likes === 'number' && matchedQ.likes > 0) {
@@ -178,7 +181,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     } else {
       setProposals([]);
     }
-  }, [initialProposals, questions, isSimulatedDataPurged]);
+  }, [initialProposals, questions, isSimulatedDataPurged, isRaceMode]);
 
   useEffect(() => {
     if (initialProposalId) {
@@ -298,6 +301,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 篩選提案（依需求：先把創星季的痛點和提案隱藏起來，時間到再公開；11/14 10:00 起開放提案公開並排除預設示範提案）
   const filteredProposals = proposals.filter((p) => {
+    // 競賽模式下排除假提案與展示用示範提案
+    if (isRaceMode && isFakeProposal(p)) return false;
+
     // 嚴格僅顯示提案解方 (stage === 'solution')，排除痛點
     if (p.stage === 'pain_point') return false;
 
@@ -428,7 +434,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
     // 1. 創星季徵件之痛點提案
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-'))
+      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -448,7 +454,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
     // 2. 舊站創點子/痛點集問題
     (questions || [])
-      .filter((q) => q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points')
+      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))))
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({

@@ -99,6 +99,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     answers,
     setSelectedQuestion,
     isSimulatedDataPurged,
+    isRaceMode,
     isQuestionBookmarked,
     toggleBookmarkQuestion,
     toggleLikeDiscussionAnswer,
@@ -158,12 +159,12 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   const simulatedTipsList = React.useMemo(() => {
     const matchedQ = (questions || []).find((q) => q.id === proposal.id);
     if (matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0) {
-      return isSimulatedDataPurged
+      return (isSimulatedDataPurged || isRaceMode)
         ? matchedQ.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'))
         : matchedQ.tipsHistory;
     }
     return [];
-  }, [proposal.id, questions, isSimulatedDataPurged]);
+  }, [proposal.id, questions, isSimulatedDataPurged, isRaceMode]);
 
   const isFromCreateIdeas = React.useMemo(() => {
     if (isFromCreateIdeasProp) return true;

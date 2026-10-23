@@ -4024,14 +4024,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
-      // 若原 id 首字為 a 且為 10 碼標準 ID，同步更新 id 為 c 開頭
-      if (oldUserId.startsWith('a') && oldUserId.length === 10 && oldUserId !== 'a000000001' && oldUserId !== 'user-admin') {
-        newUserId = 'c' + oldUserId.slice(1);
-      }
-
       updatedUser = {
         ...targetUser,
-        id: newUserId,
+        id: oldUserId,
         memberId: newMemberId,
         role: targetUser.verifiedExpert ? 'solver' : 'questioner',
         accountType: 'user',
@@ -4063,14 +4058,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
-      // 若原 id 首字為 c 且為 10 碼標準 ID，同步更新 id 為 a 開頭
-      if (oldUserId.startsWith('c') && oldUserId.length === 10) {
-        newUserId = 'a' + oldUserId.slice(1);
-      }
-
       updatedUser = {
         ...targetUser,
-        id: newUserId,
+        id: oldUserId,
         memberId: newMemberId,
         role: 'admin',
         accountType: 'admin',

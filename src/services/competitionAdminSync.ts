@@ -414,15 +414,19 @@ export function getCompetitionAggregatedMetrics(): CompetitionAdminMetrics {
   const registrations = getCompetitionRegistrations().filter(
     (r) =>
       !r.userId?.startsWith('test-') &&
+      !r.userId?.startsWith('demo-') &&
       !r.userId?.startsWith('user-expert-') &&
       !r.id?.startsWith('test-') &&
+      !r.id?.startsWith('demo-') &&
       r.userId !== 'user-guest'
   );
   const proposals = getCompetitionProposalsForAdmin().filter(
     (p) =>
       !p.id?.startsWith('demo-') &&
       !p.id?.startsWith('test-') &&
+      !p.id?.startsWith('q-vp-') &&
       !p.authorId?.startsWith('test-') &&
+      !p.authorId?.startsWith('demo-') &&
       !p.authorId?.startsWith('user-expert-') &&
       p.authorId !== 'user-guest'
   );

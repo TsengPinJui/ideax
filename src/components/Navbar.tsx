@@ -571,6 +571,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             <IdeaXLogo variant="bulb" size="lg" />
           </div>
 
+          {/* 創星季 按鍵 (創星季 logo) */}
+          <button
+            id="nav-star-season-btn"
+            type="button"
+            onClick={() => {
+              setActiveTab('star_season');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/challenge');
+                }
+              } catch {}
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            title="前往 IdeaX 創星季競賽"
+            aria-label="前往 IdeaX 創星季競賽"
+            className={`flex items-center justify-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-xl transition-all cursor-pointer group active:scale-95 shrink-0 ${
+              activeTab === 'star_season'
+                ? 'bg-amber-100/90 border border-amber-300 ring-2 ring-amber-300/50 shadow-2xs'
+                : 'hover:bg-amber-50/70 border border-transparent hover:border-amber-200/80'
+            }`}
+          >
+            <img
+              src="/logo-chuangxingji-text.png"
+              alt="創星季"
+              className="h-6 sm:h-7 md:h-7.5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+            />
+          </button>
+
           {/* Navigation Links: 左上角找專家 */}
           <nav className="flex items-center gap-1 sm:gap-1.5 text-sm font-medium ml-0.5 sm:ml-1">
             {/* 匯職缺入口暫時從上方導覽列移除（側邊選單仍可進入） */}

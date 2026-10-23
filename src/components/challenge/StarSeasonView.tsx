@@ -146,6 +146,26 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../.
 import { isGuestUser } from '../../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../../utils/guestAccess';
+import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposalsSeed';
+
+export const isFakeProposal = (p: any): boolean => {
+  if (!p) return false;
+  const id = String(p.id || '');
+  const authorId = String(p.authorId || '');
+  return (
+    id.startsWith('demo-') ||
+    id.startsWith('test-') ||
+    id.startsWith('q-demo-') ||
+    id.startsWith('q-mock-') ||
+    id.startsWith('q-test-') ||
+    id.startsWith('q-vp-') ||
+    authorId.startsWith('demo-u-') ||
+    authorId.startsWith('test-') ||
+    authorId.startsWith('mock-') ||
+    Boolean(p.isSimulated) ||
+    isSimulatedUser(authorId)
+  );
+};
 
 export type ChallengeSubView = 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador';
 
@@ -181,6 +201,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     isQuestionSeconded,
     getQuestionSecondCount,
     isSimulatedDataPurged,
+    isRaceMode,
   } = useApp();
   const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
   const isLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
@@ -392,6 +413,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return [];
     }
     const liveFiltered = proposals.filter((p) => {
+      if (isRaceMode && isFakeProposal(p)) return false;
       if (p.id.startsWith('test-')) return false;
       if (isSimulatedDataPurged && p.id.startsWith('demo-')) return false;
       if ((stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) && p.id.startsWith('demo-')) {
@@ -417,7 +439,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       sourcePainPointTitle: p.sourcePainPointTitle,
       referencedPainPoint: p.referencedPainPoint,
     }));
-  }, [proposals, isSimulatedDataPurged, stageInfo.activeStage, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
+  }, [proposals, isSimulatedDataPurged, stageInfo.activeStage, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage, isRaceMode]);
 
   // 每批顯示 3 個提案 (未登入訪客可瀏覽前 20 則：前 16 則完整、後 4 則僅預覽)
   const isGuest = isGuestUser(currentUser);
@@ -685,14 +707,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     [isJudgeEvaluationModalOpen, isAdminFinalEvaluationHubOpen]
   );
   const nominatedProposals = useMemo(() => {
-    return proposals.filter((p) => nominatedProposalIds.includes(p.id) || p.rankQualifiedForFinal);
-  }, [proposals, nominatedProposalIds]);
+    return proposals.filter((p) => (!isRaceMode || !isFakeProposal(p)) && (nominatedProposalIds.includes(p.id) || p.rankQualifiedForFinal));
+  }, [proposals, nominatedProposalIds, isRaceMode]);
 
   // 前台是否已盛大公布榜單
   const [isFinalResultsPublishedState, setIsFinalResultsPublishedState] = useState<boolean>(() => getIsFinalResultsPublished());
   const finalRankings = useMemo(() => {
-    return calculateFinalProposalRankings(proposals);
-  }, [proposals, nominatedProposalIds, isAdminFinalEvaluationHubOpen, isFinalResultsPublishedState]);
+    const list = isRaceMode ? proposals.filter((p) => !isFakeProposal(p)) : proposals;
+    return calculateFinalProposalRankings(list);
+  }, [proposals, nominatedProposalIds, isAdminFinalEvaluationHubOpen, isFinalResultsPublishedState, isRaceMode]);
 
   // 個人提案與草稿箱 Modal
   const [isMyProposalsModalOpen, setIsMyProposalsModalOpen] = useState<boolean>(false);
@@ -965,7 +988,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setLoading(true);
     try {
       const list = await fetchProposals();
-      setProposals(applyRealClicksToProposals(list));
+      const effectiveList = isRaceMode ? list.filter((p) => !isFakeProposal(p)) : list;
+      setProposals(applyRealClicksToProposals(effectiveList));
       if (auth.currentUser) {
         const accRes = await fetchMyCompetitionAccount();
         if (accRes.account) setAccount(accRes.account);
@@ -1078,8 +1102,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 第一階段痛點清單 (供第二階段解法引用)
   const painPointProposals = useMemo(() => {
-    return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved');
-  }, [proposals]);
+    return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved' && (!isRaceMode || !isFakeProposal(p)));
+  }, [proposals, isRaceMode]);
 
   // 彙整首頁痛點清單（依時程於 10/24 00:00 第一階段痛點徵件開跑後公開，未到時間前先隱藏）
   const homepagePainPoints = useMemo(() => {
@@ -1104,7 +1128,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
     // 1. 創星季徵件之痛點提案
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-'))
+      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -1124,7 +1148,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
     // 2. 舊站創點子痛點專區問題
     (questions || [])
-      .filter((q) => q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points')
+      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))))
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({
@@ -1144,7 +1168,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       });
 
     return list;
-  }, [proposals, questions, stageInfo.activeStage]);
+  }, [proposals, questions, stageInfo.activeStage, isRaceMode]);
 
   // 痛點問題每批 3 個（三張一批輪播，未登入訪客可瀏覽前 20 則）
   const homepagePainPointBatches = useMemo(() => {
@@ -1335,6 +1359,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 過濾後的提案列表
   const filteredProposals = useMemo(() => {
     return proposals.filter((p) => {
+      if (isRaceMode && isFakeProposal(p)) return false;
       if (selectedTrack !== 'all' && p.track !== selectedTrack) return false;
       if (selectedStage !== 'all' && p.stage !== selectedStage) return false;
       if (searchKeyword.trim()) {
@@ -1346,7 +1371,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
       return true;
     });
-  }, [proposals, selectedTrack, selectedStage, searchKeyword]);
+  }, [proposals, selectedTrack, selectedStage, searchKeyword, isRaceMode]);
 
   // 依募資額、按讚數或討論數排序
   const sortedProposals = useMemo(() => {
@@ -2873,7 +2898,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           {stageInfo.activeStage >= 2 && homepageAllProposals.length > 0 && (
             <div className="hidden xl:block absolute right-4 lg:right-6 top-0 z-20">
               <ProposalHeroCarousel
-                proposals={proposals.filter((p) => !p.id.startsWith('demo-') && !p.id.startsWith('test-'))}
+                proposals={proposals.filter((p) => !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))}
                 onSelectProposal={(p) => navigateToSubView('proposal', p.id)}
               />
             </div>
@@ -3378,9 +3403,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           </div>
         )}
 
-        {/* 🎛️ 競賽網首頁公開展示數據（依照管理員後台顯示設定呈現） */}
+        {/* 🎛️ 競賽網首頁公開展示數據（依照管理員後台顯示設定呈現，競賽模式下暫先隱藏） */}
         {/* 數據為 0 的項目不顯示，避免活動初期整排「0」讓訪客以為沒人參加 */}
-        {((statsConfig.showLoggedInUsers && adminMetrics.loggedInUsersCount > 0) ||
+        {!isRaceMode && ((statsConfig.showLoggedInUsers && adminMetrics.loggedInUsersCount > 0) ||
           (statsConfig.showParticipants && adminMetrics.participantsCount > 0) ||
           (statsConfig.showExperts && adminMetrics.approvedExpertsCount > 0) ||
           (statsConfig.showProposals && adminMetrics.proposalsCount > 0) ||

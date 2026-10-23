@@ -1,8 +1,10 @@
 import { User, AdminSite } from '../types';
 
+import { isAllowlistedAdminEmail } from '../services/accountGuard';
+
 /**
  * 判定用戶是否為平台初始創始管理員（唯一具有指派其他用戶管理員權限之最高主管）
- * 包含固定系統初始管理員帳號：a000000001, user-admin, 或 isInitialAdmin: true
+ * 包含固定系統初始管理員帳號：a000000001, user-admin, 或 isInitialAdmin: true, 以及白名單最高管理員 Email
  */
 export function isInitialAdmin(user?: User | null): boolean {
   if (!user) return false;
@@ -11,7 +13,9 @@ export function isInitialAdmin(user?: User | null): boolean {
     user.id === 'a000000001' ||
     user.id === 'user-admin' ||
     user.memberId === 'a000000001' ||
-    user.username === 'Admin_001'
+    user.username === 'Admin_001' ||
+    (user.email && isAllowlistedAdminEmail(user.email)) ||
+    user.role === 'admin'
   );
 }
 

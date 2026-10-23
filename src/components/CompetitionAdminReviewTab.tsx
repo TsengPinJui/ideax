@@ -43,6 +43,7 @@ import {
   AutomatedDistributionStatus,
 } from '../services/rewardAutomationService';
 import { AdminCompetitionRulesArchiveFolder } from './challenge/AdminCompetitionRulesArchiveFolder';
+import { isFakeProposal } from './challenge/StarSeasonView';
 import {
   CompetitionRegistrationRecord,
   getCompetitionRegistrations,
@@ -86,6 +87,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     setCurrentUser,
     setTransactions,
     addNotification,
+    isRaceMode,
   } = useApp();
 
   const [subTab, setSubTab] = useState<'metrics' | 'registrations' | 'experts' | 'proposals' | 'awards' | 'rules_archive'>(
@@ -321,6 +323,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const pendingExpertsCount = experts.filter((e) => e.status === 'pending_review').length;
 
   const filteredRegistrations = registrations.filter((r) => {
+    if (isRaceMode && (r.userId?.startsWith('test-') || r.userId?.startsWith('demo-') || r.id?.startsWith('test-') || r.id?.startsWith('demo-') || r.userId === 'user-guest')) return false;
     if (statusFilter === 'pending' && r.status !== 'pending_review') return false;
     if (statusFilter === 'approved' && r.status !== 'approved') return false;
     if (statusFilter === 'rejected' && r.status !== 'rejected') return false;
@@ -350,6 +353,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   });
 
   const filteredProposals = proposals.filter((p) => {
+    if (isRaceMode && isFakeProposal(p)) return false;
     if (statusFilter === 'pending' && p.status !== 'pending_review') return false;
     if (statusFilter === 'approved' && p.status !== 'approved') return false;
     if (statusFilter === 'rejected' && p.status !== 'rejected') return false;

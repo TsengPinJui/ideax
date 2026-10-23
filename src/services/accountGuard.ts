@@ -49,8 +49,14 @@ export function isAuthorizedForAccount(target: AccountLike | null | undefined, f
   if (target.authUid && target.authUid === fbUser.uid) return true;
   if (target.id === fbUser.uid) return true;
   const email = String(fbUser.email || '').toLowerCase();
-  // 管理員帳號：白名單 Email 且已完成 Email 驗證
-  if (target.role === 'admin') return !!email && isAllowlistedAdminEmail(email) && fbUser.emailVerified === true;
+  // 管理員帳號：白名單最高管理員 Email 或已被授權指派為管理員的用戶帳號
+  if (target.role === 'admin') {
+    if (!!email && isAllowlistedAdminEmail(email)) return true;
+    if (target.authUid && target.authUid === fbUser.uid) return true;
+    if (target.id === fbUser.uid) return true;
+    if (email && target.email && target.email.toLowerCase() === email) return true;
+    return false;
+  }
   if (email && target.email && target.email.toLowerCase() === email) return true;
   return false;
 }
