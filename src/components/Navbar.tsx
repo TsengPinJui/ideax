@@ -1444,7 +1444,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <HelpCircle className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="block font-black text-stone-900">問題管理</span>
+                            <span className="block font-black text-stone-900">問題或提案</span>
                             <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、違規下架與用戶反饋</span>
                           </div>
                         </div>
@@ -1770,7 +1770,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-indigo-100/90 text-indigo-700 group-hover:bg-indigo-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                         <HelpCircle className="w-3.5 h-3.5" />
                       </div>
-                      <span>問題管理</span>
+                      <span>問題或提案</span>
                     </button>
                     <button
                       onClick={() => handleOpenDashboard('honors_achievements')}

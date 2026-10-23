@@ -1,5 +1,6 @@
 import { DEFAULT_MASCOT_CONFIG, cheerMascot, normalizeMascotConfig, type MascotConfig } from '../components/mascot/mascotConfig';
 import { trackFeature } from '../services/featureUsage';
+import { safeSetItem, safeSetJSON, stripHeavyFields, pruneStorageQuota } from '../utils/safeStorage';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Question,
@@ -2251,28 +2252,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(availableUsers));
+    safeSetJSON(`${STORAGE_KEY_PREFIX}users`, availableUsers);
   }, [availableUsers]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}commission`, JSON.stringify(commissionRate));
+    safeSetJSON(`${STORAGE_KEY_PREFIX}commission`, commissionRate);
   }, [commissionRate]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(questions));
+    // 儲存題目列表時自動過濾龐大 Base64 資源，避免突破瀏覽器容量上限造成 QuotaExceededError
+    safeSetJSON(`${STORAGE_KEY_PREFIX}questions`, questions);
   }, [questions]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(answers));
+    safeSetJSON(`${STORAGE_KEY_PREFIX}answers`, answers);
   }, [answers]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify(transactions));
+    safeSetJSON(`${STORAGE_KEY_PREFIX}transactions`, transactions);
   }, [transactions]);
 
   useEffect(() => {
     const clean = (conversations || []).filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo');
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(clean));
+    safeSetJSON(`${STORAGE_KEY_PREFIX}conversations`, clean);
   }, [conversations]);
 
   // 啟動時徹底清理瀏覽器本地可能殘留之虛擬聊天訊息、虛擬示範聊天室與虛擬郵件通知
@@ -8810,7 +8812,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-bm-${Date.now()}`,
           title: '已成功收藏問題',
-          message: `您已將「${targetQ.title}」加入收藏清單，可隨時至問題管理 > 收藏問題中查看。`,
+          message: `您已將「${targetQ.title}」加入收藏清單，可隨時至問題或提案 > 收藏問題中查看。`,
           type: 'system',
           createdAt: '剛剛',
           read: false,

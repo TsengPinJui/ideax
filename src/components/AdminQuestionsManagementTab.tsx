@@ -190,7 +190,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     });
 
     setFeedbackToast({
-      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，暫存保留期 7 日，期間可自問題管理恢復或永久抹除！`,
+      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，暫存保留期 7 日，期間可自問題或提案恢復或永久抹除！`,
       isError: false,
     });
 
@@ -304,7 +304,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         <div>
           <h3 className="text-base sm:text-lg font-semibold text-stone-900 flex items-center gap-2 flex-wrap">
             <HelpCircle className="w-5 h-5 text-purple-600" />
-            <span>問題管理</span>
+            <span>問題或提案</span>
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-stone-200">
               全站共 {totalCount} 題
             </span>
@@ -986,7 +986,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             </div>
 
             <div className="p-3 rounded-2xl bg-amber-50 border border-stone-200 text-[11px] text-amber-900">
-              ℹ <strong>下架暫存保留政策：</strong>下架後將暫存 7 日於管理員問題管理專區供追蹤申訴，滿 7 日將自動從資料庫永久抹除。
+              ℹ <strong>下架暫存保留政策：</strong>下架後將暫存 7 日於管理員問題或提案專區供追蹤申訴，滿 7 日將自動從資料庫永久抹除。
             </div>
 
             {/* 底部按鈕 */}

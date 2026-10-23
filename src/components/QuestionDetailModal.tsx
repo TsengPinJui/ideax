@@ -3564,7 +3564,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-0.5">
                   <p className="font-bold">處置說明：</p>
                   <p>1. 執行後將發送系統違規通知給提問者，並自前台市場與探索頁面即刻隱藏。</p>
-                  <p>2. 管理員於 7 日暫存期間內可隨時在「問題管理」執行「恢復上架」或「立即永久抹除」。</p>
+                  <p>2. 管理員於 7 日暫存期間內可隨時在「問題或提案」執行「恢復上架」或「立即永久抹除」。</p>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -3608,7 +3608,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   </div>
                   <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px] leading-relaxed pl-1">
                     <li>該問題將直接自全站前台市場、探索列表與排行榜中移除，任何用戶皆無法再看見或提案。</li>
-                    <li>進入 <strong>7 日暫存保留期</strong>，期間管理員可隨時自後台「問題管理」執行「恢復上架」。</li>
+                    <li>進入 <strong>7 日暫存保留期</strong>，期間管理員可隨時自後台「問題或提案」執行「恢復上架」。</li>
                     <li>滿 7 日後系統將自動自雲端資料庫（Firestore）徹底永久抹除資料。</li>
                     {(question.bounty || 0) > 0 && question.status !== 'solved' && (
                       <li className="font-bold text-emerald-800">

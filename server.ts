@@ -1607,6 +1607,32 @@ function toTraditionalChinese(text: string): string {
   return res;
 }
 
+function hasChinese(str: string): boolean {
+  return /[\u4e00-\u9fa5]/.test(str);
+}
+
+async function ensureChineseText(text: string, contextNote: string = '內容說明'): Promise<string> {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return '';
+  if (hasChinese(trimmed)) {
+    return toTraditionalChinese(trimmed);
+  }
+  // 純外文時自動調用 Gemini 翻譯為高品質臺灣正體繁體中文
+  try {
+    const translatePrompt = `請將以下外文內容精準翻譯並潤飾為繁體中文（臺灣正體），保留專有名詞與品牌名，風格自然、專業且流暢，僅輸出翻譯後的繁體中文內容，不要包含多餘的前綴說明或引號：\n\n${trimmed}`;
+    const translated = await generateRawTextWithGemini(
+      translatePrompt,
+      `你是 IdeaX 平台的專業繁體中文編譯專家，負責將${contextNote}翻譯為高品質臺灣正體繁體中文。`
+    );
+    if (translated && translated.trim()) {
+      return toTraditionalChinese(translated.trim());
+    }
+  } catch (err) {
+    console.warn(`[Translate to Chinese Fallback] Failed for ${contextNote}:`, err);
+  }
+  return toTraditionalChinese(trimmed);
+}
+
 // ==========================================
 // 網址智慧讀取與爬蟲：提取網站名稱、標題、簡述、首頁封面截圖並由 AI 自動歸類
 // ==========================================
@@ -1733,13 +1759,14 @@ async function handleScrapeWebsite(req: Request, res: Response) {
     const hasValidPreferred = preferredCategory && VALID_CATEGORIES.includes(preferredCategory);
 
     const prompt = `你是「IdeaX 創點子」軟體網站作品專區的專業審查與產品架構顧問。
-管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」與「軟體分類 (category)」：
+管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」、「軟體分類 (category)」、「對應解決之用戶痛點 (referencedPainPoint)」與「提案目標與預期效益 (targetGoal)」：
 
-【最高強制規範：文字語言與原站文字保真（嚴禁繁轉簡、嚴禁任意改寫）】
-1. 抓取的文字請務必嚴格按照原網站！不要擅自翻譯、簡化或竄改原網站已有名稱、標題與說明文字。
-2. 絕對不可以將繁體中文變成簡體中文！原網站若為繁體中文，必須 100% 保持繁體中文，絕不允許出現任何簡體字。
-3. 絕對不可以被換成其他語言文字：原網頁是繁體中文就保持繁體中文；若原網頁是英文或特定外語，保留原語言品牌名（如 Cursor、Notion、Figma 等），嚴禁翻譯成簡體中文字。
-4. 輸出的所有中文字元一律嚴格遵循臺灣繁體正體字規範。
+【語言與命名最高規範（請務必嚴格遵守）】
+1. 軟體名稱 (appName)：按照原語言！若是外文原創品牌名（例如「Cursor」、「Notion」、「Figma」、「Spotify」、「Wordle」、「Linear」等），100% 保持原語言名稱；若是中文名稱則保持中文。嚴禁擅自將外文品牌音譯成中文字，亦嚴禁簡體中文。
+2. 核心標題 (title)：說明與標題一律用繁體中文！若原網站標題是外文（如英文、日文、韓文等），請將其翻譯與提煉為通順、吸睛且專業的繁體中文展示標題（可包含品牌名稱，例如：「Cursor - AI 智慧驅動的現代化程式編輯器」）。
+3. 專業簡述 (description)：如果 AI 分析出或原網站的說明是外文，請務必將它轉為繁體中文！完整說明功能特色與解決方案（約 80~160 字），絕對不可留存整段未翻譯的外語。
+4. 創新提案目標與痛點 (targetGoal / referencedPainPoint)：必須一律使用繁體中文！
+5. 輸出的所有中文字元一律嚴格遵循臺灣繁體正體字規範，嚴禁簡體中文。
 
 【目標網站網址】
 ${cleanUrl}
@@ -1770,12 +1797,14 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
 【請輸出嚴格 JSON 格式】
 \`\`\`json
 {
-  "appName": "軟體名稱（繁體中文或原創品牌名，如「Cursor」、「Notion」、「Wordle」，12字以內）",
-  "title": "作品核心標題（必須忠於原網站標題，不可繁轉簡，28字以內）",
-  "description": "作品繁體中文完整簡述（優先忠實按照原網站說明，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
+  "appName": "軟體/專案名稱（按照原語言，如「Cursor」、「Notion」、「Figma」或原網站中文品牌名，12字以內）",
+  "title": "作品繁體中文核心標題（說明與標題一律用中文，若原標題是外文必須翻譯為繁體中文，28字以內）",
+  "description": "作品繁體中文完整簡述（若原網站說明是外文請將其轉為繁體中文，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
   "category": "${hasValidPreferred ? preferredCategory : '必須精準歸入上述五個分類之一：網站程式 / AI工具 / 小遊戲 / 自動化 / 擴充功能'}",
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
-  "techArchitecture": "建議的技術架構（如：Web 全端架構 React / TypeScript）"
+  "techArchitecture": "建議的技術架構（繁體中文，如：Web 全端架構 React / TypeScript）",
+  "targetGoal": "創新提案目標與預期效益（繁體中文，說明能為使用者達成什麼成果，約 30~80 字）",
+  "referencedPainPoint": "對應解決之用戶痛點或市場需求（繁體中文，說明針對什麼傳統難題，約 30~80 字）"
 }
 \`\`\``;
 
@@ -1791,6 +1820,8 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
           items: { type: Type.STRING },
         },
         techArchitecture: { type: Type.STRING },
+        targetGoal: { type: Type.STRING },
+        referencedPainPoint: { type: Type.STRING },
       },
       required: ['appName', 'title', 'description', 'category', 'tags'],
     };
@@ -1798,38 +1829,59 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
     let parsedResult: any = await generateWithGeminiFallback(prompt, schema);
 
     if (!parsedResult) {
-      const rawAiText = await generateRawTextWithGemini(prompt, '你是 IdeaX 軟體網站專案審查顧問，請嚴格使用繁體中文，禁止繁轉簡，以合規 JSON 輸出。');
+      const rawAiText = await generateRawTextWithGemini(prompt, '你是 IdeaX 軟體網站與創新提案專案審查顧問，請嚴格使用繁體中文，禁止繁轉簡，若原網站說明是外文請翻譯轉為中文，名稱保留原語言，以合規 JSON 輸出。');
       if (rawAiText) {
         parsedResult = extractJsonFromText(rawAiText);
       }
     }
 
-    // 4. Heuristic Fallback & 文字保真整合
-    // 依使用者指示：「抓取的文字請務必按照原網站，不要繁體變成簡體，或是被換成其他語言文字」
-    // 若原網站已有明確 rawTitle / rawDescription / rawSiteName，一律優先採用原網站原始文字！
-    let appName = rawSiteName
-      ? toTraditionalChinese(rawSiteName.trim().slice(0, 20))
-      : parsedResult?.appName
-      ? toTraditionalChinese(parsedResult.appName.trim())
-      : '';
+    // 4. 語言與欄位整併：
+    // 規範：名稱按照原語言，說明與標題用中文；如果說明或標題是外文，請將它轉為繁體中文。
+    let appName = (parsedResult?.appName && parsedResult.appName.trim())
+      || (rawSiteName && rawSiteName.trim().slice(0, 20))
+      || '';
 
-    let title = rawTitle
-      ? toTraditionalChinese(rawTitle.trim())
-      : parsedResult?.title
-      ? toTraditionalChinese(parsedResult.title.trim())
-      : '';
+    let title = (parsedResult?.title && parsedResult.title.trim())
+      || (rawTitle && hasChinese(rawTitle) ? rawTitle.trim() : '')
+      || '';
 
-    let description = rawDescription && rawDescription.trim().length >= 8
-      ? toTraditionalChinese(rawDescription.trim())
-      : parsedResult?.description
-      ? toTraditionalChinese(parsedResult.description.trim())
-      : '';
+    let description = (parsedResult?.description && parsedResult.description.trim())
+      || (rawDescription && hasChinese(rawDescription) ? rawDescription.trim() : '')
+      || '';
 
     let category = parsedResult?.category;
     let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0
       ? parsedResult.tags.map((t: string) => toTraditionalChinese(String(t).trim()))
       : [];
     let techArchitecture = parsedResult?.techArchitecture ? toTraditionalChinese(parsedResult.techArchitecture.trim()) : 'Web 網頁應用程式';
+    let targetGoal = parsedResult?.targetGoal ? toTraditionalChinese(parsedResult.targetGoal.trim()) : '';
+    let referencedPainPoint = parsedResult?.referencedPainPoint ? toTraditionalChinese(parsedResult.referencedPainPoint.trim()) : '';
+
+    if (!appName) {
+      const parts = hostname.replace(/^www\./, '').split('.');
+      appName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '軟體網站';
+    }
+
+    // 檢核說明與標題：若未包含中文字元（為外文），則自動調用 AI 進行外文轉繁體中文翻譯
+    if (description && !hasChinese(description)) {
+      description = await ensureChineseText(description, `${appName} 軟體作品專業簡述`);
+    } else if (!description && rawDescription) {
+      description = await ensureChineseText(rawDescription, `${appName} 軟體作品專業簡述`);
+    }
+
+    if (title && !hasChinese(title)) {
+      title = await ensureChineseText(title, `${appName} 軟體作品核心標題`);
+    } else if (!title && rawTitle) {
+      title = await ensureChineseText(rawTitle, `${appName} 軟體作品核心標題`);
+    }
+
+    if (targetGoal && !hasChinese(targetGoal)) {
+      targetGoal = await ensureChineseText(targetGoal, `${appName} 提案目標效益`);
+    }
+
+    if (referencedPainPoint && !hasChinese(referencedPainPoint)) {
+      referencedPainPoint = await ensureChineseText(referencedPainPoint, `${appName} 對應解決痛點`);
+    }
 
     // 若分類不在允許名單中或有指定的分類
     if (hasValidPreferred) {
@@ -1849,11 +1901,6 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
       }
     }
 
-    if (!appName) {
-      const parts = hostname.replace(/^www\./, '').split('.');
-      appName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '軟體網站';
-    }
-
     if (!title) {
       title = `${appName} - 實用線上軟體體驗`;
     }
@@ -1862,11 +1909,21 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
       description = `「${appName}」是一款提供高效實用功能的現代化 Web 軟體，具備流暢的使用者互動介面與直覺操作體驗，歡迎點擊進行線上試玩體驗與支持！`;
     }
 
-    // 再次確保所有輸出欄位 100% 遵循臺灣繁體正體中文，無簡體字殘留
+    if (!targetGoal) {
+      targetGoal = `透過「${appName}」打造高互動與直覺化的數位體驗，大幅降低用戶操作門檻，加速流程自動化與生產力躍升。`;
+    }
+
+    if (!referencedPainPoint) {
+      referencedPainPoint = `傳統流程繁複且缺乏一站式直覺數位解法，用戶往往耗費大量時間手動操作，亟需整合性工具。`;
+    }
+
+    // 再次確保中文欄位 100% 遵循臺灣繁體正體中文，無簡體字殘留（原語言品牌名如 Cursor、Notion 等不受影響）
     appName = toTraditionalChinese(appName);
     title = toTraditionalChinese(title);
     description = toTraditionalChinese(description);
     techArchitecture = toTraditionalChinese(techArchitecture);
+    targetGoal = toTraditionalChinese(targetGoal);
+    referencedPainPoint = toTraditionalChinese(referencedPainPoint);
 
     if (tags.length === 0) {
       tags = [category, 'Web應用', '線上工具', appName];
@@ -1882,6 +1939,8 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
         category,
         tags,
         techArchitecture,
+        targetGoal,
+        referencedPainPoint,
         coverImage: defaultCoverImage,
         screenshotUrl,
         ogImage: ogImage || null,

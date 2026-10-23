@@ -13,7 +13,7 @@ const INDEX: Entry[] = [
   { tab: 'points_receivables', label: '點數 & 收支', where: '金流與案件', keywords: ['點數', '收支', '轉入點數', '撥款', '提領', '託管', '餘額', '應收', '打賞'] },
   { tab: 'transactions', label: '交易管理', where: '金流與案件', keywords: ['交易', '退款', '發票', '收據', '對帳', '金流', '付款', '憑證'] },
   { tab: 'admin_cases', label: '案件管理', where: '金流與案件', keywords: ['案件', '驗收', '交付', '爭議', '合約', '懸賞', '進度'] },
-  { tab: 'admin_questions', label: '問題管理', where: '金流與案件', keywords: ['問題', '貼文', '下架', '違規', '精選', '刪除', '模擬資料', '示範資料', '痛點', '提案', '圓餅圖'] },
+  { tab: 'admin_questions', label: '問題或提案', where: '金流與案件', keywords: ['問題', '提案', '貼文', '下架', '違規', '精選', '刪除', '模擬資料', '示範資料', '痛點', '圓餅圖'] },
   { tab: 'admin_user_management', label: '用戶管理', where: '用戶審核', keywords: ['用戶', '會員', '帳號', '封鎖', '停權', '解除封鎖', '刪除帳號', '測試帳號', '管理員授權', '最近上線', '註冊'] },
   { tab: 'admin_certifications', label: '受理認證', where: '用戶審核', keywords: ['認證', '實名', '專家認證', '審核', '身分證', '證照'] },
   { tab: 'admin_user_analytics', label: '用戶分佈與習慣統計', where: '用戶審核', keywords: ['用戶分佈', '習慣', '問卷', '統計', 'excel', '匯出', '用戶畫像'] },

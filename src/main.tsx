@@ -2,7 +2,12 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { installStorageQuotaGuard } from './utils/safeStorage';
 import './index.css';
+
+// 全域安裝 LocalStorage 容量保護攔截器，防止 QuotaExceededError 導致畫面崩潰
+installStorageQuotaGuard();
 
 // 全域監聽 PWA 安裝事件
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -38,7 +43,9 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
     {/* Vercel Web Analytics：統計訪客與頁面瀏覽（僅在 Vercel 部署環境回報資料） */}
     <Analytics />
   </StrictMode>,

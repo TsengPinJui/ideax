@@ -1976,7 +1976,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     switch_account: '切換帳號',
     admin_management: '平台數據與顯示',
     admin_cases: '案件管理',
-    admin_questions: '問題管理',
+    admin_questions: '問題或提案',
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
@@ -2047,7 +2047,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       title: '我的內容',
       items: [
         { key: 'proposals', label: '我的案件', icon: Briefcase, onSelect: openTab('proposals'), active: activeTab === 'proposals', trailing: allProposals.length ? String(allProposals.length) : undefined },
-        { key: 'questions', label: '問題管理', icon: MessageSquare, onSelect: openTab('questions_management'), active: activeTab === 'questions_management', trailing: myQuestions.length ? String(myQuestions.length) : undefined },
+        { key: 'questions', label: '問題或提案', icon: MessageSquare, onSelect: openTab('questions_management'), active: activeTab === 'questions_management', trailing: myQuestions.length ? String(myQuestions.length) : undefined },
         { key: 'honors', label: '成就與榮譽', icon: Award, onSelect: openTab('honors_achievements'), active: activeTab === 'honors_achievements' },
       ],
     },
@@ -2117,7 +2117,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         { key: 'points', label: '點數與收支', icon: Coins, onSelect: openTab('points_receivables', () => setPointsSubView('points')), active: activeTab === 'points_receivables' },
         { key: 'transactions', label: '交易管理', icon: Clock, onSelect: openTab('transactions'), active: activeTab === 'transactions' },
         { key: 'cases', label: '案件管理', icon: Briefcase, onSelect: openTab('admin_cases'), active: activeTab === 'admin_cases' },
-        { key: 'questions', label: '問題管理', icon: HelpCircle, onSelect: openTab('admin_questions'), active: activeTab === 'admin_questions' },
+        { key: 'questions', label: '問題或提案', icon: HelpCircle, onSelect: openTab('admin_questions'), active: activeTab === 'admin_questions' },
       ],
     },
     {

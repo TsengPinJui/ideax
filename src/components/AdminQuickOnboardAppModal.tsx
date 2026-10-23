@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Layers,
   Upload,
+  Lightbulb,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Question } from '../types';
@@ -33,6 +34,31 @@ interface AdminQuickOnboardAppModalProps {
   onClose: () => void;
   onSuccess?: (createdQuestion: Question) => void;
 }
+
+export type PublishDestination = 'vibecoding_app' | 'innovation_proposal';
+
+export const DESTINATION_OPTIONS = [
+  {
+    id: 'vibecoding_app' as const,
+    label: '軟體作品專區',
+    shortLabel: '軟體作品',
+    badge: 'Vibe Coding',
+    desc: '刊登至「軟體作品」專區，支援全螢幕/內嵌試玩體驗與多平台載點',
+    icon: Gamepad2,
+    colorClass: 'text-indigo-600 border-indigo-500 bg-indigo-50/50',
+    activeBadgeClass: 'bg-indigo-600 text-white',
+  },
+  {
+    id: 'innovation_proposal' as const,
+    label: '創新提案專區',
+    shortLabel: '創新提案',
+    badge: '創點子孵化',
+    desc: '刊登至「創新提案」專區，完整記錄問題痛點、預期效益目標與落地進度',
+    icon: Lightbulb,
+    colorClass: 'text-amber-600 border-amber-500 bg-amber-50/50',
+    activeBadgeClass: 'bg-amber-600 text-white',
+  },
+] as const;
 
 const CATEGORY_OPTIONS = [
   { id: '網站程式', label: '網站程式', icon: Globe, desc: 'Web SaaS、線上平台、社群或實用資訊站' },
@@ -52,6 +78,9 @@ interface ScrapedData {
   category: SoftwareCategory;
   tags: string[];
   techArchitecture: string;
+  targetGoal?: string;
+  referencedPainPoint?: string;
+  proposalProgressStage?: string;
   coverImage: string;
   screenshotUrl: string;
   ogImage: string | null;
@@ -73,6 +102,10 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   const { createQuestion, showCenterToast, addNotification, currentUser } = useApp();
 
   const [inputUrl, setInputUrl] = useState('');
+  const [selectedDestinations, setSelectedDestinations] = useState<PublishDestination[]>([
+    'vibecoding_app',
+    'innovation_proposal',
+  ]);
   const [selectedCategory, setSelectedCategory] = useState<SoftwareCategory | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(1);
@@ -85,6 +118,22 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   const [activeImageTab, setActiveImageTab] = useState<'screenshot' | 'og' | 'upload'>('screenshot');
 
   if (!isOpen) return null;
+
+  const toggleDestination = (dest: PublishDestination) => {
+    setSelectedDestinations((prev) => {
+      if (prev.includes(dest)) {
+        if (prev.length === 1) {
+          setErrorMessage('請至少保留一個刊登目標專區（可勾選「軟體作品」或「創新提案」）');
+          return prev;
+        }
+        setErrorMessage('');
+        return prev.filter((d) => d !== dest);
+      } else {
+        setErrorMessage('');
+        return [...prev, dest];
+      }
+    });
+  };
 
   const handleReset = () => {
     setInputUrl('');
@@ -123,6 +172,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       return;
     }
 
+    if (selectedDestinations.length === 0) {
+      setErrorMessage('請至少勾選一個刊登目標專區（軟體作品或創新提案）');
+      return;
+    }
+
     setErrorMessage('');
     setIsLoading(true);
     setLoadingStep(1);
@@ -147,7 +201,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         throw new Error(resData?.error || `讀取失敗 (HTTP ${response.status})`);
       }
 
-      const data: ScrapedData = resData.data;
+      const raw = resData.data;
+      const data: ScrapedData = {
+        ...raw,
+        targetGoal: raw.targetGoal || '打造高可用性、流暢直覺且能解決真實痛點的數位服務體驗',
+        referencedPainPoint: raw.referencedPainPoint || '傳統流程繁瑣、缺乏直覺操作介面與即時回饋機制',
+        proposalProgressStage: raw.proposalProgressStage || 'prototype',
+      };
       setReviewedData(data);
       setActiveImageTab('screenshot');
     } catch (err: any) {
@@ -183,8 +243,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   const handleConfirmPublish = async () => {
     if (!reviewedData) return;
 
+    if (selectedDestinations.length === 0) {
+      setErrorMessage('請至少勾選一個刊登目標專區（軟體作品或創新提案）');
+      return;
+    }
+
     if (!reviewedData.appName.trim()) {
-      setErrorMessage('軟體名稱不可為空');
+      setErrorMessage('軟體/專案名稱不可為空');
       return;
     }
     if (!reviewedData.title.trim()) {
@@ -197,58 +262,131 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     try {
       const cleanUrl = reviewedData.websiteUrl;
       const finalCategory = reviewedData.category || '網站程式';
+      const authorName = (reviewedData.authorName && reviewedData.authorName.trim()) || PLATFORM_CURATED_NAME;
+      const authorTitle = (reviewedData.authorTitle && reviewedData.authorTitle.trim()) || '官方審核精選';
 
-      const newQ = createQuestion({
-        appName: reviewedData.appName.trim(),
-        title: reviewedData.title.trim(),
-        description: reviewedData.description.trim(),
-        postType: 'vibecoding_app',
-        specialZone: 'vibecoding',
-        category: '網站程式',
-        subcategory: finalCategory,
-        subcategories: [finalCategory],
-        tags: reviewedData.tags.length > 0 ? reviewedData.tags : [finalCategory, '網站程式', '軟體作品'],
-        coverImage: reviewedData.coverImage,
-        showCardImage: true,
-        cardDisplayImage: reviewedData.coverImage,
-        demoUrl: cleanUrl,
-        externalLink: cleanUrl,
-        previewMode: reviewedData.previewMode || 'embed',
-        techArchitecture: (reviewedData.techArchitecture && reviewedData.techArchitecture.trim()) || 'Web 網頁應用程式',
-        publishedPlatforms: [
-          {
-            name: 'Web 網頁版',
-            url: cleanUrl,
-          },
-        ],
-        publishIdentity: 'platform',
-        isOfficial: true,
-        authorId: 'platform',
-        authorName: (reviewedData.authorName && reviewedData.authorName.trim()) || PLATFORM_CURATED_NAME,
-        authorTitle: (reviewedData.authorTitle && reviewedData.authorTitle.trim()) || '官方審核精選',
-        authorAvatar: PLATFORM_CURATED_AVATAR,
-        bounty: 0,
-        level: 'L1',
-        status: 'open',
-      });
+      let createdAppQ: Question | null = null;
+      let createdPropQ: Question | null = null;
 
-      if (!newQ) {
-        throw new Error('刊登失敗，請確認目前權限');
+      // 1. 若勾選「軟體作品專區」
+      if (selectedDestinations.includes('vibecoding_app')) {
+        createdAppQ = createQuestion({
+          appName: reviewedData.appName.trim(),
+          title: reviewedData.title.trim(),
+          description: reviewedData.description.trim(),
+          postType: 'vibecoding_app',
+          specialZone: 'vibecoding',
+          category: '網站程式',
+          subcategory: finalCategory,
+          subcategories: [finalCategory],
+          tags: reviewedData.tags.length > 0 ? reviewedData.tags : [finalCategory, '網站程式', '軟體作品'],
+          coverImage: reviewedData.coverImage,
+          showCardImage: true,
+          cardDisplayImage: reviewedData.coverImage,
+          demoUrl: cleanUrl,
+          externalLink: cleanUrl,
+          previewMode: reviewedData.previewMode || 'embed',
+          techArchitecture: (reviewedData.techArchitecture && reviewedData.techArchitecture.trim()) || 'Web 網頁應用程式',
+          publishedPlatforms: [
+            {
+              name: 'Web 網頁版',
+              url: cleanUrl,
+            },
+          ],
+          publishIdentity: 'platform',
+          isOfficial: true,
+          authorId: 'platform',
+          authorName,
+          authorTitle,
+          authorAvatar: PLATFORM_CURATED_AVATAR,
+          bounty: 0,
+          level: 'L1',
+          status: 'open',
+        });
       }
 
-      showCenterToast('🎉 軟體網站已成功刊登！', `《${newQ.appName || newQ.title}》已發布至「軟體作品」專區`, {
-        type: 'success',
-        duration: 3500,
-      });
+      // 2. 若勾選「創新提案專區」
+      if (selectedDestinations.includes('innovation_proposal')) {
+        createdPropQ = createQuestion({
+          appName: reviewedData.appName.trim(),
+          title: reviewedData.title.trim(),
+          description: reviewedData.description.trim(),
+          postType: 'innovation_proposal',
+          specialZone: 'create_ideas',
+          category: '創新創業',
+          subcategory: finalCategory,
+          subcategories: [finalCategory],
+          tags: reviewedData.tags.length > 0
+            ? Array.from(new Set([...reviewedData.tags, '創新提案']))
+            : [finalCategory, '創新提案', '精選'],
+          coverImage: reviewedData.coverImage,
+          showCardImage: true,
+          cardDisplayImage: reviewedData.coverImage,
+          demoUrl: cleanUrl,
+          externalLink: cleanUrl,
+          previewMode: reviewedData.previewMode || 'embed',
+          techArchitecture: (reviewedData.techArchitecture && reviewedData.techArchitecture.trim()) || 'Web 網頁應用程式',
+          targetGoal: (reviewedData.targetGoal && reviewedData.targetGoal.trim()) || '打造高可用性、流暢直覺且能解決真實痛點的數位服務體驗',
+          referencedPainPoint: (reviewedData.referencedPainPoint && reviewedData.referencedPainPoint.trim()) || '傳統流程繁瑣、缺乏直覺操作介面與即時回饋機制',
+          proposalProgressStage: reviewedData.proposalProgressStage || 'prototype',
+          publishedPlatforms: [
+            {
+              name: 'Web 網頁版',
+              url: cleanUrl,
+            },
+          ],
+          publishIdentity: 'platform',
+          isOfficial: true,
+          authorId: 'platform',
+          authorName,
+          authorTitle,
+          authorAvatar: PLATFORM_CURATED_AVATAR,
+          bounty: 0,
+          level: 'L1',
+          status: 'open',
+        });
+      }
 
-      addNotification({
-        title: '🚀 軟體網站快速上架成功',
-        message: `管理員已成功上架軟體《${newQ.appName || newQ.title}》，分類為【${finalCategory}】，首頁封面截圖已生效！`,
-        type: 'system',
-      });
+      const isBoth = selectedDestinations.includes('vibecoding_app') && selectedDestinations.includes('innovation_proposal');
+      const targetName = reviewedData.appName.trim() || reviewedData.title.trim();
+
+      if (isBoth) {
+        showCenterToast('🎉 軟體與提案同步刊登成功！', `《${targetName}》已同時發布至「軟體作品」與「創新提案」專區`, {
+          type: 'success',
+          duration: 4000,
+        });
+        addNotification({
+          title: '🚀 軟體與創新提案雙專區快速上架成功',
+          message: `管理員已成功將《${targetName}》上架至【軟體作品】與【創新提案】專區，首頁封面截圖與解決痛點均已生效！`,
+          type: 'system',
+        });
+      } else if (selectedDestinations.includes('vibecoding_app')) {
+        showCenterToast('🎉 軟體網站已成功刊登！', `《${targetName}》已發布至「軟體作品」專區`, {
+          type: 'success',
+          duration: 3500,
+        });
+        addNotification({
+          title: '🚀 軟體網站快速上架成功',
+          message: `管理員已成功上架軟體《${targetName}》，分類為【${finalCategory}】，首頁封面截圖已生效！`,
+          type: 'system',
+        });
+      } else {
+        showCenterToast('🎉 創新提案已成功刊登！', `《${targetName}》已發布至「創新提案」專區`, {
+          type: 'success',
+          duration: 3500,
+        });
+        addNotification({
+          title: '🚀 創新提案快速上架成功',
+          message: `管理員已成功上架創新提案《${targetName}》，已載入對應痛點與目標效益！`,
+          type: 'system',
+        });
+      }
 
       if (onSuccess) {
-        onSuccess(newQ);
+        const resultQ = createdAppQ || createdPropQ;
+        if (resultQ) {
+          onSuccess(resultQ);
+        }
       }
 
       handleReset();
@@ -272,13 +410,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
-                <span>後台快速上架軟體網站</span>
+                <span>後台快速上架軟體網站與創新提案</span>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
                   AI + 首頁快照爬蟲
                 </span>
               </h2>
               <p className="text-xs text-purple-100/90 mt-0.5">
-                貼上網站網址，自動抓取名稱、標題、簡述並以首頁為封面，審核後一鍵刊登至「軟體作品」專區
+                貼上網站網址，自動抓取名稱、標題、簡述與痛點目標，審核後刊登至「軟體作品」或「創新提案」專區（支援複選）
               </p>
             </div>
           </div>
@@ -306,6 +444,65 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
           {/* 階段 1：尚未爬取或想重新讀取網址 */}
           {!reviewedData && (
             <div className="space-y-5">
+              {/* 刊登發布目標專區（可單選或複選） */}
+              <div className="space-y-2 rounded-2xl bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-amber-50/50 border border-stone-200 p-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-black text-stone-800">刊登發布目標專區（可單選或複選）</span>
+                    <span className="text-[11px] font-bold text-indigo-700 bg-white/80 px-2 py-0.5 rounded-full border border-indigo-200 shadow-2xs">
+                      支援複選
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-stone-500 font-medium">
+                    已選：{selectedDestinations.length === 2 ? '軟體作品 ＋ 創新提案（雙專區同步）' : selectedDestinations.includes('vibecoding_app') ? '軟體作品專區' : '創新提案專區'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {DESTINATION_OPTIONS.map((dest) => {
+                    const Icon = dest.icon;
+                    const isChecked = selectedDestinations.includes(dest.id);
+                    return (
+                      <button
+                        key={dest.id}
+                        type="button"
+                        onClick={() => toggleDestination(dest.id)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-3 ${
+                          isChecked
+                            ? 'bg-white border-indigo-500 ring-2 ring-indigo-200 shadow-sm'
+                            : 'bg-white/60 border-stone-200 hover:border-stone-300 hover:bg-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-lg border mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
+                            isChecked
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'border-stone-300 bg-white'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                              <Icon className={`w-3.5 h-3.5 ${isChecked ? 'text-indigo-600' : 'text-stone-400'}`} />
+                              <span>{dest.label}</span>
+                            </span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${isChecked ? dest.activeBadgeClass : 'bg-stone-100 text-stone-500'}`}>
+                              {dest.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                            {dest.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* 網址輸入框 */}
               <div className="space-y-2">
                 <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
@@ -517,10 +714,20 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                         </div>
                       )}
 
-                      {/* 試玩體驗標籤 */}
-                      <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-xs text-white text-[11px] font-black shadow-sm">
-                        <Play className="w-3 h-3 fill-current" />
-                        <span>試玩體驗</span>
+                      {/* 目標專區標籤 */}
+                      <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+                        {selectedDestinations.includes('vibecoding_app') && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-black shadow-sm">
+                            <Play className="w-2.5 h-2.5 fill-current" />
+                            <span>試玩體驗</span>
+                          </div>
+                        )}
+                        {selectedDestinations.includes('innovation_proposal') && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/90 backdrop-blur-xs text-white text-[10px] font-black shadow-sm">
+                            <Lightbulb className="w-2.5 h-2.5" />
+                            <span>創新提案</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* 軟體分類標籤 */}
@@ -688,10 +895,51 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                     </button>
                   </div>
 
+                  {/* 刊登目標專區快速勾選（支援單選或複選） */}
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-indigo-50/70 to-purple-50/70 border border-indigo-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>刊登目標專區（可單選或複選）</span>
+                      </label>
+                      <span className="text-[11px] text-indigo-700 font-bold">
+                        {selectedDestinations.length === 2 ? '雙專區同步發布' : selectedDestinations.includes('vibecoding_app') ? '僅刊登至「軟體作品」' : '僅刊登至「創新提案」'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {DESTINATION_OPTIONS.map((dest) => {
+                        const Icon = dest.icon;
+                        const isChecked = selectedDestinations.includes(dest.id);
+                        return (
+                          <button
+                            key={dest.id}
+                            type="button"
+                            onClick={() => toggleDestination(dest.id)}
+                            className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                              isChecked
+                                ? 'bg-white border-indigo-500 ring-2 ring-indigo-200 text-stone-900 shadow-2xs'
+                                : 'bg-white/60 border-stone-200 text-stone-500 hover:bg-white'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5 truncate">
+                              <Icon className={`w-3.5 h-3.5 ${isChecked ? 'text-indigo-600' : 'text-stone-400'}`} />
+                              <span>{dest.label}</span>
+                            </span>
+                            <div className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] shrink-0 ${
+                              isChecked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-stone-300 bg-white'
+                            }`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* 軟體名稱 (appName) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-black text-stone-800">
-                      軟體/網站名稱 (appName)
+                      軟體/專案名稱 (appName)
                       <span className="text-[11px] font-normal text-stone-400 ml-1.5">
                         顯示於卡片左下角藍色標籤
                       </span>
@@ -710,7 +958,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                   {/* 標題 (title) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-black text-stone-800">
-                      作品完整標題 (title)
+                      作品/提案完整標題 (title)
                     </label>
                     <input
                       type="text"
@@ -724,7 +972,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                   {/* 軟體分類 (category) */}
                   <div className="space-y-1.5">
                     <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
-                      <span>軟體專區分類</span>
+                      <span>專區分類</span>
                       <span className="text-[11px] text-purple-700 font-bold">
                         AI 分類：{reviewedData.category}
                       </span>
@@ -767,6 +1015,86 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                       placeholder="輸入軟體的功能、特色與痛點..."
                     />
                   </div>
+
+                  {/* 若選擇刊登至「創新提案」，顯示提案專屬審核欄位 */}
+                  {selectedDestinations.includes('innovation_proposal') && (
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3 animate-in fade-in">
+                      <div className="flex items-center gap-1.5 border-b border-amber-200/80 pb-2">
+                        <Lightbulb className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-black text-amber-950">
+                          創新提案專屬欄位（AI 已自動分析生成，請審核編輯）
+                        </span>
+                      </div>
+
+                      {/* 對應解決之用戶痛點 (referencedPainPoint) */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
+                          <span>對應解決之用戶痛點 / 市場需求</span>
+                          <span className="text-[10px] text-amber-700 font-bold">AI 智慧分析生成</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={reviewedData.referencedPainPoint || ''}
+                          onChange={(e) =>
+                            setReviewedData({ ...reviewedData, referencedPainPoint: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-100 text-xs font-medium text-stone-900 outline-hidden bg-white leading-relaxed resize-none"
+                          placeholder="描述此提案所針對解決之痛點..."
+                        />
+                      </div>
+
+                      {/* 提案目標與預期效益 (targetGoal) */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-black text-stone-800 flex items-center justify-between">
+                          <span>提案目標與預期效益</span>
+                          <span className="text-[10px] text-amber-700 font-bold">AI 智慧分析生成</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={reviewedData.targetGoal || ''}
+                          onChange={(e) =>
+                            setReviewedData({ ...reviewedData, targetGoal: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-100 text-xs font-medium text-stone-900 outline-hidden bg-white leading-relaxed resize-none"
+                          placeholder="描述此提案欲達成之目標效益..."
+                        />
+                      </div>
+
+                      {/* 提案進度階段 (proposalProgressStage) */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-black text-stone-800">
+                          提案孵化階段 (proposalProgressStage)
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          {[
+                            { id: 'prototype', label: '雛型展示', desc: 'Prototype' },
+                            { id: 'mvp', label: '已上線 MVP', desc: '已具備基本功能' },
+                            { id: 'concept', label: '概念驗證', desc: 'PoC' },
+                            { id: 'growth', label: '營運成長', desc: '商業化營運中' },
+                          ].map((stage) => {
+                            const isCurrent = (reviewedData.proposalProgressStage || 'prototype') === stage.id;
+                            return (
+                              <button
+                                key={stage.id}
+                                type="button"
+                                onClick={() => setReviewedData({ ...reviewedData, proposalProgressStage: stage.id })}
+                                className={`py-1.5 px-2 rounded-xl text-xs font-black border transition-all cursor-pointer flex flex-col items-center justify-center ${
+                                  isCurrent
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                                    : 'bg-white text-stone-700 border-amber-200 hover:bg-amber-100/50'
+                                }`}
+                              >
+                                <span>{stage.label}</span>
+                                <span className={`text-[9px] ${isCurrent ? 'text-amber-100' : 'text-stone-400'}`}>
+                                  {stage.desc}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 體驗網址 (demoUrl) */}
                   <div className="space-y-1">
@@ -923,7 +1251,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         <div className="px-5 py-3.5 sm:px-6 sm:py-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3 shrink-0">
           <div className="text-[11px] text-stone-500 font-medium hidden sm:block">
             {reviewedData ? (
-              <span>✓ 審核無誤後，點擊右方按鈕即可正式刊登至軟體作品專區</span>
+              <span>✓ 審核無誤後，點擊右方按鈕即可正式刊登至指定專區（軟體作品 / 創新提案）</span>
             ) : (
               <span>💡 貼上網址即可由爬蟲與 AI 快速為您完成整套上架準備</span>
             )}
@@ -942,7 +1270,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             {reviewedData ? (
               <button
                 type="button"
-                disabled={isPublishing}
+                disabled={isPublishing || selectedDestinations.length === 0}
                 onClick={handleConfirmPublish}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white text-xs font-black transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
               >
@@ -954,7 +1282,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>確認刊登至軟體作品專區 🚀</span>
+                    <span>
+                      {selectedDestinations.length === 2
+                        ? '雙專區同步刊登（軟體 ＋ 提案）🚀'
+                        : selectedDestinations.includes('vibecoding_app')
+                        ? '確認刊登至「軟體作品」專區 🚀'
+                        : '確認刊登至「創新提案」專區 💡'}
+                    </span>
                   </>
                 )}
               </button>
