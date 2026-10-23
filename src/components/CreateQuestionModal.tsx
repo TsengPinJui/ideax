@@ -272,9 +272,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [selectedCardImage, setSelectedCardImage] = useState<string>('');
 
   const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
-    if (!files || files.length === 0) return;
+    if (selectedFiles.length === 0) return;
     setImageUploadError(null);
     const maxSlots = postType === 'pain_point' ? 3 : 6;
     const remainingSlots = maxSlots - galleryImages.length;
@@ -282,7 +282,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       setImageUploadError(postType === 'pain_point' ? '痛點展示照片最多可上傳 3 張' : '展示圖集最多可上傳 6 張圖片');
       return;
     }
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    const filesToProcess = selectedFiles.slice(0, remainingSlots);
     setIsUploadingImage(true);
     const uploadedList: string[] = [];
     for (const file of filesToProcess) {

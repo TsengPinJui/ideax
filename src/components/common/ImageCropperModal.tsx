@@ -235,14 +235,17 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     initCropBox(dw, dh, isAvatar ? '1:1' : defaultRatio);
   };
 
-  // 當開啟時初始化
+  // 當開啟或切換圖片時初始化
   useEffect(() => {
     if (!isOpen) return;
     setAspectRatio(isAvatar ? '1:1' : defaultRatio);
     setShowCirclePreview(isAvatar);
     setRotation(0);
     setFlipH(false);
-  }, [isOpen, isAvatar, defaultRatio]);
+    if (imageRef.current && imageRef.current.complete && imageRef.current.naturalWidth > 0) {
+      handleImageLoad();
+    }
+  }, [isOpen, isAvatar, defaultRatio, imageSrc]);
 
   // 切換比例時重新計算裁切框
   const handleSelectRatio = (ratio: CropAspectRatio) => {
@@ -653,7 +656,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
   // 匯出高解析度裁切圖片
   const handleConfirmCrop = () => {
-    if (!imageRef.current) return;
+    if (!imageRef.current || displaySize.width <= 0 || displaySize.height <= 0) {
+      if (imageSrc) onConfirm(imageSrc);
+      return;
+    }
     const img = imageRef.current;
 
     const isSideways = rotation % 180 !== 0;
@@ -719,8 +725,14 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-5 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl rounded-2xl bg-stone-900 border border-stone-800 text-white shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+    <div
+      className="fixed inset-0 z-[140] flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-5 animate-in fade-in duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        className="relative w-full max-w-4xl rounded-2xl bg-stone-900 border border-stone-800 text-white shadow-2xl flex flex-col max-h-[95vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-stone-800 bg-stone-900/95 shrink-0">
           <div className="flex items-center gap-2.5">

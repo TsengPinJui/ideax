@@ -24,7 +24,11 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { applyJudge, uploadProposalAttachment } from '../../services/competitionClientService';
-import { recordNewExpertApplication } from '../../services/competitionAdminSync';
+import {
+  recordNewExpertApplication,
+  getCompetitionExperts,
+  saveAllCompetitionExperts,
+} from '../../services/competitionAdminSync';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
@@ -49,6 +53,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     setCurrentUser,
     setSolvers,
     addNotification,
+    showCenterToast,
     openAboutModal,
   } = useApp();
 
@@ -103,12 +108,91 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
 
+  // 若已是 IdeaX 創點子平台認證專家，直接享有競賽專家身分與權利（無需再填寫報名競賽專家表單）
+  const isAlreadyCertifiedExpert = Boolean(
+    currentUser &&
+    currentUser.id !== 'user-guest' &&
+    (currentUser.verifiedExpert ||
+      currentUser.role === 'solver' ||
+      (currentUser as any).role === 'expert' ||
+      currentUser.expertCertStatus === 'verified' ||
+      (currentUser as any).isExpert)
+  );
+
+  // 檢查是否已獲遴選為複賽評審委員（評審是由專家中挑出來評分複賽作品）
+  const isSelectedJudge = React.useMemo(() => {
+    if (!currentUser || currentUser.id === 'user-guest') return false;
+    if ((currentUser as any).isJudgeSelected || (currentUser as any).isJudge) return true;
+    const experts = getCompetitionExperts();
+    const matched = experts.find(
+      (e) =>
+        e.userId === currentUser.id ||
+        e.id === currentUser.id ||
+        (currentUser.email && e.expertEmail === currentUser.email)
+    );
+    return Boolean(matched?.isJudgeSelected);
+  }, [currentUser]);
+
+  // 自動將已是創點子認證專家的用戶同步至創星季專家名冊（核定通過、享有 300 萬點額度，預設尚非複賽評審直到獲選）
+  useEffect(() => {
+    if (!isAlreadyCertifiedExpert || !currentUser || currentUser.id === 'user-guest') return;
+    try {
+      const experts = getCompetitionExperts();
+      const existingIdx = experts.findIndex(
+        (e) =>
+          e.userId === currentUser.id ||
+          e.id === currentUser.id ||
+          (currentUser.email && e.expertEmail === currentUser.email)
+      );
+      if (existingIdx === -1) {
+        const syncedExpert = {
+          id: `exp-cert-${currentUser.id}`,
+          userId: currentUser.id,
+          expertName: currentUser.name || '認證專家',
+          expertPhone: currentUser.phone || '',
+          expertEmail: currentUser.email || '',
+          organization: (currentUser as any).company || (currentUser as any).organization || 'IdeaX 創點子平台認證專家',
+          jobTitle: (currentUser as any).expertTitle || currentUser.jobTitle || currentUser.title || '認證領域專家',
+          expertiseTracks: ['ict'] as any,
+          yearsOfExperience: 5,
+          bio: currentUser.bio || 'IdeaX 創點子平台官方認證專家',
+          status: 'approved' as const,
+          isJudgeSelected: Boolean((currentUser as any).isJudgeSelected),
+          pointsAllocated: 3000000,
+          singleProjectCap: 2000000,
+          createdAt: new Date().toISOString(),
+          reviewedBy: 'IdeaX 平台認證自動連動',
+          reviewedAt: new Date().toISOString(),
+        };
+        saveAllCompetitionExperts([syncedExpert, ...experts]);
+      } else if (experts[existingIdx].status !== 'approved') {
+        const updated = [...experts];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          status: 'approved',
+          pointsAllocated: 3000000,
+          singleProjectCap: 2000000,
+        };
+        saveAllCompetitionExperts(updated);
+      }
+    } catch {}
+  }, [isAlreadyCertifiedExpert, currentUser?.id]);
+
   const showToast = (message: string) => {
     addNotification({
-      title: '評審專家認證',
+      title: '競賽專家認證',
       message,
       type: 'system',
     });
+    const isSuccess = message.includes('成功') || message.includes('已提交');
+    showCenterToast(
+      isSuccess ? '專家申請通知' : '提示',
+      message,
+      {
+        type: isSuccess ? 'success' : 'warning',
+        duration: 2800,
+      }
+    );
   };
 
   const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,6 +256,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     try {
       const finalReferral = referralSource === '其他' && referralSourceOther.trim() ? `其他 (${referralSourceOther.trim()})` : referralSource;
       const res = await applyJudge({
+        userId: currentUser.id,
         name: judgeName.trim(),
         phone: judgePhone.trim(),
         email: judgeEmail.trim(),
@@ -501,6 +586,110 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
             </div>
           </div>
 
+          {isAlreadyCertifiedExpert ? (
+            <div
+              id="expert-judge-apply-form"
+              className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-purple-50 via-indigo-50/60 to-amber-50/40 border-2 border-purple-300 shadow-md space-y-6"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-200/80 pb-5">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-purple-100 border border-purple-300 text-purple-900 text-[11px] font-black">
+                      <span>👑 IdeaX 創點子平台認證專家連動</span>
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-black text-stone-950">
+                      您已是創點子平台認證專家，直接享有競賽專家身分與權利！
+                    </h2>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      系統已自動核定您的創星季競賽專家資格，<strong>無需再填寫報名競賽專家的表單</strong>。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 專家權利與複賽評審區別說明 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-5 rounded-2xl bg-white border border-purple-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-purple-950 text-sm flex items-center gap-1.5">
+                      <Coins className="w-4 h-4 text-purple-600" />
+                      <span>已開通之競賽專家身分與權利</span>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-black">
+                      ✓ 已生效
+                    </span>
+                  </div>
+                  <ul className="space-y-1.5 text-stone-700 leading-relaxed list-disc pl-4">
+                    <li>
+                      自動享有 <strong className="text-purple-800">3,000,000 點創星幣</strong> 專屬投資額度（單一提案上限 <strong className="text-purple-800">2,000,000 點</strong>）。
+                    </li>
+                    <li>
+                      可於模擬募資期間直接對看好的參賽提案進行專家注資、撰寫專業講評與指導建議。
+                    </li>
+                    <li>
+                      享有創星季與 IdeaX 雙平台「👑 認證專家」官方榮譽標識。
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white border border-amber-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-stone-950 text-sm flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-600" />
+                      <span>「競賽專家」與「複賽評審」之區別</span>
+                    </span>
+                    {isSelectedJudge ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-600 text-white text-[11px] font-black">
+                        ⚖️ 已獲遴選為評審
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black">
+                        專家身分（尚非評審）
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-stone-700 leading-relaxed">
+                    具備競賽專家身分代表您擁有 300 萬創星幣模擬投資權與專業評論權，但<strong>還不是複賽評審</strong>。
+                  </p>
+                  <p className="text-stone-600 leading-relaxed">
+                    <strong>複賽評審是由所有認證專家裡挑選（遴選）出來的委員</strong>，專門負責於決選階段對入圍複賽之作品進行正式評分。
+                  </p>
+                  <div className="pt-1">
+                    {isSelectedJudge ? (
+                      <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 font-bold text-[11px]">
+                        🎉 您已獲主辦單位遴選為本屆「複賽評審委員」，可於決選階段進入評審專區為複賽作品評分！
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-600 font-medium text-[11px]">
+                        📋 您目前已完整享有競賽專家權利；複賽評審委員名單將由主辦單位自認證專家中遴選並另行指派。
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('home')}
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  返回創星季首頁
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('explore')}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-sm transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                >
+                  <Coins className="w-4 h-4" />
+                  <span>前往探索提案・使用 300 萬專家額度</span>
+                </button>
+              </div>
+            </div>
+          ) : (
           <form id="expert-judge-apply-form" onSubmit={handleSubmit} className="space-y-8 text-xs">
             
             {/* 區塊 1: 評審基本資訊 */}
@@ -508,14 +697,14 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                 <div className="font-black text-stone-900 text-sm flex items-center gap-2">
                   <UserIcon className="w-4 h-4 text-purple-600" />
-                  <span>評審基本資訊</span>
+                  <span>專家基本資訊</span>
                 </div>
                 <span className="text-[11px] text-stone-500 font-bold">* 為必填項目</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">評審真實中文姓名 *</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">真實中文姓名 *</label>
                   <input
                     type="text"
                     value={judgeName}
@@ -544,21 +733,21 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                     type="email"
                     value={judgeEmail}
                     onChange={(e) => setJudgeEmail(e.target.value)}
-                    placeholder="judge@institution.org.tw"
+                    placeholder="expert@institution.org.tw"
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-purple-400 text-xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">專業審查領域 *</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">專業領域 *</label>
                   <select
                     value={judgeDomain}
                     onChange={(e) => setJudgeDomain(e.target.value)}
                     required
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 font-bold focus:outline-none focus:border-purple-400"
                   >
-                    <option value="">請選擇專業審查領域 *</option>
+                    <option value="">請選擇專業領域 *</option>
                     <option value="AI 智慧與科技創新">AI 智慧與科技創新</option>
                     <option value="智慧物聯與硬體整合">智慧物聯與硬體整合</option>
                     <option value="永續綠能與循環經濟">永續綠能與循環經濟</option>
@@ -778,13 +967,13 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
-                    <span>確認送出評審資格申請</span>
+                    <span>確認送出專家資格申請</span>
                   </>
                 )}
               </button>
             </div>
           </form>
-        </div>
+          )}</div>
       </main>
 
       {/* 創星季規章與條款說明彈窗 */}

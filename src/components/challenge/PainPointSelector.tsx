@@ -17,6 +17,8 @@ import { StarSeasonProposal, STAR_SEASON_TRACKS, StarSeasonTrack } from '../../t
 import { Question } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { isPainPointQuestion } from '../../utils/questionUtils';
+import { isFakeProposal } from './StarSeasonView';
+import { isSimulatedQuestion, isSimulatedUser } from '../../data/virtualProposalsSeed';
 
 export interface SelectablePainPoint {
   id: string;
@@ -54,31 +56,33 @@ export const PainPointSelector: React.FC<PainPointSelectorProps> = ({
   const [isOpenDropdown, setIsOpenDropdown] = useState<boolean>(false);
   const [previewPainPoint, setPreviewPainPoint] = useState<SelectablePainPoint | null>(null);
 
-  // 統合創星季痛點與平台真實痛點/問題清單，給予標準序號
+  // 統合創星季痛點與平台真實痛點/問題清單，給予標準序號（創星季隱藏假資料與模擬痛點）
   const allPainPoints = useMemo<SelectablePainPoint[]>(() => {
     const list: SelectablePainPoint[] = [];
 
     // 1. 創星季第一階段提案中之痛點
-    painPointProposals.forEach((pp, idx) => {
-      const serialNum = (idx + 1).toString().padStart(2, '0');
-      list.push({
-        id: pp.id,
-        serial: `#P-${serialNum}`,
-        displaySerial: `#${idx + 1}`,
-        title: pp.title,
-        trackTag: STAR_SEASON_TRACKS[pp.track]?.tag || '創星痛點',
-        trackId: pp.track,
-        authorName: pp.authorName || '創星徵件用戶',
-        summary: pp.summary || '',
-        description: pp.description || '',
-        sourceType: 'competition',
-        originalProposal: pp,
+    painPointProposals
+      .filter((pp) => !isFakeProposal(pp))
+      .forEach((pp, idx) => {
+        const serialNum = (idx + 1).toString().padStart(2, '0');
+        list.push({
+          id: pp.id,
+          serial: `#P-${serialNum}`,
+          displaySerial: `#${idx + 1}`,
+          title: pp.title,
+          trackTag: STAR_SEASON_TRACKS[pp.track]?.tag || '創星痛點',
+          trackId: pp.track,
+          authorName: pp.authorName || '創星徵件用戶',
+          summary: pp.summary || '',
+          description: pp.description || '',
+          sourceType: 'competition',
+          originalProposal: pp,
+        });
       });
-    });
 
-    // 2. IdeaX 主平台切身痛點與懸賞問題
+    // 2. IdeaX 主平台切身痛點與懸賞問題（創星季那邊先隱藏假資料）
     const platformQuestions = questions.filter(
-      (q) => q.status !== 'delisted' && q.id
+      (q) => q.status !== 'delisted' && q.id && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId)
     );
 
     platformQuestions.forEach((q, idx) => {

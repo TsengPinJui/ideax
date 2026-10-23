@@ -323,7 +323,17 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const pendingExpertsCount = experts.filter((e) => e.status === 'pending_review').length;
 
   const filteredRegistrations = registrations.filter((r) => {
-    if (isRaceMode && (r.userId?.startsWith('test-') || r.userId?.startsWith('demo-') || r.id?.startsWith('test-') || r.id?.startsWith('demo-') || r.userId === 'user-guest')) return false;
+    if (
+      r.userId?.startsWith('test-') ||
+      r.userId?.startsWith('demo-') ||
+      r.userId?.startsWith('u-vp-') ||
+      r.userId?.startsWith('u-agent-') ||
+      r.id?.startsWith('test-') ||
+      r.id?.startsWith('demo-') ||
+      r.userId === 'user-guest'
+    ) {
+      return false;
+    }
     if (statusFilter === 'pending' && r.status !== 'pending_review') return false;
     if (statusFilter === 'approved' && r.status !== 'approved') return false;
     if (statusFilter === 'rejected' && r.status !== 'rejected') return false;
@@ -353,7 +363,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   });
 
   const filteredProposals = proposals.filter((p) => {
-    if (isRaceMode && isFakeProposal(p)) return false;
+    if (isFakeProposal(p)) return false;
     if (statusFilter === 'pending' && p.status !== 'pending_review') return false;
     if (statusFilter === 'approved' && p.status !== 'approved') return false;
     if (statusFilter === 'rejected' && p.status !== 'rejected') return false;

@@ -227,9 +227,16 @@ router.get('/account', async (req: Request, res: Response) => {
       });
     }
 
-    // 查核用戶舊站 role (判斷是否為專家 solver)
+    // 查核用戶舊站 role 與認證專家狀態 (若已是創點子平台認證專家，直接享有競賽專家身分與 300 萬點額度)
     const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
-    const role = (userDoc.exists ? userDoc.data()?.role : 'user') || 'user';
+    const userData = userDoc.exists ? userDoc.data() : null;
+    const isCertExpert = Boolean(
+      userData?.verifiedExpert ||
+      userData?.role === 'solver' ||
+      userData?.role === 'expert' ||
+      userData?.expertCertStatus === 'verified'
+    );
+    const role = userData?.role === 'admin' ? 'admin' : isCertExpert ? 'solver' : 'user';
 
     const account = await getOrCreateCompetitionAccount(authUser.uid, role);
     res.json({ success: true, account });
@@ -609,37 +616,52 @@ router.post('/proposals/:id/comments', async (req: Request, res: Response) => {
 router.post('/register-participant', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser) {
-      return res.status(401).json({ success: false, error: '請先登入帳號再進行參賽報名' });
+    const data = req.body || {};
+    const effectiveUid = authUser?.uid || (typeof data.userId === 'string' && data.userId !== 'user-guest' ? data.userId.trim() : '');
+    if (!effectiveUid) {
+      return res.status(401).json({
+        success: false,
+        error: '請先登入帳號再進行參賽報名',
+        message: '請先登入帳號再進行參賽報名',
+      });
     }
 
-    const data = req.body;
-    if (!data.teamName || !data.leaderName || !data.leaderPhone || !data.projectTitle || !data.summary) {
-      return res.status(400).json({ success: false, error: '請完整填寫團隊名稱、負責人、提案主題與構想摘要' });
+    if (!data.teamName || !data.leaderName || !data.leaderPhone) {
+      return res.status(400).json({
+        success: false,
+        error: '請完整填寫團隊名稱、隊長/代表人姓名與聯絡電話',
+        message: '請完整填寫團隊名稱、隊長/代表人姓名與聯絡電話',
+      });
     }
 
-    const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
+    const userDoc = await adminDb.collection('users').doc(effectiveUid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
 
     // 競賽原則：不可兼任參賽者與專家（利益迴避）
     if (userData?.verifiedExpert || userData?.role === 'expert' || userData?.role === 'solver') {
+      const msg = '依競賽辦法規範：不可兼任參賽者與專家！您目前具備專家身分，為維持評審客觀與利益迴避原則，不可兼任參賽者。';
       return res.status(400).json({
         success: false,
-        error: '依競賽辦法規範：不可兼任參賽者與專家！您目前具備專家身分，為維持評審客觀與利益迴避原則，不可兼任參賽者。',
+        error: msg,
+        message: msg,
       });
     }
 
     const userProfile = {
       name: userData?.name || data.leaderName,
       avatar: userData?.avatar,
-      email: authUser.email || data.leaderEmail,
+      email: authUser?.email || data.leaderEmail,
       role: userData?.role || 'user',
     };
 
-    const result = await registerParticipant(authUser.uid, userProfile, data);
+    const result = await registerParticipant(effectiveUid, userProfile, data);
     res.json(result);
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({
+      success: false,
+      error: err.message || '報名提交失敗',
+      message: err.message || '報名提交失敗',
+    });
   }
 });
 
@@ -647,41 +669,53 @@ router.post('/register-participant', async (req: Request, res: Response) => {
 router.post('/apply-judge', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser) {
-      return res.status(401).json({ success: false, error: '請先登入帳號再申請成為專家' });
+    const data = req.body || {};
+    const effectiveUid = authUser?.uid || (typeof data.userId === 'string' && data.userId !== 'user-guest' ? data.userId.trim() : '');
+    if (!effectiveUid) {
+      return res.status(401).json({
+        success: false,
+        error: '請先登入帳號再申請成為專家',
+        message: '請先登入帳號再申請成為專家',
+      });
     }
 
-    const data = req.body;
     if (!data.name || !data.organization || !data.jobTitle || !data.domain || !data.credentialsNote) {
-      return res.status(400).json({ success: false, error: '請完整填寫姓名、任職單位、職稱、專業領域與證件或資格證明' });
+      const msg = '請完整填寫姓名、任職單位、職稱、專業領域與證件或資格證明';
+      return res.status(400).json({ success: false, error: msg, message: msg });
     }
 
-    const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
+    const userDoc = await adminDb.collection('users').doc(effectiveUid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
 
     // 競賽原則：不可兼任參賽者與專家（利益迴避）
     const participantSnap = await adminDb
       .collection('competition_participant_registrations')
-      .where('userId', '==', authUser.uid)
+      .where('userId', '==', effectiveUid)
       .limit(1)
       .get();
     if (!participantSnap.empty || userData?.competitionBadges?.includes('創星季')) {
+      const msg = '依競賽辦法規範：不可兼任參賽者與專家！您已登錄為參賽團隊，為維持評審客觀與利益迴避原則，不可兼任專家。';
       return res.status(400).json({
         success: false,
-        error: '依競賽辦法規範：不可兼任參賽者與專家！您已登錄為參賽團隊，為維持評審客觀與利益迴避原則，不可兼任專家。',
+        error: msg,
+        message: msg,
       });
     }
 
     const userProfile = {
       name: data.name || userData?.name,
       avatar: userData?.avatar,
-      email: authUser.email || data.email,
+      email: authUser?.email || data.email,
     };
 
-    const result = await applyJudge(authUser.uid, userProfile, data);
+    const result = await applyJudge(effectiveUid, userProfile, data);
     res.json(result);
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({
+      success: false,
+      error: err.message || '專家申請提交失敗',
+      message: err.message || '專家申請提交失敗',
+    });
   }
 });
 

@@ -574,18 +574,6 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
 
             <div className="absolute bottom-0 inset-x-0 z-20 bg-black/65 px-4 py-2 flex items-center justify-between gap-3">
               <p className="text-xs text-stone-100 truncate">{currentCaption}</p>
-              {demoUrl && (
-                <a
-                  href={demoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => platformChooser.onLinkClick(e, chooserItem)}
-                  className="shrink-0 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1 transition-colors"
-                >
-                  <span>開啟網站</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
             </div>
           </div>
 

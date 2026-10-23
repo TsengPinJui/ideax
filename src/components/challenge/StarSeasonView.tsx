@@ -407,18 +407,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
   const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
 
-  // 提案列表：依時程公開，在第二階段預先提案 (11/14 10:00, activeStage >= 2) 開始前先隱藏創星季提案；開跑後亦排除預設示範提案
+  // 提案列表：依時程公開，在第二階段預先提案 (11/14 10:00, activeStage >= 2) 開始前先隱藏創星季提案；創星季全面隱藏假提案與示範提案
   const homepageAllProposals = useMemo(() => {
     if (stageInfo.activeStage < 2) {
       return [];
     }
     const liveFiltered = proposals.filter((p) => {
-      if (isRaceMode && isFakeProposal(p)) return false;
-      if (p.id.startsWith('test-')) return false;
-      if (isSimulatedDataPurged && p.id.startsWith('demo-')) return false;
-      if ((stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) && p.id.startsWith('demo-')) {
-        return false;
-      }
+      if (isFakeProposal(p)) return false;
       return true;
     });
     return liveFiltered.map((p) => ({
@@ -707,15 +702,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     [isJudgeEvaluationModalOpen, isAdminFinalEvaluationHubOpen]
   );
   const nominatedProposals = useMemo(() => {
-    return proposals.filter((p) => (!isRaceMode || !isFakeProposal(p)) && (nominatedProposalIds.includes(p.id) || p.rankQualifiedForFinal));
-  }, [proposals, nominatedProposalIds, isRaceMode]);
+    return proposals.filter((p) => !isFakeProposal(p) && (nominatedProposalIds.includes(p.id) || p.rankQualifiedForFinal));
+  }, [proposals, nominatedProposalIds]);
 
   // 前台是否已盛大公布榜單
   const [isFinalResultsPublishedState, setIsFinalResultsPublishedState] = useState<boolean>(() => getIsFinalResultsPublished());
   const finalRankings = useMemo(() => {
-    const list = isRaceMode ? proposals.filter((p) => !isFakeProposal(p)) : proposals;
+    const list = proposals.filter((p) => !isFakeProposal(p));
     return calculateFinalProposalRankings(list);
-  }, [proposals, nominatedProposalIds, isAdminFinalEvaluationHubOpen, isFinalResultsPublishedState, isRaceMode]);
+  }, [proposals, nominatedProposalIds, isAdminFinalEvaluationHubOpen, isFinalResultsPublishedState]);
 
   // 個人提案與草稿箱 Modal
   const [isMyProposalsModalOpen, setIsMyProposalsModalOpen] = useState<boolean>(false);
@@ -988,7 +983,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setLoading(true);
     try {
       const list = await fetchProposals();
-      const effectiveList = isRaceMode ? list.filter((p) => !isFakeProposal(p)) : list;
+      const effectiveList = list.filter((p) => !isFakeProposal(p));
       setProposals(applyRealClicksToProposals(effectiveList));
       if (auth.currentUser) {
         const accRes = await fetchMyCompetitionAccount();
@@ -1100,10 +1095,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
   };
 
-  // 第一階段痛點清單 (供第二階段解法引用)
+  // 第一階段痛點清單 (供第二階段解法引用，創星季隱藏假資料)
   const painPointProposals = useMemo(() => {
-    return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved' && (!isRaceMode || !isFakeProposal(p)));
-  }, [proposals, isRaceMode]);
+    return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved' && !isFakeProposal(p));
+  }, [proposals]);
 
   // 彙整首頁痛點清單（依時程於 10/24 00:00 第一階段痛點徵件開跑後公開，未到時間前先隱藏）
   const homepagePainPoints = useMemo(() => {
@@ -1126,9 +1121,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       rawQuestion?: any;
     }> = [];
 
-    // 1. 創星季徵件之痛點提案
+    // 1. 創星季徵件之痛點提案（排除所有假提案與示範提案）
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))
+      .filter((p) => p.stage === 'pain_point' && !isFakeProposal(p))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -1146,9 +1141,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         });
       });
 
-    // 2. 舊站創點子痛點專區問題
+    // 2. 舊站創點子痛點專區問題（在創星季那邊先隱藏模擬假痛點）
     (questions || [])
-      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))))
+      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({
@@ -1359,7 +1354,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 過濾後的提案列表
   const filteredProposals = useMemo(() => {
     return proposals.filter((p) => {
-      if (isRaceMode && isFakeProposal(p)) return false;
+      if (isFakeProposal(p)) return false;
       if (selectedTrack !== 'all' && p.track !== selectedTrack) return false;
       if (selectedStage !== 'all' && p.stage !== selectedStage) return false;
       if (searchKeyword.trim()) {
@@ -2388,9 +2383,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </span>
                           ) : (
                             <>
-                              {currentUser.verifiedExpert || currentUser.role === 'solver' ? (
+                              {currentUser.verifiedExpert || currentUser.role === 'solver' || currentUser.expertCertStatus === 'verified' ? (
                                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                                  👑 認證專家
+                                  👑 競賽專家 (已認證)
+                                </span>
+                              ) : null}
+                              {isCurrentUserAppointedJudge ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-2xs">
+                                  ⚖️ 複賽評審委員
                                 </span>
                               ) : null}
                               {currentUser.competitionBadges?.includes('創星季') ? (
@@ -2398,7 +2398,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                   ✨ 創星季參賽者
                                 </span>
                               ) : null}
-                              {(!currentUser.verifiedExpert && currentUser.role !== 'solver' && !currentUser.competitionBadges?.includes('創星季')) ? (
+                              {(!currentUser.verifiedExpert && currentUser.role !== 'solver' && currentUser.expertCertStatus !== 'verified' && !currentUser.competitionBadges?.includes('創星季')) ? (
                                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
                                   一般會員用戶
                                 </span>
@@ -2709,14 +2709,18 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
                             <div>
                               <div className="font-black text-stone-900 flex items-center gap-1">
-                                <span>成為專家</span>
-                                {currentUser.verifiedExpert ? (
+                                <span>{currentUser.verifiedExpert || currentUser.role === 'solver' || currentUser.expertCertStatus === 'verified' ? '競賽專家權益說明' : '成為專家'}</span>
+                                {(currentUser.verifiedExpert || currentUser.role === 'solver' || currentUser.expertCertStatus === 'verified') ? (
                                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800">
-                                    已認證
+                                    已自動享有・免填表
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="text-[10px] text-stone-500 font-normal">認證專家身分，享有 300 萬創星幣評選額度</div>
+                              <div className="text-[10px] text-stone-500 font-normal">
+                                {(currentUser.verifiedExpert || currentUser.role === 'solver' || currentUser.expertCertStatus === 'verified')
+                                  ? '已具認證專家身分，直接享有 300 萬創星幣額度（無需再填報名表）'
+                                  : '認證專家身分，享有 300 萬創星幣評選額度'}
+                              </div>
                             </div>
                           </div>
                           <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -2898,7 +2902,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           {stageInfo.activeStage >= 2 && homepageAllProposals.length > 0 && (
             <div className="hidden xl:block absolute right-4 lg:right-6 top-0 z-20">
               <ProposalHeroCarousel
-                proposals={proposals.filter((p) => !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))}
+                proposals={proposals.filter((p) => !isFakeProposal(p))}
                 onSelectProposal={(p) => navigateToSubView('proposal', p.id)}
               />
             </div>
@@ -6270,11 +6274,40 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </form>
             )}
 
-            {/* Tab 2: 評審團申請表單 (提供單位、相關證明或專業證件，同步錄入舊站認證專家身分與名單) */}
+            {/* Tab 2: 評審團申請表單 (若已是創點子平台認證專家，直接享有競賽專家身分與權利，無需再填寫表單) */}
             {regModalTab === 'judge' && (
+              (currentUser?.verifiedExpert || currentUser?.role === 'solver' || currentUser?.expertCertStatus === 'verified') ? (
+                <div className="p-5 rounded-2xl bg-purple-50 border-2 border-purple-200 space-y-4 text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="font-black text-purple-950 text-sm">
+                        👑 您已是創點子平台認證專家，直接享有競賽專家身分與權利！
+                      </div>
+                      <p className="text-stone-700 leading-relaxed">
+                        系統已自動為您開通創星季競賽專家身分與 <strong>3,000,000 點創星幣投資額度</strong>（單案上限 2,000,000 點），<strong>無需再填寫報名競賽專家的表單</strong>。
+                      </p>
+                      <p className="text-stone-600 leading-relaxed pt-1">
+                        ⚖️ <strong>專家與評審之區別：</strong>認證專家享有競賽專家投資與評論權利，但還不是複賽評審；複賽評審是由所有認證專家裡挑選出來的代表，負責評分入圍複賽作品。
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsRegistrationModalOpen(false)}
+                      className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs cursor-pointer"
+                    >
+                      我知道了
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <form onSubmit={handleSubmitJudge} className="space-y-4 text-xs">
                 <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 leading-relaxed text-[11px]">
-                  👑 <b>評審資格權益：</b>審核通過轉為專家帳號，享有 <b>3,000,000 點</b>投資額度（單案上限 2,000,000），並同步錄入舊站認證專家名單！
+                  👑 <b>專家資格權益：</b>審核通過轉為專家帳號，享有 <b>3,000,000 點</b>投資額度（單案上限 2,000,000），並同步錄入認證專家名單（複賽評審將由專家中挑選產生）！
                 </div>
 
                 {/* 評審基本資料 */}
@@ -6538,12 +6571,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     ) : (
                       <>
                         <ShieldCheck className="w-4 h-4" />
-                        <span>提交評審申請（同步錄入舊站認證專家身分）</span>
+                        <span>提交專家申請（同步錄入認證專家身分）</span>
                       </>
                     )}
                   </button>
                 </div>
               </form>
+              )
             )}
           </div>
         </div>

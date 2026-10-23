@@ -275,17 +275,19 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     setCropperModalOpen(true);
   };
 
+  const [editingGalleryIndex, setEditingGalleryIndex] = useState<number | null>(null);
+
   const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
-    if (!files || files.length === 0) return;
+    if (selectedFiles.length === 0) return;
     setError('');
     const remainingSlots = 6 - galleryImages.length;
     if (remainingSlots <= 0) {
       setError('最多可上傳 6 張展示圖片');
       return;
     }
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    const filesToProcess = selectedFiles.slice(0, remainingSlots);
     setIsUploadingImage(true);
     const uploadedList: string[] = [];
     for (const file of filesToProcess) {
@@ -299,6 +301,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     setIsUploadingImage(false);
     if (uploadedList.length > 0) {
       const [first, ...rest] = uploadedList;
+      setEditingGalleryIndex(null);
       setPendingGalleryQueue(rest);
       setCropperTarget('gallery');
       setCropperImageSrc(first);
@@ -307,9 +310,32 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     }
   };
 
+  const handleCropExistingGalleryImage = (index: number) => {
+    const targetImg = galleryImages[index];
+    if (!targetImg) return;
+    setEditingGalleryIndex(index);
+    setPendingGalleryQueue([]);
+    setCropperTarget('gallery');
+    setCropperImageSrc(targetImg);
+    setCropperInitialRatio('16:9');
+    setCropperModalOpen(true);
+  };
+
   const handleCropperConfirm = (croppedDataUrl: string) => {
     if (cropperTarget === 'cover') {
       setCoverImage(croppedDataUrl);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
+    } else if (editingGalleryIndex !== null) {
+      setGalleryImages((prev) => {
+        const oldImg = prev[editingGalleryIndex];
+        const next = prev.map((item, idx) => (idx === editingGalleryIndex ? croppedDataUrl : item));
+        if (selectedCardImage === oldImg) {
+          setSelectedCardImage(croppedDataUrl);
+        }
+        return next;
+      });
+      setEditingGalleryIndex(null);
       setCropperModalOpen(false);
       setCropperImageSrc('');
     } else {
@@ -337,6 +363,10 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setCoverImage(cropperImageSrc);
       setCropperModalOpen(false);
       setCropperImageSrc('');
+    } else if (editingGalleryIndex !== null) {
+      setEditingGalleryIndex(null);
+      setCropperModalOpen(false);
+      setCropperImageSrc('');
     } else {
       setGalleryImages((prev) => {
         const next = [...prev, cropperImageSrc];
@@ -358,7 +388,12 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   };
 
   const handleRemoveGalleryImage = (index: number) => {
-    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+    const removedImg = galleryImages[index];
+    const nextImgs = galleryImages.filter((_, i) => i !== index);
+    setGalleryImages(nextImgs);
+    if (selectedCardImage === removedImg) {
+      setSelectedCardImage(coverImage.trim() || nextImgs[0] || '');
+    }
   };
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -963,14 +998,25 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {galleryImages.map((img, idx) => (
                       <div key={idx} className="relative group aspect-video rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
-                        <img src={img} alt="" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveGalleryImage(idx)}
-                          className="absolute top-1 right-1 p-1 rounded bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <img src={img} alt={`畫面截圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute top-1 right-1 flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => handleCropExistingGalleryImage(idx)}
+                            className="p-1 rounded bg-black/75 hover:bg-black text-amber-300 cursor-pointer"
+                            title="裁切此圖片"
+                          >
+                            <Crop className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveGalleryImage(idx)}
+                            className="p-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white cursor-pointer"
+                            title="移除此圖片"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1291,6 +1337,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
           setCropperModalOpen(false);
           setCropperImageSrc('');
           setPendingGalleryQueue([]);
+          setEditingGalleryIndex(null);
         }}
         onConfirm={handleCropperConfirm}
         onSkip={handleCropperSkip}

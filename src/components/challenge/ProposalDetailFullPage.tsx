@@ -155,17 +155,6 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     return merged;
   }, [proposal, allProposals, questions]);
 
-  // 自資料庫已同步之 questions.tipsHistory 讀取打賞紀錄（不硬編碼）
-  const simulatedTipsList = React.useMemo(() => {
-    const matchedQ = (questions || []).find((q) => q.id === proposal.id);
-    if (matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0) {
-      return (isSimulatedDataPurged || isRaceMode)
-        ? matchedQ.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'))
-        : matchedQ.tipsHistory;
-    }
-    return [];
-  }, [proposal.id, questions, isSimulatedDataPurged, isRaceMode]);
-
   const isFromCreateIdeas = React.useMemo(() => {
     if (isFromCreateIdeasProp) return true;
     if (typeof window === 'undefined') return false;
@@ -180,6 +169,18 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     }
   }, [isFromCreateIdeasProp]);
   const isFromCreate = isFromCreateIdeas;
+
+  // 自資料庫已同步之 questions.tipsHistory 讀取打賞紀錄（創星季隱藏假資料，創點子主站保留）
+  const simulatedTipsList = React.useMemo(() => {
+    const matchedQ = (questions || []).find((q) => q.id === proposal.id);
+    if (matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0) {
+      return (isSimulatedDataPurged || !isFromCreateIdeas)
+        ? matchedQ.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'))
+        : matchedQ.tipsHistory;
+    }
+    return [];
+  }, [proposal.id, questions, isSimulatedDataPurged, isFromCreateIdeas]);
+
   // 創點子的提案用「點數」打賞；創星幣只在創星季競賽使用
   const usePoints = supportCurrency === 'points';
   const supportUnit = usePoints ? '點' : '創星幣';

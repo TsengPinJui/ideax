@@ -222,11 +222,15 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[140] bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div
         className={`bg-white border-2 ${
           isVibeApp ? 'border-indigo-400/90' : 'border-emerald-400/90'
         } rounded-3xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto text-stone-900`}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
         <div

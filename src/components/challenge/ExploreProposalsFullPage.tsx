@@ -169,7 +169,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   useEffect(() => {
     if (initialProposals && initialProposals.length > 0) {
       const merged = initialProposals
-        .filter((p) => !(isSimulatedDataPurged && p.id.startsWith('demo-')) && (!isRaceMode || !isFakeProposal(p)))
+        .filter((p) => !isFakeProposal(p))
         .map((p) => {
           const matchedQ = (questions || []).find((q) => q.id === p.id);
           if (matchedQ && typeof matchedQ.likes === 'number' && matchedQ.likes > 0) {
@@ -299,10 +299,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     );
   };
 
-  // 篩選提案（依需求：先把創星季的痛點和提案隱藏起來，時間到再公開；11/14 10:00 起開放提案公開並排除預設示範提案）
+  // 篩選提案（依需求：先把創星季的痛點和提案隱藏起來，時間到再公開；創星季全面隱藏假提案與示範提案）
   const filteredProposals = proposals.filter((p) => {
-    // 競賽模式下排除假提案與展示用示範提案
-    if (isRaceMode && isFakeProposal(p)) return false;
+    // 創星季排除假提案與展示用示範提案
+    if (isFakeProposal(p)) return false;
 
     // 嚴格僅顯示提案解方 (stage === 'solution')，排除痛點
     if (p.stage === 'pain_point') return false;
@@ -432,9 +432,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       rawQuestion?: any;
     }> = [];
 
-    // 1. 創星季徵件之痛點提案
+    // 1. 創星季徵件之痛點提案（排除所有假提案與示範提案）
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-') && (!isRaceMode || !isFakeProposal(p)))
+      .filter((p) => p.stage === 'pain_point' && !isFakeProposal(p))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -452,9 +452,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         });
       });
 
-    // 2. 舊站創點子/痛點集問題
+    // 2. 舊站創點子/痛點集問題（在創星季那邊先隱藏模擬假痛點）
     (questions || [])
-      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))))
+      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({

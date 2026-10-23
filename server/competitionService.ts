@@ -919,13 +919,32 @@ export async function getOrCreateCompetitionAccount(userId: string, userRole: 'u
   const accountRef = adminDb.collection('competition_accounts').doc(userId);
   const snap = await accountRef.get();
 
+  // 若已是創點子平台認證專家，自動享有競賽專家身分與 3,000,000 點投資額度
+  const isExpert = userRole === 'solver' || (await isVerifiedExpert(userId));
+  const effectiveRole: 'user' | 'solver' | 'admin' = userRole === 'admin' ? 'admin' : isExpert ? 'solver' : userRole;
+
   if (snap.exists) {
-    return snap.data() as CompetitionAccount;
+    const existing = snap.data() as CompetitionAccount;
+    if (isExpert && existing.initialPoints < COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS) {
+      const upgradedAvailable = Math.max(
+        existing.availablePoints || 0,
+        COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS - (existing.spentPoints || 0)
+      );
+      const upgraded: CompetitionAccount = {
+        ...existing,
+        role: effectiveRole,
+        initialPoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
+        availablePoints: upgradedAvailable,
+        updatedAt: new Date().toISOString(),
+      };
+      await accountRef.set(upgraded, { merge: true });
+      return upgraded;
+    }
+    return existing;
   }
 
   // 判斷專家或一般用戶初始點數
   // 專家 3,000,000 點，一般用戶/提案者 100,000 點
-  const isExpert = userRole === 'solver';
   const initialPoints = isExpert 
     ? COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS 
     : COMPETITION_POINTS_CONFIG.INITIAL_USER_POINTS;
@@ -936,7 +955,7 @@ export async function getOrCreateCompetitionAccount(userId: string, userRole: 'u
 
   const newAccount: CompetitionAccount = {
     userId,
-    role: userRole,
+    role: effectiveRole,
     initialPoints,
     availablePoints: initialPoints,
     spentPoints: 0,
@@ -1558,25 +1577,11 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
       'q-vp-vibe-stallmatch',
     ]);
 
-    // 1. 同步競賽與創新解方提案至 competition_proposals 集合
+    // 1. 創星季 competition_proposals 集合不再寫入任何假資料與範例提案（僅保留真實參賽提案）
     const existingPropsSnap = await adminDb.collection('competition_proposals').get();
     const existingPropIds = new Set<string>(existingPropsSnap.docs.map((d) => d.id));
-
     const allStarProposalsMap = new Map<string, StarSeasonProposal>();
-    DEFAULT_DEMO_PROPOSALS.forEach((p) => {
-      if (!deletedIds.has(p.id)) {
-        allStarProposalsMap.set(p.id, p);
-      }
-    });
-    SEED_INNOVATION_PROPOSALS.forEach((q) => {
-      if (!deletedIds.has(q.id) && !allStarProposalsMap.has(q.id)) {
-        allStarProposalsMap.set(q.id, questionToStarSeasonProposal(q));
-      }
-    });
-
-    const propsToWrite = Array.from(allStarProposalsMap.values()).filter(
-      (p) => !existingPropIds.has(p.id) || priorityRefreshIds.has(p.id) || force
-    );
+    const propsToWrite: StarSeasonProposal[] = [];
 
     for (let i = 0; i < propsToWrite.length; i += 100) {
       const chunk = propsToWrite.slice(i, i + 100);
@@ -1816,6 +1821,24 @@ export async function getPublicProposals(
 
   snap.forEach((doc: any) => {
     const data = doc.data() as StarSeasonProposal;
+    const id = String(data?.id || doc.id || '');
+    const authorId = String(data?.authorId || '');
+    // 移除創星季所有假資料（排除 demo- / test- / q-vp- / u-vp- / u-agent- 等模擬資料）
+    const isFakeOrSeed =
+      id.startsWith('demo-') ||
+      id.startsWith('test-') ||
+      id.startsWith('q-vp-') ||
+      id.startsWith('q-demo-') ||
+      id.startsWith('q-mock-') ||
+      id.startsWith('mock-') ||
+      authorId.startsWith('demo-') ||
+      authorId.startsWith('test-') ||
+      authorId.startsWith('u-vp-') ||
+      authorId.startsWith('u-agent-') ||
+      authorId.startsWith('mock-') ||
+      Boolean((data as any).isSimulated);
+    if (isFakeOrSeed) return;
+
     // 待審不公開原則：未通過審核之提案僅作者本人或管理員可查閱
     if (data.status === 'approved' || options?.includePending || (options?.authorId && data.authorId === options.authorId)) {
       list.push(data);

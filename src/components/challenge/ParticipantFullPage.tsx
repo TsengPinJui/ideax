@@ -44,6 +44,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     currentUser,
     setCurrentUser,
     addNotification,
+    showCenterToast,
     openAboutModal,
   } = useApp();
 
@@ -100,6 +101,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
   const [participantPledgeAgreed, setParticipantPledgeAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegisteredSuccess, setIsRegisteredSuccess] = useState(false);
+  const [submitErrorMsg, setSubmitErrorMsg] = useState<string | null>(null);
 
   // 檢查用戶是否已完成報名
   const isAlreadyRegistered = Boolean(
@@ -108,24 +110,37 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     (typeof window !== 'undefined' && currentUser?.id && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`))
   );
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: 'success' | 'warning' | 'info' = 'info') => {
     addNotification({
       title: '創星季報名參賽',
       message,
       type: 'system',
     });
+    const isSuccess = type === 'success' || message.includes('恭喜') || message.includes('成功');
+    showCenterToast(
+      isSuccess ? '報名參賽成功！' : '報名參賽提示',
+      message,
+      {
+        type: isSuccess ? 'success' : 'warning',
+        duration: 2800,
+      }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitErrorMsg(null);
 
     if (!currentUser || currentUser.id === 'user-guest') {
+      showToast('請先登入 IdeaX 會員帳號後再提交參賽報名', 'warning');
       onOpenAuth();
       return;
     }
 
-    if (currentUser?.verifiedExpert || currentUser?.role === 'solver') {
-      showToast('依競賽辦法規範：不可兼任參賽者與專家！為維持評選公正與利益迴避，專家身分無法報名為參賽團隊。');
+    if (currentUser?.verifiedExpert || currentUser?.role === 'solver' || currentUser?.expertCertStatus === 'verified') {
+      const msg = '依競賽辦法規範：不可兼任參賽者與專家！為維持評選公正與利益迴避，專家身分無法報名為參賽團隊。';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
@@ -136,37 +151,48 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       !leaderEmail.trim() ||
       !schoolName.trim()
     ) {
-      showToast('請完整填寫團隊名稱、負責人、電話、Email 與學校/機構名稱');
+      const msg = '請完整填寫團隊名稱、負責人姓名、電話、Email 與學校/機構名稱';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
     if (!referralSource) {
-      showToast('請回答「您從哪裡得知這場比賽？」');
+      const msg = '請回答「您從哪裡得知這場比賽？」（必選）';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
     if (referralSource === '其他' && !referralSourceOther.trim()) {
-      showToast('請填寫其他得知管道說明');
+      const msg = '請填寫其他得知管道說明';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
     if (!participantPledgeAgreed) {
-      showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》');
+      const msg = '請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
-    const stage = getCompetitionStageInfo();
     const nowTime = Date.now();
     const currentYear = new Date().getFullYear();
     const tRegistrationStart = new Date(currentYear, 9, 17, 0, 0, 0).getTime();
     const tRegistrationEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime();
 
-    if (stage.activeStage === 0 && nowTime < tRegistrationStart) {
-      showToast('⚠️ 線上報名參賽將於 10/17 00:00 正式開放！敬請期待。');
+    if (nowTime < tRegistrationStart) {
+      const msg = '⚠️ 線上報名參賽將於 10/17 00:00 正式開放！敬請期待。';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
-    if (stage.isProposalClosed || nowTime > tRegistrationEnd) {
-      showToast('⚠️ 創星季參賽報名已於 12/04 16:30 截止！');
+    if (nowTime > tRegistrationEnd) {
+      const msg = '⚠️ 創星季參賽報名已於 12/04 16:30 截止！';
+      setSubmitErrorMsg(msg);
+      showToast(msg, 'warning');
       return;
     }
 
@@ -179,6 +205,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
         .map((name) => ({ name }));
 
       const res = await registerParticipant({
+        userId: currentUser.id,
         teamName: teamName.trim(),
         leaderName: leaderName.trim(),
         leaderPhone: leaderPhone.trim(),
@@ -196,7 +223,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       });
 
       if (res.success) {
-        showToast('恭喜！報名參賽登錄成功，您已獲得【創星季參賽者】專屬榮譽徽章！');
+        showToast('恭喜！報名參賽登錄成功，您已獲得【創星季參賽者】專屬榮譽徽章！', 'success');
 
         try {
           if (typeof window !== 'undefined' && currentUser?.id) {
@@ -234,10 +261,14 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
         setIsRegisteredSuccess(true);
         onSuccess();
       } else {
-        showToast(res.message || '報名失敗');
+        const errMsg = res.message || '報名失敗，請確認欄位是否填寫完整';
+        setSubmitErrorMsg(errMsg);
+        showToast(errMsg, 'warning');
       }
     } catch (err: any) {
-      showToast(err.message || '提交失敗，請檢查連線');
+      const errMsg = err.message || '提交失敗，請檢查網路連線';
+      setSubmitErrorMsg(errMsg);
+      showToast(errMsg, 'warning');
     } finally {
       setIsSubmitting(false);
     }
@@ -790,6 +821,13 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 。本人保證所填資料真實無訛，恪守學術與創新倫理。
               </label>
             </div>
+
+            {submitErrorMsg && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{submitErrorMsg}</span>
+              </div>
+            )}
 
             {/* 送出按鍵 */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">

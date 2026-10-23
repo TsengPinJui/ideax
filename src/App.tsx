@@ -1519,8 +1519,7 @@ function MainContent() {
       : questions.filter(
           (q) =>
             Boolean(q && q.id) &&
-            !isMockQuestionId(q.id, q.authorId) &&
-            (!isRaceMode || (!isSimulatedQuestion(q) && !isSimulatedUser(q.authorId)))
+            !isMockQuestionId(q.id, q.authorId)
         )
     ).filter((q) => {
       if (!q || typeof q.id !== 'string' || !q.id.trim() || typeof q.title !== 'string' || !q.title.trim()) {

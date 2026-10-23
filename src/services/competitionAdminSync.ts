@@ -102,8 +102,10 @@ export function recordNewParticipantRegistration(data: ParticipantRegistrationDa
   const updated = [newRecord, ...current];
   saveAllCompetitionRegistrations(updated);
 
-  // 同步也建立待審核提案
-  recordNewProposalFromRegistration(newRecord);
+  // 僅在報名同時附帶提案主題與摘要時，才同步建立待審核提案
+  if (data.projectTitle && data.summary) {
+    recordNewProposalFromRegistration(newRecord);
+  }
 
   return newRecord;
 }

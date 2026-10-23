@@ -357,19 +357,24 @@ export async function fetchUserLikedProposalIds(): Promise<string[]> {
 }
 
 /**
- * 取得提案討論留言列表
+ * 取得提案討論留言列表（創星季僅顯示真實留言，不混入模擬假留言）
  */
 export async function fetchProposalComments(proposalId: string): Promise<ProposalComment[]> {
-  const simulated = getSimulatedCommentsForProposalId(proposalId);
   try {
     const res = await fetch(`/api/competition/proposals/${proposalId}/comments`);
-    if (!res.ok) return simulated;
+    if (!res.ok) return [];
     const data = await res.json();
     const serverComments: ProposalComment[] = data.comments || [];
-    const serverIds = new Set(serverComments.map((c) => c.id));
-    return [...serverComments, ...simulated.filter((c) => !serverIds.has(c.id))];
+    return serverComments.filter(
+      (c) =>
+        !(c as any).isSimulated &&
+        !String(c.id || '').startsWith('sim-') &&
+        !String(c.id || '').startsWith('ans-vp-') &&
+        !String((c as any).userId || c.authorId || '').startsWith('u-vp-') &&
+        !String((c as any).userId || c.authorId || '').startsWith('u-agent-')
+    );
   } catch {
-    return simulated;
+    return [];
   }
 }
 
@@ -397,9 +402,10 @@ export async function postProposalComment(
  * 參賽者報名（依大專校院青年創新創業募資模擬學習平台體驗規格）
  */
 export async function registerParticipant(
-  data: ParticipantRegistrationData
+  data: ParticipantRegistrationData & { userId?: string }
 ): Promise<{ success: boolean; proposalId?: string; message: string }> {
-  if (!auth.currentUser) {
+  const effectiveUserId = auth.currentUser?.uid || data.userId;
+  if (!effectiveUserId || effectiveUserId === 'user-guest') {
     return { success: false, message: '請先登入帳號再提交參賽報名' };
   }
 
@@ -407,18 +413,23 @@ export async function registerParticipant(
   const res = await fetch('/api/competition/register-participant', {
     method: 'POST',
     headers,
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, userId: effectiveUserId }),
   });
-  return await res.json();
+  const json = await res.json();
+  return {
+    ...json,
+    message: json.message || json.error || (json.success ? '報名成功' : '報名失敗'),
+  };
 }
 
 /**
  * 成為專家 / 申請專家（同步錄入認證專家名單並具備 300 萬點額度）
  */
 export async function applyJudge(
-  data: JudgeApplicationData
+  data: JudgeApplicationData & { userId?: string }
 ): Promise<{ success: boolean; message: string; solverId?: string }> {
-  if (!auth.currentUser) {
+  const effectiveUserId = auth.currentUser?.uid || data.userId;
+  if (!effectiveUserId || effectiveUserId === 'user-guest') {
     return { success: false, message: '請先登入帳號再申請成為專家' };
   }
 
@@ -426,9 +437,13 @@ export async function applyJudge(
   const res = await fetch('/api/competition/apply-judge', {
     method: 'POST',
     headers,
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, userId: effectiveUserId }),
   });
-  return await res.json();
+  const json = await res.json();
+  return {
+    ...json,
+    message: json.message || json.error || (json.success ? '申請成功' : '申請失敗'),
+  };
 }
 
 /**
