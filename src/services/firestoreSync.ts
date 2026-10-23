@@ -114,28 +114,56 @@ export async function testFirestoreConnection(): Promise<boolean> {
 // 1. 業務核心交易類 (Core Business & Transactions)
 // =========================================================================
 
-export async function syncQuestionToFirestore(question: Question): Promise<void> {
-  if (!question || !question.id) return;
+export async function syncQuestionToFirestore(question: Question): Promise<{ success: boolean; error?: string }> {
+  if (!question || !question.id) return { success: false, error: '缺少問題ID' };
   const cleanQ = JSON.parse(JSON.stringify(question));
-  const payload = {
+  const platforms = Array.isArray(question.publishedPlatforms) && question.publishedPlatforms.length > 0
+    ? question.publishedPlatforms
+    : (Array.isArray(cleanQ.vibeCodingData?.publishedPlatforms) ? cleanQ.vibeCodingData.publishedPlatforms : (cleanQ.publishedPlatforms || []));
+
+  const payload: any = {
     ...cleanQ,
+    publishedPlatforms: platforms,
     showCardImage: question.showCardImage !== undefined ? Boolean(question.showCardImage) : true,
     cardDisplayImage: question.cardDisplayImage || '',
     updatedAt: new Date().toISOString(),
   };
+
+  if (payload.vibeCodingData) {
+    payload.vibeCodingData.publishedPlatforms = platforms;
+  }
+
+  // 檢查文件尺寸，避免超出 Firestore 1,048,576 bytes 硬性上限
   try {
-    await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(question.id)}`, {
+    const rawLen = JSON.stringify(payload).length;
+    if (rawLen > 950000 && Array.isArray(payload.galleryImages) && payload.galleryImages.length > 2) {
+      console.warn(`[Firestore] Payload size ${rawLen} near 1MB limit for question ${question.id}, trimming extra gallery images for cloud persistence`);
+      payload.galleryImages = payload.galleryImages.slice(0, 2);
+      if (payload.vibeCodingData?.screenshots) {
+        payload.vibeCodingData.screenshots = payload.galleryImages;
+      }
+    }
+  } catch {}
+
+  let mirrorSuccess = false;
+  try {
+    const res = await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(question.id)}`, {
       method: 'POST',
       headers: await getAuthHeaders(),
       body: JSON.stringify({ data: payload, merge: true }),
     });
+    if (res.ok) mirrorSuccess = true;
   } catch {}
-  if (isQuotaExhausted) return;
+
+  if (isQuotaExhausted) return { success: mirrorSuccess, error: '雲端配額暫時耗盡，已寫入本機與伺服器映像' };
+
   try {
     const qRef = doc(db, 'questions', question.id);
     await setDoc(qRef, payload, { merge: true });
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     handleFirestoreError(`Failed to sync question ${question.id}`, err);
+    return { success: mirrorSuccess, error: err?.message || '寫入 Firestore 失敗' };
   }
 }
 

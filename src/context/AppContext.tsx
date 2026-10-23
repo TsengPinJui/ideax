@@ -29,6 +29,7 @@ import {
   DEFAULT_ASSISTANT_24HR_CONFIG,
   AIPreliminaryReport,
   AdminSite,
+  PublishedPlatform,
 } from '../types';
 import {
   isInitialAdmin,
@@ -301,6 +302,7 @@ interface AppContextType {
       previewMode?: 'embed' | 'external';
       fileLink?: string;
       techArchitecture?: string;
+      publishedPlatforms?: PublishedPlatform[];
       coverImage?: string;
       galleryImages?: string[];
       youtubeUrl?: string;
@@ -317,7 +319,7 @@ interface AppContextType {
       changelogContent?: string;
       changelogNote?: string;
     }
-  ) => { success: boolean; ok?: boolean; message: string; reason?: string; updatedQuestion?: Question };
+  ) => Promise<{ success: boolean; ok?: boolean; message: string; reason?: string; updatedQuestion?: Question }>;
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -1453,6 +1455,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
+        publishedPlatforms: Array.isArray(rawQ.publishedPlatforms)
+          ? rawQ.publishedPlatforms
+          : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (rawQ.vibeCodingData?.publishedPlatforms || [])),
         showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
         cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
         title: typeof q.title === 'string' ? q.title : '',
@@ -2760,6 +2765,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   }),
               ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
               tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
+              publishedPlatforms: Array.isArray(q.publishedPlatforms)
+                ? q.publishedPlatforms
+                : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (q.vibeCodingData?.publishedPlatforms || [])),
               views: highestViews,
               viewsCount: highestViews,
             };
@@ -5125,12 +5133,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cardHoverMode: newQ.cardHoverMode,
       proposalProgressStage: newQ.proposalProgressStage,
       techArchitecture: newQ.techArchitecture,
+      publishedPlatforms: newQ.publishedPlatforms || [],
       demoUrl: newQ.demoUrl || newQ.externalLink,
       externalLink: newQ.externalLink,
       previewMode: newQ.previewMode || ((newQ.postType === 'vibecoding_app' && (newQ.demoUrl || newQ.externalLink)) ? 'embed' : undefined),
       fileLink: newQ.fileLink,
       fileUrl: newQ.fileUrl,
-      vibeCodingData: newQ.vibeCodingData,
+      mindMap: newQ.mindMap,
+      showCardImage: newQ.showCardImage,
+      cardDisplayImage: newQ.cardDisplayImage,
+      vibeCodingData: newQ.vibeCodingData
+        ? {
+            ...newQ.vibeCodingData,
+            publishedPlatforms: newQ.publishedPlatforms || newQ.vibeCodingData.publishedPlatforms || [],
+          }
+        : newQ.vibeCodingData,
       status: 'open',
       authorId: newQ.authorId || currentUser.id,
       authorAuthUid: getMyAuthUid() || undefined,
@@ -5275,7 +5292,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Action: Update proposal content (解方提案與軟體程式重新發布與更新日誌)
-  const updateProposalContent = (
+  const updateProposalContent = async (
     questionId: string,
     params: {
       appName?: string;
@@ -5291,6 +5308,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       previewMode?: 'embed' | 'external';
       fileLink?: string;
       techArchitecture?: string;
+      publishedPlatforms?: PublishedPlatform[];
       coverImage?: string;
       galleryImages?: string[];
       youtubeUrl?: string;
@@ -5307,7 +5325,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       changelogContent?: string;
       changelogNote?: string;
     }
-  ): { success: boolean; ok: boolean; message: string; reason?: string; updatedQuestion?: Question } => {
+  ): Promise<{ success: boolean; ok: boolean; message: string; reason?: string; updatedQuestion?: Question }> => {
     const resolvedContent = (params.updateContent || params.changelogContent || '').trim() || '更新內容與資訊';
     const resolvedNote = (params.updateNote || params.changelogNote || '').trim() || undefined;
 
@@ -5338,6 +5356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.subcategories !== undefined) changedFields.push('分類');
     if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
     if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('網址');
+    if (params.publishedPlatforms !== undefined) changedFields.push('已上架平台');
     if (params.youtubeUrl !== undefined && params.youtubeUrl !== currentQ.youtubeUrl) changedFields.push('YouTube介紹影片');
     if (params.coverMode !== undefined && params.coverMode !== currentQ.coverMode) changedFields.push('封面呈現方式');
     if (params.cardHoverMode !== undefined && params.cardHoverMode !== currentQ.cardHoverMode) changedFields.push('卡片動態展示');
@@ -5374,6 +5393,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       previewMode: params.previewMode !== undefined ? params.previewMode : currentQ.previewMode,
       fileLink: params.fileLink !== undefined ? params.fileLink : currentQ.fileLink,
       techArchitecture: params.techArchitecture !== undefined ? params.techArchitecture : currentQ.techArchitecture,
+      publishedPlatforms: params.publishedPlatforms !== undefined ? params.publishedPlatforms : currentQ.publishedPlatforms,
       coverImage: params.coverImage !== undefined ? params.coverImage : currentQ.coverImage,
       galleryImages: params.galleryImages !== undefined ? params.galleryImages : currentQ.galleryImages,
       youtubeUrl: params.youtubeUrl !== undefined ? params.youtubeUrl : currentQ.youtubeUrl,
@@ -5391,6 +5411,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             appName: params.appName !== undefined ? params.appName : currentQ.vibeCodingData.appName,
             demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.vibeCodingData.demoUrl,
             githubUrl: params.fileLink !== undefined ? params.fileLink : currentQ.vibeCodingData.githubUrl,
+            publishedPlatforms: params.publishedPlatforms !== undefined ? params.publishedPlatforms : (currentQ.vibeCodingData.publishedPlatforms || currentQ.publishedPlatforms),
             coverImageUrl: params.coverImage !== undefined ? params.coverImage : currentQ.vibeCodingData.coverImageUrl,
             screenshots: params.galleryImages !== undefined ? params.galleryImages : currentQ.vibeCodingData.screenshots,
             youtubeUrl: params.youtubeUrl !== undefined ? params.youtubeUrl : currentQ.vibeCodingData.youtubeUrl,
@@ -5402,18 +5423,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateLogs: [newLog, ...(currentQ.updateLogs || [])],
     };
 
+    let localSaved = false;
     setQuestions((prev) => {
       const next = prev.map((q) => (q.id === questionId ? updatedQ : q));
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
-      } catch {}
+        localSaved = true;
+      } catch (e) {
+        console.warn('localStorage write failed, attempting recovery:', e);
+        try {
+          const coreQuestions = next.filter((q) => !q.id.startsWith('mock-'));
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(coreQuestions));
+          localSaved = true;
+        } catch {}
+      }
       return next;
     });
 
-    syncQuestionToFirestore(updatedQ);
+    let cloudSynced = false;
+    try {
+      const syncRes = await syncQuestionToFirestore(updatedQ);
+      cloudSynced = Boolean(syncRes?.success);
+    } catch (fsErr) {
+      console.warn('Firestore sync exception for updated proposal:', fsErr);
+    }
 
     const isApp = updatedQ.postType === 'vibecoding_app';
     const typeLabel = isApp ? '軟體程式' : '解方提案';
+
+    if (!localSaved && !cloudSynced) {
+      showCenterToast(
+        `${typeLabel}更新儲存失敗`,
+        '本機儲存空間不足且雲端暫時無法寫入，請稍後再試或清理快取',
+        { type: 'warning', duration: 4000 }
+      );
+      return { success: false, ok: false, message: '更新儲存失敗，未能寫入資料庫', reason: '本機空間不足且雲端未連線' };
+    }
+
     showCenterToast(
       `${typeLabel}更新發布成功！`,
       `已發布${params.version ? `【${params.version}】` : ''}更新紀錄並同步更新內容`,

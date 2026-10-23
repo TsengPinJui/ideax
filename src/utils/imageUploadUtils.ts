@@ -118,3 +118,87 @@ export async function processUploadedImageFile(
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * 將 Base64 Data URL 圖片壓制至適當規格（預設最長邊 1100px，品質 0.82）
+ * 確保不爆掉 localStorage 5MB 配額與 Firestore 1MB 單份文件上限
+ */
+export async function compressBase64Image(
+  dataUrl: string,
+  maxDimension: number = 1100,
+  quality: number = 0.82
+): Promise<string> {
+  if (!dataUrl || typeof dataUrl !== 'string') return '';
+  if (!dataUrl.startsWith('data:image/')) return dataUrl;
+  // 若體積已經小於 90KB，不需二次壓縮
+  if (dataUrl.length < 90 * 1024) return dataUrl;
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width >= height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(32, width);
+          canvas.height = Math.max(32, height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          ctx.restore();
+          const out = canvas.toDataURL('image/jpeg', quality);
+          resolve(out.length < dataUrl.length ? out : dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+/**
+ * 批次最佳化提案或草稿所包含的所有圖片（封面、圖集、卡片展示圖）
+ */
+export async function optimizeProposalImages<T extends {
+  coverImage?: string;
+  galleryImages?: string[];
+  cardDisplayImage?: string;
+  selectedCardImage?: string;
+}>(data: T): Promise<T> {
+  const result = { ...data };
+  if (result.coverImage && result.coverImage.startsWith('data:image/')) {
+    result.coverImage = await compressBase64Image(result.coverImage, 1100, 0.82);
+  }
+  if (Array.isArray(result.galleryImages) && result.galleryImages.length > 0) {
+    result.galleryImages = await Promise.all(
+      result.galleryImages.map((img) => (img?.startsWith('data:image/') ? compressBase64Image(img, 1000, 0.80) : Promise.resolve(img)))
+    );
+  }
+  if (result.cardDisplayImage && result.cardDisplayImage.startsWith('data:image/')) {
+    result.cardDisplayImage = await compressBase64Image(result.cardDisplayImage, 1000, 0.80);
+  }
+  if (result.selectedCardImage && result.selectedCardImage.startsWith('data:image/')) {
+    result.selectedCardImage = await compressBase64Image(result.selectedCardImage, 1000, 0.80);
+  }
+  return result;
+}
+

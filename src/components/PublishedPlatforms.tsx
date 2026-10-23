@@ -24,27 +24,31 @@ const MAX_PLATFORMS = 12;
 const MAX_LEN = 24;
 const MAX_URL = 500;
 
-/** 只接受 http(s) 網址，其他（javascript: 等）一律不當連結 */
+/** 只接受 http(s) 網址，若使用者輸入未含協定（如 example.com）則自動補上 https://；草稿一律保留原始輸入 */
 export function safePlatformUrl(u: unknown): string | undefined {
-  const s = typeof u === 'string' ? u.trim().slice(0, MAX_URL) : '';
+  let s = typeof u === 'string' ? u.trim().slice(0, MAX_URL) : '';
   if (!s) return undefined;
+  if (!/^https?:\/\//i.test(s) && !s.startsWith('/')) {
+    s = 'https://' + s;
+  }
   try {
     const url = new URL(s);
     return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : undefined;
   } catch {
-    return undefined;
+    return typeof u === 'string' && u.trim() ? u.trim().slice(0, MAX_URL) : undefined;
   }
 }
 
-/** 整理成乾淨的清單：去空白、去重複、限制數量與長度；網址只留合法的 http(s) */
-export function normalizePlatforms(list: unknown, keepDraftUrl = false): PublishedPlatform[] {
+/** 整理成乾淨的清單：去空白、去重複、限制數量與長度；預設保留使用者填寫之網址草稿 */
+export function normalizePlatforms(list: unknown, keepDraftUrl = true): PublishedPlatform[] {
   if (!Array.isArray(list)) return [];
   const out: PublishedPlatform[] = [];
   for (const v of list) {
     const raw = typeof v === 'string' ? { name: v } : v && typeof v === 'object' ? (v as any) : null;
     const name = typeof raw?.name === 'string' ? raw.name.trim().slice(0, MAX_LEN) : '';
     if (!name || out.some((x) => x.name.toLowerCase() === name.toLowerCase())) continue;
-    const url = keepDraftUrl ? (typeof raw.url === 'string' ? raw.url.slice(0, MAX_URL) : '') : safePlatformUrl(raw.url);
+    const rawUrl = typeof raw.url === 'string' ? raw.url.trim().slice(0, MAX_URL) : '';
+    const url = keepDraftUrl ? rawUrl : safePlatformUrl(rawUrl);
     out.push(url ? { name, url } : { name });
     if (out.length >= MAX_PLATFORMS) break;
   }

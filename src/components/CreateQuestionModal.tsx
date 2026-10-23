@@ -64,6 +64,7 @@ import type { PublishedPlatform } from '../types';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
   processUploadedImageFile,
+  optimizeProposalImages,
   MAX_IMAGE_FILE_SIZE_MB,
   ACCEPTED_IMAGE_TYPES,
 } from '../utils/imageUploadUtils';
@@ -360,176 +361,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastSavedDraftTime, setLastSavedDraftTime] = useState<string>('');
 
-  // 檢查是否有同類型草稿
-  useEffect(() => {
-    try {
-      const drafts = getQuestionDrafts(currentUser.id);
-      const match = drafts.find((d) => d.postType === postType && (d.title || d.description || d.appName));
-      if (match) {
-        setDetectedDraft(match);
-      }
-    } catch {}
-  }, [postType, currentUser.id]);
 
-  const handleApplyDraft = (draft: QuestionDraft) => {
-    setCurrentDraftId(draft.id);
-    if (draft.appName) setAppName(draft.appName);
-    if (draft.title) setTitle(draft.title);
-    if (draft.description) setDescription(draft.description);
-    if (draft.category) setCategory(draft.category);
-    if (draft.subcategory) setSubcategory(draft.subcategory);
-    if (draft.subcategories) setSelectedVibeCategories(draft.subcategories);
-    if (draft.selectedVibeCategories) setSelectedVibeCategories(draft.selectedVibeCategories);
-    if (draft.tagsInput) setTagsInput(draft.tagsInput);
-    if (draft.level) setLevel(draft.level);
-    if (draft.bounty !== undefined) setBounty(draft.bounty);
-    if (draft.deadlineDays !== undefined) setDeadlineDays(draft.deadlineDays);
-    if (draft.externalLink) setExternalLink(draft.externalLink);
-    if (draft.demoUrl) setDemoUrl(draft.demoUrl);
-    if (draft.previewMode) setPreviewMode(draft.previewMode);
-    if (draft.techArchitecture) setTechArchitecture(draft.techArchitecture);
-    if (draft.publishedPlatforms) setPublishedPlatforms(draft.publishedPlatforms);
-    if (draft.referencedPainPoint) setReferencedPainPoint(draft.referencedPainPoint);
-    if (draft.targetGoal) setTargetGoal(draft.targetGoal);
-    if (draft.proposalProgressStage) setProposalProgressStage(draft.proposalProgressStage as any);
-    if (draft.currentVersion) setCurrentVersion(draft.currentVersion);
-    if (draft.coverImage) setCoverImage(draft.coverImage);
-    if (draft.galleryImages) setGalleryImages(draft.galleryImages);
-    if (draft.youtubeUrl) setYoutubeUrl(draft.youtubeUrl);
-    if (draft.coverMode) setCoverMode(draft.coverMode);
-    if (draft.cardHoverMode) setCardHoverMode(draft.cardHoverMode);
-    if (draft.showCardImage !== undefined) setShowCardImage(draft.showCardImage);
-    if (draft.selectedCardImage) setSelectedCardImage(draft.selectedCardImage);
-    if (draft.mindMap) setMindMap(draft.mindMap);
-    setDetectedDraft(null);
-    showCenterToast('草稿已成功載入！', '已還原您之前填寫的全部內容', { type: 'success', duration: 2500 });
-  };
-
-  const handleDiscardDraft = () => {
-    if (detectedDraft?.id) {
-      deleteQuestionDraft(detectedDraft.id);
-    }
-    setDetectedDraft(null);
-  };
-
-  const handleSaveDraft = () => {
-    if (!title.trim() && !description.trim() && !appName.trim()) {
-      showCenterToast('請至少輸入標題或作品名稱再儲存草稿', undefined, { type: 'warning' });
-      return;
-    }
-    setIsSavingDraft(true);
-    const saved = saveQuestionDraft({
-      id: currentDraftId || undefined,
-      userId: currentUser.id,
-      postType,
-      appName: appName.trim() || undefined,
-      title: title.trim(),
-      description: description.trim(),
-      category: category || '',
-      subcategory: subcategory || '',
-      subcategories: selectedVibeCategories,
-      selectedVibeCategories,
-      tagsInput,
-      level,
-      bounty: currentBounty,
-      deadlineDays,
-      externalLink: externalLink.trim() || undefined,
-      demoUrl: demoUrl.trim() || undefined,
-      previewMode,
-      techArchitecture: techArchitecture.trim() || undefined,
-      publishedPlatforms,
-      referencedPainPoint: referencedPainPoint.trim() || undefined,
-      targetGoal: targetGoal.trim() || undefined,
-      proposalProgressStage: proposalProgressStage || undefined,
-      currentVersion: currentVersion.trim() || undefined,
-      coverImage: coverImage.trim() || undefined,
-      galleryImages,
-      youtubeUrl: youtubeUrl.trim() || undefined,
-      coverMode,
-      cardHoverMode,
-      showCardImage,
-      selectedCardImage,
-      mindMap,
-    }, currentUser.id);
-    setCurrentDraftId(saved.id);
-    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    setLastSavedDraftTime(timeStr);
-    setIsSavingDraft(false);
-    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，下次進入可繼續編輯。`, { type: 'success', duration: 2500 });
-  };
-
-  /** 自動安全儲存草稿（不設嚴苛標題檢核，確保任何已填寫內容皆被妥善存檔） */
-  const performAutoSaveDraft = () => {
-    try {
-      setIsSavingDraft(true);
-      const fallbackTitle =
-        title.trim() ||
-        appName.trim() ||
-        `${getPostTypeName(postType)}草稿（${new Date().toLocaleDateString('zh-TW')} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}）`;
-      const saved = saveQuestionDraft(
-        {
-          id: currentDraftId || undefined,
-          userId: currentUser.id,
-          postType,
-          appName: appName.trim() || undefined,
-          title: fallbackTitle,
-          description: description.trim(),
-          category: category || '',
-          subcategory: subcategory || '',
-          subcategories: selectedVibeCategories,
-          selectedVibeCategories,
-          tagsInput,
-          level,
-          bounty: currentBounty,
-          deadlineDays,
-          externalLink: externalLink.trim() || undefined,
-          demoUrl: demoUrl.trim() || undefined,
-          previewMode,
-          techArchitecture: techArchitecture.trim() || undefined,
-          publishedPlatforms,
-          referencedPainPoint: referencedPainPoint.trim() || undefined,
-          targetGoal: targetGoal.trim() || undefined,
-          proposalProgressStage: proposalProgressStage || undefined,
-          currentVersion: currentVersion.trim() || undefined,
-          coverImage: coverImage.trim() || undefined,
-          galleryImages,
-          youtubeUrl: youtubeUrl.trim() || undefined,
-          coverMode,
-          cardHoverMode,
-          showCardImage,
-          selectedCardImage,
-          mindMap,
-        },
-        currentUser.id
-      );
-      setCurrentDraftId(saved.id);
-      const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-      setLastSavedDraftTime(timeStr);
-      setIsSavingDraft(false);
-      return saved;
-    } catch (err) {
-      console.error('Auto save draft failed:', err);
-      setIsSavingDraft(false);
-      return null;
-    }
-  };
-
-  /** 補填資料捷徑：自動儲存當前草稿並跳轉至會員中心基本資料 */
-  const handleGoToProfile = () => {
-    performAutoSaveDraft();
-    showCenterToast(
-      '草稿已自動儲存！',
-      '已為您安全暫存當前填寫進度，補填個人資料後，返回發布頁即可載入草稿繼續編輯。',
-      { type: 'success', duration: 3500 }
-    );
-    setShowProfileIncompleteModal(false);
-    if (onNavigateToProfile) {
-      onNavigateToProfile();
-    } else {
-      window.dispatchEvent(new CustomEvent('ideax:navigate-profile'));
-      if (onClose) onClose();
-    }
-  };
 
   // 創新提案完程度（必填勾選）
   const [proposalProgressStage, setProposalProgressStage] = useState<InnovationProgressStage | ''>('');
@@ -711,6 +543,218 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const handleCategoryChange = (newCat: Category | '') => {
     setCategory(newCat);
     setSubcategory('');
+  };
+
+  // 檢查是否有同類型草稿
+  useEffect(() => {
+    try {
+      const drafts = getQuestionDrafts(currentUser.id);
+      const match = drafts.find((d) => d.postType === postType && (d.title || d.description || d.appName));
+      if (match) {
+        setDetectedDraft(match);
+      }
+    } catch {}
+  }, [postType, currentUser.id]);
+
+  const handleApplyDraft = (draft: QuestionDraft) => {
+    setCurrentDraftId(draft.id);
+    if (draft.appName) setAppName(draft.appName);
+    if (draft.title) setTitle(draft.title);
+    if (draft.description) setDescription(draft.description);
+    if (draft.category) setCategory(draft.category);
+    if (draft.subcategory) setSubcategory(draft.subcategory);
+    if (draft.subcategories) setSelectedVibeCategories(draft.subcategories);
+    if (draft.selectedVibeCategories) setSelectedVibeCategories(draft.selectedVibeCategories);
+    if (draft.tagsInput) setTagsInput(draft.tagsInput);
+    if (draft.level) setLevel(draft.level);
+    if (draft.bounty !== undefined) setBounty(draft.bounty);
+    if (draft.externalLink !== undefined) setExternalLink(draft.externalLink);
+    if (draft.demoUrl !== undefined) setDemoUrl(draft.demoUrl);
+    if (draft.previewMode !== undefined) setPreviewMode(draft.previewMode);
+    if (draft.techArchitecture !== undefined) setTechArchitecture(draft.techArchitecture);
+    if (draft.publishedPlatforms !== undefined) setPublishedPlatforms(normalizePlatforms(draft.publishedPlatforms, true));
+    if (draft.referencedPainPoint !== undefined) setReferencedPainPoint(draft.referencedPainPoint);
+    if (draft.targetGoal) setTargetGoal(draft.targetGoal);
+    if (draft.proposalProgressStage) setProposalProgressStage(draft.proposalProgressStage as any);
+    if (draft.currentVersion) setCurrentVersion(draft.currentVersion);
+    if (draft.coverImage) setCoverImage(draft.coverImage);
+    if (draft.galleryImages) setGalleryImages(draft.galleryImages);
+    if (draft.youtubeUrl) setYoutubeUrl(draft.youtubeUrl);
+    if (draft.coverMode) setCoverMode(draft.coverMode);
+    if (draft.cardHoverMode) setCardHoverMode(draft.cardHoverMode);
+    if (draft.showCardImage !== undefined) setShowCardImage(draft.showCardImage);
+    if (draft.selectedCardImage) setSelectedCardImage(draft.selectedCardImage);
+    if (draft.mindMap) setMindMap(draft.mindMap);
+    setDetectedDraft(null);
+    showCenterToast('草稿已成功載入！', '已還原您之前填寫的全部內容', { type: 'success', duration: 2500 });
+  };
+
+  const handleDiscardDraft = () => {
+    if (detectedDraft?.id) {
+      deleteQuestionDraft(detectedDraft.id);
+    }
+    setDetectedDraft(null);
+  };
+
+  const handleSaveDraft = async () => {
+    if (!title.trim() && !description.trim() && !appName.trim()) {
+      showCenterToast('請至少輸入標題或作品名稱再儲存草稿', undefined, { type: 'warning' });
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      const optimizedImages = await optimizeProposalImages({
+        coverImage: coverImage.trim() || undefined,
+        galleryImages,
+        cardDisplayImage: selectedCardImage || undefined,
+        selectedCardImage: selectedCardImage || undefined,
+      });
+
+      const saved = saveQuestionDraft({
+        id: currentDraftId || undefined,
+        userId: currentUser.id,
+        postType,
+        appName: appName.trim() || undefined,
+        title: title.trim(),
+        description: description.trim(),
+        category: category || '',
+        subcategory: subcategory || '',
+        subcategories: selectedVibeCategories,
+        selectedVibeCategories,
+        tagsInput,
+        level,
+        bounty: currentBounty,
+        deadlineDays,
+        externalLink: externalLink.trim() || undefined,
+        demoUrl: demoUrl.trim() || undefined,
+        previewMode,
+        techArchitecture: techArchitecture.trim() || undefined,
+        publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
+        referencedPainPoint: referencedPainPoint.trim() || undefined,
+        targetGoal: targetGoal.trim() || undefined,
+        proposalProgressStage: proposalProgressStage || undefined,
+        currentVersion: currentVersion.trim() || undefined,
+        coverImage: optimizedImages.coverImage,
+        galleryImages: optimizedImages.galleryImages,
+        youtubeUrl: youtubeUrl.trim() || undefined,
+        coverMode,
+        cardHoverMode,
+        showCardImage,
+        selectedCardImage: optimizedImages.selectedCardImage,
+        mindMap,
+      }, currentUser.id);
+
+      if ((saved as any).__saveSuccess === false) {
+        showCenterToast('草稿儲存失敗', (saved as any).__saveError || '本機空間不足，未能成功寫入草稿', { type: 'warning', duration: 4000 });
+        setIsSavingDraft(false);
+        return;
+      }
+
+      setCurrentDraftId(saved.id);
+      const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+      setLastSavedDraftTime(timeStr);
+      setIsSavingDraft(false);
+      showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，下次進入可繼續編輯。`, { type: 'success', duration: 2500 });
+    } catch (err: any) {
+      console.error('Draft save failed:', err);
+      setIsSavingDraft(false);
+      showCenterToast('草稿儲存失敗', '儲存時發生例外錯誤，請檢查圖片或網路設定', { type: 'warning', duration: 4000 });
+    }
+  };
+
+  /** 自動安全儲存草稿（不設嚴苛標題檢核，確保任何已填寫內容皆被妥善存檔） */
+  const performAutoSaveDraft = () => {
+    try {
+      setIsSavingDraft(true);
+      const fallbackTitle =
+        title.trim() ||
+        appName.trim() ||
+        `${getPostTypeName(postType)}草稿（${new Date().toLocaleDateString('zh-TW')} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}）`;
+      const saved = saveQuestionDraft(
+        {
+          id: currentDraftId || undefined,
+          userId: currentUser.id,
+          postType,
+          appName: appName.trim() || undefined,
+          title: fallbackTitle,
+          description: description.trim(),
+          category: category || '',
+          subcategory: subcategory || '',
+          subcategories: selectedVibeCategories,
+          selectedVibeCategories,
+          tagsInput,
+          level,
+          bounty: currentBounty,
+          deadlineDays,
+          externalLink: externalLink.trim() || undefined,
+          demoUrl: demoUrl.trim() || undefined,
+          previewMode,
+          techArchitecture: techArchitecture.trim() || undefined,
+          publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
+          referencedPainPoint: referencedPainPoint.trim() || undefined,
+          targetGoal: targetGoal.trim() || undefined,
+          proposalProgressStage: proposalProgressStage || undefined,
+          currentVersion: currentVersion.trim() || undefined,
+          coverImage: coverImage.trim() || undefined,
+          galleryImages,
+          youtubeUrl: youtubeUrl.trim() || undefined,
+          coverMode,
+          cardHoverMode,
+          showCardImage,
+          selectedCardImage,
+          mindMap,
+        },
+        currentUser.id
+      );
+      if ((saved as any).__saveSuccess !== false) {
+        setCurrentDraftId(saved.id);
+        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        setLastSavedDraftTime(timeStr);
+      }
+      setIsSavingDraft(false);
+      return saved;
+    } catch (err) {
+      console.error('Auto save draft failed:', err);
+      setIsSavingDraft(false);
+      return null;
+    }
+  };
+
+  // 當用戶填寫提案或作品時，每 10 秒自動安全儲存到草稿一次
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hasContent = Boolean(
+        title.trim() ||
+        appName.trim() ||
+        description.trim() ||
+        demoUrl.trim() ||
+        externalLink.trim() ||
+        (publishedPlatforms && publishedPlatforms.length > 0) ||
+        coverImage.trim() ||
+        (galleryImages && galleryImages.length > 0)
+      );
+      if (hasContent) {
+        performAutoSaveDraft();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [title, appName, description, demoUrl, externalLink, publishedPlatforms, coverImage, galleryImages, currentBounty, postType, category, subcategory, selectedVibeCategories, tagsInput, level, deadlineDays, previewMode, techArchitecture, referencedPainPoint, targetGoal, proposalProgressStage, currentVersion, youtubeUrl, coverMode, cardHoverMode, showCardImage, selectedCardImage, mindMap, currentDraftId, currentUser.id]);
+
+  /** 補填資料捷徑：自動儲存當前草稿並跳轉至會員中心基本資料 */
+  const handleGoToProfile = () => {
+    performAutoSaveDraft();
+    showCenterToast(
+      '草稿已自動儲存！',
+      '已為您安全暫存當前填寫進度，補填個人資料後，返回發布頁即可載入草稿繼續編輯。',
+      { type: 'success', duration: 3500 }
+    );
+    setShowProfileIncompleteModal(false);
+    if (onNavigateToProfile) {
+      onNavigateToProfile();
+    } else {
+      window.dispatchEvent(new CustomEvent('ideax:navigate-profile'));
+      if (onClose) onClose();
+    }
   };
 
   const validateFormForPreview = () => {
@@ -905,6 +949,15 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         ? `${description.trim()}\n\n【外部雲端參考資料 (Google Drive / Dropbox / Figma)】\n${externalLink.trim()}`
         : description.trim();
 
+      const resolvedCardImage = (showCardImage && (galleryImages.length > 0 || Boolean(coverImage.trim())))
+        ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '')
+        : '';
+      const optimized = await optimizeProposalImages({
+        coverImage: coverImage.trim() || undefined,
+        galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+        cardDisplayImage: resolvedCardImage || undefined,
+      });
+
       const newQuestion = createQuestion({
         appName: postType === 'vibecoding_app' ? appName.trim() : undefined,
         title,
@@ -933,22 +986,33 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           authorAvatar,
           updatedFields: ['初始建立'],
         }] : undefined,
-        coverImage: coverImage.trim() || undefined,
-        galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+        coverImage: optimized.coverImage,
+        galleryImages: optimized.galleryImages,
         youtubeUrl: youtubeUrl.trim() || undefined,
         coverMode: (postType === 'vibecoding_app' || postType === 'innovation_proposal') ? coverMode : undefined,
         cardHoverMode: (postType === 'vibecoding_app' || postType === 'innovation_proposal') ? cardHoverMode : undefined,
         showCardImage: galleryImages.length > 0 || Boolean(coverImage.trim()) ? showCardImage : undefined,
-        cardDisplayImage: (showCardImage && (galleryImages.length > 0 || Boolean(coverImage.trim())))
-          ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || undefined)
-          : undefined,
+        cardDisplayImage: optimized.cardDisplayImage || undefined,
         proposalProgressStage: postType === 'innovation_proposal' ? (proposalProgressStage || undefined) : undefined,
         techArchitecture: techArchitecture.trim() || undefined,
-        publishedPlatforms: postType === 'vibecoding_app' && normalizePlatforms(publishedPlatforms).length ? normalizePlatforms(publishedPlatforms) : undefined,
+        publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
         demoUrl: demoUrl.trim() || externalLink.trim() || undefined,
         externalLink: externalLink.trim() || undefined,
         previewMode: postType === 'vibecoding_app' ? previewMode : undefined,
         fileUrl: externalLink.trim() || undefined,
+        vibeCodingData: postType === 'vibecoding_app' ? {
+          appName: appName.trim(),
+          category: selectedVibeCategories[0] || '網站程式',
+          demoUrl: demoUrl.trim() || externalLink.trim(),
+          githubUrl: externalLink.trim() || undefined,
+          publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
+          coverImageUrl: optimized.coverImage || '',
+          screenshots: optimized.galleryImages || [],
+          youtubeUrl: youtubeUrl.trim() || undefined,
+          coverMode,
+          cardHoverMode,
+          techArchitecture: techArchitecture.trim() || undefined,
+        } : undefined,
         isFeatured: isPromotedWithMegaphone,
         authorId,
         authorName,
@@ -1963,7 +2027,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               </p>
             </div>
 
-            {postType === 'vibecoding_app' && (
+            {(postType === 'vibecoding_app' || postType === 'innovation_proposal') && (
               <>
                 {/* 技術架構 */}
                 <div>

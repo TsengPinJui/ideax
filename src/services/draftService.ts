@@ -131,11 +131,11 @@ export function saveQuestionDraft(
     bounty: draftData.bounty !== undefined ? draftData.bounty : 500,
     deadlineDays: draftData.deadlineDays || 14,
     paymentMethod: draftData.paymentMethod || '信用卡',
-    externalLink: draftData.externalLink || '',
-    demoUrl: draftData.demoUrl,
+    externalLink: draftData.externalLink !== undefined ? draftData.externalLink : '',
+    demoUrl: draftData.demoUrl !== undefined ? draftData.demoUrl : '',
     previewMode: draftData.previewMode,
     techArchitecture: draftData.techArchitecture,
-    publishedPlatforms: draftData.publishedPlatforms,
+    publishedPlatforms: Array.isArray(draftData.publishedPlatforms) ? draftData.publishedPlatforms : (draftData.publishedPlatforms || []),
     referencedPainPoint: draftData.referencedPainPoint,
     targetGoal: draftData.targetGoal,
     proposalProgressStage: draftData.proposalProgressStage,
@@ -156,20 +156,45 @@ export function saveQuestionDraft(
     createdAt: existingIndex >= 0 ? all[existingIndex].createdAt : now,
   };
 
+  // 限制草稿歷史數量（最多保留最新 5 份），防止陣列過大佔用 localStorage 5MB 空間
+  const prunedList = all.slice(0, 5);
   if (existingIndex >= 0) {
-    all[existingIndex] = draft;
+    prunedList[existingIndex] = draft;
   } else {
-    all.unshift(draft);
+    prunedList.unshift(draft);
   }
+
+  let saveSuccess = false;
+  let saveError: string | undefined;
 
   try {
-    localStorage.setItem(STORAGE_QUESTION_DRAFTS_KEY, JSON.stringify(all));
+    const serialized = JSON.stringify(prunedList);
+    localStorage.setItem(STORAGE_QUESTION_DRAFTS_KEY, serialized);
+    const verified = localStorage.getItem(STORAGE_QUESTION_DRAFTS_KEY);
+    if (!verified) throw new Error('讀取本機草稿驗證失敗');
+    saveSuccess = true;
     notifyDraftsUpdated();
-  } catch (err) {
-    console.error('Failed to save question draft', err);
+  } catch (err: any) {
+    console.warn('[DraftService] Primary save failed, attempting emergency quota recovery:', err);
+    try {
+      // 空間不足時，實施極限救援：僅保留當前此份草稿
+      const emergencyList = [draft];
+      localStorage.setItem(STORAGE_QUESTION_DRAFTS_KEY, JSON.stringify(emergencyList));
+      const verified = localStorage.getItem(STORAGE_QUESTION_DRAFTS_KEY);
+      if (!verified) throw new Error('極限儲存驗證失敗');
+      saveSuccess = true;
+      notifyDraftsUpdated();
+    } catch (rescueErr: any) {
+      console.error('[DraftService] Quota exceeded completely, could not write draft:', rescueErr);
+      saveSuccess = false;
+      saveError = '本機瀏覽器暫存空間不足（可能因圖片過多或檔案過大），草稿未能寫入！請清理快取或移除展示圖片。';
+    }
   }
 
-  return draft;
+  return Object.assign(draft, {
+    __saveSuccess: saveSuccess,
+    __saveError: saveError,
+  });
 }
 
 export function deleteQuestionDraft(draftId: string): void {

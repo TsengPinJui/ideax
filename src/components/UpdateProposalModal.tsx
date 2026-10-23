@@ -32,6 +32,7 @@ import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
   processUploadedImageFile,
+  optimizeProposalImages,
   MAX_IMAGE_FILE_SIZE_MB,
   ACCEPTED_IMAGE_TYPES,
 } from '../utils/imageUploadUtils';
@@ -54,7 +55,12 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   onSuccess,
 }) => {
   const { currentUser, updateProposalContent, openAboutModal, showCenterToast } = useApp();
-  const isVibeCoding = question.postType === 'vibecoding_app';
+  const isVibeCoding =
+    question.postType === 'vibecoding_app' ||
+    question.postType === 'innovation_proposal' ||
+    Boolean(question.vibeCodingData) ||
+    Boolean(question.appName) ||
+    question.specialZone === 'vibecoding';
 
   const getInitialCats = () => {
     const raw =
@@ -214,6 +220,10 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       const hasAnyContent = Boolean(
         current.title?.trim() ||
         current.description?.trim() ||
+        current.appName?.trim() ||
+        current.demoUrl?.trim() ||
+        current.fileLink?.trim() ||
+        (current.publishedPlatforms && current.publishedPlatforms.length > 0) ||
         current.changelogContent?.trim() ||
         current.coverImage?.trim() ||
         (current.galleryImages && current.galleryImages.length > 0)
@@ -224,6 +234,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         questionId: question.id,
         userId: currentUser?.id,
         ...current,
+        publishedPlatforms: normalizePlatforms(current.publishedPlatforms || [], true),
         updatedAt: new Date().toISOString(),
       };
       try {
@@ -253,7 +264,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         question.previewMode || ((question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl) ? 'embed' : 'external')
       );
       setTechArchitecture(question.techArchitecture || '');
-      setPublishedPlatforms(normalizePlatforms(question.publishedPlatforms));
+      setPublishedPlatforms(normalizePlatforms(question.publishedPlatforms || question.vibeCodingData?.publishedPlatforms || [], true));
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
       const initialGallery = question.galleryImages || question.vibeCodingData?.screenshots || [];
       setGalleryImages(initialGallery);
@@ -299,8 +310,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     if (draft.demoUrl !== undefined) setDemoUrl(draft.demoUrl);
     if (draft.fileLink !== undefined) setFileLink(draft.fileLink);
     if (draft.previewMode !== undefined) setPreviewMode(draft.previewMode);
-    if (draft.techArchitecture !== undefined) setTechArchitecture(draft.techArchitecture);
-    if (draft.publishedPlatforms !== undefined) setPublishedPlatforms(draft.publishedPlatforms);
+    if (draft.publishedPlatforms !== undefined) {
+      setPublishedPlatforms(normalizePlatforms(draft.publishedPlatforms, true));
+    }
     if (draft.coverImage !== undefined) setCoverImage(draft.coverImage);
     if (draft.galleryImages !== undefined) setGalleryImages(draft.galleryImages);
     if (draft.youtubeUrl !== undefined) setYoutubeUrl(draft.youtubeUrl);
@@ -323,45 +335,58 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     setDetectedDraft(null);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     setIsSavingDraft(true);
-    const draftData = {
-      questionId: question.id,
-      userId: currentUser?.id,
-      appName,
-      title,
-      description,
-      selectedCategories,
-      referencedPainPoint,
-      targetGoal,
-      mindMap,
-      demoUrl,
-      fileLink,
-      previewMode,
-      techArchitecture,
-      publishedPlatforms,
-      coverImage,
-      galleryImages,
-      youtubeUrl,
-      coverMode,
-      cardHoverMode,
-      proposalProgressStage,
-      showCardImage,
-      selectedCardImage: showCardImage ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '') : '',
-      version,
-      changelogContent,
-      changelogNote,
-      updatedAt: new Date().toISOString(),
-    };
     try {
+      const optimizedImages = await optimizeProposalImages({
+        coverImage: coverImage.trim() || undefined,
+        galleryImages,
+        cardDisplayImage: selectedCardImage || undefined,
+        selectedCardImage: selectedCardImage || undefined,
+      });
+
+      const draftData = {
+        questionId: question.id,
+        userId: currentUser?.id,
+        appName: appName.trim(),
+        title: title.trim(),
+        description: description.trim(),
+        selectedCategories,
+        referencedPainPoint: referencedPainPoint.trim(),
+        targetGoal: targetGoal.trim(),
+        mindMap: sanitizeMindMap(mindMap),
+        demoUrl: demoUrl.trim(),
+        fileLink: fileLink.trim(),
+        previewMode,
+        techArchitecture: techArchitecture.trim(),
+        publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
+        coverImage: optimizedImages.coverImage || '',
+        galleryImages: optimizedImages.galleryImages || [],
+        youtubeUrl: youtubeUrl.trim(),
+        coverMode,
+        cardHoverMode,
+        proposalProgressStage,
+        showCardImage,
+        selectedCardImage: showCardImage ? (optimizedImages.selectedCardImage || (optimizedImages.galleryImages && optimizedImages.galleryImages.length > 0 ? optimizedImages.galleryImages[0] : (optimizedImages.coverImage || ''))) : '',
+        version,
+        changelogContent,
+        changelogNote,
+        updatedAt: new Date().toISOString(),
+      };
+
       localStorage.setItem(draftStorageKey, JSON.stringify(draftData));
-    } catch (e) {
-      console.error(e);
+      const verified = localStorage.getItem(draftStorageKey);
+      if (!verified) throw new Error('讀取本機草稿驗證失敗');
+
+      const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSavedDraftTime(timeStr);
+      setIsSavingDraft(false);
+      showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，系統亦會每 10 秒自動為您更新草稿。`, { type: 'success', duration: 2500 });
+    } catch (e: any) {
+      console.error('Save draft error:', e);
+      setIsSavingDraft(false);
+      showCenterToast('草稿儲存失敗', '本機儲存空間不足（可能因圖片過大），請移除過大的展示圖片後重試', { type: 'warning', duration: 4000 });
     }
-    const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setLastSavedDraftTime(timeStr);
-    setIsSavingDraft(false);
-    showCenterToast('草稿已儲存！', `儲存時間：${timeStr}，系統亦會每 10 秒自動為您更新草稿。`, { type: 'success', duration: 2500 });
   };
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -511,7 +536,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
       // 關鍵防護：若處於輸入法組字選字中（IME isComposing），阻止意外觸發送出
       if ((e.nativeEvent as any)?.isComposing) {
@@ -542,52 +567,67 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     const summaryText = changelogContent.trim();
 
     setSubmitting(true);
-    const res = updateProposalContent(question.id, {
-      appName: isVibeCoding ? appName.trim() : undefined,
-      title: title.trim(),
-      description: description.trim(),
-      subcategory: isVibeCoding ? (selectedCategories[0] || '網站程式') : undefined,
-      subcategories: isVibeCoding ? selectedCategories : undefined,
-      referencedPainPoint: referencedPainPoint.trim(),
-      targetGoal: targetGoal.trim(),
-      // 心智圖：關掉或清空時存 null（移除）
-      mindMap: (question.postType === 'innovation_proposal' || isVibeCoding) ? sanitizeMindMap(mindMap) : undefined,
-      demoUrl: demoUrl.trim() || (isVibeCoding ? fileLink.trim() : ''),
-      externalLink: isVibeCoding ? (fileLink.trim() || demoUrl.trim()) : undefined,
-      previewMode: isVibeCoding ? previewMode : undefined,
-      fileLink: fileLink.trim(),
-      techArchitecture: techArchitecture.trim(),
-      ...(isVibeCoding ? { publishedPlatforms: normalizePlatforms(publishedPlatforms) } : {}),
-      coverImage: coverImage.trim(),
-      galleryImages,
-      youtubeUrl: youtubeUrl.trim(),
-      coverMode,
-      cardHoverMode,
-      showCardImage,
-      cardDisplayImage: showCardImage
-        ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '')
-        : '',
-      proposalProgressStage: !isVibeCoding ? (proposalProgressStage || undefined) : undefined,
-      version: version.trim() || undefined,
-      updateContent: summaryText,
-      updateNote: changelogNote.trim() || undefined,
-      changelogContent: summaryText,
-      changelogNote: changelogNote.trim() || undefined,
-    });
-
-    setSubmitting(false);
-    if (!res.success && !res.ok) {
-      setError(res.message || res.reason || '更新失敗，請稍後再試');
-      return;
-    }
-
-    // 發布成功後清除草稿
     try {
-      localStorage.removeItem(draftStorageKey);
-    } catch {}
+      const resolvedCardImage = showCardImage
+        ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || '')
+        : '';
+      const optimizedImages = await optimizeProposalImages({
+        coverImage: coverImage.trim(),
+        galleryImages,
+        cardDisplayImage: resolvedCardImage,
+      });
 
-    if (onSuccess) onSuccess();
-    onClose();
+      const res = await updateProposalContent(question.id, {
+        appName: isVibeCoding ? appName.trim() : undefined,
+        title: title.trim(),
+        description: description.trim(),
+        subcategory: isVibeCoding ? (selectedCategories[0] || '網站程式') : undefined,
+        subcategories: isVibeCoding ? selectedCategories : undefined,
+        referencedPainPoint: referencedPainPoint.trim(),
+        targetGoal: targetGoal.trim(),
+        // 心智圖：關掉或清空時存 null（移除）
+        mindMap: (question.postType === 'innovation_proposal' || isVibeCoding) ? sanitizeMindMap(mindMap) : undefined,
+        demoUrl: demoUrl.trim() || (isVibeCoding ? fileLink.trim() : ''),
+        externalLink: isVibeCoding ? (fileLink.trim() || demoUrl.trim()) : undefined,
+        previewMode: isVibeCoding ? previewMode : undefined,
+        fileLink: fileLink.trim(),
+        techArchitecture: techArchitecture.trim(),
+        publishedPlatforms: normalizePlatforms(publishedPlatforms, true),
+        coverImage: optimizedImages.coverImage || '',
+        galleryImages: optimizedImages.galleryImages || [],
+        youtubeUrl: youtubeUrl.trim(),
+        coverMode,
+        cardHoverMode,
+        showCardImage,
+        cardDisplayImage: showCardImage ? (optimizedImages.cardDisplayImage || '') : '',
+        proposalProgressStage: !isVibeCoding ? (proposalProgressStage || undefined) : undefined,
+        version: version.trim() || undefined,
+        updateContent: summaryText,
+        updateNote: changelogNote.trim() || undefined,
+        changelogContent: summaryText,
+        changelogNote: changelogNote.trim() || undefined,
+      });
+
+      setSubmitting(false);
+      if (!res.success && !res.ok) {
+        setError(res.message || res.reason || '更新失敗，請稍後再試');
+        showCenterToast('更新儲存失敗', res.message || res.reason || '儲存未能確認寫入，請稍後再試', { type: 'warning', duration: 4000 });
+        return;
+      }
+
+      // 發布成功後清除草稿
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch {}
+
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (submitErr: any) {
+      setSubmitting(false);
+      console.error('Submit proposal update failed:', submitErr);
+      setError('更新儲存過程發生錯誤，請稍後重試');
+      showCenterToast('更新儲存失敗', '處理圖片或資料寫入時發生錯誤，請稍後再試', { type: 'warning', duration: 4000 });
+    }
   };
 
   return (
