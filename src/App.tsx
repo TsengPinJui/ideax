@@ -835,7 +835,13 @@ function MainContent() {
     }
 
     if (selectedQuestion?.specialZone) {
-      setSpecialZone(selectedQuestion.specialZone);
+      if (selectedQuestion.specialZone === 'create_ideas' || selectedQuestion.postType === 'innovation_proposal') {
+        setSpecialZone('all');
+      } else {
+        setSpecialZone(selectedQuestion.specialZone);
+      }
+    } else if (selectedQuestion?.postType === 'innovation_proposal') {
+      setSpecialZone('all');
     }
     setSelectedQuestion(null);
 
@@ -1170,6 +1176,9 @@ function MainContent() {
       const id = String((e as CustomEvent).detail?.id || '');
       const found = id ? questions.find((q) => q.id === id) : undefined;
       if (!found) return;
+      if (found.postType === 'innovation_proposal' || found.specialZone === 'create_ideas') {
+        setSpecialZone('all');
+      }
       setSelectedSolver(null);
       setSelectedQuestion(found);
       setActiveTab('question_detail');
@@ -3302,10 +3311,10 @@ function MainContent() {
               setActiveTab('user_dashboard');
             }}
             onSuccess={(newQ) => {
-              if (newQ.specialZone) {
+              if (newQ.postType === 'innovation_proposal') {
+                setSpecialZone('all');
+              } else if (newQ.specialZone) {
                 setSpecialZone(newQ.specialZone);
-              } else if (newQ.postType === 'innovation_proposal') {
-                setSpecialZone('create_ideas');
               } else if (newQ.postType === 'pain_point') {
                 setSpecialZone('pain_points');
               } else if (newQ.postType === 'chat_discussion') {

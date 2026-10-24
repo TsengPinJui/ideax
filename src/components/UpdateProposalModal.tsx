@@ -57,12 +57,15 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const { currentUser, updateProposalContent, openAboutModal, showCenterToast, deleteQuestionPermanently } = useApp();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isInnovationProposal = question.postType === 'innovation_proposal';
   const isVibeCoding =
-    question.postType === 'vibecoding_app' ||
-    question.postType === 'innovation_proposal' ||
-    Boolean(question.vibeCodingData) ||
-    Boolean(question.appName) ||
-    question.specialZone === 'vibecoding';
+    !isInnovationProposal && (
+      question.postType === 'vibecoding_app' ||
+      Boolean(question.vibeCodingData) ||
+      Boolean(question.appName) ||
+      question.specialZone === 'vibecoding' ||
+      question.category === '網站程式'
+    );
 
   const getInitialCats = () => {
     const raw =
@@ -663,7 +666,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-stone-900">
-                {isVibeCoding ? '更新作品內容與版本紀錄' : '更新提案內容'}
+                {isInnovationProposal ? '編輯創新提案內容與進度' : isVibeCoding ? '更新作品內容與版本紀錄' : '更新提案內容'}
               </h3>
               <p className="text-xs text-stone-500">
                 儲存後將自動寫入版本紀錄，方便讀者查看更新內容

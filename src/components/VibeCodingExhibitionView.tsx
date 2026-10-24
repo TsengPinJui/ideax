@@ -44,6 +44,7 @@ import { shareOrCopyUrl } from '../utils/shareUtils';
 import { getFormattedAppNameAndTitle } from './QuestionCard';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
+import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -123,6 +124,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   // 點「體驗」時，先讓觀眾選作者填的上架平台
   const platformChooser = usePlatformLinkChooser();
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
+  const [onlyComingSoon, setOnlyComingSoon] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
@@ -140,6 +142,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         (q.tags && q.tags.some((t) => t.toLowerCase().includes('vibecoding')))
     );
   }, [questions]);
+
+  const comingSoonCount = useMemo(() => {
+    return vibeApps.filter(isComingSoonWork).length;
+  }, [vibeApps]);
 
   const isAppSavedByUser = (qId: string) => {
     return (
@@ -172,6 +178,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
     if (activeTab === 'favorites') {
       list = list.filter((q) => isAppSavedByUser(q.id));
+    }
+
+    if (onlyComingSoon) {
+      list = list.filter(isComingSoonWork);
     }
 
     if (selectedSubcat !== 'all') {
@@ -216,7 +226,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     });
 
     return list;
-  }, [vibeApps, activeTab, selectedSubcat, searchQuery, sortBy, answers, questions]);
+  }, [vibeApps, activeTab, onlyComingSoon, selectedSubcat, selectedTertiary, searchQuery, sortBy, answers, questions]);
 
   const totalLikes = useMemo(
     () => vibeApps.reduce((acc, q) => acc + (q.likes || 0), 0),
@@ -294,6 +304,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
     const categories = getQuestionVibeCategories(app);
     const primaryCategory = categories[0] || '網站程式';
+    const isComingSoon = isComingSoonWork(app);
+    const expScore = getExperienceScore(app);
 
     // 1. 條列式 (List Mode)
     if (viewMode === 'list') {
@@ -322,6 +334,16 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
+                {isComingSoon && (
+                  <span className="text-[10px] font-black text-amber-950 bg-amber-400 border border-amber-500 px-1.5 py-0.2 rounded shadow-2xs">
+                    ⏳ 即將開放
+                  </span>
+                )}
+                {expScore.totalRatings > 0 && (
+                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded" title={`平均體驗分數：${expScore.score}分（${expScore.totalRatings}人評分）`}>
+                    👍 {expScore.score}分
+                  </span>
+                )}
                 {displayAppName && (
                   <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
                     {displayAppName}
@@ -417,11 +439,21 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             isHovered={isCardHovered}
             heightClass="aspect-video"
           >
-            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10">
+            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10 flex-wrap max-w-[85%]">
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
                 <span>{primaryCategory}</span>
                 {app.tertiaryCategory && <span className="text-amber-300 font-bold">› {app.tertiaryCategory}</span>}
               </span>
+              {isComingSoon && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 shadow-xs border border-amber-300">
+                  ⏳ 即將開放
+                </span>
+              )}
+              {expScore.totalRatings > 0 && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white border border-emerald-400/50 shadow-xs" title={`平均體驗評分：${expScore.score}分`}>
+                  👍 {expScore.score}分
+                </span>
+              )}
             </div>
 
             <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
@@ -525,6 +557,16 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </>
                 )}
               </span>
+              {isComingSoon && (
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
+                  ⏳ 即將開放
+                </span>
+              )}
+              {expScore.totalRatings > 0 && (
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white border border-emerald-400/50 shadow-xs" title={`平均體驗評分：${expScore.score}分 (${expScore.totalRatings}位評分)`}>
+                  👍 {expScore.score}分
+                </span>
+              )}
             </div>
 
             {app.demoUrl ? (
@@ -832,6 +874,20 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             >
               <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
               <span className="truncate">我的 Like ({favoriteCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setOnlyComingSoon(!onlyComingSoon)}
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                onlyComingSoon
+                  ? 'bg-amber-400 text-stone-950 shadow-xs border border-amber-500 ring-2 ring-amber-400/30'
+                  : 'bg-white/90 text-stone-700 hover:bg-white border border-indigo-200/90'
+              }`}
+              title="篩選標記為即將開放的作品"
+            >
+              <span className="shrink-0">⏳</span>
+              <span className="truncate">即將開放 ({comingSoonCount})</span>
             </button>
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
   X,
@@ -30,6 +30,13 @@ import {
 import { useApp } from '../context/AppContext';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { AdminDelistModal } from './AdminDelistModal';
+import {
+  calculateNewExperienceRating,
+  getExperienceScore,
+  ExperienceVote,
+  getLocalExperienceVotes,
+} from '../utils/experienceRating';
+import { syncQuestionToFirestore } from '../services/firestoreSync';
 
 interface FullscreenAppEmbedViewProps {
   question: Question;
@@ -44,8 +51,44 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
   onClose,
   onViewDescription,
 }) => {
-  const { availableUsers, showCenterToast, currentUser } = useApp();
+  const { availableUsers, showCenterToast, currentUser, setQuestions } = useApp();
   const [isAdminDelistModalOpen, setIsAdminDelistModalOpen] = useState(false);
+  const [showExitRatingModal, setShowExitRatingModal] = useState(false);
+
+  const existingVote = useMemo(() => {
+    return question.id ? getLocalExperienceVotes()[question.id] : undefined;
+  }, [question.id]);
+
+  const handleRequestClose = useCallback(() => {
+    setShowExitRatingModal(true);
+  }, []);
+
+  const handleSkipRatingAndClose = useCallback(() => {
+    setShowExitRatingModal(false);
+    onClose();
+  }, [onClose]);
+
+  const handleVoteAndClose = useCallback((vote: ExperienceVote) => {
+    const { updatedQuestion, score, total } = calculateNewExperienceRating(question, vote);
+    
+    // 即時更新全域 AppContext 題目資料
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === updatedQuestion.id ? updatedQuestion : q))
+    );
+    // 背景同步至雲端 Firestore
+    void syncQuestionToFirestore(updatedQuestion).catch(() => {});
+
+    const voteLabel = vote === 'thumbs_up' ? '👍🏻 讚 (100分)' : vote === 'neutral' ? '😐 普通 (0分)' : '👎🏻 倒讚 (0分)';
+    if (showCenterToast) {
+      showCenterToast(`感謝您的回饋！【${voteLabel}】`, `平均體驗評分已即時計算為 ${score} 分 (共 ${total} 人評分)`, {
+        type: 'success',
+        duration: 3000,
+      });
+    }
+
+    setShowExitRatingModal(false);
+    onClose();
+  }, [question, setQuestions, showCenterToast, onClose]);
 
   // 取得目標體驗網址 (demoUrl 或 externalLink 或上架平台連結)
   const targetRawUrl = useMemo(() => {
@@ -96,16 +139,21 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
     }
   }, [targetRawUrl]);
 
-  // 鍵盤 Esc 監聽關閉全螢幕視圖
+  // 鍵盤 Esc 監聽：跳出體驗評分或直接關閉
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (showExitRatingModal) {
+          setShowExitRatingModal(false);
+          onClose();
+        } else {
+          setShowExitRatingModal(true);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [showExitRatingModal, onClose]);
 
   // 鎖定背景捲動
   useEffect(() => {
@@ -202,7 +250,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
         <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-stone-800 hover:bg-stone-700 active:bg-stone-600 text-stone-200 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 border border-stone-700/80 shadow-xs shrink-0"
             title="關閉試玩體驗，返回列表 (Esc)"
           >
@@ -295,7 +343,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="p-2 rounded-xl bg-stone-800 hover:bg-rose-900/80 hover:text-rose-200 text-stone-400 transition-colors border border-stone-700/80 cursor-pointer"
             title="關閉瀏覽 (Esc)"
           >
@@ -356,7 +404,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleRequestClose}
                   className="w-full sm:w-auto px-5 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-sm transition-colors cursor-pointer"
                 >
                   返回展場列表
@@ -484,6 +532,141 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
           <ChevronRight className="relative w-4.5 h-4.5 text-stone-950 opacity-80 group-hover:translate-x-1 group-hover:opacity-100 transition-all shrink-0" />
         </button>
       </div>
+
+      {/* 離開試玩體驗時的「體驗如何？」評分彈窗 */}
+      {showExitRatingModal && (
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-5 animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rating-modal-title"
+          >
+            {/* 略過 X 按鈕 */}
+            <button
+              type="button"
+              onClick={handleSkipRatingAndClose}
+              className="absolute top-4 right-4 p-2 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors cursor-pointer"
+              title="略過並返回"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* 標題與簡介 */}
+            <div className="space-y-2 pt-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-black">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>試玩回饋</span>
+              </div>
+              <h3 id="rating-modal-title" className="text-xl sm:text-2xl font-black text-white">
+                體驗如何？
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-xs mx-auto">
+                點擊為《{cleanTitle}》留下您的直覺評價，幫助創作者打造更好的作品！
+              </p>
+            </div>
+
+            {/* 現有平均分數統計提示 */}
+            {(() => {
+              const currentScore = getExperienceScore(question);
+              return (
+                <div className="py-2 px-3 rounded-xl bg-stone-950/70 border border-stone-800/80 flex items-center justify-around text-xs">
+                  <div>
+                    <span className="text-stone-500 font-bold block text-[10px]">平均體驗評分</span>
+                    <span className="font-black text-amber-400 text-sm">
+                      {currentScore.totalRatings > 0 ? `${currentScore.score} 分` : '尚無評分'}
+                    </span>
+                  </div>
+                  <div className="h-6 w-px bg-stone-800" />
+                  <div>
+                    <span className="text-stone-500 font-bold block text-[10px]">評分人數</span>
+                    <span className="font-bold text-stone-300 text-sm">
+                      {currentScore.totalRatings} 位探索者
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 三種評價選項按鈕：👍🏻 讚 (100分)、😐 普通 (0分)、👎🏻 倒讚 (0分) */}
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+              {/* 👍🏻 讚 */}
+              <button
+                type="button"
+                onClick={() => handleVoteAndClose('thumbs_up')}
+                className={`group relative p-3 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                  existingVote === 'thumbs_up'
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                    : 'bg-stone-800/80 hover:bg-emerald-950/40 border-stone-700/70 hover:border-emerald-500/60 text-stone-200 hover:text-emerald-300'
+                }`}
+              >
+                <span className="text-3xl sm:text-4xl filter group-hover:scale-110 transition-transform duration-150">
+                  👍🏻
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white group-hover:text-emerald-300">
+                  讚
+                </span>
+                <span className="text-[10px] font-bold text-emerald-400/90 bg-emerald-500/10 px-1.5 py-0.2 rounded">
+                  100 分
+                </span>
+              </button>
+
+              {/* 😐 普通 */}
+              <button
+                type="button"
+                onClick={() => handleVoteAndClose('neutral')}
+                className={`group relative p-3 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                  existingVote === 'neutral'
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-2 ring-amber-500/40 shadow-lg shadow-amber-500/10'
+                    : 'bg-stone-800/80 hover:bg-amber-950/40 border-stone-700/70 hover:border-amber-500/60 text-stone-200 hover:text-amber-300'
+                }`}
+              >
+                <span className="text-3xl sm:text-4xl filter group-hover:scale-110 transition-transform duration-150">
+                  😐
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white group-hover:text-amber-300">
+                  普通
+                </span>
+                <span className="text-[10px] font-bold text-amber-400/90 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                  0 分
+                </span>
+              </button>
+
+              {/* 👎🏻 倒讚 */}
+              <button
+                type="button"
+                onClick={() => handleVoteAndClose('thumbs_down')}
+                className={`group relative p-3 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                  existingVote === 'thumbs_down'
+                    ? 'bg-rose-500/20 border-rose-500 text-rose-300 ring-2 ring-rose-500/40 shadow-lg shadow-rose-500/10'
+                    : 'bg-stone-800/80 hover:bg-rose-950/40 border-stone-700/70 hover:border-rose-500/60 text-stone-200 hover:text-rose-300'
+                }`}
+              >
+                <span className="text-3xl sm:text-4xl filter group-hover:scale-110 transition-transform duration-150">
+                  👎🏻
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white group-hover:text-rose-300">
+                  倒讚
+                </span>
+                <span className="text-[10px] font-bold text-rose-400/90 bg-rose-500/10 px-1.5 py-0.2 rounded">
+                  0 分
+                </span>
+              </button>
+            </div>
+
+            {/* 略過與關閉按鈕 */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleSkipRatingAndClose}
+                className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-stone-200 text-xs font-bold transition-colors cursor-pointer"
+              >
+                略過，直接返回展場
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 管理員下架作品彈窗 */}
       <AdminDelistModal

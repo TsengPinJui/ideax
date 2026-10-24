@@ -93,6 +93,7 @@ import {
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
+import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getAnswerSpecifications } from '../utils/answerUtils';
 import { PublishedPlatformsBlock, usePlatformLinkChooser } from './PublishedPlatforms';
 import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
@@ -264,7 +265,11 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   };
 
   const liveQuestion = questions.find((item) => item.id === question.id) || selectedQuestion || question;
-  const isVibeCodingApp = liveQuestion?.postType === 'vibecoding_app' || (liveQuestion as any)?.isVibeCodingApp === true;
+  const isVibeCodingApp =
+    liveQuestion?.postType === 'vibecoding_app' ||
+    liveQuestion?.specialZone === 'vibecoding' ||
+    liveQuestion?.category === '網站程式' ||
+    (liveQuestion as any)?.isVibeCodingApp === true;
   const referencedPainPointObj = findReferencedPainPoint(liveQuestion, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(liveQuestion, questions) : [];
 
@@ -411,7 +416,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   };
 
   // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
-  const isAuthorUser = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const isAuthorUser = currentUser.id === question.authorId || currentUser.id === liveQuestion?.authorId || currentUser.role === 'admin';
   const isTransferredWork = Boolean(
     liveQuestion?.isTransferred ||
     liveQuestion?.isOwnershipTransferred ||
@@ -420,14 +425,22 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const isProposalPublisher = Boolean(
     currentUser?.id &&
     currentUser.id !== 'user-guest' &&
-    ((liveQuestion?.authorId && currentUser.id === liveQuestion.authorId) || (!isTransferredWork && currentUser.role === 'admin'))
+    (
+      (liveQuestion?.authorId && currentUser.id === liveQuestion.authorId) ||
+      (question?.authorId && currentUser.id === question.authorId) ||
+      (!isTransferredWork && currentUser.role === 'admin')
+    )
   );
   const canUpdateProposal = (
-    (liveQuestion?.postType === 'innovation_proposal' ||
-      liveQuestion?.postType === 'vibecoding_app' ||
-      liveQuestion?.category === '網站程式' ||
-      (liveQuestion?.tags && liveQuestion?.tags.includes('VibeCoding')))
-  ) && isProposalPublisher;
+    liveQuestion?.postType === 'innovation_proposal' ||
+    question?.postType === 'innovation_proposal' ||
+    liveQuestion?.postType === 'vibecoding_app' ||
+    question?.postType === 'vibecoding_app' ||
+    liveQuestion?.specialZone === 'vibecoding' ||
+    liveQuestion?.category === '網站程式' ||
+    (liveQuestion?.tags && (liveQuestion.tags.includes('VibeCoding') || liveQuestion.tags.includes('創新提案'))) ||
+    (question?.tags && (question.tags.includes('VibeCoding') || question.tags.includes('創新提案')))
+  ) && (isProposalPublisher || isAuthorUser);
   const userTier = currentUser?.subscriptionTier || 'free';
   const isProOrHigher = ['pro', 'expert', 'authority', 'master'].includes(userTier) || isAuthorUser;
   
@@ -916,6 +929,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 ? '痛點/創點子'
                 : `${question.level} · ${levelConfig.name}`}
             </span>
+            {isVibeCodingApp && isComingSoonWork(liveQuestion) && (
+              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-400 text-stone-950 border border-amber-500 shadow-2xs">
+                ⏳ 即將開放
+              </span>
+            )}
             {question.status === 'delisted' ? (
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> 已被管理員下架
@@ -1032,6 +1050,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <span className="hidden sm:inline">{isBookmarked ? '已收藏' : '收藏'}</span>
           </button>
 
+          {/* 提案發布者本人/管理員專屬：直接編輯提案按鈕 */}
+          {canUpdateProposal && (
+            <button
+              type="button"
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-3 py-2 rounded-xl border border-emerald-500 bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-xs active:scale-95"
+              title="直接編輯您的提案內容、規格、圖片與進度"
+            >
+              <FileEdit className="w-4 h-4 text-white" />
+              <span>編輯提案</span>
+            </button>
+          )}
+
           {!isFullPage && (
             <button
               onClick={onClose}
@@ -1091,16 +1122,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     <span>私聊提問者</span>
                   </button>
                 )}
-                {/* 提案發布者本人專屬：更新內容按鈕（其餘人隱藏） */}
+                {/* 提案發布者本人專屬：編輯提案按鈕 */}
                 {canUpdateProposal && (
                   <button
                     type="button"
                     onClick={() => setIsUpdateModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
-                    title="重新編輯提案內容並發布更新日誌"
+                    className="px-2.5 py-1 rounded-lg border border-emerald-600 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    title="重新編輯提案內容、規格與進度"
                   >
-                    <FileEdit className="w-3 h-3" />
-                    <span>更新內容</span>
+                    <FileEdit className="w-3 h-3 text-emerald-600" />
+                    <span>編輯提案</span>
                   </button>
                 )}
 
@@ -1162,10 +1193,35 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                 <span>{discussionAnswers.length} 則討論</span>
               </span>
+              {isVibeCodingApp && (() => {
+                const exp = getExperienceScore(liveQuestion);
+                return (
+                  <span
+                    className="flex items-center gap-1 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-bold"
+                    title={exp.totalRatings > 0 ? `共 ${exp.totalRatings} 位探索者評分` : '尚無評分'}
+                  >
+                    <span>👍 體驗評分：</span>
+                    <span className="font-mono font-black">{exp.totalRatings > 0 ? `${exp.score} 分` : '尚無評分'}</span>
+                  </span>
+                );
+              })()}
             </div>
 
             {/* 單一動作按鈕列 */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* 提案發布者本人專屬：直接編輯提案按鈕 */}
+              {canUpdateProposal && (
+                <button
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-emerald-600 bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                  title="直接編輯您的提案內容、規格、圖片與進度"
+                >
+                  <FileEdit className="w-3.5 h-3.5 text-white" />
+                  <span>編輯提案</span>
+                </button>
+              )}
+
               {/* 創新提案/軟體刊登：❤️ Like ｜ L0討論：👍 按讚 ｜ 問題類型/痛點：🔥 +1 附議 */}
               {question.postType === 'innovation_proposal' || isVibeCodingApp ? (
                 <button

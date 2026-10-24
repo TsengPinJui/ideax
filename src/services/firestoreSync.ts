@@ -1783,16 +1783,21 @@ export function subscribeSiteVisitsFromFirestore(callback: (visits: number) => v
   return null;
 }
 
+let lastPresenceHeartbeatTime = Date.now();
+
 /**
- * 發送即時線上活躍 Heartbeat（真實活躍連線統計）
+ * 發送即時線上活躍 Heartbeat（真實活躍連線統計，含在線停留時長）
  */
 export async function sendPresenceHeartbeat(currentUserId?: string): Promise<void> {
   try {
     const sessionId = currentUserId || getClientSessionId();
+    const now = Date.now();
+    const durationSeconds = Math.min(300, Math.max(1, Math.round((now - lastPresenceHeartbeatTime) / 1000)));
+    lastPresenceHeartbeatTime = now;
     const res = await fetch('/api/competition/site-traffic/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, durationSeconds }),
     });
     if (res.ok) {
       const json = await res.json();

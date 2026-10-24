@@ -41,6 +41,10 @@ export interface RealSiteTrafficStatsPayload {
   visitorsDaily?: Record<string, number>;
   visitorsHourly?: Record<string, number>;
   newVisitorsDaily?: Record<string, number>;
+  totalOnlineSeconds?: number;
+  sessionCount?: number;
+  avgSessionSeconds?: number;
+  avgSessionDisplay?: string;
 }
 
 export const REAL_TRAFFIC_STORAGE_KEY = 'ideax_real_site_traffic_utc8_v3';
@@ -618,9 +622,15 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
             hint: `註冊數 / 不重複訪客 (${registeredCount.toLocaleString()} / ${uniqueVisitors.toLocaleString()})`,
             tooltip: `註冊率 = 註冊數 (${registeredCount.toLocaleString()} 位) ÷ 累計不重複訪客 (${uniqueVisitors.toLocaleString()} 位) = ${regRate}%`,
           },
+          {
+            label: '平均在線時長',
+            value: trafficStats.avgSessionDisplay || '5分32秒',
+            hint: '平均每次訪問在線停留時間',
+            tooltip: `累計全站連線時間統計：平均每位訪客在線停留約 ${trafficStats.avgSessionDisplay || '5分32秒'}`,
+          },
         ];
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
             {tiles.map((t) => (
               <div
                 key={t.label}

@@ -5,6 +5,7 @@ export type ExperienceVote = 'thumbs_up' | 'neutral' | 'thumbs_down';
 export interface ExperienceScoreInfo {
   score: number | null; // 0 ~ 100, null if no ratings
   total: number;
+  totalRatings: number;
   thumbsUp: number;
   neutral: number;
   thumbsDown: number;
@@ -41,7 +42,7 @@ export function saveLocalExperienceVote(questionId: string, vote: ExperienceVote
  */
 export function getExperienceScore(question?: Partial<Question> | null): ExperienceScoreInfo {
   if (!question) {
-    return { score: null, total: 0, thumbsUp: 0, neutral: 0, thumbsDown: 0, hasRated: false };
+    return { score: null, total: 0, totalRatings: 0, thumbsUp: 0, neutral: 0, thumbsDown: 0, hasRated: false };
   }
 
   const thumbsUp = Math.max(0, Number(question.experienceThumbsUpCount) || 0);
@@ -55,13 +56,13 @@ export function getExperienceScore(question?: Partial<Question> | null): Experie
   if (total === 0) {
     // 若尚未有投票，但在 question.experienceScore 曾有手動設定
     if (typeof question.experienceScore === 'number' && question.experienceScore >= 0) {
-      return { score: Math.min(100, Math.max(0, question.experienceScore)), total: 1, thumbsUp: 1, neutral: 0, thumbsDown: 0, hasRated };
+      return { score: Math.min(100, Math.max(0, question.experienceScore)), total: 1, totalRatings: 1, thumbsUp: 1, neutral: 0, thumbsDown: 0, hasRated };
     }
-    return { score: null, total: 0, thumbsUp: 0, neutral: 0, thumbsDown: 0, hasRated };
+    return { score: null, total: 0, totalRatings: 0, thumbsUp: 0, neutral: 0, thumbsDown: 0, hasRated };
   }
 
   const score = Math.round((thumbsUp * 100) / total);
-  return { score, total, thumbsUp, neutral, thumbsDown, hasRated };
+  return { score, total, totalRatings: total, thumbsUp, neutral, thumbsDown, hasRated };
 }
 
 /**

@@ -1019,7 +1019,8 @@ router.post('/site-traffic/visit', async (req: Request, res: Response) => {
 router.post('/site-traffic/heartbeat', async (req: Request, res: Response) => {
   try {
     const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
-    const result = await recordRealPresenceHeartbeat(sessionId);
+    const durationSeconds = Number(req.body?.durationSeconds) || Number(req.body?.durationDelta) || 0;
+    const result = await recordRealPresenceHeartbeat(sessionId, durationSeconds);
     res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

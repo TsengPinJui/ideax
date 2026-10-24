@@ -19,6 +19,7 @@ import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { extractYoutubeVideoId } from '../utils/youtubeUtils';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
+import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 
 interface QuestionCardProps {
   question: Question;
@@ -280,11 +281,20 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             isHovered={isHovered}
             heightClass="aspect-video"
           >
-            <div className="absolute top-2 left-2 flex items-center gap-1 flex-wrap pointer-events-none z-10">
+            <div className="absolute top-2 left-2 flex items-center gap-1 flex-wrap pointer-events-none z-10 max-w-[85%]">
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {displayCategoryLabel}
               </span>
-
+              {isVibeCoding && isComingSoonWork(question) && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
+                  ⏳ 即將開放
+                </span>
+              )}
+              {isVibeCoding && getExperienceScore(question).totalRatings > 0 && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600/90 text-white shadow-xs">
+                  👍 {getExperienceScore(question).score}分
+                </span>
+              )}
             </div>
 
             <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
@@ -853,9 +863,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               )}
               {isVibeCoding ? (
-                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-indigo-600/95 backdrop-blur-md text-white shadow-xs">
-                  軟體作品
-                </span>
+                <>
+                  {isComingSoonWork(question) && (
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
+                      ⏳ 即將開放
+                    </span>
+                  )}
+                  {getExperienceScore(question).totalRatings > 0 && (
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-600/95 backdrop-blur-md text-white shadow-xs" title={`平均體驗評分：${getExperienceScore(question).score}分`}>
+                      👍 {getExperienceScore(question).score}分
+                    </span>
+                  )}
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-indigo-600/95 backdrop-blur-md text-white shadow-xs">
+                    軟體作品
+                  </span>
+                </>
               ) : isInnovationProposal ? (
                 <>
                   {getInnovationProgressStageMeta(question.proposalProgressStage) && (
