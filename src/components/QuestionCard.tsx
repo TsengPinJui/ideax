@@ -18,6 +18,7 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../u
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { extractYoutubeVideoId } from '../utils/youtubeUtils';
+import { stripAppNameFromTitle } from '../utils/titleFormat';
 
 interface QuestionCardProps {
   question: Question;
@@ -39,50 +40,12 @@ export function getFormattedAppNameAndTitle(question: Question): { appName: stri
   let rawAppName = (question.appName || question.vibeCodingData?.appName || '').trim();
   let rawTitle = (question.title || '').trim();
 
-  if (!isVibe) {
-    return { appName: '', cleanTitle: rawTitle };
-  }
-
-  if (rawAppName && rawAppName === rawTitle) {
-    const sepMatch = rawTitle.match(/^([^：:—\-]+)[：:—\-]\s*(.+)$/);
-    if (sepMatch) {
-      return { appName: sepMatch[1].trim(), cleanTitle: sepMatch[2].trim() };
-    }
-  }
   if (rawAppName.includes(' — ')) {
     rawAppName = rawAppName.split(' — ')[0].trim();
   }
 
-  if (rawAppName) {
-    const prefixes = [
-      `${rawAppName}：`,
-      `${rawAppName}:`,
-      `${rawAppName} — `,
-      `${rawAppName} - `,
-      `${rawAppName}-`,
-    ];
-    for (const p of prefixes) {
-      if (rawTitle.startsWith(p) && rawTitle.slice(p.length).trim().length > 0) {
-        rawTitle = rawTitle.slice(p.length).trim();
-        break;
-      }
-    }
-    const colonIdx = rawTitle.indexOf('：');
-    if (colonIdx > 0 && colonIdx <= 24) {
-      const prefixPart = rawTitle.slice(0, colonIdx).trim();
-      if (rawAppName.startsWith(prefixPart) || prefixPart.startsWith(rawAppName)) {
-        rawTitle = rawTitle.slice(colonIdx + 1).trim();
-      }
-    }
-  } else {
-    const colonMatch = rawTitle.match(/^([^：:]{2,22})[：:]\s*(.+)$/);
-    if (colonMatch) {
-      rawAppName = colonMatch[1].trim();
-      rawTitle = colonMatch[2].trim();
-    }
-  }
-
-  return { appName: rawAppName, cleanTitle: rawTitle };
+  const clean = stripAppNameFromTitle(rawTitle, rawAppName);
+  return { appName: rawAppName, cleanTitle: clean || rawTitle };
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -798,11 +761,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span className="font-mono">{secondCount || 0}</span>
               </button>
             )}
-
-            <span className="hidden sm:flex items-center gap-1 text-stone-400" title="瀏覽次數">
-              <Eye className="w-3.5 h-3.5" />
-              <span className="font-mono">{(question.views || 0).toLocaleString()}</span>
-            </span>
 
             <span className="flex items-center gap-1 text-stone-400" title="討論數量">
               <MessageCircle className="w-3.5 h-3.5" />

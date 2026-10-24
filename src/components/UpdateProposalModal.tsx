@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatforms';
 import type { PublishedPlatform } from '../types';
-import { Question, VIBECODING_CATEGORIES, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
+import { Question, VIBECODING_CATEGORIES, InnovationProgressStage, INNOVATION_PROGRESS_STAGES, SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
 import { useApp } from '../context/AppContext';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import {
@@ -83,7 +83,16 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     return cur;
   };
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(getInitialCats);
+  const initialSubcat = getInitialCats()[0] || '網站程式';
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(
+    question.subcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(question.subcategory)
+      ? question.subcategory
+      : initialSubcat
+  );
+  const [tertiaryCategory, setTertiaryCategory] = useState<string>(
+    question.tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[(question.subcategory || initialSubcat) as SoftwareCategory]?.[0] || '一般')
+  );
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([initialSubcat]);
   const [appName, setAppName] = useState(question.appName || question.vibeCodingData?.appName || '');
   const [title, setTitle] = useState(question.title || '');
   const [description, setDescription] = useState(question.description || '');
@@ -583,8 +592,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         appName: isVibeCoding ? appName.trim() : undefined,
         title: title.trim(),
         description: description.trim(),
-        subcategory: isVibeCoding ? (selectedCategories[0] || '網站程式') : undefined,
-        subcategories: isVibeCoding ? selectedCategories : undefined,
+        subcategory: isVibeCoding ? selectedSubcategory : undefined,
+        subcategories: isVibeCoding ? [selectedSubcategory] : undefined,
+        tertiaryCategory: isVibeCoding ? tertiaryCategory : undefined,
         referencedPainPoint: referencedPainPoint.trim(),
         targetGoal: targetGoal.trim(),
         // 心智圖：關掉或清空時存 null（移除）

@@ -100,6 +100,20 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
           },
         ]
       : []),
+    {
+      id: 'vibecoding',
+      label: '軟體網站作品牆',
+      shortLabel: '軟體網站',
+      subLabel: '網站程式、遊戲、AI工具、自動化、擴充功能',
+      icon: '🚀',
+      count: zoneCounts.vibecoding,
+      activeClasses: 'bg-indigo-500 text-white border-indigo-400 ring-2 ring-indigo-200 shadow-sm font-black',
+      badgeActiveClasses: 'bg-white/25 text-white',
+      idleClasses: 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border-indigo-200/80 hover:border-indigo-300 shadow-2xs',
+      badgeIdleClasses: 'bg-indigo-200/70 text-indigo-900',
+      accentDot: 'bg-indigo-500',
+      title: '切換至主題專區：軟體網站（網站程式、遊戲、AI工具、自動化、擴充功能）',
+    },
     ...(onOpenStarSeason
       ? [
           {
@@ -145,20 +159,6 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
       badgeIdleClasses: 'bg-amber-200/70 text-amber-950 font-bold',
       accentDot: 'bg-amber-500',
       title: '切換至主題專區：創點子 創新解方專區',
-    },
-    {
-      id: 'vibecoding',
-      label: '軟體網站作品牆',
-      shortLabel: '軟體網站',
-      subLabel: '網站程式、小遊戲、AI工具、自動化、擴充功能',
-      icon: '🚀',
-      count: zoneCounts.vibecoding,
-      activeClasses: 'bg-indigo-500 text-white border-indigo-400 ring-2 ring-indigo-200 shadow-sm font-black',
-      badgeActiveClasses: 'bg-white/25 text-white',
-      idleClasses: 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border-indigo-200/80 hover:border-indigo-300 shadow-2xs',
-      badgeIdleClasses: 'bg-indigo-200/70 text-indigo-900',
-      accentDot: 'bg-indigo-500',
-      title: '切換至主題專區：軟體網站（網站程式、小遊戲、AI工具、自動化、擴充功能）',
     },
     {
       id: 'l0_discussion',

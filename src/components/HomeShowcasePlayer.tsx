@@ -27,7 +27,7 @@ const TYPE_LABEL: Record<string, string> = {
   chat_discussion: '討論',
 };
 const INTERVAL_MS = 5000;
-const MAX_SLIDES = 12;
+const MAX_SLIDES = 30;
 
 type Slide = { q: Question; mode: HomeShowcaseMode; image: string; isVideo: boolean };
 
@@ -66,15 +66,18 @@ export function useShowcaseSlides(): Slide[] {
       seen.add(q.id);
       out.push({ q, mode, ...imageOf(q) });
     };
-    for (const mode of ['excellent', 'paid', 'custom'] as HomeShowcaseMode[]) {
+
+    // 優先順序：自選（custom）作品最優先播放！確保管理員在後台調整的排序（#1, #2...）精確直接反映在輪播前端
+    const modePriority: HomeShowcaseMode[] = ['custom', 'paid', 'excellent'];
+    for (const mode of modePriority) {
       if (!cfg.modes.includes(mode)) continue;
-      if (mode === 'excellent') {
-        real.filter((q) => q.isStarSeason || q.starSeasonProposalId).sort((a, b) => score(b) - score(a)).slice(0, 8).forEach((q) => push(q, 'excellent'));
+      if (mode === 'custom') {
+        // 管理員親手挑選與排序的作品：完全照 customIds 設定之順序播放
+        (cfg.customIds || []).forEach((id) => push(byId.get(id), 'custom'));
       } else if (mode === 'paid') {
         real.filter((q) => q.isFeatured && q.status === 'open').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 8).forEach((q) => push(q, 'paid'));
-      } else {
-        // 管理員親手挑的：模擬內容也照播
-        (cfg.customIds || []).forEach((id) => push(byId.get(id), 'custom'));
+      } else if (mode === 'excellent') {
+        real.filter((q) => q.isStarSeason || q.starSeasonProposalId).sort((a, b) => score(b) - score(a)).slice(0, 8).forEach((q) => push(q, 'excellent'));
       }
     }
     return out;
@@ -134,11 +137,11 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[] }> = ({ slides }) =>
               className={`absolute inset-0 w-full h-full text-left cursor-pointer transition-opacity duration-700 ${active ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
             >
               {s.image ? (
-                <img src={s.image} alt="" loading={i === 0 ? 'eager' : 'lazy'} className="absolute inset-0 w-full h-full object-cover" />
+                <img src={s.image} alt="" loading={i === 0 ? 'eager' : 'lazy'} className="absolute inset-0 w-full h-full object-cover brightness-[1.06] contrast-[1.02]" />
               ) : (
                 <span className="absolute inset-0 bg-gradient-to-br from-amber-300 via-amber-200 to-orange-200" />
               )}
-              <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+              <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
               {s.isVideo && (
                 <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-black/55 text-white flex items-center justify-center">
                   <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />

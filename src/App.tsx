@@ -1,6 +1,6 @@
 import { VibeCodingExhibitionView } from './components/VibeCodingExhibitionView';
 import { FullscreenAppEmbedView } from './components/FullscreenAppEmbedView';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -343,6 +343,10 @@ function MainContent() {
     return 'explore';
   });
   const [userDashboardTab, setUserDashboardTab] = useState<UserDashboardTab>('overview');
+  const [returnTabAfterQuestion, setReturnTabAfterQuestion] = useState<{
+    tab: AppTab;
+    userDashboardTab?: UserDashboardTab;
+  } | null>(null);
   const [dashboardResetCount, setDashboardResetCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | '全部'>('全部');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | '全部'>('全部');
@@ -550,8 +554,9 @@ function MainContent() {
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
 
   // 問題市場版面檢視模式（使用者沒自己選過時的預設）：
-  // 電腦一律大卡片；手機版有圖片的看板用大卡片，痛點許願池與 L0 討論區（多半沒有圖片）用條列式
+  // 軟體網站作品牆默認小卡片 (grid)；電腦其他看板預設大卡片；手機版痛點許願池與 L0 討論區用條列式
   const defaultViewModeFor = (zone: SpecialZone): MarketViewMode => {
+    if (zone === 'vibecoding') return 'grid';
     if (typeof window === 'undefined' || window.innerWidth >= 768) return 'large';
     return zone === 'pain_points' || zone === 'l0_discussion' ? 'list' : 'large';
   };
@@ -804,14 +809,52 @@ function MainContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 當任何卡片、痛點或提案關聯點擊設定 selectedQuestion 時，自動進入貼文詳情全頁
+  // 當任何卡片、痛點或提案關聯點擊設定 selectedQuestion 時，自動進入貼文詳情全頁並記憶來源分頁
   useEffect(() => {
     if (selectedQuestion && activeTab !== 'question_detail' && activeTab !== 'create_question') {
+      setReturnTabAfterQuestion({
+        tab: activeTab,
+        userDashboardTab: activeTab === 'user_dashboard' ? userDashboardTab : undefined,
+      });
       setActiveTab('question_detail');
       setIsSubmittingAnswer(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedQuestion]);
+
+  // 關閉貼文詳情或刪除貼文後的安全返回邏輯：若從管理員「問題管理頁」進入，刪除/關閉後精確返回問題管理頁
+  const handleReturnFromQuestion = useCallback(() => {
+    const isFromAdminQuestions =
+      typeof sessionStorage !== 'undefined' &&
+      sessionStorage.getItem('ideax_from_admin_questions') === 'true';
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem('ideax_from_admin_questions');
+      } catch {}
+    }
+
+    if (selectedQuestion?.specialZone) {
+      setSpecialZone(selectedQuestion.specialZone);
+    }
+    setSelectedQuestion(null);
+
+    if (isFromAdminQuestions || returnTabAfterQuestion?.userDashboardTab === 'admin_questions') {
+      setUserDashboardTab('admin_questions');
+      setActiveTab('user_dashboard');
+      setReturnTabAfterQuestion(null);
+      return;
+    }
+
+    if (returnTabAfterQuestion) {
+      setActiveTab(returnTabAfterQuestion.tab);
+      if (returnTabAfterQuestion.userDashboardTab) {
+        setUserDashboardTab(returnTabAfterQuestion.userDashboardTab);
+      }
+      setReturnTabAfterQuestion(null);
+    } else {
+      setActiveTab('explore');
+    }
+  }, [selectedQuestion, returnTabAfterQuestion]);
 
   // 記錄前一次的分頁，僅在主要分頁切換時回到頁面最頂部（如 explore 切換至 star_season 或 solvers）
   // 在首頁內部選擇看板、切換主題專區 (specialZone) 或分類時，絕對不回滾至頁面最頂端，維持視角平順
@@ -3182,13 +3225,7 @@ function MainContent() {
           <QuestionDetailModal
             isFullPage={true}
             question={selectedQuestion}
-            onClose={() => {
-              if (selectedQuestion?.specialZone) {
-                setSpecialZone(selectedQuestion.specialZone);
-              }
-              setSelectedQuestion(null);
-              setActiveTab('explore');
-            }}
+            onClose={handleReturnFromQuestion}
             onNavigateToChallengeSubmit={(q) => {
               try {
                 sessionStorage.setItem(
@@ -3400,13 +3437,16 @@ function MainContent() {
         {/* Fallback if question_detail or solver_profile has no item selected */}
         {((activeTab === 'question_detail' && !selectedQuestion) ||
           (activeTab === 'solver_profile' && !selectedSolver)) && (
-          <div className="max-w-md mx-auto my-16 text-center p-8 bg-white rounded-3xl border border-stone-200">
-            <p className="text-sm font-bold text-stone-700 mb-4">查無此內容或尚未選擇項目</p>
+          <div className="max-w-md mx-auto my-16 text-center p-8 bg-white rounded-3xl border border-stone-200 shadow-xs">
+            <p className="text-sm font-bold text-stone-700 mb-4">貼文已刪除或尚未選擇項目</p>
             <button
-              onClick={() => setActiveTab('explore')}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-900 rounded-xl text-xs font-bold cursor-pointer"
+              onClick={handleReturnFromQuestion}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-900 rounded-xl text-xs font-bold cursor-pointer transition-all"
             >
-              返回問題市場
+              {returnTabAfterQuestion?.userDashboardTab === 'admin_questions' ||
+              (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ideax_from_admin_questions') === 'true')
+                ? '返回問題管理頁'
+                : '返回上一頁'}
             </button>
           </div>
         )}

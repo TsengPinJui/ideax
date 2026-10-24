@@ -101,29 +101,88 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
   const twitterImage = document.querySelector('meta[name="twitter:image"]');
   let canonicalLink = document.querySelector('link[rel="canonical"]');
 
-  // 1. 根據 postType 產出最適 SEO 標題與語意說明
-  const isPainPoint = question.postType === 'pain_point' || question.tags?.includes('痛點');
-  const isDiscussion = (question.postType as string) === 'discussion' || question.postType === 'chat_discussion';
+  // 1. 根據 postType、專區與分類產出最適 SEO 標題與語意分類前綴（解決小遊戲/軟體作品被錯誤標為知識探討問題）
+  const isSoftwareApp =
+    question.postType === 'vibecoding_app' ||
+    question.category === '網站程式' ||
+    question.specialZone === 'vibecoding' ||
+    Boolean(question.tags?.includes('軟體作品')) ||
+    Boolean(question.tags?.includes('vibecoding'));
+
+  const isInnovationProposal =
+    question.postType === 'innovation_proposal' ||
+    question.specialZone === 'create_ideas' ||
+    Boolean(question.tags?.includes('創新提案')) ||
+    Boolean(question.tags?.includes('創點子'));
+
+  const isPainPoint =
+    question.postType === 'pain_point' ||
+    question.specialZone === 'pain_points' ||
+    Boolean(question.tags?.includes('痛點')) ||
+    Boolean(question.tags?.includes('痛點探索'));
+
+  const isDiscussion =
+    (question.postType as string) === 'discussion' ||
+    question.postType === 'chat_discussion' ||
+    question.specialZone === 'l0_discussion';
+
+  const isSeekSolution = question.postType === 'seek_solution';
+
+  // 取得次分類或主要次級領域（例如：小遊戲、實用工具、AI應用、資通訊、創新創業等）
+  const subcategory = (question.subcategory || (question.subcategories && question.subcategories[0]) || '').trim();
 
   let typePrefix = '';
-  if (isPainPoint) {
-    typePrefix = '【痛點探索】';
+  if (isSoftwareApp) {
+    // 軟體作品（Vibe Coding 展場）專屬前綴，精確反映小分類（例如：【軟體作品・小遊戲】）
+    typePrefix = subcategory ? `【軟體作品・${subcategory}】` : '【軟體作品】';
+  } else if (isInnovationProposal) {
+    // 創新提案（創點子專區）
+    typePrefix = subcategory ? `【創新提案・${subcategory}】` : '【創新提案】';
+  } else if (isPainPoint) {
+    // 痛點探索
+    typePrefix = subcategory ? `【痛點探索・${subcategory}】` : '【痛點探索】';
   } else if (isDiscussion) {
-    typePrefix = '【深度探討】';
+    // L0 社群探討
+    typePrefix = subcategory ? `【社群探討・${subcategory}】` : '【社群探討】';
+  } else if (isSeekSolution) {
+    if ((question.bounty || 0) > 0) {
+      typePrefix = `【懸賞 NT$ ${(question.bounty || 0).toLocaleString()}】`;
+    } else {
+      typePrefix = subcategory ? `【尋求方案・${subcategory}】` : '【尋求方案】';
+    }
+  } else if ((question.bounty || 0) > 0) {
+    typePrefix = `【懸賞 NT$ ${(question.bounty || 0).toLocaleString()}】`;
   } else {
-    typePrefix = (question.bounty || 0) > 0 ? `【懸賞 NT$ ${(question.bounty || 0).toLocaleString()}】` : '【知識探討】';
+    // 依題目的主要類別與子分類精準顯示，絕不再一概預設為「知識探討」
+    if (subcategory) {
+      typePrefix = `【${question.category || '專業問答'}・${subcategory}】`;
+    } else if (question.category) {
+      typePrefix = `【${question.category}】`;
+    } else {
+      typePrefix = '【問答交流】';
+    }
   }
 
-  const pageTitle = `${typePrefix} ${question.title} - IdeaX 創點子知識問答市場`;
+  // 整理作品名稱與標題
+  const appName = question.appName?.trim();
+  const rawTitle = (question.title || '').trim();
+  const hasAppName = Boolean(appName && rawTitle.includes(appName));
+  const displayTitle = appName && !hasAppName ? `【${appName}】${rawTitle}` : rawTitle;
+
+  const pageTitle = `${typePrefix} ${displayTitle} | IdeaX 創點子`;
   const cleanDesc = (question.description || '')
     .replace(/\n+/g, ' ')
     .replace(/[#*`]/g, '')
     .trim();
-  const metaDescription = cleanDesc.length > 0 ? cleanDesc.slice(0, 155) : DEFAULT_DESC;
+  const defaultDesc = isSoftwareApp
+    ? `在 IdeaX 創點子體驗「${displayTitle}」，探索豐富的軟體作品、小遊戲與創新應用，與創作者直接互動！`
+    : DEFAULT_DESC;
+  const metaDescription = cleanDesc.length > 0 ? cleanDesc.slice(0, 155) : defaultDesc;
 
   const canonicalUrl = toCanonicalUrl(getQuestionShareUrl(question));
-  const qImages = (question as any).images || (question as any).imageUrls || [];
-  const imageUrl = qImages && qImages.length > 0 ? qImages[0] : (question.authorAvatar || DEFAULT_IMAGE);
+  const coverImage = (question as any).coverImage || question.vibeCodingData?.coverImageUrl;
+  const qImages = (question as any).images || (question as any).imageUrls || (coverImage ? [coverImage] : []);
+  const imageUrl = qImages && qImages.length > 0 ? qImages[0] : (coverImage || question.authorAvatar || DEFAULT_IMAGE);
   const absoluteImageUrl = toAbsoluteImageUrl(imageUrl);
 
   // 2. 更新 DOM 標籤
@@ -145,13 +204,41 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
   }
   canonicalLink.setAttribute('href', canonicalUrl);
 
-  // 3. Schema.org 結構化資料：依類別自動配置 QAPage 或 DiscussionForumPosting
+  // 3. Schema.org 結構化資料：依類別自動配置 WebApplication / QAPage / DiscussionForumPosting
   const questionAnswers = answers.filter((a) => a.questionId === question.id);
   const acceptedAnswer = questionAnswers.find((a) => a.isAccepted);
 
   let schemaData: any;
 
-  if (isDiscussion || isPainPoint) {
+  if (isSoftwareApp) {
+    schemaData = {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      '@id': canonicalUrl,
+      name: appName || question.title,
+      headline: displayTitle,
+      description: metaDescription,
+      applicationCategory: subcategory || 'GameApplication',
+      operatingSystem: 'All',
+      url: canonicalUrl,
+      image: absoluteImageUrl,
+      dateCreated: question.createdAt,
+      datePublished: question.createdAt,
+      author: {
+        '@type': 'Person',
+        name: question.authorName || 'IdeaX 創作者',
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'IdeaX 創點子',
+        url: getBaseUrl(),
+        logo: {
+          '@type': 'ImageObject',
+          url: `${getBaseUrl()}/ideax-thumbnail.png`,
+        },
+      },
+    };
+  } else if (isDiscussion || isPainPoint) {
     schemaData = {
       '@context': 'https://schema.org',
       '@type': 'DiscussionForumPosting',

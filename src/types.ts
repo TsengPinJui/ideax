@@ -141,6 +141,7 @@ export type Subcategory =
   | '時事'
   | '購物'
   | '其他'
+  | '遊戲'
   | '小遊戲';
 
 export const CATEGORY_HIERARCHY: Record<Category, string[]> = {
@@ -148,10 +149,32 @@ export const CATEGORY_HIERARCHY: Record<Category, string[]> = {
   '專業問題': ['水電', '室內裝修', '法律智財', '會計稅務', '企業管理'],
   '學術探討': ['生技醫療', '資訊工程', '電機', '法律政治', '商管', '文學', '社會科學', '藝術設計'],
   '日常疑難': ['職場', '家務', '感情', '時事', '購物', '其他'],
-  '網站程式': ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'],
+  '網站程式': ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'],
 };
 
-export const VIBECODING_CATEGORIES = ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'] as const;
+export const VIBECODING_CATEGORIES = ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'] as const;
+export const SOFTWARE_CATEGORIES = ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'] as const;
+export type SoftwareCategory = typeof SOFTWARE_CATEGORIES[number];
+
+/** 軟體作品第三級分類表 (Level 1: 軟體/網站程式 > Level 2: 遊戲/網站程式/AI工具/自動化/擴充功能 > Level 3: 模擬/策略益智/角色扮演...) */
+export const SOFTWARE_TERTIARY_CATEGORIES: Record<SoftwareCategory, readonly string[]> = {
+  '遊戲': ['模擬', '策略益智', '角色扮演', '休閒派對', '動作冒險', '競技對戰'],
+  '網站程式': ['社群互動', '內容媒體', '電商服務', '管理後台', '形象展示', '實用工具'],
+  'AI工具': ['智能助手', '知識問答', '圖像影音', '文本寫作', '代碼輔助', '數據分析'],
+  '自動化': ['流程整合', '資料爬取', '定時排程', '訊息機器人', '文件處理', '自動化工作流'],
+  '擴充功能': ['瀏覽器外掛', '開發套件', '效率增強', '介面美化', '輔助外掛'],
+};
+
+/** 創新提案專屬分類（每項提案 строго 屬於且僅屬於單一分類） */
+export const INNOVATION_PROPOSAL_CATEGORIES = ['資通訊', '機電運輸', '生醫化材', '服務文創'] as const;
+export type InnovationProposalCategory = typeof INNOVATION_PROPOSAL_CATEGORIES[number];
+
+export const INNOVATION_PROPOSAL_SUBCATEGORIES: Record<InnovationProposalCategory, readonly string[]> = {
+  '資通訊': ['AI智慧應用', 'SaaS雲端軟體', '物聯網軟硬整合', '資安與區塊鏈'],
+  '機電運輸': ['無人載具與智慧物流', '綠能微電網', '智慧製造', '電動車與交通'],
+  '生醫化材': ['數位醫療健康', '生技製藥', '先進材料研發', '綠色環保化學'],
+  '服務文創': ['生活服務商模', '文創IP設計', '共享經濟', '地方創生與ESG'],
+};
 
 export type ProblemLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
 
@@ -898,6 +921,7 @@ export interface Question {
   category: Category;
   subcategory?: string;
   subcategories?: string[];
+  tertiaryCategory?: string; // 第三級分類 (例如: 軟體 > 遊戲 > 模擬)
   tags: string[];
   level: ProblemLevel;
   bounty: number; // 懸賞金額 NT$

@@ -88,21 +88,10 @@ export async function fetchSingleProposal(proposalId: string): Promise<StarSeaso
 }
 
 /**
- * 記錄提案瀏覽次數（向後端呼叫，永久寫入 Firestore）
+ * 記錄提案瀏覽次數（已依規定停止統計內容瀏覽次數）
  */
-export async function recordProposalView(proposalId: string): Promise<number | null> {
-  if (!proposalId) return null;
-  try {
-    const res = await fetch(`/api/competition/proposals/${encodeURIComponent(proposalId)}/view`, {
-      method: 'POST',
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return typeof data.viewsCount === 'number' ? data.viewsCount : null;
-    }
-  } catch (err) {
-    console.warn('[Competition] recordProposalView failed:', err);
-  }
+export async function recordProposalView(_proposalId: string): Promise<number | null> {
+  // 不再統計內容瀏覽次數
   return null;
 }
 

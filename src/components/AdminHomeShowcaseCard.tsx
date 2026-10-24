@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X } from 'lucide-react';
+import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HOME_SHOWCASE_MAX_CUSTOM, type HomeShowcaseMode, type Question } from '../types';
 import { useShowcaseSlides } from './HomeShowcasePlayer';
+import { stripAppNameFromTitle } from '../utils/titleFormat';
 
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創點子提案',
@@ -13,8 +14,12 @@ const TYPE_LABEL: Record<string, string> = {
 };
 const isWork = (q: Question) => q.postType === 'innovation_proposal' || q.postType === 'vibecoding_app';
 
-/** 管理員自選：打字搜尋作品並勾選（最多 30 個，依勾選順序播放） */
-const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChange: (ids: string[]) => void }> = ({ ids, disabled, onChange }) => {
+/** 管理員自選：打字搜尋作品並勾選，支援自訂輪播順序調整（最多 30 個，依排序順序播放） */
+const CustomShowcasePicker: React.FC<{
+  ids: string[];
+  disabled: boolean;
+  onChange: (ids: string[]) => void;
+}> = ({ ids, disabled, onChange }) => {
   const { questions } = useApp();
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<'works' | 'all'>('works');
@@ -27,37 +32,149 @@ const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChang
       ? pool.filter((x) =>
           [x.title, x.authorName, ...(x.tags || [])].some((s) => String(s || '').toLowerCase().includes(needle)))
       : pool;
-    return [...hit].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, 8);
+    return [...hit].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   }, [questions, q, scope]);
 
   const toggle = (id: string) => {
     if (ids.includes(id)) onChange(ids.filter((x) => x !== id));
     else if (ids.length < HOME_SHOWCASE_MAX_CUSTOM) onChange([...ids, id]);
   };
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= ids.length) return;
+    const next = [...ids];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    onChange(next);
+  };
+
+  const moveToTop = (index: number) => {
+    if (index === 0) return;
+    const next = [...ids];
+    const [moved] = next.splice(index, 1);
+    next.unshift(moved);
+    onChange(next);
+  };
+
+  const moveToBottom = (index: number) => {
+    if (index === ids.length - 1) return;
+    const next = [...ids];
+    const [moved] = next.splice(index, 1);
+    next.push(moved);
+    onChange(next);
+  };
+
   const full = ids.length >= HOME_SHOWCASE_MAX_CUSTOM;
 
   return (
     <div className="rounded-xl border border-sky-200 bg-white p-3 space-y-2.5">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-xs font-black text-sky-950">管理員自選作品</span>
+        <span className="text-xs font-black text-sky-950">管理員自選作品（可自訂輪播順序）</span>
         <span className={`text-[11px] font-bold ${full ? 'text-amber-700' : 'text-stone-500'}`}>已選 {ids.length}／{HOME_SHOWCASE_MAX_CUSTOM}</span>
       </div>
 
-      {/* 已選：依勾選順序播放 */}
+      {/* 已選清單：支援排序上下移動與移除 */}
       {ids.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {ids.map((id, i) => {
-            const item = byId.get(id);
-            return (
-              <span key={id} className="inline-flex items-center gap-1 max-w-full pl-2 pr-1 py-0.5 rounded-lg bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
-                <span className="font-mono text-sky-500">{i + 1}.</span>
-                <span className="truncate max-w-[14rem]">{item ? item.title : `（找不到這個作品：${id}）`}</span>
-                <button type="button" disabled={disabled} onClick={() => toggle(id)} aria-label="移除" className="p-0.5 rounded hover:bg-sky-100 cursor-pointer disabled:cursor-wait">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            );
-          })}
+        <div className="space-y-1.5 pt-0.5">
+          <div className="flex items-center justify-between text-[11px] text-sky-900/80">
+            <span className="font-bold flex items-center gap-1">
+              <span>輪播排序清單</span>
+              <span className="text-[10px] text-stone-500 font-normal">（可使用 ▲ ▼ 或 ⇈ ⇊ 置頂調整展示順序，自選作品播放時優先置首）</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-[10px] text-red-600 hover:text-red-700 underline cursor-pointer"
+            >
+              全部清除
+            </button>
+          </div>
+
+          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+            {ids.map((id, i) => {
+              const item = byId.get(id);
+              return (
+                <div
+                  key={id}
+                  className="flex items-center gap-2 p-1.5 rounded-xl bg-sky-50/90 border border-sky-200 text-xs hover:border-sky-300 transition-colors"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-sky-200/90 text-sky-950 font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                    #{i + 1}
+                  </span>
+                  {item?.coverImage ? (
+                    <img src={item.coverImage} alt="" className="w-8 h-8 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <span className="w-8 h-8 rounded-md bg-sky-100 flex items-center justify-center text-[10px] text-sky-600 font-bold shrink-0">
+                      {TYPE_LABEL[item?.postType || '']?.slice(0, 2) || '卡片'}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-black text-sky-950 text-xs">
+                      {item ? stripAppNameFromTitle(item.title, item.appName) : `（找不到這個作品：${id}）`}
+                    </div>
+                    <div className="text-[10px] text-sky-700 truncate flex items-center gap-1.5">
+                      {(item?.isSimulated || item?.simulatedBatchId) && (
+                        <span className="px-1 rounded bg-violet-100 text-violet-700 font-bold">虛擬</span>
+                      )}
+                      <span>{item?.appName ? `${item.appName}・` : ''}{TYPE_LABEL[item?.postType || ''] || '卡片'}・{item?.authorName || '未知作者'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      disabled={i === 0}
+                      onClick={() => moveToTop(i)}
+                      title="置頂（排在第 1 名優先播放）"
+                      aria-label={`將第 ${i + 1} 個作品移到第 1 名`}
+                      className="p-1 rounded-md text-sky-800 hover:bg-sky-200/80 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === 0}
+                      onClick={() => moveItem(i, -1)}
+                      title="往上移 1 格（優先播放）"
+                      aria-label={`將第 ${i + 1} 個作品往上移動`}
+                      className="p-1 rounded-md text-sky-800 hover:bg-sky-200/80 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === ids.length - 1}
+                      onClick={() => moveItem(i, 1)}
+                      title="往下移 1 格（延後播放）"
+                      aria-label={`將第 ${i + 1} 個作品往下移動`}
+                      className="p-1 rounded-md text-sky-800 hover:bg-sky-200/80 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === ids.length - 1}
+                      onClick={() => moveToBottom(i)}
+                      title="置底（移到最後一名）"
+                      aria-label={`將第 ${i + 1} 個作品移到最後`}
+                      className="p-1 rounded-md text-sky-800 hover:bg-sky-200/80 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronsDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggle(id)}
+                      title="移除此項"
+                      aria-label="移除此項"
+                      className="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -82,30 +199,56 @@ const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChang
         </div>
       </div>
 
-      {/* 結果：勾選 */}
-      <div className="divide-y divide-stone-100 rounded-lg border border-stone-100">
+      {/* 結果：勾選（支援上下滑動瀏覽所有作品） */}
+      <div className="divide-y divide-stone-100 rounded-lg border border-stone-200/80 max-h-72 overflow-y-auto bg-stone-50/30">
         {results.length === 0 ? (
-          <div className="px-3 py-3 text-[11px] text-stone-400">{q.trim() ? '找不到符合的作品' : '目前沒有作品'}</div>
+          <div className="px-3 py-4 text-center text-[11px] text-stone-400">{q.trim() ? '找不到符合的作品' : '目前沒有作品'}</div>
         ) : (
           results.map((x) => {
             const on = ids.includes(x.id);
             return (
-              <label key={x.id} className={`flex items-center gap-2.5 px-2.5 py-2 ${disabled || (!on && full) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-sky-50/60'}`}>
-                <input type="checkbox" checked={on} disabled={disabled || (!on && full)} onChange={() => toggle(x.id)} className="w-4 h-4 accent-sky-500 shrink-0" />
-                {x.coverImage ? <img src={x.coverImage} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <span className="w-9 h-9 rounded-md bg-stone-100 shrink-0" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-bold text-stone-900 truncate">{x.title}</span>
-                  <span className="block text-[10px] text-stone-500 truncate">
-                    {(x.isSimulated || x.simulatedBatchId) && <span className="mr-1 px-1 rounded bg-violet-100 text-violet-700 font-bold">虛擬</span>}
-                    {TYPE_LABEL[x.postType || ''] || '卡片'}・{x.authorName}
+              <div
+                key={x.id}
+                className={`flex items-center gap-2.5 px-2.5 py-2 transition-colors ${
+                  disabled || (!on && full) ? 'opacity-70 bg-stone-50/50' : 'hover:bg-sky-50/70 bg-white'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={on}
+                  disabled={disabled || (!on && full)}
+                  onChange={() => toggle(x.id)}
+                  className="w-4 h-4 accent-sky-500 shrink-0 cursor-pointer"
+                  aria-label={`選取作品 ${x.title}`}
+                />
+                {x.coverImage ? (
+                  <img src={x.coverImage} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" />
+                ) : (
+                  <span className="w-9 h-9 rounded-md bg-stone-100 shrink-0" />
+                )}
+                <div
+                  className="min-w-0 flex-1 cursor-pointer select-none"
+                  onClick={() => (!disabled && (on || !full) ? toggle(x.id) : null)}
+                >
+                  <span className="block text-xs font-bold text-stone-900 truncate">
+                    {stripAppNameFromTitle(x.title, x.appName)}
                   </span>
-                </span>
-              </label>
+                  <span className="block text-[10px] text-stone-500 truncate">
+                    {(x.isSimulated || x.simulatedBatchId) && (
+                      <span className="mr-1 px-1 rounded bg-violet-100 text-violet-700 font-bold">虛擬</span>
+                    )}
+                    {x.appName ? `${x.appName}・` : ''}{TYPE_LABEL[x.postType || ''] || '卡片'}・{x.authorName}
+                  </span>
+                </div>
+              </div>
             );
           })
         )}
       </div>
-      {!q.trim() && results.length > 0 && <p className="text-[10px] text-stone-400">沒有輸入時顯示最新 8 個；打字可以找更多。</p>}
+      <div className="flex items-center justify-between text-[10px] text-stone-400 px-1">
+        <span>共 {results.length} 個可選項目（可上下滑動滾動挑選）</span>
+        {ids.length > 0 && <span className="text-sky-700 font-medium">已選 {ids.length} 個</span>}
+      </div>
     </div>
   );
 };
@@ -117,7 +260,7 @@ const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChang
 const MODES: Array<{ id: HomeShowcaseMode; name: string; desc: string; icon: React.ReactNode }> = [
   { id: 'excellent', name: '優秀作品', desc: '創星季參賽作品，依按讚、附議、支持點數取前 8 名', icon: <Trophy className="w-4 h-4" /> },
   { id: 'paid', name: '付費推播', desc: '發布時加購推播、仍在招募中的卡片（標示「推播」）', icon: <Megaphone className="w-4 h-4" /> },
-  { id: 'custom', name: '管理員自選', desc: '由管理員挑選要播放的作品', icon: <Hand className="w-4 h-4" /> },
+  { id: 'custom', name: '管理員自選', desc: '由管理員挑選要播放的作品（最優先置首播放）', icon: <Hand className="w-4 h-4" /> },
 ];
 
 export const AdminHomeShowcaseCard: React.FC = () => {
@@ -154,7 +297,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
               </span>
             </h4>
             <p className="text-xs text-sky-900/70 mt-0.5">
-              啟用後，首頁最上方的創點子標誌會換成輪播（每 5 秒換一個，滑鼠移上去或手指按住會暫停）。可複選，依「優秀作品 → 付費推播 → 自選」的順序串起來，最多 12 個；沒有可播放的內容時仍顯示創點子標誌。
+              啟用後，首頁最上方的創點子標誌會換成輪播（每 5 秒換一個，滑鼠移上去或手指按住會暫停）。若勾選「管理員自選」，自選作品將最優先依照您排定的順序播放（最多 30 個）；沒有可播放的內容時仍顯示創點子標誌。
             </p>
           </div>
         </div>
@@ -236,7 +379,11 @@ export const AdminHomeShowcaseCard: React.FC = () => {
       </label>
 
       {modes.includes('custom') && (
-        <CustomShowcasePicker ids={customIds || []} disabled={saving} onChange={(next) => save({ customIds: next })} />
+        <CustomShowcasePicker
+          ids={customIds || []}
+          disabled={saving}
+          onChange={(next) => save({ customIds: next })}
+        />
       )}
 
       <p className="text-[11px] text-sky-900/70">

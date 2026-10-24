@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MindMapEditor } from './mindmap/MindMapEditor';
 import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import { BaiMiao } from './baimiao/BaiMiao';
-import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES, MindMapData } from '../types';
+import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES, MindMapData, SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory, INNOVATION_PROPOSAL_CATEGORIES, INNOVATION_PROPOSAL_SUBCATEGORIES, InnovationProposalCategory } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { AIAnalysisResult } from '../services/aiService';
@@ -197,6 +197,18 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [category, setCategory] = useState<Category | ''>(initialCategory || '創新創業');
   const [subcategory, setSubcategory] = useState<string>(
     initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : '資訊科技'
+  );
+  const [selectedVibeCategory, setSelectedVibeCategory] = useState<SoftwareCategory>(
+    initialSubcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(initialSubcategory)
+      ? (initialSubcategory as SoftwareCategory)
+      : '網站程式'
+  );
+  const [selectedTertiary, setSelectedTertiary] = useState<string>(
+    SOFTWARE_TERTIARY_CATEGORIES['網站程式']?.[0] || '社群互動'
+  );
+  const [selectedInnovationCategory, setSelectedInnovationCategory] = useState<InnovationProposalCategory>('資通訊');
+  const [selectedInnovationSub, setSelectedInnovationSub] = useState<string>(
+    INNOVATION_PROPOSAL_SUBCATEGORIES['資通訊']?.[0] || 'AI智慧應用'
   );
   const [selectedVibeCategories, setSelectedVibeCategories] = useState<string[]>(
     initialSubcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(initialSubcategory)
@@ -969,10 +981,21 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         appName: postType === 'vibecoding_app' ? appName.trim() : undefined,
         title,
         description: finalDescription,
-        category: postType === 'vibecoding_app' ? '網站程式' : finalCategory,
-        subcategory: postType === 'vibecoding_app' ? (selectedVibeCategories[0] || subcategory || '網站程式') : finalSubcategory,
-        subcategories: postType === 'vibecoding_app' ? (selectedVibeCategories.length > 0 ? selectedVibeCategories : ['網站程式']) : undefined,
-        tags: postType === 'vibecoding_app' ? Array.from(new Set(['網站程式', ...selectedVibeCategories, ...finalTags])) : finalTags,
+        category: postType === 'vibecoding_app' ? '網站程式' : (postType === 'innovation_proposal' ? '創新創業' : finalCategory),
+        subcategory: postType === 'vibecoding_app'
+          ? selectedVibeCategory
+          : (postType === 'innovation_proposal' ? selectedInnovationCategory : finalSubcategory),
+        subcategories: postType === 'vibecoding_app'
+          ? [selectedVibeCategory]
+          : (postType === 'innovation_proposal' ? [selectedInnovationCategory] : (finalSubcategory ? [finalSubcategory] : undefined)),
+        tertiaryCategory: postType === 'vibecoding_app'
+          ? (selectedTertiary || SOFTWARE_TERTIARY_CATEGORIES[selectedVibeCategory]?.[0])
+          : (postType === 'innovation_proposal' ? selectedInnovationSub : undefined),
+        tags: postType === 'vibecoding_app'
+          ? Array.from(new Set(['網站程式', selectedVibeCategory, selectedTertiary, ...finalTags].filter(Boolean)))
+          : (postType === 'innovation_proposal'
+              ? Array.from(new Set(['創新提案', selectedInnovationCategory, selectedInnovationSub, ...finalTags].filter(Boolean)))
+              : finalTags),
         level,
         bounty: currentBounty,
         deadline,
@@ -2263,45 +2286,139 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
         {/* Category & Subcategory */}
         {postType === 'vibecoding_app' ? (
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-700">軟體提案分類（最多選 3 個）*</label>
-              <span className="text-[11px] text-stone-500 font-medium">
-                已選 {selectedVibeCategories.length} / 3
-              </span>
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>軟體第二級分類（單選）*</span>
+                </label>
+                <span className="text-[10px] text-indigo-800 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold">
+                  每個作品只屬一個分類
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {VIBECODING_CATEGORIES.map((sc) => {
+                  const isSelected = selectedVibeCategory === sc;
+                  return (
+                    <button
+                      key={sc}
+                      type="button"
+                      onClick={() => {
+                        setCategory('網站程式');
+                        setSelectedVibeCategory(sc as SoftwareCategory);
+                        setSubcategory(sc);
+                        setSelectedVibeCategories([sc]);
+                        const tertList = SOFTWARE_TERTIARY_CATEGORIES[sc as SoftwareCategory] || [];
+                        setSelectedTertiary(tertList[0] || '');
+                      }}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-600 text-white shadow-xs font-black'
+                          : 'border-stone-200 hover:border-indigo-300 bg-white text-stone-700'
+                      }`}
+                    >
+                      {sc}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {VIBECODING_CATEGORIES.map((sc) => {
-                const isSelected = selectedVibeCategories.includes(sc);
-                return (
-                  <button
-                    key={sc}
-                    type="button"
-                    onClick={() => {
-                      setCategory('網站程式');
-                      setSelectedVibeCategories((prev) => {
-                        if (prev.includes(sc)) {
-                          if (prev.length <= 1) return prev; // keep at least 1
-                          const next = prev.filter((item) => item !== sc);
-                          setSubcategory(next[0] || '網站程式');
-                          return next;
-                        }
-                        if (prev.length >= 3) return prev;
-                        const next = [...prev, sc];
-                        setSubcategory(next[0] || '網站程式');
-                        return next;
-                      });
-                    }}
-                    className={`px-2.5 py-2 rounded-lg border text-xs font-bold transition-colors cursor-pointer text-center ${
-                      isSelected
-                        ? 'border-stone-900 bg-stone-900 text-white'
-                        : 'border-stone-200 hover:border-stone-300 bg-white text-stone-700'
-                    }`}
-                  >
-                    {sc}
-                  </button>
-                );
-              })}
+
+            {/* 第三級分類 (Level 3，例如：軟體 > 遊戲 > 模擬) */}
+            <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/90 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                  <span>第三級分類（軟體 › {selectedVibeCategory} › 子分類）*</span>
+                </label>
+                <span className="text-[10px] text-indigo-700 font-bold">例如：軟體 › 遊戲 › 模擬</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(SOFTWARE_TERTIARY_CATEGORIES[selectedVibeCategory as SoftwareCategory] || []).map((tc) => {
+                  const isSelected = selectedTertiary === tc;
+                  return (
+                    <button
+                      key={tc}
+                      type="button"
+                      onClick={() => setSelectedTertiary(tc)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-black'
+                          : 'bg-white hover:bg-indigo-100/60 text-indigo-950 border-indigo-200'
+                      }`}
+                    >
+                      {tc}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : postType === 'innovation_proposal' ? (
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>創新提案領域（單選）*</span>
+                </label>
+                <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
+                  每個提案只屬一個領域
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {INNOVATION_PROPOSAL_CATEGORIES.map((cat) => {
+                  const isSelected = selectedInnovationCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setCategory('創新創業');
+                        setSelectedInnovationCategory(cat);
+                        setSubcategory(cat);
+                        const subList = INNOVATION_PROPOSAL_SUBCATEGORIES[cat] || [];
+                        setSelectedInnovationSub(subList[0] || '');
+                      }}
+                      className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                        isSelected
+                          ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs font-black'
+                          : 'border-stone-200 hover:border-emerald-300 bg-white text-stone-700'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/90 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-emerald-950">
+                  細分領域（創新創業 › {selectedInnovationCategory}）*
+                </span>
+                <span className="text-[10px] text-emerald-700 font-bold">單選子類別</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(INNOVATION_PROPOSAL_SUBCATEGORIES[selectedInnovationCategory] || []).map((sub) => {
+                  const isSelected = selectedInnovationSub === sub;
+                  return (
+                    <button
+                      key={sub}
+                      type="button"
+                      onClick={() => setSelectedInnovationSub(sub)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black'
+                          : 'bg-white hover:bg-emerald-100/60 text-emerald-950 border-emerald-200'
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (

@@ -70,12 +70,14 @@ import {
   Trophy,
   ArrowRight,
   Rocket,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { TipPainPointModal } from './TipPainPointModal';
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
 import { UpdateProposalModal } from './UpdateProposalModal';
 import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
+import { AdminConvertWorkTypeModal } from './AdminConvertWorkTypeModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
 import { shareOrCopyUrl, copyPureUrl } from '../utils/shareUtils';
@@ -313,12 +315,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   const viewCountedIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (question?.id && viewCountedIdRef.current !== question.id) {
-      viewCountedIdRef.current = question.id;
-      incrementQuestionViews(question.id, 1);
-    }
-  }, [question?.id, incrementQuestionViews]);
+
 
   const isBookmarked = isQuestionBookmarked(question.id);
   const isRegisteredParticipant = Boolean(
@@ -404,6 +401,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
   const [isDescExpanded, setIsDescExpanded] = useState<boolean>(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
+  const [isConvertWorkTypeModalOpen, setIsConvertWorkTypeModalOpen] = useState<boolean>(false);
 
   const toggleAnswerExpand = (answerId: string) => {
     setExpandedAnswers((prev) => ({
@@ -1118,6 +1116,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     <span>轉移所有權給用戶</span>
                   </button>
                 )}
+
+                {/* 管理員專屬：創新提案 ⇄ 軟體作品 轉性按鍵 */}
+                {isAdmin && question.status !== 'delisted' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertWorkTypeModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg border border-purple-400 bg-purple-50 hover:bg-purple-600 text-purple-900 hover:text-white font-black text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                    title="管理員【轉性按鍵】：將此項目在「創新提案」與「軟體作品」之間雙向轉性"
+                  >
+                    <ArrowLeftRight className="w-3 h-3 text-purple-600 group-hover:text-white" />
+                    <span>轉性 (屬性轉換)</span>
+                  </button>
+                )}
               </div>
               <span className="text-[11px] text-stone-400">發布於 {question.createdAt.split('T')[0]}</span>
             </div>
@@ -1142,10 +1153,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   })()}
                 </span>
               </span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3.5 h-3.5 text-stone-400" />
-                <span>{(liveQuestion.views || liveQuestion.viewsCount || question.views || 0).toLocaleString()} 次瀏覽</span>
-              </span>
+
               <span className="flex items-center gap-1 text-amber-700 font-bold">
                 <Award className="w-3.5 h-3.5" />
                 <span>{solutionAnswers.length} 個方案</span>
@@ -1396,7 +1404,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                   >
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>到網站支持</span>
+                    <span>前往網站</span>
                   </a>
                 </div>
               )}
@@ -3806,6 +3814,25 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           question={liveQuestion || question}
           onSuccess={() => {
             setIsTransferModalOpen(false);
+          }}
+        />
+      )}
+
+      {isConvertWorkTypeModalOpen && (
+        <AdminConvertWorkTypeModal
+          isOpen={isConvertWorkTypeModalOpen}
+          question={liveQuestion || question}
+          onClose={() => setIsConvertWorkTypeModalOpen(false)}
+          onSuccess={(updatedList) => {
+            setIsConvertWorkTypeModalOpen(false);
+            const updated = updatedList[0];
+            if (updated && addNotification) {
+              addNotification({
+                title: '轉性成功',
+                message: `已成功將「${updated.appName || updated.title}」轉性為${updated.postType === 'vibecoding_app' ? '「軟體作品」' : '「創新提案」'}！`,
+                type: 'system',
+              });
+            }
           }}
         />
       )}

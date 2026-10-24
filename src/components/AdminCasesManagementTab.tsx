@@ -107,19 +107,25 @@ export const AdminCasesManagementTab: React.FC<{
   const solvedCasesCount = casesList.filter((c) => c.status === 'solved').length;
   const disputedCasesCount = casesList.filter((c) => c.status === 'disputed').length;
 
-  const filteredCases = casesList.filter((item) => {
-    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+  const filteredCases = casesList
+    .filter((item) => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = item.title.toLowerCase().includes(q);
-      const matchQ = item.questionerName.toLowerCase().includes(q);
-      const matchS = item.solverName.toLowerCase().includes(q);
-      const matchDesc = item.description.toLowerCase().includes(q);
-      return matchTitle || matchQ || matchS || matchDesc;
-    }
-    return true;
-  });
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = item.title.toLowerCase().includes(q);
+        const matchQ = item.questionerName.toLowerCase().includes(q);
+        const matchS = item.solverName.toLowerCase().includes(q);
+        const matchDesc = item.description.toLowerCase().includes(q);
+        return matchTitle || matchQ || matchS || matchDesc;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const timeB = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeA = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (Number.isFinite(timeA) ? timeA : 0) - (Number.isFinite(timeB) ? timeB : 0);
+    });
   const pagedCases = usePagedList(filteredCases, 20);
 
   const handleOpenDialogue = (item: (typeof casesList)[0]) => {

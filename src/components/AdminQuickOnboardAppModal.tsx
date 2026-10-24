@@ -31,6 +31,7 @@ import { useApp } from '../context/AppContext';
 import { Question } from '../types';
 import { getAuthHeaders } from '../services/authHeader';
 import { PLATFORM_CURATED_NAME, PLATFORM_CURATED_AVATAR } from '../utils/userDisplay';
+import { stripAppNameFromTitle } from '../utils/titleFormat';
 
 interface AdminQuickOnboardAppModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export const DESTINATION_OPTIONS = [
 export const CATEGORY_OPTIONS = [
   { id: '網站程式', label: '網站程式', icon: Globe },
   { id: 'AI工具', label: 'AI工具', icon: Cpu },
-  { id: '小遊戲', label: '小遊戲', icon: Gamepad2 },
+  { id: '遊戲', label: '遊戲', icon: Gamepad2 },
   { id: '自動化', label: '自動化', icon: Workflow },
   { id: '擴充功能', label: '擴充功能', icon: Puzzle },
 ] as const;
@@ -118,23 +119,56 @@ function extractUrls(text: string): string[] {
   return urls;
 }
 
+function normalizeWebUrl(u: string): string {
+  try {
+    let raw = u.trim();
+    if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+    const pathname = parsed.pathname.replace(/\/+$/, '').toLowerCase();
+    return `${host}${pathname}`;
+  } catch {
+    return u.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '').toLowerCase();
+  }
+}
+
 export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
 }) => {
-  const { createQuestion, showCenterToast, addNotification } = useApp();
+  const { questions, createQuestion, showCenterToast, addNotification } = useApp();
 
   // 模式：單一網址 vs. 批量網址
   const [inputMode, setInputMode] = useState<'single' | 'batch'>('single');
   const [singleUrl, setSingleUrl] = useState('');
   const [batchUrlsText, setBatchUrlsText] = useState('');
 
-  // 預設刊登專區（支援複選）
-  const [defaultDestinations, setDefaultDestinations] = useState<PublishDestination[]>([
-    'vibecoding_app',
-    'innovation_proposal',
-  ]);
+  // 整理全站現有已發布之網址來源（排除下架項目），用於防止重複來源交給 AI 分析
+  const existingPublishedUrls = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; appName?: string }>();
+    for (const q of questions || []) {
+      if (q.status === 'delisted') continue;
+      const candidateUrls = [
+        q.demoUrl,
+        q.externalLink,
+        q.vibeCodingData?.demoUrl,
+        q.vibeCodingData?.externalLink,
+        ...(q.publishedPlatforms || []).map((p) => p?.url),
+      ].filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+
+      for (const u of candidateUrls) {
+        const norm = normalizeWebUrl(u);
+        if (norm && !map.has(norm)) {
+          map.set(norm, { id: q.id, title: q.title, appName: q.appName });
+        }
+      }
+    }
+    return map;
+  }, [questions]);
+
+  // 預設刊登專區（默認不勾選，由管理員依需求選取）
+  const [defaultDestinations, setDefaultDestinations] = useState<PublishDestination[]>([]);
   const [preferredCategory, setPreferredCategory] = useState<SoftwareCategory | ''>('');
 
   // 執行解析狀態
@@ -158,16 +192,33 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   // 提取批量模式辨識出的網址列表
   const parsedBatchUrls = useMemo(() => extractUrls(batchUrlsText), [batchUrlsText]);
 
+  // 單一網址與批量網址重複檢查
+  const singleUrlDuplicate = useMemo(() => {
+    if (!singleUrl.trim()) return null;
+    const norm = normalizeWebUrl(singleUrl);
+    return existingPublishedUrls.get(norm) || null;
+  }, [singleUrl, existingPublishedUrls]);
+
+  const batchDuplicateCount = useMemo(() => {
+    if (parsedBatchUrls.length === 0) return 0;
+    const seen = new Set<string>();
+    let count = 0;
+    for (const u of parsedBatchUrls) {
+      const norm = normalizeWebUrl(u);
+      if (seen.has(norm) || existingPublishedUrls.has(norm)) {
+        count++;
+      }
+      seen.add(norm);
+    }
+    return count;
+  }, [parsedBatchUrls, existingPublishedUrls]);
+
   if (!isOpen) return null;
 
   const toggleDefaultDestination = (dest: PublishDestination) => {
-    setDefaultDestinations((prev) => {
-      if (prev.includes(dest)) {
-        if (prev.length === 1) return prev; // 至少保留一個
-        return prev.filter((d) => d !== dest);
-      }
-      return [...prev, dest];
-    });
+    setDefaultDestinations((prev) =>
+      prev.includes(dest) ? prev.filter((d) => d !== dest) : [...prev, dest]
+    );
   };
 
   const handleReset = () => {
@@ -198,9 +249,10 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     }
 
     const raw = resData.data;
+    const cleanAppName = raw.appName || '未命名軟體';
     return {
-      appName: raw.appName || '未命名軟體',
-      title: raw.title || '無標題',
+      appName: cleanAppName,
+      title: stripAppNameFromTitle(raw.title || '無標題', cleanAppName),
       description: raw.description || '',
       category: raw.category || '網站程式',
       tags: Array.isArray(raw.tags) && raw.tags.length > 0 ? raw.tags : [raw.category || '網站程式'],
@@ -228,6 +280,18 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     if (targetUrls.length === 0) {
       setErrorMessage(inputMode === 'single' ? '請輸入有效的網址' : '請至少輸入一個有效網址（每行一個）');
       return;
+    }
+
+    // 若單一網址與平台現有作品重複，直接阻擋且不交給 AI 分析
+    if (inputMode === 'single') {
+      const norm = normalizeWebUrl(targetUrls[0]);
+      const match = existingPublishedUrls.get(norm);
+      if (match) {
+        setErrorMessage(
+          `此網址來源已在平台發布過（與《${match.appName || match.title}》重複），依社群規範不交給 AI 分析。`
+        );
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -260,21 +324,51 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     setReviewedItems(initialItems);
 
     const updated = [...initialItems];
+    const seenInBatch = new Set<string>();
 
     for (let i = 0; i < targetUrls.length; i++) {
       setCurrentProcessingIndex(i + 1);
+      const url = targetUrls[i];
+      const norm = normalizeWebUrl(url);
+
+      // 檢查 1：是否與全站現有已發布作品重複
+      const existingMatch = existingPublishedUrls.get(norm);
+      if (existingMatch) {
+        updated[i] = {
+          ...updated[i],
+          status: 'error',
+          errorMessage: `此網址來源已在平台發布過（與《${(existingMatch.appName || existingMatch.title).slice(0, 20)}》重複），已略過 AI 分析`,
+          selectedForPublish: false,
+        };
+        setReviewedItems([...updated]);
+        continue; // 不交給 AI 分析！
+      }
+
+      // 檢查 2：是否在當前批量輸入中重複
+      if (seenInBatch.has(norm)) {
+        updated[i] = {
+          ...updated[i],
+          status: 'error',
+          errorMessage: '此網址來源在批次清單中重複，已略過 AI 分析',
+          selectedForPublish: false,
+        };
+        setReviewedItems([...updated]);
+        continue; // 不交給 AI 分析！
+      }
+      seenInBatch.add(norm);
+
       updated[i] = { ...updated[i], status: 'scraping' };
       setReviewedItems([...updated]);
 
       try {
-        const scraped = await scrapeSingleUrl(targetUrls[i]);
+        const scraped = await scrapeSingleUrl(url);
         updated[i] = {
           ...updated[i],
           ...scraped,
           status: 'success',
         };
       } catch (err: any) {
-        console.error(`Scrape failed for ${targetUrls[i]}:`, err);
+        console.error(`Scrape failed for ${url}:`, err);
         updated[i] = {
           ...updated[i],
           status: 'error',
@@ -360,6 +454,12 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       return;
     }
 
+    const withoutDest = toPublish.filter((it) => it.destinations.length === 0);
+    if (withoutDest.length === toPublish.length) {
+      setErrorMessage('請為欲刊登之項目至少勾選一個刊登專區（軟體作品或創新提案）');
+      return;
+    }
+
     setIsPublishing(true);
     let publishedCount = 0;
     let lastCreated: Question | null = null;
@@ -371,11 +471,14 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         const finalAuthorName = (item.authorName && item.authorName.trim()) || PLATFORM_CURATED_NAME;
         const finalAuthorTitle = (item.authorTitle && item.authorTitle.trim()) || '官方審核精選';
 
+        const finalAppName = item.appName.trim() || item.title.trim();
+        const finalTitle = stripAppNameFromTitle(item.title.trim(), finalAppName) || item.title.trim();
+
         // 1. 若刊登至軟體作品
         if (item.destinations.includes('vibecoding_app')) {
           const appQ = createQuestion({
-            appName: item.appName.trim() || item.title.trim(),
-            title: item.title.trim(),
+            appName: finalAppName,
+            title: finalTitle,
             description: item.description.trim(),
             postType: 'vibecoding_app',
             specialZone: 'vibecoding',
@@ -407,8 +510,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
         // 2. 若刊登至創新提案
         if (item.destinations.includes('innovation_proposal')) {
           const propQ = createQuestion({
-            appName: item.appName.trim() || item.title.trim(),
-            title: item.title.trim(),
+            appName: finalAppName,
+            title: finalTitle,
             description: item.description.trim(),
             postType: 'innovation_proposal',
             specialZone: 'create_ideas',
@@ -628,40 +731,45 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
               {/* 網址輸入框 */}
               {inputMode === 'single' ? (
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-black text-stone-700">網站網址</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={singleUrl}
-                      onChange={(e) => setSingleUrl(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !isProcessing && singleUrl.trim()) {
-                          e.preventDefault();
-                          handleStartScraping();
-                        }
-                      }}
-                      placeholder="https://example.com"
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs font-medium text-stone-900 outline-hidden bg-stone-50/50"
-                    />
-                    <button
-                      type="button"
-                      disabled={isProcessing || !singleUrl.trim()}
-                      onClick={handleStartScraping}
-                      className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-stone-300 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>讀取中...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                          <span>開始分析</span>
-                        </>
-                      )}
-                    </button>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-black text-stone-700">網站網址</label>
+                    {singleUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setSingleUrl('')}
+                        className="text-[11px] text-stone-400 hover:text-stone-700 cursor-pointer"
+                      >
+                        清空
+                      </button>
+                    )}
                   </div>
+                  <input
+                    type="url"
+                    value={singleUrl}
+                    onChange={(e) => setSingleUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isProcessing && singleUrl.trim()) {
+                        e.preventDefault();
+                        handleStartScraping();
+                      }
+                    }}
+                    placeholder="https://example.com"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border focus:ring-2 text-xs font-medium text-stone-900 outline-hidden bg-stone-50/50 ${
+                      singleUrlDuplicate
+                        ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/30'
+                        : 'border-stone-300 focus:border-indigo-600 focus:ring-indigo-100'
+                    }`}
+                  />
+                  {singleUrlDuplicate ? (
+                    <p className="text-[11px] text-amber-800 font-bold flex items-center gap-1.5 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>此網址來源已在平台發布過（與《{singleUrlDuplicate.appName || singleUrlDuplicate.title}》重複），系統將不會交由 AI 分析。</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-stone-400">
+                      貼上網址後點擊下方「開始分析」或按 Enter 鍵
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -669,15 +777,21 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                     <label className="text-xs font-black text-stone-700">
                       批量網址列表（每行一個網址）
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                         已辨識：{parsedBatchUrls.length} 個網址
                       </span>
+                      {batchDuplicateCount > 0 && (
+                        <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>含 {batchDuplicateCount} 個重複來源（將自動略過 AI 分析）</span>
+                        </span>
+                      )}
                       {batchUrlsText && (
                         <button
                           type="button"
                           onClick={() => setBatchUrlsText('')}
-                          className="text-[11px] text-stone-400 hover:text-stone-700"
+                          className="text-[11px] text-stone-400 hover:text-stone-700 cursor-pointer"
                         >
                           清空
                         </button>
@@ -688,32 +802,12 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                     rows={6}
                     value={batchUrlsText}
                     onChange={(e) => setBatchUrlsText(e.target.value)}
-                    placeholder={`https://cursor.com\nhttps://linear.app\nhttps://notion.so\nhttps://example.com`}
+                    placeholder={`https://cursor.com\nhttps://linear.app\nhttps://notion.so`}
                     className="w-full p-3 rounded-2xl border border-stone-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-xs font-mono text-stone-900 outline-hidden bg-stone-50/50 resize-y leading-relaxed"
                   />
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-stone-400">
-                      貼上多個網址後，AI 會自動爬取各網站封面快照並解析中英文資訊
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isProcessing || parsedBatchUrls.length === 0}
-                      onClick={handleStartScraping}
-                      className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-stone-300 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>批量分析中 ({currentProcessingIndex}/{totalToProcess})...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                          <span>開始批量分析 ({parsedBatchUrls.length})</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <p className="text-[11px] text-stone-400">
+                    貼上多個網址後，點擊下方「開始批量分析」即可由 AI 自動爬取各網站封面快照並解析資訊（若有重複來源將自動略過）
+                  </p>
                 </div>
               )}
 
@@ -954,12 +1048,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                               type="button"
                               onClick={() => {
                                 const cur = activeItem.destinations;
-                                if (cur.includes(dest.id)) {
-                                  if (cur.length === 1) return;
-                                  updateActiveItem({ destinations: cur.filter((d) => d !== dest.id) });
-                                } else {
-                                  updateActiveItem({ destinations: [...cur, dest.id] });
-                                }
+                                updateActiveItem({
+                                  destinations: cur.includes(dest.id)
+                                    ? cur.filter((d) => d !== dest.id)
+                                    : [...cur, dest.id],
+                                });
                               }}
                               className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
                                 isChecked
@@ -990,7 +1083,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
 
                       <div className="space-y-1">
                         <label className="block text-[11px] font-black text-stone-700">
-                          作品展示標題 (繁體中文)
+                          作品展示標題 (繁體中文，避免出現作品名稱)
                         </label>
                         <input
                           type="text"

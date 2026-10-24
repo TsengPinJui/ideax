@@ -976,8 +976,35 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   // 計算累積第三方撥款入帳金額
   const totalPaidOutAmount = currentUser.totalPaidOut || 0;
 
-  // Compute stats
-  const userQuestions = questions.filter((q) => q.authorId === currentUser.id);
+  // 時間解析輔助函式（支援 Firestore Timestamp、ISO 日期與數字格式）
+  const parseQuestionTime = (val: any): number => {
+    if (!val) return 0;
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    if (typeof val === 'object') {
+      if (typeof val.toMillis === 'function') return val.toMillis();
+      if (typeof val.toDate === 'function') return val.toDate().getTime();
+      if (typeof val.seconds === 'number') return val.seconds * 1000;
+    }
+    if (typeof val === 'string') {
+      const parsed = new Date(val).getTime();
+      if (Number.isFinite(parsed)) return parsed;
+      const fallback = new Date(val.replace(/\//g, '-')).getTime();
+      if (Number.isFinite(fallback)) return fallback;
+    }
+    return 0;
+  };
+
+  const sortQuestionsByNewest = (a: Question, b: Question) => {
+    const timeB = parseQuestionTime(b.createdAt);
+    const timeA = parseQuestionTime(a.createdAt);
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || '').localeCompare(a.id || '');
+  };
+
+  // Compute stats（問題管理預設按發布時間由新到舊排序）
+  const userQuestions = useMemo(() => {
+    return questions.filter((q) => q.authorId === currentUser.id).sort(sortQuestionsByNewest);
+  }, [questions, currentUser.id]);
   const userAnswers = answers.filter((a) => a.solverId === currentUser.id);
   const userSolutionAnswers = userAnswers.filter((a) => a.type === 'solution');
   const userAcceptedAnswers = userAnswers.filter((a) => a.isAccepted);
@@ -1088,7 +1115,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   }, [bookmarkedQuestionIds, likedQuestionIds, sameQuestionIds, secondedQuestionIds, answers, likedDiscussionAnswerIds]);
 
   const allFavoriteQuestions = useMemo(() => {
-    return questions.filter((q) => favoriteQuestionIds.includes(q.id));
+    return questions.filter((q) => favoriteQuestionIds.includes(q.id)).sort(sortQuestionsByNewest);
   }, [questions, favoriteQuestionIds]);
 
   const filteredFavoriteQuestions = useMemo(() => {
@@ -1103,13 +1130,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   }, [allFavoriteQuestions, favoriteFilter, bookmarkedQuestionIds, likedQuestionIds, sameQuestionIds, secondedQuestionIds, answers, likedDiscussionAnswerIds]);
 
   const bookmarkedQuestions = allFavoriteQuestions;
-  const clientQuestions = questions.filter((q) => {
-    if (q.authorId === currentUser.id) return false;
-    const hasMyAnswer = answers.some((a) => a.questionId === q.id && a.solverId === currentUser.id);
-    const isInvited = q.invitedSolverIds?.includes(currentUser.id);
-    const hasChat = conversations.some((c) => c.questionId === q.id && c.participantId === currentUser.id);
-    return hasMyAnswer || isInvited || hasChat;
-  });
+  const clientQuestions = useMemo(() => {
+    return questions
+      .filter((q) => {
+        if (q.authorId === currentUser.id) return false;
+        const hasMyAnswer = answers.some((a) => a.questionId === q.id && a.solverId === currentUser.id);
+        const isInvited = q.invitedSolverIds?.includes(currentUser.id);
+        const hasChat = conversations.some((c) => c.questionId === q.id && c.participantId === currentUser.id);
+        return hasMyAnswer || isInvited || hasChat;
+      })
+      .sort(sortQuestionsByNewest);
+  }, [questions, currentUser.id, answers, conversations]);
 
   // -------------------------------------------------------------
   // 方案管理核心資料聚合（涵蓋多階段交付方案、懸賞方案與私聊自訂方案）
@@ -5087,7 +5118,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs flex-wrap gap-2">
                         <div className="flex items-center gap-3 text-stone-500">
                           <span>解答數：<strong className="text-stone-900">{q.answersCount}</strong> 則</span>
-                          <span>觀看數：<strong className="text-stone-900">{(q.views ?? q.viewsCount ?? 0).toLocaleString()}</strong> 次</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {!q.isSimulated && (q.postType === 'vibecoding_app' || q.postType === 'innovation_proposal') && (

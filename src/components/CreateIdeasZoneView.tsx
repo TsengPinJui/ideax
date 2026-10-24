@@ -32,7 +32,7 @@ import {
   ExternalLink,
   LayoutGrid,
 } from 'lucide-react';
-import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
+import { StarSeasonProposal, STAR_SEASON_TRACKS, OFFICIAL_COMPETITION_TRACKS } from '../types/competition';
 import { getInnovationProgressStageMeta } from '../types';
 import { useApp } from '../context/AppContext';
 import { mapQuestionsToStarSeasonProposals } from '../utils/questionUtils';
@@ -475,8 +475,11 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   const finalFilteredProposals = useMemo(() => {
     return filteredByTabProposals.filter((p) => {
       // 領域
-      if (selectedTrack !== 'all' && p.track !== selectedTrack) {
-        return false;
+      if (selectedTrack !== 'all') {
+        const canonicalTrack = STAR_SEASON_TRACKS[p.track]?.id || p.track;
+        if (canonicalTrack !== selectedTrack) {
+          return false;
+        }
       }
       // 關鍵字
       if (searchKw.trim()) {
@@ -724,10 +727,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 <option value="all" className="bg-white text-stone-900 font-bold">
                   全部分類 ({activeProposals.length})
                 </option>
-                {Object.entries(STAR_SEASON_TRACKS).map(([key, track]) => {
-                  const count = activeProposals.filter((p) => p.track === key).length;
+                {OFFICIAL_COMPETITION_TRACKS.map((track) => {
+                  const count = activeProposals.filter((p) => (STAR_SEASON_TRACKS[p.track]?.id || p.track) === track.id).length;
                   return (
-                    <option key={key} value={key} className="bg-white text-stone-900 font-bold">
+                    <option key={track.id} value={track.id} className="bg-white text-stone-900 font-bold">
                       {track.name} ({count})
                     </option>
                   );
@@ -902,10 +905,6 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         <span className="flex items-center gap-0.5">
                           <MessageSquare className="w-3 h-3" />
                           {proposal.commentsCount || 0}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <Eye className="w-3 h-3" />
-                          {proposal.viewsCount || 0}
                         </span>
                       </div>
                     </div>
@@ -1204,10 +1203,6 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   {/* Bottom Action Footer */}
                   <div className="flex items-center justify-between pt-1 text-[11px] font-bold text-stone-500">
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-3.5 h-3.5 text-stone-400" />
-                        <span>{proposal.viewsCount || 0}</span>
-                      </span>
                       <span className="flex items-center gap-1">
                         <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
                         <span>{proposal.commentsCount || 0}</span>

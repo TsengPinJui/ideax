@@ -119,7 +119,8 @@ export function safeSetItem(key: string, value: string): boolean {
 
 export function safeSetJSON<T>(key: string, data: T): boolean {
   try {
-    const serialized = JSON.stringify(data);
+    const light = stripHeavyFields(data);
+    const serialized = JSON.stringify(light);
     return safeSetItem(key, serialized);
   } catch (err) {
     console.warn(`[safeStorage] Failed to serialize for "${key}":`, err);
@@ -157,22 +158,22 @@ export function safeRemoveItem(key: string): void {
 }
 
 /**
- * Monkey-patches window.localStorage.setItem globally to intercept QuotaExceededError
+ * Monkey-patches Storage.prototype.setItem globally to intercept QuotaExceededError
  * and automatically prune legacy items or strip heavy payloads without crashing React.
  */
 export function installStorageQuotaGuard(): void {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === 'undefined') return;
   try {
     pruneStorageQuota();
 
-    if ((window.localStorage as any).__quotaGuarded) return;
+    const targetProto = typeof Storage !== 'undefined' ? Storage.prototype : Object.getPrototypeOf(window.localStorage);
+    if (!targetProto || (targetProto as any).__quotaGuarded) return;
 
-    const storageProto = Object.getPrototypeOf(window.localStorage) || Storage.prototype;
-    const originalSetItem = storageProto.setItem || window.localStorage.setItem;
+    const originalSetItem = targetProto.setItem;
 
-    window.localStorage.setItem = function (key: string, value: string) {
+    targetProto.setItem = function (this: Storage, key: string, value: string) {
       try {
-        originalSetItem.call(window.localStorage, key, value);
+        originalSetItem.call(this, key, value);
       } catch (err: any) {
         const isQuota =
           err?.name === 'QuotaExceededError' ||
@@ -184,13 +185,13 @@ export function installStorageQuotaGuard(): void {
           console.warn(`[safeStorage] QuotaExceededError writing "${key}". Intercepted and recovering...`);
           pruneStorageQuota();
           try {
-            originalSetItem.call(window.localStorage, key, value);
+            originalSetItem.call(this, key, value);
             return;
           } catch {
             try {
               const parsed = JSON.parse(value);
               const light = stripHeavyFields(parsed);
-              originalSetItem.call(window.localStorage, key, JSON.stringify(light));
+              originalSetItem.call(this, key, JSON.stringify(light));
               return;
             } catch {
               console.warn(`[safeStorage] Storage quota exhausted for "${key}". Skipping write to prevent app crash.`);
@@ -201,7 +202,7 @@ export function installStorageQuotaGuard(): void {
         console.warn(`[safeStorage] Error in setItem for "${key}":`, err?.message || err);
       }
     };
-    (window.localStorage as any).__quotaGuarded = true;
+    (targetProto as any).__quotaGuarded = true;
   } catch (initErr) {
     console.warn('[safeStorage] Failed to install storage guard:', initErr);
   }

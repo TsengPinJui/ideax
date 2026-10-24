@@ -57,11 +57,13 @@ interface VibeCodingExhibitionViewProps {
   onSwitchZone?: (zone: SpecialZone) => void;
 }
 
+import { SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
+
 const VIBE_CATEGORIES = [
   { id: 'all', label: '全部分類', icon: LayoutGrid },
   { id: '網站程式', label: '網站程式', icon: Globe },
   { id: 'AI工具', label: 'AI工具', icon: Cpu },
-  { id: '小遊戲', label: '小遊戲', icon: Gamepad2 },
+  { id: '遊戲', label: '遊戲', icon: Gamepad2 },
   { id: '自動化', label: '自動化', icon: Workflow },
   { id: '擴充功能', label: '擴充功能', icon: Puzzle },
 ];
@@ -70,27 +72,21 @@ export const normalizeVibeCategory = (raw: string): string => {
   const s = (raw || '').trim();
   if (s === '網站程式' || s === '網站功能' || s === 'Web 應用程式' || s === 'Web應用') return '網站程式';
   if (s === 'AI工具' || s === 'AI 智慧工具' || s === 'AI Agent 助手') return 'AI工具';
-  if (s === '小遊戲' || s === '創新互動與遊戲') return '小遊戲';
+  if (s === '遊戲' || s === '小遊戲' || s === '創新互動與遊戲') return '遊戲';
   if (s === '自動化' || s === '自動化工作流' || s === '自動化流程' || s === '產業自動化流程') return '自動化';
   if (s === '擴充功能' || s === '瀏覽器擴充功能' || s === '效率工具') return '擴充功能';
   return s;
 };
 
+// 每個軟體作品嚴格只屬於單一分類
+export const getQuestionVibeCategory = (q: Question): string => {
+  const raw = (Array.isArray(q.subcategories) && q.subcategories[0]) || q.subcategory || '網站程式';
+  const normalized = normalizeVibeCategory(raw);
+  return ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'].includes(normalized) ? normalized : '網站程式';
+};
+
 export const getQuestionVibeCategories = (q: Question): string[] => {
-  const rawList =
-    Array.isArray(q.subcategories) && q.subcategories.length > 0
-      ? q.subcategories
-      : q.subcategory
-      ? [q.subcategory]
-      : ['網站程式'];
-  const normalized = Array.from(
-    new Set(
-      rawList
-        .map(normalizeVibeCategory)
-        .filter((c) => ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'].includes(c))
-    )
-  );
-  return normalized.length > 0 ? normalized.slice(0, 3) : ['網站程式'];
+  return [getQuestionVibeCategory(q)];
 };
 
 export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> = ({
@@ -129,8 +125,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
+  const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('latest');
-  const [viewMode, setViewMode] = useState<MarketViewMode>('large');
+  const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
 
   const vibeApps = useMemo(() => {
@@ -162,12 +159,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       if (c.id !== 'all') counts[c.id] = 0;
     });
     vibeApps.forEach((q) => {
-      const cats = getQuestionVibeCategories(q);
-      cats.forEach((cat) => {
-        if (counts[cat] !== undefined) {
-          counts[cat] += 1;
-        }
-      });
+      const cat = getQuestionVibeCategory(q);
+      if (counts[cat] !== undefined) {
+        counts[cat] += 1;
+      }
     });
     return counts;
   }, [vibeApps]);
@@ -180,10 +175,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     }
 
     if (selectedSubcat !== 'all') {
-      list = list.filter((q) => {
-        const cats = getQuestionVibeCategories(q);
-        return cats.includes(selectedSubcat);
-      });
+      list = list.filter((q) => getQuestionVibeCategory(q) === selectedSubcat);
+      if (selectedTertiary !== 'all') {
+        list = list.filter((q) => (q.tertiaryCategory || '') === selectedTertiary);
+      }
     }
 
     if (searchQuery.trim()) {
@@ -309,18 +304,19 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           className="bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 p-3 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 group"
         >
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-28 sm:w-36 aspect-video rounded-xl overflow-hidden bg-stone-900 shrink-0 relative">
-              <img src={coverImg} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" />
+            <div className="w-28 sm:w-36 aspect-video rounded-xl overflow-hidden bg-stone-800/80 shrink-0 relative">
+              <img src={coverImg} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-90 brightness-115" />
               <img
                 src={coverImg}
                 alt={app.title}
-                className="relative w-full h-full object-contain"
+                className="relative w-full h-full object-contain brightness-[1.08] contrast-[1.02]"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
                 }}
               />
-              <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-black/75 text-white backdrop-blur-xs">
-                {primaryCategory}
+              <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-black/75 text-white backdrop-blur-xs flex items-center gap-0.5">
+                <span>{primaryCategory}</span>
+                {app.tertiaryCategory && <span className="text-amber-300">› {app.tertiaryCategory}</span>}
               </span>
             </div>
 
@@ -422,8 +418,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             heightClass="aspect-video"
           >
             <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10">
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
-                {primaryCategory}
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
+                <span>{primaryCategory}</span>
+                {app.tertiaryCategory && <span className="text-amber-300 font-bold">› {app.tertiaryCategory}</span>}
               </span>
             </div>
 
@@ -519,8 +516,14 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           {/* Top Overlay Badges */}
           <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none z-10">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
-                {primaryCategory}
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
+                <span>軟體 › {primaryCategory}</span>
+                {app.tertiaryCategory && (
+                  <>
+                    <span className="text-stone-400">›</span>
+                    <span className="text-amber-300 font-bold">{app.tertiaryCategory}</span>
+                  </>
+                )}
               </span>
             </div>
 
@@ -665,10 +668,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           {/* Bottom Action Footer */}
           <div className="flex items-center justify-between pt-1 text-[11px] font-bold text-stone-500">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1" title="瀏覽次數">
-                <Eye className="w-3.5 h-3.5 text-stone-400" />
-                <span>{app.views || 0}</span>
-              </span>
               <span className="flex items-center gap-1" title="討論數">
                 <MessageCircle className="w-3.5 h-3.5 text-stone-400" />
                 <span>{discussionsCount}</span>
@@ -686,7 +685,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   title="開啟線上試用網址"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  <span>到網站支持</span>
+                  <span>前往網站</span>
                 </a>
               )}
               <button
@@ -785,7 +784,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         {showZoneHelp && (
           <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-1.5 animate-in fade-in duration-150">
             <p className="text-xs font-medium text-stone-700 leading-relaxed">
-              收錄網站程式、AI工具、小遊戲、自動化與擴充功能，可直接試用、留言回饋或給予開發者點數支持。
+              收錄網站程式、AI工具、遊戲、自動化與擴充功能，可直接試用、留言回饋或給予開發者點數支持。
             </p>
             <div className="text-[11px] text-indigo-800 font-bold">
               累計 {totalLikes.toLocaleString()} 個讚 · 累計支持 {totalSupportPoints.toLocaleString()} 點
@@ -802,6 +801,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 value={selectedSubcat}
                 onChange={(e) => {
                   setSelectedSubcat(e.target.value);
+                  setSelectedTertiary('all');
                   setActiveTab('all');
                 }}
                 className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
@@ -834,6 +834,47 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <span className="truncate">我的 Like ({favoriteCount})</span>
             </button>
           </div>
+
+          {/* 第三級分類標籤（例如：軟體 > 遊戲 > 模擬） */}
+          {selectedSubcat !== 'all' && (SOFTWARE_TERTIARY_CATEGORIES[selectedSubcat as SoftwareCategory] || []).length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs animate-in fade-in duration-150">
+              <span className="text-[10px] font-bold text-indigo-900 bg-indigo-100/90 border border-indigo-200 px-2 py-0.5 rounded-md shrink-0">
+                軟體 › {selectedSubcat} ›
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedTertiary('all')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs shrink-0 transition-all cursor-pointer ${
+                  selectedTertiary === 'all'
+                    ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                    : 'bg-white/90 hover:bg-white text-stone-700 border border-indigo-200'
+                }`}
+              >
+                全部 ({categoryCounts[selectedSubcat] ?? 0})
+              </button>
+              {(SOFTWARE_TERTIARY_CATEGORIES[selectedSubcat as SoftwareCategory] || []).map((tCat) => {
+                const isTSelected = selectedTertiary === tCat;
+                const tCount = vibeApps.filter(
+                  (q) => getQuestionVibeCategory(q) === selectedSubcat && q.tertiaryCategory === tCat
+                ).length;
+                return (
+                  <button
+                    key={tCat}
+                    type="button"
+                    onClick={() => setSelectedTertiary(tCat)}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+                      isTSelected
+                        ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                        : 'bg-white/90 hover:bg-white text-stone-700 border border-indigo-200'
+                    }`}
+                  >
+                    <span>{tCat}</span>
+                    <span className="text-[10px] opacity-75 font-mono font-normal">({tCount})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5">

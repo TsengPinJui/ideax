@@ -27,33 +27,50 @@ import {
 interface AdminTransferWorkOwnershipModalProps {
   isOpen: boolean;
   onClose: () => void;
-  question: Question | null;
+  question?: Question | null;
+  batchQuestions?: Question[];
   onSuccess?: (updatedQuestion: Question) => void;
+  onSuccessBatch?: (updatedQuestions: Question[]) => void;
 }
 
 export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershipModalProps> = ({
   isOpen,
   onClose,
   question,
+  batchQuestions,
   onSuccess,
+  onSuccessBatch,
 }) => {
-  const { availableUsers, transferQuestionOwnership } = useApp();
+  const { availableUsers, transferQuestionOwnership, showCenterToast } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const totalTips = question?.supportPoints || 0;
-  const initialWithdrawn = question?.supportPointsWithdrawn || 0;
+  const isBatchMode = Boolean(batchQuestions && batchQuestions.length > 0);
+  const activeQuestions = useMemo(() => {
+    if (isBatchMode) return batchQuestions || [];
+    return question ? [question] : [];
+  }, [isBatchMode, batchQuestions, question]);
+
+  const singleQuestion = activeQuestions[0] || null;
+
+  const totalTips = useMemo(() => {
+    return activeQuestions.reduce((sum, q) => sum + (q.supportPoints || 0), 0);
+  }, [activeQuestions]);
+
+  const initialWithdrawn = singleQuestion?.supportPointsWithdrawn || 0;
   const [withdrawnAmountInput, setWithdrawnAmountInput] = useState<string>(String(initialWithdrawn));
 
   useEffect(() => {
-    if (question) {
-      setWithdrawnAmountInput(String(question.supportPointsWithdrawn || 0));
+    if (singleQuestion && !isBatchMode) {
+      setWithdrawnAmountInput(String(singleQuestion.supportPointsWithdrawn || 0));
     }
-  }, [question?.id, question?.supportPointsWithdrawn]);
+  }, [singleQuestion?.id, singleQuestion?.supportPointsWithdrawn, isBatchMode]);
 
-  const parsedWithdrawn = Math.min(totalTips, Math.max(0, parseInt(withdrawnAmountInput, 10) || 0));
+  const parsedWithdrawn = isBatchMode
+    ? activeQuestions.reduce((sum, q) => sum + (q.supportPointsWithdrawn || 0), 0)
+    : Math.min(totalTips, Math.max(0, parseInt(withdrawnAmountInput, 10) || 0));
   const transferableTips = Math.max(0, totalTips - parsedWithdrawn);
 
   // 過濾可用用戶清單（排除訪客與已註銷帳號）
@@ -74,7 +91,7 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
     return eligibleUsers.find((u) => u.id === selectedUserId);
   }, [eligibleUsers, selectedUserId]);
 
-  if (!isOpen || !question) return null;
+  if (!isOpen || activeQuestions.length === 0) return null;
 
   const handleConfirmTransfer = async () => {
     if (!selectedUser) {
@@ -86,16 +103,54 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
     setIsSubmitting(true);
 
     try {
-      const res = await transferQuestionOwnership(question.id, selectedUser, {
-        alreadyWithdrawnPoints: parsedWithdrawn,
-      });
-      if (res.success && res.updatedQuestion) {
-        if (onSuccess) {
-          onSuccess(res.updatedQuestion);
+      if (isBatchMode) {
+        // 批次轉移全部選取項目
+        const updatedList: Question[] = [];
+        let failCount = 0;
+        for (const q of activeQuestions) {
+          try {
+            const res = await transferQuestionOwnership(q.id, selectedUser, {
+              alreadyWithdrawnPoints: q.supportPointsWithdrawn || 0,
+            });
+            if (res.success && res.updatedQuestion) {
+              updatedList.push(res.updatedQuestion);
+            } else {
+              failCount++;
+            }
+          } catch {
+            failCount++;
+          }
         }
-        onClose();
+
+        if (updatedList.length > 0) {
+          if (onSuccessBatch) {
+            onSuccessBatch(updatedList);
+          }
+          if (onSuccess) {
+            onSuccess(updatedList[0]);
+          }
+          showCenterToast(
+            '批次所有權轉移完成！',
+            `已成功將 ${updatedList.length} 個作品轉移至【${selectedUser.name}】名下！${failCount > 0 ? `（其中 ${failCount} 個失敗）` : ''}`,
+            { type: 'success', duration: 4000 }
+          );
+          onClose();
+        } else {
+          setErrorMessage('批次轉移失敗，請檢查權限或連線後重試');
+        }
       } else {
-        setErrorMessage(res.message || '轉移失敗，請稍後再試');
+        // 單一轉移
+        const res = await transferQuestionOwnership(singleQuestion.id, selectedUser, {
+          alreadyWithdrawnPoints: parsedWithdrawn,
+        });
+        if (res.success && res.updatedQuestion) {
+          if (onSuccess) {
+            onSuccess(res.updatedQuestion);
+          }
+          onClose();
+        } else {
+          setErrorMessage(res.message || '轉移失敗，請稍後再試');
+        }
       }
     } catch (err: any) {
       setErrorMessage(err?.message || '轉移作業異常，請確認伺服器連線');
@@ -117,14 +172,16 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
               <UserCheck className="w-5 h-5 text-amber-700" />
             </div>
             <div>
-              <h3 className="text-base font-black text-stone-900 flex items-center gap-1.5">
-                <span>轉移作品所有權至用戶名下</span>
+              <h3 className="text-base font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                <span>{isBatchMode ? '批次轉移作品所有權至用戶名下' : '轉移作品所有權至用戶名下'}</span>
                 <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                  管理員權限
+                  {isBatchMode ? `共 ${activeQuestions.length} 個項目` : '管理員權限'}
                 </span>
               </h3>
               <p className="text-xs text-stone-500">
-                將此作品移交給指定用戶，等同用戶自己發布的提案，可隨時事後編輯
+                {isBatchMode
+                  ? `將選取的 ${activeQuestions.length} 個作品一次移交給指定用戶，等同用戶自己發布的提案，可隨時事後編輯`
+                  : '將此作品移交給指定用戶，等同用戶自己發布的提案，可隨時事後編輯'}
               </p>
             </div>
           </div>
@@ -140,39 +197,89 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
 
         {/* Modal 主體內容 */}
         <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-          {/* 目標作品摘要卡片 */}
-          <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-            <div className="text-[11px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-stone-400" />
-              <span>當前轉移作品：</span>
+          {/* 目標作品摘要卡片 (單一或批次清單) */}
+          {isBatchMode ? (
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-black text-stone-600 uppercase tracking-wider">
+                <span className="flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5 text-stone-400" />
+                  <span>已選取待轉移作品清單（共 {activeQuestions.length} 項）：</span>
+                </span>
+                <span className="text-amber-800 font-mono font-bold">
+                  累積總打賞：{totalTips.toLocaleString()} 點
+                </span>
+              </div>
+              <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
+                {activeQuestions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="p-2.5 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="w-5 h-5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-bold flex items-center justify-center shrink-0">
+                        #{idx + 1}
+                      </span>
+                      {q.coverImage && (
+                        <img
+                          src={q.coverImage}
+                          alt=""
+                          className="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0 bg-stone-900"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-stone-900 truncate">
+                          {q.appName ? `【${q.appName}】${q.title}` : q.title}
+                        </div>
+                        <div className="text-[10px] text-stone-400 flex items-center gap-1.5">
+                          <span>{q.subcategory || q.category}</span>
+                          <span>·</span>
+                          <span>原發布：{q.authorName || '平台嚴選'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {q.supportPoints && q.supportPoints > 0 ? (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 shrink-0 font-bold">
+                        +{q.supportPoints} 點
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex items-start gap-3">
-              {question.coverImage && (
-                <img
-                  src={question.coverImage}
-                  alt={question.title}
-                  className="w-16 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-stone-900"
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {question.appName && (
-                    <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
-                      {question.appName}
-                    </span>
-                  )}
-                  <h4 className="text-xs sm:text-sm font-black text-stone-900 truncate">
-                    {question.title}
-                  </h4>
-                </div>
-                <div className="text-[11px] text-stone-500 flex items-center gap-2 mt-1">
-                  <span>分類：{question.subcategory || question.category}</span>
-                  <span>·</span>
-                  <span>當前發布者：<strong className="text-amber-800 font-bold">{question.authorName || '平台嚴選'}</strong></span>
+          ) : singleQuestion ? (
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+              <div className="text-[11px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5 text-stone-400" />
+                <span>當前轉移作品：</span>
+              </div>
+              <div className="flex items-start gap-3">
+                {singleQuestion.coverImage && (
+                  <img
+                    src={singleQuestion.coverImage}
+                    alt={singleQuestion.title}
+                    className="w-16 h-12 rounded-xl object-cover border border-stone-200 shrink-0 bg-stone-900"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {singleQuestion.appName && (
+                      <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
+                        {singleQuestion.appName}
+                      </span>
+                    )}
+                    <h4 className="text-xs sm:text-sm font-black text-stone-900 truncate">
+                      {singleQuestion.title}
+                    </h4>
+                  </div>
+                  <div className="text-[11px] text-stone-500 flex items-center gap-2 mt-1">
+                    <span>分類：{singleQuestion.subcategory || singleQuestion.category}</span>
+                    <span>·</span>
+                    <span>當前發布者：<strong className="text-amber-800 font-bold">{singleQuestion.authorName || '平台嚴選'}</strong></span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
           {/* 附帶打賞金流與可提領額度結算 */}
           <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2.5">
@@ -187,23 +294,33 @@ export const AdminTransferWorkOwnershipModal: React.FC<AdminTransferWorkOwnershi
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-white/90 border border-stone-200 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-stone-500">
-                  <span>原發布者已提領金額：</span>
-                  <span className="text-[10px] text-rose-600 font-mono font-bold">(不計入新受讓者)</span>
+              {!isBatchMode ? (
+                <div className="p-2.5 rounded-xl bg-white/90 border border-stone-200 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-stone-500">
+                    <span>原發布者已提領金額：</span>
+                    <span className="text-[10px] text-rose-600 font-mono font-bold">(不計入新受讓者)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={0}
+                      max={totalTips}
+                      value={withdrawnAmountInput}
+                      onChange={(e) => setWithdrawnAmountInput(e.target.value)}
+                      className="w-full px-2 py-1 rounded-lg border border-stone-200 text-xs font-mono font-bold text-stone-700 focus:border-amber-500 focus:outline-hidden bg-stone-50"
+                    />
+                    <span className="text-xs text-stone-500 shrink-0 font-medium">點</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={0}
-                    max={totalTips}
-                    value={withdrawnAmountInput}
-                    onChange={(e) => setWithdrawnAmountInput(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg border border-stone-200 text-xs font-mono font-bold text-stone-700 focus:border-amber-500 focus:outline-hidden bg-stone-50"
-                  />
-                  <span className="text-xs text-stone-500 shrink-0 font-medium">點</span>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-white/90 border border-stone-200 space-y-1">
+                  <span className="text-[11px] text-stone-500 font-bold block">原累積已提領額度：</span>
+                  <div className="text-base font-black font-mono text-stone-700">
+                    {parsedWithdrawn.toLocaleString()} 點
+                  </div>
+                  <span className="text-[10px] text-stone-400 block">各作品原已提領部分不重覆計入</span>
                 </div>
-              </div>
+              )}
 
               <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 space-y-1">
                 <span className="text-[11px] text-emerald-800 font-bold block">新受讓者之可提領賞金：</span>

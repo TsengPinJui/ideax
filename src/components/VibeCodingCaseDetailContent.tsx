@@ -646,12 +646,6 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           </div>
 
           <div className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5 text-sky-600" />
-            <span className="font-mono font-bold text-stone-800">{(question.views || 0).toLocaleString()}</span>
-            <span>次瀏覽</span>
-          </div>
-
-          <div className="flex items-center gap-1">
             <MessageCircle className="w-3.5 h-3.5 text-indigo-600" />
             <span className="font-mono font-bold text-stone-800">{discussionsCount}</span>
             <span>則留言</span>

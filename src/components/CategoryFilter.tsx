@@ -138,64 +138,62 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   const hasActiveSubFilter = selectedLevel !== '全部' || Boolean(searchQuery.trim());
 
   return (
-    <div className="space-y-3">
-      {/* Primary Bar: Categories (Left) + Sort, Filter Toggle & View Mode (Right) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 lg:gap-4 pb-2.5 md:pb-3 border-b border-stone-200/80">
-        {/* 1. Main Category Horizontal Bar (含全部分類與特定主題專區切換) */}
-        <div id="onboarding-step-1-categories" className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
-          <button
-            onClick={() => {
-              if (onSelectSpecialZone) onSelectSpecialZone('all');
-              setSelectedCategory('全部');
-              setSelectedSubcategory('全部');
-            }}
-            className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer border ${
+    <div className="space-y-2.5">
+      {/* 1. 分類選取列：全寬展示，確保所有分類（全部、創新創業、專業問題、學術探討、日常疑難）清楚可見且隨時可直接點擊 */}
+      <div id="onboarding-step-1-categories" className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none py-1 -mx-1 px-1">
+        <button
+          onClick={() => {
+            if (onSelectSpecialZone) onSelectSpecialZone('all');
+            setSelectedCategory('全部');
+            setSelectedSubcategory('全部');
+          }}
+          className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 ${
+            selectedCategory === '全部' && (!specialZone || specialZone === 'all')
+              ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-black ring-2 ring-amber-200'
+              : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200'
+          }`}
+        >
+          <span>全部</span>
+          <span
+            className={`text-[10px] md:text-xs font-mono font-bold ${
               selectedCategory === '全部' && (!specialZone || specialZone === 'all')
-                ? 'bg-stone-200 text-stone-950 border-stone-300 shadow-2xs font-black'
-                : 'bg-transparent text-stone-600 hover:text-stone-950 hover:bg-stone-100 border-transparent'
+                ? 'text-stone-950 font-black'
+                : 'text-stone-400'
             }`}
           >
-            全部{' '}
+            {totalCount}
+          </span>
+        </button>
+
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => {
+              if (onSelectSpecialZone) onSelectSpecialZone('all');
+              setSelectedCategory(cat);
+              setSelectedSubcategory('全部');
+            }}
+            className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border shrink-0 ${
+              selectedCategory === cat && (!specialZone || specialZone === 'all')
+                ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-black ring-2 ring-amber-200'
+                : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200 hover:border-stone-300'
+            }`}
+          >
+            <span>{cat}</span>
             <span
-              className={`text-[11px] md:text-xs font-mono ml-0.5 ${
-                selectedCategory === '全部' && (!specialZone || specialZone === 'all')
-                  ? 'text-stone-800 font-black'
-                  : 'text-stone-400'
+              className={`text-[10px] md:text-xs font-mono font-bold ${
+                selectedCategory === cat ? 'text-stone-950 font-black' : 'text-stone-400'
               }`}
             >
-              {totalCount}
+              {categoryCounts ? (categoryCounts[cat] ?? 0) : 0}
             </span>
           </button>
+        ))}
+      </div>
 
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                if (onSelectSpecialZone) onSelectSpecialZone('all');
-                setSelectedCategory(cat);
-                setSelectedSubcategory('全部');
-              }}
-              className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedCategory === cat && (!specialZone || specialZone === 'all')
-                  ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                  : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
-              }`}
-            >
-              <span>{cat}</span>
-              <span
-                className={`text-[10px] md:text-xs font-mono ${
-                  selectedCategory === cat ? 'text-stone-900 font-black' : 'text-stone-400'
-                }`}
-              >
-                {categoryCounts ? (categoryCounts[cat] ?? 0) : 0}
-              </span>
-            </button>
-          ))}
-          {/* 分類清單結束 */}
-        </div>
-
-        {/* 2. Right Controls: Sort + Advanced Filter Toggle + View Mode */}
-        <div id="onboarding-step-2-search" className="flex items-center justify-between lg:justify-end gap-1.5 sm:gap-2.5 overflow-x-auto scrollbar-none">
+      {/* 2. 排序與功能控制列：獨立成排，避免橫向擠壓分類列 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 md:pb-3 border-b border-stone-200/80">
+        <div id="onboarding-step-2-search" className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto scrollbar-none w-full sm:w-auto">
           {/* Sort selector */}
           <div className="inline-flex items-center rounded-full bg-stone-100/90 p-0.5 md:p-1 shrink-0">
             <span className="pl-2.5 pr-1 text-[11px] sm:text-xs md:text-sm font-bold text-stone-500 whitespace-nowrap select-none">

@@ -675,7 +675,6 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                         <span>發布時間：{new Date(q.createdAt).toLocaleDateString('zh-TW')}</span>
                         <div className="flex items-center gap-3">
                           <span>已收方案：<strong className="text-stone-800 font-mono">{q.answersCount || 0}</strong> 個</span>
-                          <span>點閱觀看：<strong className="text-stone-800 font-mono">{q.viewsCount || 0}</strong> 次</span>
                         </div>
                       </div>
                     </div>

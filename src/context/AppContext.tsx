@@ -31,6 +31,8 @@ import {
   AIPreliminaryReport,
   AdminSite,
   PublishedPlatform,
+  SOFTWARE_CATEGORIES,
+  INNOVATION_PROPOSAL_CATEGORIES,
 } from '../types';
 import {
   isInitialAdmin,
@@ -81,6 +83,7 @@ import {
 } from '../data/virtualProposalsSeed';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
+import { stripAppNameFromTitle, sanitizeQuestionTitle } from '../utils/titleFormat';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
 import { getFormattedPlatformId, generatePlatformUserId } from '../services/userIdService';
@@ -304,6 +307,7 @@ interface AppContextType {
       description?: string;
       subcategory?: string;
       subcategories?: string[];
+      tertiaryCategory?: string;
       targetGoal?: string;
       referencedPainPoint?: string;
       tags?: string[];
@@ -337,6 +341,24 @@ interface AppContextType {
       alreadyWithdrawnPoints?: number;
     }
   ) => Promise<{ success: boolean; message: string; updatedQuestion?: Question; transferredWithdrawableTips?: number }>;
+  convertQuestionType: (
+    questionId: string,
+    targetType: 'innovation_proposal' | 'vibecoding_app',
+    options?: {
+      category?: Category;
+      subcategory?: string;
+      subcategories?: string[];
+      appName?: string;
+      proposalProgressStage?: string;
+    }
+  ) => Promise<{ success: boolean; message: string; updatedQuestion?: Question }>;
+  batchConvertQuestionsType: (
+    questionIds: string[],
+    targetType: 'innovation_proposal' | 'vibecoding_app',
+    options?: {
+      subcategory?: string;
+    }
+  ) => Promise<{ success: boolean; convertedCount: number; updatedQuestions: Question[] }>;
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -409,10 +431,12 @@ interface AppContextType {
   pendingTicketsCount: number;
   pendingReportsCount: number;
   adminMailBadgeCount: number;
-  delistQuestion: (questionId: string, reason: string, feedback?: string) => void;
+  delistQuestion: (questionId: string, reason: string, feedback?: string, options?: { isDirectDelete?: boolean; alsoDelete?: boolean }) => void;
+  batchDelistQuestions: (questionIds: string[], reason: string, feedback?: string) => Promise<number>;
   relistQuestion: (questionId: string) => void;
   deleteQuestionPermanently: (questionId: string) => Promise<void>;
   deleteQuestionsBatchPermanently: (questionIds: string[]) => Promise<number>;
+  batchSetFeaturedQuestions: (questionIds: string[], isFeatured: boolean) => Promise<number>;
   deleteAnswerPermanently: (answerId: string) => Promise<void>;
   purgeExpiredDelistedQuestions: () => Promise<number>;
   requestAccountDeactivation: (reason?: string, targetUserId?: string) => Promise<void>;
@@ -1518,7 +1542,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (rawQ.vibeCodingData?.publishedPlatforms || [])),
         showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
         cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
-        title: typeof q.title === 'string' ? q.title : '',
+        title: typeof q.title === 'string' ? stripAppNameFromTitle(q.title, q.appName) : '',
         description: typeof q.description === 'string' ? q.description : '',
         tags: Array.isArray(q.tags) ? q.tags : [],
         bounty: typeof q.bounty === 'number' ? q.bounty : 0,
@@ -1918,17 +1942,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return defaultPublicMetricsConfig;
   });
   // 首頁創點子播放區（預留）：雲端 platform_settings/global.homeShowcaseConfig
-  const [homeShowcaseConfig, setHomeShowcaseConfig] = useState<HomeShowcaseConfig>(DEFAULT_HOME_SHOWCASE_CONFIG);
+  const [homeShowcaseConfig, setHomeShowcaseConfig] = useState<HomeShowcaseConfig>(() => {
+    try {
+      const local = localStorage.getItem(`${STORAGE_KEY_PREFIX}home_showcase_config`);
+      if (local) return normalizeHomeShowcase(JSON.parse(local));
+    } catch {}
+    return DEFAULT_HOME_SHOWCASE_CONFIG;
+  });
   const homeShowcaseSavingRef = useRef(0);
   const updateHomeShowcaseConfig = async (config: Partial<HomeShowcaseConfig>) => {
     const before = homeShowcaseConfig;
     const next = normalizeHomeShowcase({ ...before, ...config });
     setHomeShowcaseConfig(next);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}home_showcase_config`, JSON.stringify(next));
+    } catch {}
     homeShowcaseSavingRef.current += 1;
     try {
       const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated, hideHeroTitles: next.hideHeroTitles });
       if (!r.ok) {
         setHomeShowcaseConfig(before);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}home_showcase_config`, JSON.stringify(before));
+        } catch {}
         alert(`首頁播放區設定沒有儲存成功：${(r.message || '請稍後再試').replace(/[。.]$/, '')}。`);
         return false;
       }
@@ -2823,6 +2859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       : {}),
                   }),
               ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
+              title: stripAppNameFromTitle(seedQ && !hasUserUpdates ? seedQ.title : q.title, seedQ?.appName || q.appName),
               tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
               publishedPlatforms: Array.isArray(q.publishedPlatforms)
                 ? q.publishedPlatforms
@@ -5329,7 +5366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const q: Question = {
       id: qId,
       appName: newQ.appName,
-      title: newQ.title || '無標題問題',
+      title: stripAppNameFromTitle(newQ.title, newQ.appName) || '無標題問題',
       description: newQ.description || '',
       category: finalCategory,
       subcategory: finalSubcategory,
@@ -5580,6 +5617,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       description?: string;
       subcategory?: string;
       subcategories?: string[];
+      tertiaryCategory?: string;
       targetGoal?: string;
       referencedPainPoint?: string;
       tags?: string[];
@@ -5669,10 +5707,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedQ: Question = {
       ...currentQ,
       appName: params.appName !== undefined ? params.appName : currentQ.appName,
-      title: params.title !== undefined ? params.title : currentQ.title,
+      title: params.title !== undefined
+        ? stripAppNameFromTitle(params.title, params.appName || currentQ.appName)
+        : stripAppNameFromTitle(currentQ.title, params.appName || currentQ.appName),
       description: params.description !== undefined ? params.description : currentQ.description,
       subcategory: params.subcategory !== undefined ? params.subcategory : currentQ.subcategory,
       subcategories: params.subcategories !== undefined ? params.subcategories : currentQ.subcategories,
+      tertiaryCategory: params.tertiaryCategory !== undefined ? params.tertiaryCategory : currentQ.tertiaryCategory,
       targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,
       referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
       tags: params.tags !== undefined ? params.tags : currentQ.tags,
@@ -5898,6 +5939,152 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `已成功將所有權移轉至 ${cleanNewName}${unwithdrawnTips > 0 ? `，轉入可提領打賞 ${unwithdrawnTips} 點` : ''}`,
       updatedQuestion: updatedQ,
       transferredWithdrawableTips: unwithdrawnTips,
+    };
+  };
+
+  // Action: Convert question type mutually between 'innovation_proposal' and 'vibecoding_app' (創新提案與軟體作品互相轉性)
+  const convertQuestionType = async (
+    questionId: string,
+    targetType: 'innovation_proposal' | 'vibecoding_app',
+    options?: {
+      category?: Category;
+      subcategory?: string;
+      subcategories?: string[];
+      appName?: string;
+      proposalProgressStage?: string;
+    }
+  ): Promise<{ success: boolean; message: string; updatedQuestion?: Question }> => {
+    if (currentUser.role !== 'admin') {
+      return { success: false, message: '權限不足，僅管理員可執行作品屬性轉性操作' };
+    }
+    const targetQ = questions.find((q) => q.id === questionId);
+    if (!targetQ) {
+      return { success: false, message: '找不到目標作品或提案' };
+    }
+
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+    const fromLabel = targetQ.postType === 'vibecoding_app' ? '軟體作品' : (targetQ.postType === 'innovation_proposal' ? '創新提案' : '一般項目');
+    const toLabel = targetType === 'vibecoding_app' ? '軟體作品' : '創新提案';
+
+    const logEntry: ProposalUpdateLog = {
+      id: `log-convert-${Date.now()}`,
+      timestamp: formattedDate,
+      version: targetQ.currentVersion || 'v1.0.0',
+      content: `【屬性轉換】管理員已將作品專區屬性由「${fromLabel}」轉換為「${toLabel}」`,
+      note: `專區屬性切換生效 · 執行人：${currentUser.name || '管理員'}`,
+      authorId: currentUser.id,
+      authorName: currentUser.name || '管理員',
+      authorAvatar: currentUser.avatar,
+      updatedFields: ['作品屬性', '專區歸屬', '主要分類'],
+    };
+
+    let updatedQ: Question;
+
+    if (targetType === 'vibecoding_app') {
+      // 轉為軟體作品 (vibecoding_app)
+      const fallbackSubcat = (targetQ.subcategory && (SOFTWARE_CATEGORIES as readonly string[]).includes(targetQ.subcategory)) ? targetQ.subcategory : '網站程式';
+      const finalSubcat = options?.subcategory || fallbackSubcat;
+      const finalAppName = (options?.appName || targetQ.appName || targetQ.title || '軟體作品').trim();
+      
+      const cleanTags: string[] = (targetQ.tags || [])
+        .filter((t): t is string => Boolean(t) && t !== '創新提案' && t !== '創點子')
+        .concat(['軟體作品', finalSubcat]);
+      const uniqueTags = Array.from(new Set(cleanTags));
+
+      updatedQ = {
+        ...targetQ,
+        postType: 'vibecoding_app',
+        specialZone: 'vibecoding',
+        category: '網站程式',
+        subcategory: finalSubcat,
+        subcategories: [finalSubcat],
+        appName: finalAppName,
+        tags: uniqueTags,
+        vibeCodingData: {
+          ...(targetQ.vibeCodingData || {}),
+          appName: finalAppName,
+          demoUrl: targetQ.demoUrl || targetQ.vibeCodingData?.demoUrl || targetQ.externalLink || '',
+          githubUrl: targetQ.vibeCodingData?.githubUrl || '',
+          techArchitecture: targetQ.techArchitecture || targetQ.vibeCodingData?.techArchitecture || 'Web 網頁應用程式',
+          publishedPlatforms: targetQ.publishedPlatforms || targetQ.vibeCodingData?.publishedPlatforms || (targetQ.demoUrl ? [{ name: 'Web 網頁版', url: targetQ.demoUrl }] : []),
+          coverImageUrl: targetQ.coverImage || targetQ.vibeCodingData?.coverImageUrl || '',
+          screenshots: targetQ.galleryImages || targetQ.vibeCodingData?.screenshots || [],
+          youtubeUrl: targetQ.youtubeUrl || targetQ.vibeCodingData?.youtubeUrl || '',
+        },
+        updateLogs: [logEntry, ...(targetQ.updateLogs || [])],
+      };
+    } else {
+      // 轉為創新提案 (innovation_proposal)
+      const finalCategory = (options?.category || '創新創業') as Category;
+      const fallbackProposalSubcat = (targetQ.subcategory && (INNOVATION_PROPOSAL_CATEGORIES as readonly string[]).includes(targetQ.subcategory)) ? targetQ.subcategory : '資通訊';
+      const finalSubcat = options?.subcategory || fallbackProposalSubcat;
+      const cleanTags: string[] = (targetQ.tags || [])
+        .filter((t): t is string => Boolean(t) && t !== '軟體作品' && t !== '網站程式')
+        .concat(['創新提案', finalSubcat]);
+      const uniqueTags = Array.from(new Set(cleanTags));
+      const finalSubcategories: string[] = options?.subcategories
+        ? options.subcategories.filter((s): s is string => Boolean(s))
+        : [finalSubcat];
+
+      updatedQ = {
+        ...targetQ,
+        postType: 'innovation_proposal',
+        specialZone: 'create_ideas',
+        category: finalCategory,
+        subcategory: finalSubcat,
+        subcategories: finalSubcategories,
+        tags: uniqueTags,
+        targetGoal: targetQ.targetGoal || '打造流暢直覺且能解決真實痛點的數位體驗',
+        referencedPainPoint: targetQ.referencedPainPoint || '傳統流程繁瑣、缺乏直覺操作介面',
+        proposalProgressStage: options?.proposalProgressStage || targetQ.proposalProgressStage || 'initial_idea',
+        updateLogs: [logEntry, ...(targetQ.updateLogs || [])],
+      };
+    }
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => (q.id === questionId ? updatedQ : q));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    try {
+      await syncQuestionToFirestore(updatedQ);
+    } catch (e) {
+      console.warn('Firestore convert sync warning:', e);
+    }
+
+    return {
+      success: true,
+      message: `已成功將《${updatedQ.appName || updatedQ.title}》轉換為「${toLabel}」！`,
+      updatedQuestion: updatedQ,
+    };
+  };
+
+  // Action: Batch convert questions type
+  const batchConvertQuestionsType = async (
+    questionIds: string[],
+    targetType: 'innovation_proposal' | 'vibecoding_app',
+    options?: {
+      subcategory?: string;
+    }
+  ): Promise<{ success: boolean; convertedCount: number; updatedQuestions: Question[] }> => {
+    if (!questionIds || questionIds.length === 0) {
+      return { success: false, convertedCount: 0, updatedQuestions: [] };
+    }
+    const updatedList: Question[] = [];
+    for (const qId of questionIds) {
+      const res = await convertQuestionType(qId, targetType, options);
+      if (res.success && res.updatedQuestion) {
+        updatedList.push(res.updatedQuestion);
+      }
+    }
+    return {
+      success: updatedList.length > 0,
+      convertedCount: updatedList.length,
+      updatedQuestions: updatedList,
     };
   };
 
@@ -7006,6 +7193,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     await deleteQuestionsFromFirestore(questionIds);
     return questionIds.length;
+  };
+
+  // Action: Batch delist questions to 7-day retention period
+  const batchDelistQuestions = async (questionIds: string[], reason: string, feedback?: string): Promise<number> => {
+    if (!questionIds || questionIds.length === 0) return 0;
+    for (const qId of questionIds) {
+      delistQuestion(qId, reason, feedback);
+    }
+    return questionIds.length;
+  };
+
+  // Action: Batch toggle/set isFeatured on questions
+  const batchSetFeaturedQuestions = async (questionIds: string[], isFeatured: boolean): Promise<number> => {
+    if (!questionIds || questionIds.length === 0) return 0;
+    const idSet = new Set(questionIds);
+    const updatedQuestions: Question[] = [];
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => {
+        if (idSet.has(q.id)) {
+          const u = { ...q, isFeatured };
+          updatedQuestions.push(u);
+          return u;
+        }
+        return q;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    for (const q of updatedQuestions) {
+      try {
+        await syncQuestionToFirestore(q);
+      } catch {}
+    }
+    return updatedQuestions.length;
   };
 
   // Action: Purge all delisted questions older than 7 days (下架貼文暫存保留7日自動或手動清理，自動退還未完成預扣款)
@@ -9414,63 +9639,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return pendingTicketsCount + pendingDisputesCount + pendingReportsCount;
   }, [pendingTicketsCount, pendingDisputesCount, pendingReportsCount]);
 
-  // Action: Increment real views count (tracks views strictly according to real clicks)
-  const incrementQuestionViews = useCallback((questionId: string, amount: number = 1) => {
-    let nextViews = 1;
-
-    setQuestions((prev) => {
-      let map: Record<string, number> = {};
-      try {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
-        if (saved) map = JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-
-      const existingQ = prev.find((item) => item.id === questionId);
-      const baseViews = existingQ ? (existingQ.views || existingQ.viewsCount || 0) : 0;
-      const current = typeof map[questionId] === 'number' ? map[questionId] : baseViews;
-      nextViews = current + amount;
-      map[questionId] = nextViews;
-
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
-      } catch {
-        // ignore
-      }
-
-      const updated = prev.map((item) => {
-        if (item.id === questionId) {
-          return {
-            ...item,
-            views: nextViews,
-            viewsCount: nextViews,
-          };
-        }
-        return item;
-      });
-
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
-
-    setSelectedQuestion((prev) => {
-      if (prev && prev.id === questionId) {
-        return {
-          ...prev,
-          views: nextViews,
-          viewsCount: nextViews,
-        };
-      }
-      return prev;
-    });
-
-    // 真正寫入雲端 Firestore 資料庫，確保網站重整、換裝置或更新後計數永遠保留
-    incrementQuestionViewInFirestore(questionId, amount);
+  // Action: Increment real views count (已停止統計內容瀏覽次數)
+  const incrementQuestionViews = useCallback((_questionId: string, _amount: number = 1) => {
+    // 依使用者規範，不再統計內容瀏覽次數
+    return;
   }, []);
 
   // Action: AI Auto-Tagging & Categorization for a single question
@@ -10271,6 +10443,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createQuestion,
         updateProposalContent,
         transferQuestionOwnership,
+        convertQuestionType,
+        batchConvertQuestionsType,
         submitAnswer,
         unlockAnswer,
         acceptAnswer,
@@ -10289,9 +10463,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pendingReportsCount,
         adminMailBadgeCount,
         delistQuestion,
+        batchDelistQuestions,
         relistQuestion,
         deleteQuestionPermanently,
         deleteQuestionsBatchPermanently,
+        batchSetFeaturedQuestions,
         deleteAnswerPermanently,
         purgeExpiredDelistedQuestions,
         requestAccountDeactivation,

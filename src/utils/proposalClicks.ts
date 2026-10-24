@@ -10,18 +10,9 @@ export function getProposalRealClicks(): Record<string, number> {
   }
 }
 
-export function recordProposalViewClick(proposalId: string, currentViews: number = 36): number {
-  try {
-    if (typeof window === 'undefined') return currentViews + 1;
-    const map = getProposalRealClicks();
-    const base = typeof map[proposalId] === 'number' ? map[proposalId] : currentViews;
-    const nextViews = base + 1;
-    map[proposalId] = nextViews;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-    return nextViews;
-  } catch {
-    return currentViews + 1;
-  }
+export function recordProposalViewClick(_proposalId: string, currentViews: number = 36): number {
+  // 依規範不再統計內容瀏覽次數，保持原值不累加
+  return currentViews;
 }
 
 export function applyRealClicksToProposals<T extends { id: string; viewsCount?: number; views?: number }>(proposals: T[]): T[] {

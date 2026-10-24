@@ -6,6 +6,7 @@ import { Category, Question } from '../types';
 import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
 import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
 import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
+import { AdminConvertWorkTypeModal } from './AdminConvertWorkTypeModal';
 import { UpdateProposalModal } from './UpdateProposalModal';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { isPlatformPublishedWork } from '../utils/userDisplay';
@@ -37,6 +38,7 @@ import {
   DownloadCloud,
   Database,
   Loader2,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 const CATEGORY_COLORS: Record<Category, { fill: string; hex: string; bg: string; text: string; border: string }> = {
@@ -63,8 +65,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     isNoPaymentMode,
     setSelectedQuestion,
     delistQuestion,
+    batchDelistQuestions,
     relistQuestion,
     deleteQuestionPermanently,
+    deleteQuestionsBatchPermanently,
+    batchSetFeaturedQuestions,
     purgeExpiredDelistedQuestions,
     pullAllDataFromFirestore,
     syncAllToCloud,
@@ -74,16 +79,31 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     purgeAllSimulatedData,
     restoreAllSimulatedData,
     simulatedStats,
+    showCenterToast,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedPostType, setSelectedPostType] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'views' | 'likes' | 'bounty' | 'delisted_countdown'>('latest');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedSource, setSelectedSource] = useState<'all' | 'real' | 'simulated'>('all');
   const [confirmPurgeSimulatedModal, setConfirmPurgeSimulatedModal] = useState(false);
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const [transferringQuestion, setTransferringQuestion] = useState<Question | null>(null);
   const [editingProposalQuestion, setEditingProposalQuestion] = useState<Question | null>(null);
+
+  // 批次多選狀態與彈窗
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+  const [isBatchDelistModalOpen, setIsBatchDelistModalOpen] = useState(false);
+  const [isBatchTransferModalOpen, setIsBatchTransferModalOpen] = useState(false);
+  const [convertingQuestion, setConvertingQuestion] = useState<Question | null>(null);
+  const [isBatchConvertModalOpen, setIsBatchConvertModalOpen] = useState(false);
+  const [batchDelistReason, setBatchDelistReason] = useState<string>(PRESET_VIOLATIONS[0]);
+  const [batchDelistFeedback, setBatchDelistFeedback] = useState<string>('');
+  const [batchFeaturedDropdownOpen, setBatchFeaturedDropdownOpen] = useState(false);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   // Delist Modal State
   const [delistingQuestion, setDelistingQuestion] = useState<Question | null>(null);
@@ -113,7 +133,25 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     ).length;
   }, [questions]);
 
-  // Filtered Questions
+  // 安全解析時間戳記，支援 ISO、字串、數字與 Firestore 物件
+  const safeParseTime = (val: any): number => {
+    if (!val) return 0;
+    if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+    if (typeof val === 'object') {
+      if (typeof val.toMillis === 'function') return val.toMillis();
+      if (typeof val.toDate === 'function') return val.toDate().getTime();
+      if (typeof val.seconds === 'number') return val.seconds * 1000;
+    }
+    if (typeof val === 'string') {
+      const parsed = new Date(val).getTime();
+      if (Number.isFinite(parsed)) return parsed;
+      const fallback = new Date(val.replace(/\//g, '-')).getTime();
+      if (Number.isFinite(fallback)) return fallback;
+    }
+    return 0;
+  };
+
+  // Filtered Questions with Sorting & Classification (預設最新排序)
   const filteredQuestions = useMemo(() => {
     return questions.filter((q) => {
       // 搜尋條件
@@ -123,11 +161,22 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         const matchDesc = (q.description || '').toLowerCase().includes(query);
         const matchAuthor = (q.authorName || '').toLowerCase().includes(query);
         const matchId = (q.id || '').toLowerCase().includes(query);
-        if (!matchTitle && !matchDesc && !matchAuthor && !matchId) return false;
+        const matchAppName = (q.appName || '').toLowerCase().includes(query);
+        if (!matchTitle && !matchDesc && !matchAuthor && !matchId && !matchAppName) return false;
+      }
+      // 貼文類型篩選
+      if (selectedPostType !== 'all') {
+        if (selectedPostType === 'pain_point' && q.postType !== 'pain_point') return false;
+        if (selectedPostType === 'innovation_proposal' && q.postType !== 'innovation_proposal') return false;
+        if (selectedPostType === 'vibecoding_app' && q.postType !== 'vibecoding_app') return false;
+        if (selectedPostType === 'chat_discussion' && q.postType !== 'chat_discussion') return false;
+        if (selectedPostType === 'seek_solution' && (q.postType && q.postType !== 'seek_solution')) return false;
       }
       // 分類條件
-      if (selectedCategory !== 'all' && q.category !== selectedCategory) {
-        return false;
+      if (selectedCategory !== 'all') {
+        if (q.category !== selectedCategory && q.subcategory !== selectedCategory) {
+          return false;
+        }
       }
       // 狀態條件
       if (selectedStatus !== 'all' && q.status !== selectedStatus) {
@@ -138,8 +187,44 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       if (selectedSource === 'real' && isSim) return false;
       if (selectedSource === 'simulated' && !isSim) return false;
       return true;
+    }).sort((a, b) => {
+      if (sortBy === 'latest') {
+        const timeB = safeParseTime(b.createdAt);
+        const timeA = safeParseTime(a.createdAt);
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || '').localeCompare(a.id || '');
+      }
+      if (sortBy === 'oldest') {
+        const timeB = safeParseTime(b.createdAt);
+        const timeA = safeParseTime(a.createdAt);
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.id || '').localeCompare(b.id || '');
+      }
+      if (sortBy === 'views') {
+        const diff = (b.views || 0) - (a.views || 0);
+        if (diff !== 0) return diff;
+        return safeParseTime(b.createdAt) - safeParseTime(a.createdAt);
+      }
+      if (sortBy === 'likes') {
+        const scoreA = (a.likes || 0) + (a.secondedCount || 0);
+        const scoreB = (b.likes || 0) + (b.secondedCount || 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return safeParseTime(b.createdAt) - safeParseTime(a.createdAt);
+      }
+      if (sortBy === 'bounty') {
+        const diff = (b.bounty || 0) - (a.bounty || 0);
+        if (diff !== 0) return diff;
+        return safeParseTime(b.createdAt) - safeParseTime(a.createdAt);
+      }
+      if (sortBy === 'delisted_countdown') {
+        const leftA = getRetentionDaysLeft(a.delistedAt);
+        const leftB = getRetentionDaysLeft(b.delistedAt);
+        if (leftA !== leftB) return leftA - leftB;
+        return safeParseTime(b.createdAt) - safeParseTime(a.createdAt);
+      }
+      return 0;
     });
-  }, [questions, searchQuery, selectedCategory, selectedStatus, selectedSource]);
+  }, [questions, searchQuery, selectedCategory, selectedStatus, selectedSource, selectedPostType, sortBy]);
 
   // Statistics & Pie Chart Calculation
   const categoryStats = useMemo(() => {
@@ -276,6 +361,121 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       setIsSyncing(false);
       setTimeout(() => setFeedbackToast(null), 4000);
     }
+  };
+
+  // 批次選取與操作項目清單
+  const selectedQuestionsList = useMemo(() => {
+    return questions.filter((q) => selectedIds.has(q.id));
+  }, [questions, selectedIds]);
+
+  const isAllFilteredSelected = filteredQuestions.length > 0 && filteredQuestions.every((q) => selectedIds.has(q.id));
+  const isSomeFilteredSelected = filteredQuestions.some((q) => selectedIds.has(q.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredQuestions.map((q) => q.id)));
+    }
+  };
+
+  // 執行批次刪除
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const count = await deleteQuestionsBatchPermanently(ids);
+      setFeedbackToast({
+        text: `已徹底永久刪除選取的 ${count} 筆問題/作品，並自雲端資料庫永久抹除！`,
+        isError: false,
+      });
+      setIsBatchDeleteModalOpen(false);
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      setFeedbackToast({
+        text: `批次刪除失敗: ${err?.message || '未知錯誤'}`,
+        isError: true,
+      });
+    } finally {
+      setIsBatchProcessing(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
+  };
+
+  // 執行批次下架
+  const handleBatchDelist = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await batchDelistQuestions(ids, batchDelistReason, batchDelistFeedback.trim() || undefined);
+      setFeedbackToast({
+        text: `已成功將選取的 ${ids.length} 筆項目批次違規下架，移入 7 日暫存保留期！`,
+        isError: false,
+      });
+      setIsBatchDelistModalOpen(false);
+      setSelectedIds(new Set());
+      setBatchDelistFeedback('');
+    } catch (err: any) {
+      setFeedbackToast({
+        text: `批次下架失敗: ${err?.message || '未知錯誤'}`,
+        isError: true,
+      });
+    } finally {
+      setIsBatchProcessing(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
+  };
+
+  // 執行批次精選 / 取消精選
+  const handleBatchFeatured = async (isFeatured: boolean) => {
+    if (selectedIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await batchSetFeaturedQuestions(ids, isFeatured);
+      setFeedbackToast({
+        text: isFeatured
+          ? `已成功將選取的 ${ids.length} 筆項目設為【精選推薦】！`
+          : `已取消選取的 ${ids.length} 筆項目的【精選推薦】標記！`,
+        isError: false,
+      });
+      setBatchFeaturedDropdownOpen(false);
+    } catch (err: any) {
+      setFeedbackToast({
+        text: `批次精選設定失敗: ${err?.message || '未知錯誤'}`,
+        isError: true,
+      });
+    } finally {
+      setIsBatchProcessing(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
+  };
+
+  // 開啟批次轉移所有權
+  const handleOpenBatchTransfer = () => {
+    if (selectedIds.size === 0) return;
+    setIsBatchTransferModalOpen(true);
+  };
+
+  const handleBatchTransferSuccess = (updatedList: Question[]) => {
+    setFeedbackToast({
+      text: `已成功將 ${updatedList.length} 筆作品之所有權批次轉移完成！`,
+      isError: false,
+    });
+    setIsBatchTransferModalOpen(false);
+    setSelectedIds(new Set());
+    setTimeout(() => setFeedbackToast(null), 4000);
   };
 
   const pagedQuestions = usePagedList(filteredQuestions, 20);
@@ -587,6 +787,20 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
         {/* 分類與狀態篩選 */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* 貼文類型篩選 */}
+          <select
+            value={selectedPostType}
+            onChange={(e) => setSelectedPostType(e.target.value)}
+            className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
+          >
+            <option value="all">全部貼文類型</option>
+            <option value="pain_point">🔥 痛點需求</option>
+            <option value="innovation_proposal">💡 創新提案</option>
+            <option value="vibecoding_app">🚀 軟體作品</option>
+            <option value="seek_solution">💰 懸賞問題</option>
+            <option value="chat_discussion">💬 閒聊討論</option>
+          </select>
+
           {/* 分類下拉 */}
           <select
             value={selectedCategory}
@@ -594,10 +808,26 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
           >
             <option value="all">全部分類</option>
-            <option value="創新創業">創新創業</option>
-            <option value="專業問題">專業問題</option>
-            <option value="學術探討">學術探討</option>
-            <option value="日常疑難">日常疑難</option>
+            <optgroup label="主領域">
+              <option value="創新創業">創新創業</option>
+              <option value="網站程式">軟體作品 / 網站程式</option>
+              <option value="專業問題">專業問題</option>
+              <option value="學術探討">學術探討</option>
+              <option value="日常疑難">日常疑難</option>
+            </optgroup>
+            <optgroup label="軟體子領域">
+              <option value="遊戲">遊戲</option>
+              <option value="AI工具">AI工具</option>
+              <option value="網站程式">網站程式</option>
+              <option value="自動化">自動化</option>
+              <option value="擴充功能">擴充功能</option>
+            </optgroup>
+            <optgroup label="創新提案領域">
+              <option value="資通訊">資通訊</option>
+              <option value="機電運輸">機電運輸</option>
+              <option value="生醫化材">生醫化材</option>
+              <option value="服務文創">服務文創</option>
+            </optgroup>
           </select>
 
           {/* 資料來源篩選（真實 vs 模擬） */}
@@ -623,14 +853,16 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <option value="delisted">違規下架 (保留7日)</option>
           </select>
 
-          {(searchQuery || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedSource !== 'all') && (
+          {(searchQuery || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedSource !== 'all' || selectedPostType !== 'all') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedCategory('all');
+                setSelectedPostType('all');
                 setSelectedStatus('all');
                 setSelectedSource('all');
+                setSortBy('latest');
               }}
               className="px-2.5 py-1.5 rounded-xl border border-stone-200 text-stone-500 hover:bg-stone-200 text-xs font-bold whitespace-nowrap cursor-pointer"
             >
@@ -642,9 +874,59 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
       {/* 問題列表 */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-stone-500 px-1">
-          <span>共找到 <strong>{filteredQuestions.length}</strong> 筆問題</span>
-          <span>按發布時間排序</span>
+        <div className="flex items-center justify-between text-xs text-stone-500 px-1 gap-2 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* 全選核取方塊 */}
+            <label className="flex items-center gap-2 font-bold text-stone-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAllFilteredSelected}
+                ref={(input) => {
+                  if (input) {
+                    input.indeterminate = !isAllFilteredSelected && isSomeFilteredSelected;
+                  }
+                }}
+                onChange={toggleSelectAllFiltered}
+                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-stone-300 cursor-pointer"
+              />
+              <span>全選目前篩選結果</span>
+            </label>
+
+            <span>
+              共 <strong>{filteredQuestions.length}</strong> 筆問題或提案
+            </span>
+
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-stone-300">
+                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 font-bold text-[11px]">
+                  已選 {selectedIds.size} 筆
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-[11px] text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                >
+                  清除選取
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[11px] font-bold text-stone-600">排序方式：</span>
+            <select
+              value={sortBy}
+              onChange={(e: any) => setSortBy(e.target.value)}
+              className="px-2.5 py-1 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-800 shadow-2xs focus:outline-none focus:border-purple-600 cursor-pointer"
+            >
+              <option value="latest">最新發布（新到舊 / 預設）</option>
+              <option value="oldest">最早發布（舊到新）</option>
+              <option value="views">最多瀏覽次數</option>
+              <option value="likes">最多附議 / Like</option>
+              <option value="bounty">最高懸賞點數</option>
+              <option value="delisted_countdown">違規下架倒數（天數少先）</option>
+            </select>
+          </div>
         </div>
 
         {filteredQuestions.length === 0 ? (
@@ -659,34 +941,57 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               const catColor = CATEGORY_COLORS[q.category] || { hex: '#888', bg: 'bg-stone-100', text: 'text-stone-700', border: 'border-stone-200' };
               const isDelisted = q.status === 'delisted';
               const daysLeft = isDelisted ? getRetentionDaysLeft(q.delistedAt) : 30;
+              const isSelected = selectedIds.has(q.id);
 
               return (
                 <div
                   key={q.id}
                   className={`p-4 rounded-2xl bg-white border transition-all ${
-                    isDelisted
+                    isSelected
+                      ? 'border-purple-400 bg-purple-50/20 shadow-xs ring-1 ring-purple-300'
+                      : isDelisted
                       ? 'border-stone-200 bg-stone-50'
                       : 'border-stone-200 hover:border-stone-200 hover:shadow-2xs'
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* 狀態標籤 */}
-                        {isDelisted ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200 flex items-center gap-1">
-                            <ShieldAlert className="w-3 h-3" />
-                            違規已下架
-                          </span>
-                        ) : q.status === 'solved' ? (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-stone-200">
-                            已結案
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
-                            招募中
-                          </span>
-                        )}
+                  <div className="flex items-start gap-3">
+                    {/* 多選核取方塊 */}
+                    <div className="pt-0.5 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(q.id)}
+                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-stone-300 cursor-pointer"
+                        title="勾選此項目"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0 flex-1">
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* 精選推薦標記 */}
+                          {q.isFeatured && (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                              <Sparkles className="w-3 h-3 text-amber-600 fill-amber-500" />
+                              精選作品
+                            </span>
+                          )}
+
+                          {/* 狀態標籤 */}
+                          {isDelisted ? (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-stone-200 flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3" />
+                              違規已下架
+                            </span>
+                          ) : q.status === 'solved' ? (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-stone-200">
+                              已結案
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-stone-200">
+                              招募中
+                            </span>
+                          )}
 
                         {/* 分類 */}
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${catColor.bg} ${catColor.text} border ${catColor.border}`}>
@@ -787,8 +1092,6 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                             ? ` 按讚 ${q.likes ?? 0}`
                             : ` +1 附議 ${(q.secondedCount ?? 0) + (q.sameQuestionCount ?? 0)}`}
                         </span>
-                        <span>•</span>
-                        <span>{q.views || 0} 次瀏覽</span>
                       </div>
 
                       {/* 違規下架事由與 7 日保留倒數 */}
@@ -817,7 +1120,12 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                       {/* 預覽問題 */}
                       <button
                         type="button"
-                        onClick={() => setSelectedQuestion(q)}
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem('ideax_from_admin_questions', 'true');
+                          } catch {}
+                          setSelectedQuestion(q);
+                        }}
                         className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-stone-200 hover:bg-purple-50 text-stone-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                         title="查閱問題詳細內容"
                       >
@@ -856,6 +1164,31 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>已轉移用戶名下</span>
                         </span>
+                      )}
+
+                      {/* 創新提案 ⇄ 軟體作品 屬性互轉 (轉性按鍵) */}
+                      {!isDelisted && (
+                        <button
+                          type="button"
+                          onClick={() => setConvertingQuestion(q)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                            q.postType === 'innovation_proposal' || q.specialZone === 'create_ideas'
+                              ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-500 ring-2 ring-purple-200'
+                              : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500 ring-2 ring-indigo-200'
+                          }`}
+                          title={
+                            q.postType === 'innovation_proposal' || q.specialZone === 'create_ideas'
+                              ? '【轉性按鍵】：將此創新提案轉為軟體作品 (VibeCoding展場)'
+                              : '【轉性按鍵】：將此軟體作品轉為創新提案 (創點子專區)'
+                          }
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {q.postType === 'innovation_proposal' || q.specialZone === 'create_ideas'
+                              ? '轉性 ➜ 軟體作品'
+                              : '轉性 ➜ 創新提案'}
+                          </span>
+                        </button>
                       )}
 
                       {/* 下架 / 恢復上架 / 永久刪除 */}
@@ -910,7 +1243,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              );
+              </div>
+            );
             })}
         <ShowMoreButton remaining={pagedQuestions.remaining} onClick={pagedQuestions.showMore} />
           </div>
@@ -1153,17 +1487,19 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       )}
 
       {/* ⚡ 網址智慧上架軟體網站彈窗 */}
-      <AdminQuickOnboardAppModal
-        isOpen={isOnboardModalOpen}
-        onClose={() => setIsOnboardModalOpen(false)}
-        onSuccess={(q) => {
-          setFeedbackToast({
-            text: `已成功將軟體《${q.appName || q.title}》上架刊登至「軟體作品」專區！`,
-            isError: false,
-          });
-          setTimeout(() => setFeedbackToast(null), 5000);
-        }}
-      />
+      {isOnboardModalOpen && (
+        <AdminQuickOnboardAppModal
+          isOpen={isOnboardModalOpen}
+          onClose={() => setIsOnboardModalOpen(false)}
+          onSuccess={(q) => {
+            setFeedbackToast({
+              text: `已成功將軟體《${q.appName || q.title}》上架刊登至「軟體作品」專區！`,
+              isError: false,
+            });
+            setTimeout(() => setFeedbackToast(null), 5000);
+          }}
+        />
+      )}
 
       {/* 🔄 管理員轉移作品所有權至用戶名下彈窗 */}
       <AdminTransferWorkOwnershipModal
@@ -1193,6 +1529,329 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             });
             setTimeout(() => setFeedbackToast(null), 5000);
             setEditingProposalQuestion(null);
+          }}
+        />
+      )}
+
+      {/* 📌 多選批次操作懸浮列 (Sticky / Floating Batch Action Bar) */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-4xl bg-stone-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-stone-700/80 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-md">
+              {selectedIds.size}
+            </div>
+            <div>
+              <div className="text-xs sm:text-sm font-black text-stone-100 flex items-center gap-1.5">
+                <span>已選取 {selectedIds.size} 個項目</span>
+              </div>
+              <div className="text-[11px] text-stone-400">
+                可一次執行批次精選、批次轉移所有權、批次下架或批次刪除
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-2 text-xs text-stone-400 hover:text-white underline cursor-pointer"
+            >
+              取消選取
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* 批次精選下拉選單 */}
+            <div className="relative">
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={() => setBatchFeaturedDropdownOpen(!batchFeaturedDropdownOpen)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-current" />
+                <span>批次精選</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {batchFeaturedDropdownOpen && (
+                <div className="absolute bottom-full mb-2 right-0 bg-white text-stone-800 rounded-2xl shadow-2xl border border-stone-200 p-1.5 min-w-[150px] text-xs z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    type="button"
+                    onClick={() => handleBatchFeatured(true)}
+                    className="w-full text-left px-3 py-2 hover:bg-amber-50 hover:text-amber-950 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    <span>設為精選作品 ⭐</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBatchFeatured(false)}
+                    className="w-full text-left px-3 py-2 hover:bg-stone-100 rounded-xl text-stone-600 font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>取消精選推薦</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 批次轉性 (創新提案 ⇄ 軟體作品) */}
+            <button
+              type="button"
+              disabled={isBatchProcessing}
+              onClick={() => setIsBatchConvertModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              title="批次在創新提案與軟體作品之間互相轉換屬性"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span>批次轉性</span>
+            </button>
+
+            {/* 批次轉移所有權 */}
+            <button
+              type="button"
+              disabled={isBatchProcessing}
+              onClick={handleOpenBatchTransfer}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              title="將選取的平台作品批次轉移所有權給指定用戶"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>批次轉移所有權</span>
+            </button>
+
+            {/* 批次違規下架 */}
+            <button
+              type="button"
+              disabled={isBatchProcessing}
+              onClick={() => setIsBatchDelistModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              title="將選取項目批次違規下架（暫存保留 7 日）"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>批次下架</span>
+            </button>
+
+            {/* 批次永久刪除 */}
+            <button
+              type="button"
+              disabled={isBatchProcessing}
+              onClick={() => setIsBatchDeleteModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-rose-700 text-rose-300 hover:text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border border-stone-700 hover:border-rose-600 shadow-xs disabled:opacity-50"
+              title="徹底永久刪除選取項目（自資料庫抹除且無法復原）"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>批次刪除</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ 批次永久刪除確認彈窗 */}
+      {isBatchDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-black">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+                <h4 className="text-base text-stone-900">確認批次永久刪除？</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBatchDeleteModalOpen(false)}
+                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2">
+              <div className="flex items-center gap-2 font-black text-rose-950">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>此操作將永久抹除選取的 {selectedIds.size} 筆問題/作品！</span>
+              </div>
+              <p className="leading-relaxed text-[11px] text-rose-800">
+                永久刪除後將同步自雲端 Firestore、提問端、管理端徹底抹除，關聯的未結案提問預扣點數將自動全額退還給提問者，此操作<strong>無法撤銷或復原</strong>。
+              </p>
+            </div>
+
+            {/* 選取項目摘要清單 */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-stone-500">預計刪除的項目清單（共 {selectedQuestionsList.length} 筆）：</span>
+              <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 bg-stone-50 rounded-xl border border-stone-200 text-xs">
+                {selectedQuestionsList.map((q, idx) => (
+                  <div key={q.id} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-stone-100">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-[10px] text-stone-400 font-mono">#{idx + 1}</span>
+                      <span className="font-bold text-stone-800 truncate">{q.appName ? `【${q.appName}】${q.title}` : q.title}</span>
+                    </div>
+                    <span className="text-[10px] text-stone-400 shrink-0">{q.category}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={() => setIsBatchDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold transition-all cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={handleBatchDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              >
+                {isBatchProcessing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>批次刪除中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>確認永久刪除 ({selectedIds.size} 筆)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ 批次違規下架彈窗 */}
+      {isBatchDelistModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-black">
+                <ShieldAlert className="w-5 h-5 text-rose-600" />
+                <h4 className="text-base text-stone-900">批次違規下架處置（共 {selectedIds.size} 筆）</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBatchDelistModalOpen(false)}
+                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+              <span className="font-black block"> 批次下架 7 日暫存說明：</span>
+              <p className="text-[11px] leading-relaxed">
+                被下架的 {selectedIds.size} 筆問題/作品將自前台隱藏並移入管理後台 <strong>7 日暫存期</strong>。期間內管理員可隨時「恢復上架」；滿 7 日後系統將自動永久抹除。
+              </p>
+            </div>
+
+            {/* 違規原因快選 */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-stone-800 flex items-center justify-between">
+                <span>選擇主要違規事由：</span>
+                <span className="text-[11px] text-rose-600 font-bold">*必填</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {PRESET_VIOLATIONS.map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setBatchDelistReason(reason)}
+                    className={`p-2 rounded-xl text-xs text-left transition-all cursor-pointer flex items-center gap-1.5 ${
+                      batchDelistReason === reason
+                        ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold border'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 border'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${batchDelistReason === reason ? 'bg-rose-500' : 'bg-stone-300'}`} />
+                    <span className="truncate">{reason}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 管理員反饋意見 */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-800">
+                管理員反饋與處置說明 (選填)：
+              </label>
+              <textarea
+                value={batchDelistFeedback}
+                onChange={(e) => setBatchDelistFeedback(e.target.value)}
+                placeholder="請輸入給提問者/發布者的處置通知與指引說明..."
+                rows={2}
+                className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 focus:outline-none focus:border-purple-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={() => setIsBatchDelistModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold transition-all cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={handleBatchDelist}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              >
+                {isBatchProcessing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>批次下架中...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>確認批次下架 ({selectedIds.size} 筆)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔄 批次管理員轉移作品所有權至用戶名下彈窗 */}
+      {isBatchTransferModalOpen && (
+        <AdminTransferWorkOwnershipModal
+          isOpen={isBatchTransferModalOpen}
+          batchQuestions={selectedQuestionsList}
+          onClose={() => setIsBatchTransferModalOpen(false)}
+          onSuccessBatch={handleBatchTransferSuccess}
+        />
+      )}
+
+      {/* 🔄 創新提案 ⇄ 軟體作品 屬性轉換彈窗 (單筆) */}
+      {convertingQuestion && (
+        <AdminConvertWorkTypeModal
+          isOpen={Boolean(convertingQuestion)}
+          question={convertingQuestion}
+          onClose={() => setConvertingQuestion(null)}
+          onSuccess={(updatedList) => {
+            setConvertingQuestion(null);
+            const updated = updatedList[0];
+            if (updated) {
+              showCenterToast(`已成功將「${updated.appName || updated.title}」轉換為${updated.postType === 'vibecoding_app' ? '「軟體作品」' : '「創新提案」'}`);
+            }
+          }}
+        />
+      )}
+
+      {/* 🔄 創新提案 ⇄ 軟體作品 屬性轉換彈窗 (批次) */}
+      {isBatchConvertModalOpen && (
+        <AdminConvertWorkTypeModal
+          isOpen={isBatchConvertModalOpen}
+          batchQuestions={selectedQuestionsList}
+          onClose={() => setIsBatchConvertModalOpen(false)}
+          onSuccess={(updatedList) => {
+            setIsBatchConvertModalOpen(false);
+            setSelectedIds(new Set());
+            const firstTarget = updatedList[0]?.postType === 'vibecoding_app' ? '「軟體作品」' : '「創新提案」';
+            showCenterToast(`已成功批次將 ${updatedList.length} 筆項目轉換為${firstTarget}`);
           }}
         />
       )}

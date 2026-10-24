@@ -398,13 +398,47 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
             <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
           </button>
 
-          {/* 2. 主題專區（固定順序：創星季、痛點許願池、創點子、VibeCoding 作品牆、L0討論區） */}
+          {/* 2. 主題專區（固定順序：軟體網站作品牆、創星季、痛點許願池、創點子、L0討論區） */}
           <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
               <span>🔥 主題專區</span>
             </div>
 
-            {/* ① ［創星季（限時競賽）］ */}
+            {/* ① ［VibeCoding 軟體網站作品牆］ */}
+            <button
+              onClick={() => handleSelectZone('vibecoding')}
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                specialZone === 'vibecoding'
+                  ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-200 shadow-2xs'
+                  : 'bg-white hover:bg-purple-50/40 border-stone-200 hover:border-purple-300'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold border border-purple-200 shrink-0">
+                  <Terminal className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-purple-700 transition-colors flex items-center gap-1.5 flex-wrap">
+                    <span>軟體網站作品牆</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shrink-0">NEW</span>
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    網站、APP、遊戲、小程序 軟體皆可刊登
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`text-xs font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
+                  specialZone === 'vibecoding'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-purple-100 text-purple-900 border border-purple-300'
+                }`}
+              >
+                {vibeCodingCount} 則
+              </span>
+            </button>
+
+            {/* ② ［創星季（限時競賽）］ */}
             <button
               onClick={() => {
                 if (onNavigateToStarSeason) {
@@ -444,7 +478,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
             </button>
 
-            {/* ② ［痛點許願池］ */}
+            {/* ③ ［痛點許願池］ */}
             <button
               onClick={() => handleSelectZone('pain_points')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
@@ -477,7 +511,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               </span>
             </button>
 
-            {/* ③ ［創點子(創新提案)］專區入口 */}
+            {/* ④ ［創點子(創新提案)］專區入口 */}
             <button
               onClick={() => handleSelectZone('create_ideas')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
@@ -508,40 +542,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 }`}
               >
                 {createIdeasCount} 則
-              </span>
-            </button>
-
-            {/* ④ ［VibeCoding 作品牆］ */}
-            <button
-              onClick={() => handleSelectZone('vibecoding')}
-              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
-                specialZone === 'vibecoding'
-                  ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-200 shadow-2xs'
-                  : 'bg-white hover:bg-purple-50/40 border-stone-200 hover:border-purple-300'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold border border-purple-200 shrink-0">
-                  <Terminal className="w-4 h-4 text-purple-600" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-purple-700 transition-colors flex items-center gap-1.5 flex-wrap">
-                    <span>軟體網站作品牆</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shrink-0">NEW</span>
-                  </div>
-                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                    網站、APP、遊戲、小程序 軟體皆可刊登
-                  </p>
-                </div>
-              </div>
-              <span
-                className={`text-xs font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
-                  specialZone === 'vibecoding'
-                    ? 'bg-purple-600 text-white shadow-2xs'
-                    : 'bg-purple-100 text-purple-900 border border-purple-300'
-                }`}
-              >
-                {vibeCodingCount} 則
               </span>
             </button>
 

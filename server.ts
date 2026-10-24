@@ -23,6 +23,7 @@ import { buildJobSearchLinks } from './server/jobSearchLinks';
 import { MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
 import { APP_VERSION } from './src/data/versionData';
+import { stripAppNameFromTitle } from './src/utils/titleFormat';
 /** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
 const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
 
@@ -1798,7 +1799,7 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
 \`\`\`json
 {
   "appName": "軟體/專案名稱（按照原語言，如「Cursor」、「Notion」、「Figma」或原網站中文品牌名，12字以內）",
-  "title": "作品繁體中文核心標題（說明與標題一律用中文，若原標題是外文必須翻譯為繁體中文，28字以內）",
+  "title": "作品繁體中文核心標題（說明與標題一律用中文，若原標題是外文必須翻譯為繁體中文，28字以內。⚠️重要規範：標題專注於產品核心亮點與功能特徵，絕對避免重複出現 appName 作品名稱，不要冠上作品名稱）",
   "description": "作品繁體中文完整簡述（若原網站說明是外文請將其轉為繁體中文，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
   "category": "${hasValidPreferred ? preferredCategory : '必須精準歸入上述五個分類之一：網站程式 / AI工具 / 小遊戲 / 自動化 / 擴充功能'}",
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
@@ -1919,7 +1920,7 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
 
     // 再次確保中文欄位 100% 遵循臺灣繁體正體中文，無簡體字殘留（原語言品牌名如 Cursor、Notion 等不受影響）
     appName = toTraditionalChinese(appName);
-    title = toTraditionalChinese(title);
+    title = stripAppNameFromTitle(toTraditionalChinese(title), appName);
     description = toTraditionalChinese(description);
     techArchitecture = toTraditionalChinese(techArchitecture);
     targetGoal = toTraditionalChinese(targetGoal);
@@ -6038,7 +6039,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req: Request, res: Response) => {
+    app.get('*', async (req: Request, res: Response) => {
       const indexPath = fs.existsSync(path.join(distPath, 'index.html'))
         ? path.join(distPath, 'index.html')
         : path.join(process.cwd(), 'index.html');
@@ -6100,6 +6101,45 @@ async function startServer() {
         pageTitle = '創星季創新提案詳情 | IdeaX 創點子';
         pageDesc = '查看此項創新提案之完整商業計劃、市場驗證進度與社群支持。';
         pageImg = 'https://www.ideax.tw/去背創星季.png';
+      }
+
+      // 支援 ?q=xxx / ?question=xxx / ?questionId=xxx / /question/:id / /vibecoding/:id 之動態題目預載
+      const targetQuestionId =
+        (req.query.q as string) ||
+        (req.query.question as string) ||
+        (req.query.questionId as string) ||
+        (req.query.id as string) ||
+        (rawPath.startsWith('/question/') ? rawPath.replace('/question/', '') : '') ||
+        (rawPath.startsWith('/vibecoding/') ? rawPath.replace('/vibecoding/', '') : '') ||
+        '';
+
+      if (targetQuestionId && adminDb) {
+        try {
+          const qDoc = await adminDb.collection('questions').doc(targetQuestionId).get();
+          if (qDoc.exists) {
+            const data = qDoc.data() as any;
+            const subcat = data.subcategory || (data.subcategories && data.subcategories[0]) || '';
+            const isApp = data.postType === 'vibecoding_app' || data.category === '網站程式' || data.specialZone === 'vibecoding';
+            const isProposal = data.postType === 'innovation_proposal' || data.specialZone === 'create_ideas';
+            const isPain = data.postType === 'pain_point' || data.specialZone === 'pain_points';
+            let prefix = '【問答交流】';
+            if (isApp) prefix = subcat ? `【軟體作品・${subcat}】` : '【軟體作品】';
+            else if (isProposal) prefix = subcat ? `【創新提案・${subcat}】` : '【創新提案】';
+            else if (isPain) prefix = subcat ? `【痛點探索・${subcat}】` : '【痛點探索】';
+            else if ((data.bounty || 0) > 0) prefix = `【懸賞 NT$ ${Number(data.bounty).toLocaleString()}】`;
+            else if (subcat) prefix = `【${data.category || '專業問答'}・${subcat}】`;
+            else if (data.category) prefix = `【${data.category}】`;
+
+            const aName = (data.appName || '').trim();
+            const qTitle = (data.title || '').trim();
+            const dTitle = aName && !qTitle.includes(aName) ? `【${aName}】${qTitle}` : qTitle;
+            pageTitle = `${prefix} ${dTitle} | IdeaX 創點子`;
+            if (data.description) pageDesc = data.description.replace(/\n+/g, ' ').slice(0, 155);
+            if (data.coverImage) pageImg = data.coverImage;
+          }
+        } catch (e) {
+          // ignore error and proceed
+        }
       }
 
       // 動態置換 HTML 中的 Meta、Title 與 Canonical

@@ -102,7 +102,7 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
     : null;
 
   return (
-    <div className={`relative ${heightClass} bg-stone-900 overflow-hidden border-b border-stone-100 group/img select-none`}>
+    <div className={`relative ${heightClass} bg-stone-800/80 overflow-hidden border-b border-stone-100 group/img select-none`}>
       {isPlayingVideoOnHover && embedUrl ? (
         <div className="relative w-full h-full bg-black">
           <iframe
@@ -140,19 +140,19 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
         </div>
       ) : (
         <>
-          {/* 自訂封面：整張圖完整顯示（不裁切），比例不同時用同一張圖的模糊放大版補滿兩側 */}
+          {/* 自訂封面：整張圖完整顯示（不裁切），比例不同時用同一張圖的模糊放大版補滿兩側，保持明亮鮮活 */}
           {!useYoutubeAsCover && (
             <img
               src={displayedImageSrc}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-90 brightness-115 pointer-events-none"
             />
           )}
           <img
             src={displayedImageSrc}
             alt={title}
-            className={`relative w-full h-full ${useYoutubeAsCover ? 'object-cover' : 'object-contain'} group-hover/img:scale-[1.03] transition-transform duration-500`}
+            className={`relative w-full h-full ${useYoutubeAsCover ? 'object-cover' : 'object-contain'} brightness-[1.08] contrast-[1.02] group-hover/img:scale-[1.03] transition-all duration-500`}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (useYoutubeAsCover && videoId && target.src.includes('maxresdefault')) {
@@ -164,7 +164,8 @@ export const ProposalCardMediaBanner: React.FC<ProposalCardMediaBannerProps> = (
               }
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
+          {/* 微透光漸層：調亮底部陰影，不壓暗主要卡片視覺與截圖細節 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
 
           {/* 若以 YouTube 作為封面（或滑鼠移入會播影片），顯示精緻的播放提示標記 */}
           {!isHovered && videoId && effectiveHoverMode === 'video_autoplay' && (

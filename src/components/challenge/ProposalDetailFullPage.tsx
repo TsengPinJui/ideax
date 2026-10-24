@@ -22,7 +22,9 @@ import {
   Coins,
   Star,
   ThumbsUp,
+  Trash2,
 } from 'lucide-react';
+import { AdminDelistModal } from '../AdminDelistModal';
 import {
   StarSeasonProposal,
   ProposalComment,
@@ -92,6 +94,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   const [shared, setShared] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isAdminDelistModalOpen, setIsAdminDelistModalOpen] = useState(false);
 
   const {
     currentUser,
@@ -363,6 +366,20 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 <span className="font-mono">({proposal.likeCount || 0})</span>
               </button>
             )}
+
+            {/* 管理員直接下架提案 */}
+            {currentUser?.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => setIsAdminDelistModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="管理員下架此提案"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden sm:inline">下架提案</span>
+                <span className="sm:hidden">下架</span>
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -371,15 +388,13 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-7 space-y-6">
         {/* 1. 提案頂部標題區塊 */}
         <section id="module-header" className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-4">
-          {/* 賽道與階段標籤 */}
+          {/* 賽道與標籤 */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs font-black px-3 py-1 rounded-full ${
-              proposal.stage === 'pain_point'
-                ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                : 'bg-amber-100 text-amber-900 border border-amber-300'
-            }`}>
-              {proposal.stage === 'pain_point' ? '第一階段：徵點子（痛點）' : '第二階段：創新提案'}
-            </span>
+            {proposal.stage === 'pain_point' && (
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                痛點需求
+              </span>
+            )}
 
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
               {STAR_SEASON_TRACKS[proposal.track]?.name || '未分類賽道'}
@@ -1127,6 +1142,16 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </button>
         </div>
       </main>
+
+      {/* 管理員下架提案彈窗 */}
+      <AdminDelistModal
+        isOpen={isAdminDelistModalOpen}
+        onClose={() => setIsAdminDelistModalOpen(false)}
+        targetId={proposal.id}
+        targetTitle={proposal.title}
+        targetType="proposal"
+        onSuccess={onBack}
+      />
     </div>
   );
 };

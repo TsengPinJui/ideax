@@ -169,21 +169,11 @@ export async function syncQuestionToFirestore(question: Question): Promise<{ suc
 }
 
 /**
- * 增加問題/痛點瀏覽次數（原子累加，持久化至 Firestore）
+ * 增加問題/痛點瀏覽次數（已依規定停止統計內容瀏覽次數）
  */
-export async function incrementQuestionViewInFirestore(questionId: string, amount: number = 1): Promise<void> {
-  if (!questionId || isQuotaExhausted) return;
-  try {
-    const qRef = doc(db, 'questions', questionId);
-    await updateDoc(qRef, {
-      views: increment(amount),
-      viewsCount: increment(amount),
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    // Ignore if document does not exist in Firestore yet; do not create a partial skeleton document without title/id
-    handleFirestoreError(`Failed to increment views for question ${questionId}`, err);
-  }
+export async function incrementQuestionViewInFirestore(_questionId: string, _amount: number = 1): Promise<void> {
+  // 不再統計內容瀏覽次數
+  return;
 }
 
 export async function deleteQuestionFromFirestore(questionId: string): Promise<void> {

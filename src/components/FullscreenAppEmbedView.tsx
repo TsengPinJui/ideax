@@ -29,6 +29,7 @@ import {
 } from '../utils/userDisplay';
 import { useApp } from '../context/AppContext';
 import { shareOrCopyUrl } from '../utils/shareUtils';
+import { AdminDelistModal } from './AdminDelistModal';
 
 interface FullscreenAppEmbedViewProps {
   question: Question;
@@ -43,7 +44,8 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
   onClose,
   onViewDescription,
 }) => {
-  const { availableUsers, showCenterToast } = useApp();
+  const { availableUsers, showCenterToast, currentUser } = useApp();
+  const [isAdminDelistModalOpen, setIsAdminDelistModalOpen] = useState(false);
 
   // 取得目標體驗網址 (demoUrl 或 externalLink 或上架平台連結)
   const targetRawUrl = useMemo(() => {
@@ -143,11 +145,11 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
           window.clearTimeout(timeoutId);
           setStatus('blocked');
           if (data.reason === 'x-frame-options' || data.reason === 'csp-frame-ancestors') {
-            setBlockReason('此作品網站設有嚴格安全保護策略（禁止 iframe 嵌入），請點擊下方「到網站支持」按鈕前往體驗。');
+            setBlockReason('此作品網站設有嚴格安全保護策略（禁止 iframe 嵌入），請點擊下方「前往網站」按鈕前往體驗。');
           } else if (data.reason === 'demo-placeholder' || data.reason === 'unreachable') {
-            setBlockReason('目標網址連線異常或為範例佔位網址，請點擊「到網站支持」前往。');
+            setBlockReason('目標網址連線異常或為範例佔位網址，請點擊「前往網站」前往。');
           } else {
-            setBlockReason('目標網站不支援直接試玩預覽，請點擊「到網站支持」前往體驗。');
+            setBlockReason('目標網站不支援直接試玩預覽，請點擊「前往網站」前往體驗。');
           }
         }
       })
@@ -257,7 +259,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
               title="前往作者官方網站體驗與支持"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">到網站支持</span>
+              <span className="hidden sm:inline">前往網站</span>
             </a>
           )}
 
@@ -269,6 +271,18 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
           >
             {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
           </button>
+
+          {currentUser?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsAdminDelistModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-rose-700/80 cursor-pointer shadow-xs"
+              title="管理員下架此作品"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">下架作品</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -338,7 +352,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                   className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>查看作品說明與架構</span>
+                  <span>查看詳細內容與架構</span>
                 </button>
                 <button
                   type="button"
@@ -360,7 +374,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
 
               <div className="space-y-2">
                 <h3 className="text-lg sm:text-xl font-black text-white">
-                  此網站限制內嵌連線，已為您準備好「到網站支持」
+                  此網站限制內嵌連線，已為您準備好「前往網站」
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-400 leading-relaxed">
                   {blockReason || '目標網站設有安全保護政策（禁止 iframe 嵌入）或連線載入超時，請點擊下方按鈕直接前往官方網站體驗與支持。'}
@@ -378,7 +392,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                   className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
                 >
                   <Globe className="w-4 h-4" />
-                  <span>到網站支持</span>
+                  <span>前往網站</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
 
@@ -413,7 +427,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                   rel="noopener noreferrer"
                   className="mt-2 px-3.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-indigo-300 hover:text-white border border-stone-700 text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs"
                 >
-                  <span>若載入較慢可直接「到網站支持」</span>
+                  <span>若載入較慢可直接「前往網站」</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -435,7 +449,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
               onError={() => {
                 if (!blockedByServerRef.current) {
                   setStatus('error');
-                  setBlockReason('網頁載入時發生錯誤，請直接點擊「到網站支持」。');
+                  setBlockReason('網頁載入時發生錯誤，請直接點擊「前往網站」。');
                 }
               }}
             />
@@ -443,13 +457,13 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
         )}
       </main>
 
-      {/* ⭐ 核心需求：右下角留一個「查看作品說明」的按鍵 ⭐ */}
+      {/* ⭐ 核心按鍵：右下角「詳細內容」浮動按鈕 ⭐ */}
       <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[160] pointer-events-auto">
         <button
           type="button"
           onClick={() => onViewDescription(question)}
           className="group relative px-5 py-3 sm:px-6 sm:py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 active:from-amber-500 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-2xl shadow-black/80 hover:shadow-amber-500/40 border-2 border-amber-200/90 flex items-center gap-3 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-md ring-4 ring-black/40 hover:ring-amber-400/50"
-          title="查看完整作品說明、版本紀錄、技術架構與社群討論"
+          title="查看完整詳細內容、版本紀錄、技術架構與社群討論"
         >
           {/* 光暈特效 */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 to-amber-300 rounded-2xl blur-xs opacity-40 group-hover:opacity-75 transition duration-200 pointer-events-none" />
@@ -460,7 +474,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
 
           <div className="relative flex flex-col text-left">
             <span className="text-stone-950 font-black tracking-tight leading-none text-sm sm:text-[15px]">
-              查看作品說明
+              詳細內容
             </span>
             <span className="text-[10px] text-amber-950/80 font-bold hidden sm:block mt-0.5">
               規格、版本日誌與討論
@@ -470,6 +484,16 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
           <ChevronRight className="relative w-4.5 h-4.5 text-stone-950 opacity-80 group-hover:translate-x-1 group-hover:opacity-100 transition-all shrink-0" />
         </button>
       </div>
+
+      {/* 管理員下架作品彈窗 */}
+      <AdminDelistModal
+        isOpen={isAdminDelistModalOpen}
+        onClose={() => setIsAdminDelistModalOpen(false)}
+        targetId={question.id}
+        targetTitle={question.appName || question.title}
+        targetType="app"
+        onSuccess={onClose}
+      />
     </div>
   );
 };
