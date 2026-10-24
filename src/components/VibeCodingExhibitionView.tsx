@@ -45,6 +45,7 @@ import { getFormattedAppNameAndTitle } from './QuestionCard';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
+import { getEffectiveQuestionViews } from '../utils/proposalClicks';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -115,10 +116,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     availableUsers,
     setSelectedQuestion,
     openAuthModal,
+    publicMetricsConfig,
   } = useApp();
   const questions = propQuestions || contextQuestions || [];
   const handleSelect = onSelectApp || onSelectQuestion || (() => {});
   const handleOpenCreate = onOpenCreateApp || onOpenCreateVibeCoding || (() => {});
+  const isAdmin = currentUser?.role === 'admin';
+  const shouldShowViews = isAdmin && (publicMetricsConfig?.showCardViews ?? true);
 
   const [showZoneHelp, setShowZoneHelp] = useState(false);
   // 點「體驗」時，先讓觀眾選作者填的上架平台
@@ -128,7 +132,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('latest');
+  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
 
@@ -220,6 +224,14 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         const bDisc = (answers || []).filter((ans) => ans.questionId === b.id).length + (b.answersCount || 0);
         return bDisc - aDisc;
       }
+      if (sortBy === 'most_views') {
+        const aViews = getEffectiveQuestionViews(a.id, a.views || 0);
+        const bViews = getEffectiveQuestionViews(b.id, b.views || 0);
+        if (bViews !== aViews) {
+          return bViews - aViews;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
       const scoreA = (a.likes || 0) * 3 + (a.supportPoints || 0) * 0.5 + (a.views || 0) * 0.1;
       const scoreB = (b.likes || 0) * 3 + (b.supportPoints || 0) * 0.5 + (b.views || 0) * 0.1;
       return scoreB - scoreA;
@@ -291,6 +303,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     });
     const questionDiscussions = (answers || []).filter((a) => a.questionId === app.id);
     const discussionsCount = questionDiscussions.length || app.answersCount || 0;
+    const effectiveViews = getEffectiveQuestionViews(app.id, app.views || 0);
 
     const coverImg =
       app.coverImage ||
@@ -370,6 +383,15 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+            {shouldShowViews && (
+              <span
+                className="flex items-center gap-1 text-[11px] font-mono text-stone-500"
+                title="管理員限定：累計點進內頁瀏覽次數"
+              >
+                <Eye className="w-3.5 h-3.5 text-stone-400" />
+                <span>{effectiveViews}</span>
+              </span>
+            )}
             <div className="text-right">
               <div className="text-[10px] text-stone-400 font-bold">點數支持</div>
               <div className="text-xs sm:text-sm font-mono font-black text-indigo-900 flex items-center gap-1 justify-end">
@@ -501,10 +523,21 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </span>
                 )}
               </span>
-              <span className="font-mono font-black text-indigo-700 flex items-center gap-0.5 shrink-0">
-                <Coins className="w-3 h-3" />
-                {(app.supportPoints || 0).toLocaleString()} 點
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {shouldShowViews && (
+                  <span
+                    className="flex items-center gap-1 text-[10px] font-mono text-stone-500"
+                    title="管理員限定：累計點進內頁瀏覽次數"
+                  >
+                    <Eye className="w-3 h-3 text-stone-400" />
+                    <span>{effectiveViews}</span>
+                  </span>
+                )}
+                <span className="font-mono font-black text-indigo-700 flex items-center gap-0.5 shrink-0">
+                  <Coins className="w-3 h-3" />
+                  {(app.supportPoints || 0).toLocaleString()} 點
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -699,6 +732,15 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <MessageCircle className="w-3.5 h-3.5 text-stone-400" />
                 <span>{discussionsCount}</span>
               </span>
+              {shouldShowViews && (
+                <span
+                  className="flex items-center gap-1 text-[11px] font-mono text-stone-500"
+                  title="管理員限定：累計點進內頁瀏覽次數"
+                >
+                  <Eye className="w-3.5 h-3.5 text-stone-400" />
+                  <span>{effectiveViews}</span>
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -936,6 +978,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <option value="liked">❤️ Like 最多</option>
                 <option value="discussions">💬 討論數最多</option>
                 <option value="latest">🕒 最新發布</option>
+                {isAdmin && (
+                  <option value="most_views">👁️ 瀏覽次數</option>
+                )}
               </select>
 
               {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}

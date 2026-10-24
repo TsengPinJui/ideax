@@ -3783,11 +3783,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 </span>
                                 {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                                   <span
-                                    className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[11px] font-mono shadow-2xs"
+                                    className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
                                     title="管理員限定：累計點進內頁瀏覽次數"
                                   >
-                                    <Eye className="w-3.5 h-3.5 text-purple-600" />
-                                    <span>{(p as any).viewsCount || (p as any).views || 0} 次</span>
+                                    <Eye className="w-3.5 h-3.5 text-stone-400" />
+                                    <span>{(p as any).viewsCount || (p as any).views || 0}</span>
                                   </span>
                                 )}
                               </div>
@@ -4064,11 +4064,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               </span>
                               {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                                 <span
-                                  className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[10px] font-mono shadow-2xs"
+                                  className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
                                   title="管理員限定：累計點進內頁瀏覽次數"
                                 >
-                                  <Eye className="w-3 h-3 text-purple-600" />
-                                  <span>{pp.views || 0} 次</span>
+                                  <Eye className="w-3.5 h-3.5 text-stone-400" />
+                                  <span>{pp.views || 0}</span>
                                 </span>
                               )}
                               <span

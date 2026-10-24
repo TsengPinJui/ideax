@@ -214,7 +214,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   // 篩選與搜尋
   const [searchKw, setSearchKw] = useState('');
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'support' | 'likes' | 'discussions' | 'latest'>('latest');
+  const [sortBy, setSortBy] = useState<'support' | 'likes' | 'discussions' | 'latest' | 'views'>('latest');
   const [viewMode, setViewMode] = useState<'large' | 'list' | 'grid'>('large');
   const [hoveredProposalId, setHoveredProposalId] = useState<string | null>(null);
 
@@ -504,6 +504,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       if (sortBy === 'latest') {
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       }
+      if (sortBy === 'views') {
+        return getEffectiveProposalViews(b.id, b.viewsCount || 0) - getEffectiveProposalViews(a.id, a.viewsCount || 0);
+      }
       // Default: 最多［點數支持］
       return (b.supportPoints || 0) - (a.supportPoints || 0);
     });
@@ -785,6 +788,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 <option value="likes">❤️ Like 最多</option>
                 <option value="discussions">💬 討論數最多</option>
                 <option value="latest">最新發布</option>
+                {currentUser?.role === 'admin' && (
+                  <option value="views">👁️ 瀏覽次數</option>
+                )}
               </select>
 
               {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
@@ -909,11 +915,11 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         </span>
                         {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                           <span
-                            className="flex items-center gap-0.5 text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs"
+                            className="flex items-center gap-0.5 text-stone-500 text-[11px] font-mono"
                             title="管理員限定：累計點進內頁瀏覽次數"
                           >
-                            <Eye className="w-2.5 h-2.5 text-purple-600" />
-                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                            <Eye className="w-3 h-3 text-stone-400" />
+                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>
                           </span>
                         )}
                       </div>
@@ -1048,11 +1054,11 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         </span>
                         {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                           <span
-                            className="flex items-center gap-0.5 text-purple-700 bg-purple-50 border border-purple-200 px-1 py-0.5 rounded text-[9px] font-mono shadow-2xs"
+                            className="flex items-center gap-0.5 text-stone-500 text-[10px] font-mono"
                             title="管理員限定：累計點進內頁瀏覽次數"
                           >
-                            <Eye className="w-2.5 h-2.5 text-purple-600" />
-                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                            <Eye className="w-3 h-3 text-stone-400" />
+                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>
                           </span>
                         )}
                       </div>
@@ -1228,11 +1234,11 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                       </span>
                       {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                         <span
-                          className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[10px] font-mono shadow-2xs"
+                          className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
                           title="管理員限定：累計點進內頁瀏覽次數"
                         >
-                          <Eye className="w-3 h-3 text-purple-600" />
-                          <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                          <Eye className="w-3.5 h-3.5 text-stone-400" />
+                          <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>
                         </span>
                       )}
                       <span

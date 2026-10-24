@@ -336,7 +336,7 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
   favoriteCount = 0,
 }) => {
   const [showZoneHelp, setShowZoneHelp] = useState(false);
-  const { questions } = useApp();
+  const { questions, currentUser } = useApp();
   const isVibeCoding = category === '網站程式' || subcategory === 'VibeCoding';
   const style = CATEGORY_STYLE[category] || CATEGORY_STYLE['創新創業'];
   const MainIcon = style.icon;
@@ -562,6 +562,9 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
                 <option value="highest_tips">🪙 點數支持 高到低</option>
                 <option value="most_solutions">💡 方案數最多</option>
                 <option value="most_discussions">💬 討論數最多</option>
+                {currentUser?.role === 'admin' && (
+                  <option value="most_views">👁️ 瀏覽次數</option>
+                )}
               </select>
             )}
 

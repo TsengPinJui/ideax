@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode, SpecialZone } from '../types';
-import { Award, Clock, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X } from 'lucide-react';
+import { Award, Clock, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X, Eye } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
@@ -44,7 +44,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   specialZone,
   onSelectSpecialZone,
 }) => {
-  const { questions } = useApp();
+  const { questions, currentUser } = useApp();
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
   const currentSubcategories = selectedCategory !== '全部' ? CATEGORY_HIERARCHY[selectedCategory] || [] : [];
@@ -276,6 +276,21 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               <Coins className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 shrink-0 hidden sm:inline" />
               <span>總打賞</span>
             </button>
+
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setSortBy('most_views')}
+                className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm transition-all cursor-pointer flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
+                  sortBy === 'most_views'
+                    ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900 font-medium'
+                }`}
+                title="管理員專屬：依瀏覽次數排序"
+              >
+                <Eye className="w-3 h-3 md:w-3.5 md:h-3.5 text-stone-400 shrink-0 hidden sm:inline" />
+                <span>瀏覽次數</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

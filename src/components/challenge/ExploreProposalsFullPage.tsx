@@ -139,7 +139,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'funding' | 'likes' | 'comments' | 'latest'>('funding');
+  const [sortBy, setSortBy] = useState<'funding' | 'likes' | 'comments' | 'latest' | 'views'>('funding');
   const [cardViewMode, setCardViewMode] = useState<'large' | 'compact'>('large');
   const [likedProposalIds, setLikedProposalIds] = useState<string[]>([]);
 
@@ -350,6 +350,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     if (sortBy === 'latest') {
       return (Date.parse((b as any).createdAt || '') || 0) - (Date.parse((a as any).createdAt || '') || 0);
     }
+    if (sortBy === 'views') {
+      return ((b.viewsCount || (b as any).views || 0) - (a.viewsCount || (a as any).views || 0));
+    }
     return 0;
   });
 
@@ -503,6 +506,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     }
     if (sortBy === 'comments') {
       return [...filtered].sort((a: any, b: any) => (b.commentsCount || 0) - (a.commentsCount || 0));
+    }
+    if (sortBy === 'views') {
+      return [...filtered].sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
     }
     return filtered;
   }, [allPainPoints, selectedTrack, searchKeyword, sortBy, getQuestionSecondCount]);
@@ -1223,6 +1229,21 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 <Clock className={`w-3.5 h-3.5 ${sortBy === 'latest' ? 'text-white' : 'text-sky-500'}`} />
                 <span>最新</span>
               </button>
+              {currentUser?.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => setSortBy('views')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    sortBy === 'views'
+                      ? 'bg-stone-800 text-white shadow-2xs font-black'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/70'
+                  }`}
+                  title="管理員專屬：依瀏覽次數高至低排序"
+                >
+                  <Eye className={`w-3.5 h-3.5 ${sortBy === 'views' ? 'text-white' : 'text-stone-400'}`} />
+                  <span>瀏覽次數</span>
+                </button>
+              )}
             </div>
 
             {/* 卡片模式切換：大卡片模式（顯示圖片） vs 簡潔卡片模式 */}
@@ -1563,11 +1584,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                         {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
                           <span
-                            className="p-1.5 px-2 rounded-lg bg-purple-50/80 border border-purple-200/80 text-purple-700 text-xs font-bold flex items-center gap-1 font-mono shadow-2xs"
+                            className="text-stone-500 text-[11px] flex items-center gap-1 font-mono"
                             title="管理員限定：累計點進內頁瀏覽次數"
                           >
-                            <Eye className="w-3.5 h-3.5 text-purple-600" />
-                            <span>{proposal.viewsCount || (proposal as any).views || 0} 次</span>
+                            <Eye className="w-3.5 h-3.5 text-stone-400" />
+                            <span>{proposal.viewsCount || (proposal as any).views || 0}</span>
                           </span>
                         )}
                       </div>

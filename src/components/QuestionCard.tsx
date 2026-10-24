@@ -526,10 +526,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {shouldShowViews && (
               <span
-                className="font-mono text-[9.5px] sm:text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs"
+                className="font-mono text-[10px] sm:text-xs font-medium text-stone-500 flex items-center gap-1"
                 title="管理員限定：累計點進內頁瀏覽次數"
               >
-                <Eye className="w-2.5 h-2.5 text-purple-600" />
+                <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-400" />
                 <span>{effectiveViews}</span>
               </span>
             )}
@@ -790,11 +790,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {shouldShowViews && (
               <span
-                className="flex items-center gap-1 text-[11px] font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg shadow-2xs"
+                className="flex items-center gap-1 text-[11px] font-mono text-stone-500"
                 title="管理員限定：累計點進內頁瀏覽次數"
               >
-                <Eye className="w-3.5 h-3.5 text-purple-600" />
-                <span>{effectiveViews} 次</span>
+                <Eye className="w-3.5 h-3.5 text-stone-400" />
+                <span>{effectiveViews}</span>
               </span>
             )}
 
@@ -1256,11 +1256,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
           {shouldShowViews && (
             <span
-              className="flex items-center gap-1 font-mono text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full shadow-2xs"
+              className="flex items-center gap-1 font-mono text-[11px] text-stone-500"
               title="管理員限定：累計點進內頁瀏覽次數"
             >
-              <Eye className="w-3.5 h-3.5 text-purple-600" />
-              <span>{effectiveViews} 次</span>
+              <Eye className="w-3.5 h-3.5 text-stone-400" />
+              <span>{effectiveViews}</span>
             </span>
           )}
 

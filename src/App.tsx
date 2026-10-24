@@ -56,7 +56,7 @@ import {
   isQuestionExpired,
 } from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
-import { recordQuestionViewClick } from './utils/proposalClicks';
+import { recordQuestionViewClick, getEffectiveQuestionViews } from './utils/proposalClicks';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
 import { MascotHost } from './components/mascot/MascotHost';
@@ -464,7 +464,8 @@ function MainContent() {
         saved === 'highest_tips' ||
         saved === 'most_solutions' ||
         saved === 'most_discussions' ||
-        saved === 'highest_bounty'
+        saved === 'highest_bounty' ||
+        saved === 'most_views'
       ) {
         return saved;
       }
@@ -1939,6 +1940,16 @@ function MainContent() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
+        // 7. 瀏覽次數（管理員專屬排序）
+        if (sortBy === 'most_views') {
+          const aViews = getEffectiveQuestionViews(a.id, a.views || 0);
+          const bViews = getEffectiveQuestionViews(b.id, b.views || 0);
+          if (bViews !== aViews) {
+            return bViews - aViews;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [
@@ -2482,6 +2493,9 @@ function MainContent() {
                             <option value="highest_bounty">💰 懸賞金額 高到低</option>
                             <option value="most_solutions">💡 方案數最多</option>
                             <option value="most_discussions">💬 討論數最多</option>
+                            {currentUser?.role === 'admin' && (
+                              <option value="most_views">👁️ 瀏覽次數</option>
+                            )}
                           </select>
 
                           {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
@@ -2699,6 +2713,9 @@ function MainContent() {
                             <option value="most_discussions">💬 討論數最多</option>
                             <option value="most_solutions">💡 方案數最多</option>
                             <option value="highest_tips">🪙 點數支持 高到低</option>
+                            {currentUser?.role === 'admin' && (
+                              <option value="most_views">👁️ 瀏覽次數</option>
+                            )}
                           </select>
 
                           {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
