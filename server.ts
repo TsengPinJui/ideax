@@ -1755,12 +1755,24 @@ async function handleScrapeWebsite(req: Request, res: Response) {
     // 預設封面：首頁截圖（保證是首頁封面），若有 og:image 則同時提供作為選項
     const defaultCoverImage = screenshotUrl;
 
-    // 3. 使用 Gemini 3.8 Flash 進行深度語意萃取、命名精簡與軟體類別分類
-    const VALID_CATEGORIES = ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'];
-    const hasValidPreferred = preferredCategory && VALID_CATEGORIES.includes(preferredCategory);
+    // 3. 使用 Gemini 3.8 Flash 進行深度語意萃取、命名精簡與軟體類別分類（支援複選分類）
+    const VALID_CATEGORIES = ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'];
+    const normalizeCatName = (c: string) => (c === '小遊戲' ? '遊戲' : c);
+
+    const rawPrefCats: any[] = Array.isArray(req.body.preferredCategories)
+      ? req.body.preferredCategories
+      : (req.body.preferredCategory ? [req.body.preferredCategory] : []);
+    const userSelectedCategories: string[] = Array.from(
+      new Set(
+        rawPrefCats
+          .map((c) => normalizeCatName(String(c).trim()))
+          .filter((c) => VALID_CATEGORIES.includes(c))
+      )
+    );
+    const hasValidPreferred = userSelectedCategories.length > 0;
 
     const prompt = `你是「IdeaX 創點子」軟體網站作品專區的專業審查與產品架構顧問。
-管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」、「軟體分類 (category)」、「對應解決之用戶痛點 (referencedPainPoint)」與「提案目標與預期效益 (targetGoal)」：
+管理員提供了一個待上架的網站網址與爬取的網頁資料，請為其自動生成「軟體名稱 (appName)」、「核心標題 (title)」、「專業簡述 (description)」、「軟體分類 (categories，可複選)」、「對應解決之用戶痛點 (referencedPainPoint)」與「提案目標與預期效益 (targetGoal)」：
 
 【語言與命名最高規範（請務必嚴格遵守）】
 1. 軟體名稱 (appName)：按照原語言！若是外文原創品牌名（例如「Cursor」、「Notion」、「Figma」、「Spotify」、「Wordle」、「Linear」等），100% 保持原語言名稱；若是中文名稱則保持中文。嚴禁擅自將外文品牌音譯成中文字，亦嚴禁簡體中文。
@@ -1785,13 +1797,13 @@ ${rawDescription || '無'}
 【網頁內容摘要片段】
 ${cleanedText || '（無法獲取純靜態 HTML，請依據網域與已知主流網站特性進行辨識）'}
 
-【管理員預先勾選的軟體分類】
-${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特性自動判定最佳分類）'}
+【管理員預先指定的軟體分類（可複選）】
+${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 AI 根據功能特性自動判定最相符的一或多個分類，可複選）'}
 
-【軟體專區五大分類定義】
+【軟體專區五大分類定義（可複選）】
 1. 「網站程式」：一般網頁應用、SaaS 雲端平台、社群媒體、資訊入口、數位看板、協作平台。
 2. 「AI工具」：包含大語言模型、生成式 AI、AI 對話、文字/圖片/影片生成、AI 智慧助理。
-3. 「小遊戲」：休閒遊戲、網頁互動小遊戲、益智娛樂、RPG/Canvas 網頁遊戲。
+3. 「遊戲」：休閒遊戲、網頁互動小遊戲、益智娛樂、RPG/Canvas 網頁遊戲。
 4. 「自動化」：爬蟲工具、流程自動化、Webhook/API 串接整合、定時排程、生產力自動化腳本。
 5. 「擴充功能」：瀏覽器外掛 Extension (Chrome/Edge/Firefox)、VSCode 插件或工具外掛。
 
@@ -1801,7 +1813,8 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
   "appName": "軟體/專案名稱（按照原語言，如「Cursor」、「Notion」、「Figma」或原網站中文品牌名，12字以內）",
   "title": "作品繁體中文核心標題（說明與標題一律用中文，若原標題是外文必須翻譯為繁體中文，28字以內。⚠️重要規範：標題專注於產品核心亮點與功能特徵，絕對避免重複出現 appName 作品名稱，不要冠上作品名稱）",
   "description": "作品繁體中文完整簡述（若原網站說明是外文請將其轉為繁體中文，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
-  "category": "${hasValidPreferred ? preferredCategory : '必須精準歸入上述五個分類之一：網站程式 / AI工具 / 小遊戲 / 自動化 / 擴充功能'}",
+  "category": "${hasValidPreferred ? userSelectedCategories[0] : '主分類，必須精準歸入上述五個分類之一：網站程式 / AI工具 / 遊戲 / 自動化 / 擴充功能'}",
+  "categories": ["符合的分類（可複選，例如：網站程式、AI工具）"],
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
   "techArchitecture": "建議的技術架構（繁體中文，如：Web 全端架構 React / TypeScript）",
   "targetGoal": "創新提案目標與預期效益（繁體中文，說明能為使用者達成什麼成果，約 30~80 字）",
@@ -1816,6 +1829,10 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
         title: { type: Type.STRING },
         description: { type: Type.STRING },
         category: { type: Type.STRING },
+        categories: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
         tags: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
@@ -1850,7 +1867,42 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
       || (rawDescription && hasChinese(rawDescription) ? rawDescription.trim() : '')
       || '';
 
-    let category = parsedResult?.category;
+    let rawCategories: string[] = [];
+    if (Array.isArray(parsedResult?.categories) && parsedResult.categories.length > 0) {
+      rawCategories = parsedResult.categories.map((c: any) => normalizeCatName(String(c).trim()));
+    } else if (parsedResult?.category) {
+      rawCategories = [normalizeCatName(String(parsedResult.category).trim())];
+    }
+
+    let finalCategories = Array.from(new Set(rawCategories.filter((c) => VALID_CATEGORIES.includes(c))));
+
+    // 若管理員有指定偏好分類，優先採用管理員指定的分類（或合併）
+    if (hasValidPreferred) {
+      finalCategories = Array.from(new Set([...userSelectedCategories, ...finalCategories]));
+    }
+
+    // 若完全沒有匹配到任何合法分類，以啟發式規則分析
+    if (finalCategories.length === 0) {
+      const lower = `${cleanUrl} ${rawTitle} ${rawDescription} ${cleanedText}`.toLowerCase();
+      if (/game|遊戲|play|puzzle|arcade|2048|chess|rpg/i.test(lower)) {
+        finalCategories.push('遊戲');
+      }
+      if (/ai|gpt|gemini|llm|agent|智能|智慧|機器人|model|copilot/i.test(lower)) {
+        finalCategories.push('AI工具');
+      }
+      if (/auto|workflow|crawler|爬蟲|自動|webhook|schedule|bot|pipeline/i.test(lower)) {
+        finalCategories.push('自動化');
+      }
+      if (/extension|plugin|addon|外掛|擴充|chrome-extension|vscode/i.test(lower)) {
+        finalCategories.push('擴充功能');
+      }
+      if (finalCategories.length === 0) {
+        finalCategories.push('網站程式');
+      }
+    }
+
+    const primaryCategory = finalCategories[0] || '網站程式';
+
     let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0
       ? parsedResult.tags.map((t: string) => toTraditionalChinese(String(t).trim()))
       : [];
@@ -1884,24 +1936,6 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
       referencedPainPoint = await ensureChineseText(referencedPainPoint, `${appName} 對應解決痛點`);
     }
 
-    // 若分類不在允許名單中或有指定的分類
-    if (hasValidPreferred) {
-      category = preferredCategory;
-    } else if (!VALID_CATEGORIES.includes(category)) {
-      const lower = `${cleanUrl} ${rawTitle} ${rawDescription} ${cleanedText}`.toLowerCase();
-      if (/game|遊戲|play|puzzle|arcade|2048|chess|rpg/i.test(lower)) {
-        category = '小遊戲';
-      } else if (/ai|gpt|gemini|llm|agent|智能|智慧|機器人|model|copilot/i.test(lower)) {
-        category = 'AI工具';
-      } else if (/auto|workflow|crawler|爬蟲|自動|webhook|schedule|bot|pipeline/i.test(lower)) {
-        category = '自動化';
-      } else if (/extension|plugin|addon|外掛|擴充|chrome-extension|vscode/i.test(lower)) {
-        category = '擴充功能';
-      } else {
-        category = '網站程式';
-      }
-    }
-
     if (!title) {
       title = `${appName} - 實用線上軟體體驗`;
     }
@@ -1927,7 +1961,9 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
     referencedPainPoint = toTraditionalChinese(referencedPainPoint);
 
     if (tags.length === 0) {
-      tags = [category, 'Web應用', '線上工具', appName];
+      tags = [...finalCategories, 'Web應用', '線上工具', appName];
+    } else {
+      tags = Array.from(new Set([...finalCategories, ...tags]));
     }
 
     return res.json({
@@ -1937,7 +1973,8 @@ ${hasValidPreferred ? preferredCategory : '未勾選（請由 AI 根據功能特
         appName,
         title,
         description,
-        category,
+        category: primaryCategory,
+        categories: finalCategories,
         tags,
         techArchitecture,
         targetGoal,

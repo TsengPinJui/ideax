@@ -325,8 +325,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
           {/* Subtitle */}
           {!homeShowcaseConfig.hideHeroTitles && (
-            <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
+            <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold flex-wrap">
               <span>痛點許願 · 創新提案 · 專家懸賞</span>
+              <span className="inline-flex items-center gap-0.5 text-xs sm:text-sm font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                持續上新中~
+              </span>
             </div>
           )}
           {!isRealRegisteredUser(currentUser) && (
@@ -335,8 +338,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <div className="flex items-center gap-2 text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Gift className="h-5 w-5" /></span>
                   <div>
-                    <p className="text-sm sm:text-base font-black text-stone-900">新用戶註冊即贈 <span className="text-amber-700">200 平台點</span></p>
-                    <p className="text-[10px] sm:text-xs text-stone-500">另有 100,000 創星幣新手福利，兩種點數分開計算</p>
+                    <p className="text-sm sm:text-base font-black text-stone-900">新用戶註冊即贈 <span className="text-amber-700">100 平台點</span></p>
+                    <p className="text-[10px] sm:text-xs text-stone-500">分享推薦碼 +100 點/人 · 發文再享 +100~300 點</p>
                   </div>
                 </div>
                 <button

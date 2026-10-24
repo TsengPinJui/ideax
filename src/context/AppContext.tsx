@@ -5542,15 +5542,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
     ]);
 
-    // 發文點數獎勵（註冊會員）：發布痛點 +100 點，發布創新提案或刊登作品 +200 點
+    // 發文點數獎勵（註冊會員）：發布痛點或討論交流 +100 點，發布創新提案或刊登作品 +300 點
+    const isDiscussionOrPainPoint = isPainPoint || q.postType === 'chat_discussion';
     const isProposalOrApp = q.postType === 'innovation_proposal' || q.postType === 'vibecoding_app';
-    const bonusAmount = isPainPoint ? 100 : isProposalOrApp ? 200 : 0;
+    const bonusAmount = isDiscussionOrPainPoint ? 100 : isProposalOrApp ? 300 : 0;
 
     if (!isGuest && bonusAmount > 0) {
-      const bonusType = isPainPoint ? '發布痛點獎勵' : (q.postType === 'vibecoding_app' ? '刊登作品獎勵' : '發布創新提案獎勵');
+      const bonusType = isPainPoint
+        ? '發布痛點獎勵'
+        : (q.postType === 'chat_discussion'
+            ? '發布討論交流獎勵'
+            : (q.postType === 'vibecoding_app' ? '刊登作品獎勵' : '發布創新提案獎勵'));
       const bonusNote = isPainPoint
         ? '發布痛點成功！獲得探索激勵點數 100 點'
-        : (q.postType === 'vibecoding_app' ? '刊登作品成功！獲得創作激勵點數 200 點' : '發布創新提案成功！獲得創新激勵點數 200 點');
+        : (q.postType === 'chat_discussion'
+            ? '發布討論交流成功！獲得社群互動激勵點數 100 點'
+            : (q.postType === 'vibecoding_app' ? '刊登作品成功！獲得創作激勵點數 300 點' : '發布創新提案成功！獲得創新激勵點數 300 點'));
 
       const updatedUser: User = {
         ...currentUser,

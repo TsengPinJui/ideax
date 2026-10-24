@@ -23,6 +23,7 @@ import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverla
 import { isGuestUser } from './utils/userDisplay';
 import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
 import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
+import { HomeAnnouncementBanner } from './components/HomeAnnouncementBanner';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
@@ -2163,6 +2164,15 @@ function MainContent() {
         {/* 1. Explore Tab: Market Grid & Hero */}
         {activeTab === 'explore' && !createIdeasDetailId && (
           <div className="relative">
+            {/* 首頁官方公告：多多分享好康獎勵流程 */}
+            <HomeAnnouncementBanner
+              onOpenRegister={() => openAuthModal('register', 'email')}
+              onOpenCreateDiscussion={() => handleOpenCreateWithType('chat_discussion')}
+              onOpenCreatePainPoint={() => handleOpenCreateWithType('pain_point')}
+              onOpenCreateApp={() => handleOpenCreateWithType('vibecoding_app')}
+              onOpenCreateProposal={() => handleOpenCreateWithType('innovation_proposal')}
+            />
+
             {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與緊湊銜接) */}
             <div className="relative bg-gradient-to-b from-amber-50/70 via-amber-50/30 to-stone-50/40 pb-1 sm:pb-2">
               <HeroSection

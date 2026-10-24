@@ -81,6 +81,7 @@ export interface ScrapedAppItem {
   title: string;
   description: string;
   category: SoftwareCategory;
+  categories?: SoftwareCategory[];
   tags: string[];
   techArchitecture: string;
   targetGoal?: string;
@@ -169,7 +170,14 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
 
   // 預設刊登專區（默認不勾選，由管理員依需求選取）
   const [defaultDestinations, setDefaultDestinations] = useState<PublishDestination[]>([]);
-  const [preferredCategory, setPreferredCategory] = useState<SoftwareCategory | ''>('');
+  // 偏好分類（支援複選，若為空則全由 AI 研判）
+  const [preferredCategories, setPreferredCategories] = useState<SoftwareCategory[]>([]);
+
+  const togglePreferredCategory = (catId: SoftwareCategory) => {
+    setPreferredCategories((prev) =>
+      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
+    );
+  };
 
   // 執行解析狀態
   const [isProcessing, setIsProcessing] = useState(false);
@@ -229,6 +237,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     setErrorMessage('');
     setIsProcessing(false);
     setIsPublishing(false);
+    setPreferredCategories([]);
   };
 
   // 執行單筆網址爬取與 AI 結構化分析
@@ -239,7 +248,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       headers,
       body: JSON.stringify({
         url,
-        preferredCategory: preferredCategory || undefined,
+        preferredCategories: preferredCategories.length > 0 ? preferredCategories : undefined,
+        preferredCategory: preferredCategories[0] || undefined,
       }),
     });
 
@@ -250,12 +260,24 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
 
     const raw = resData.data;
     const cleanAppName = raw.appName || '未命名軟體';
+
+    const rawCats: SoftwareCategory[] = Array.isArray(raw.categories) && raw.categories.length > 0
+      ? raw.categories.filter((c: any) => CATEGORY_OPTIONS.some((o) => o.id === c))
+      : (preferredCategories.length > 0
+          ? [...preferredCategories]
+          : [raw.category || '網站程式']);
+    const primaryCat: SoftwareCategory = rawCats[0] || raw.category || '網站程式';
+    const finalCats = rawCats.length > 0 ? rawCats : [primaryCat];
+
     return {
       appName: cleanAppName,
       title: stripAppNameFromTitle(raw.title || '無標題', cleanAppName),
       description: raw.description || '',
-      category: raw.category || '網站程式',
-      tags: Array.isArray(raw.tags) && raw.tags.length > 0 ? raw.tags : [raw.category || '網站程式'],
+      category: primaryCat,
+      categories: finalCats,
+      tags: Array.isArray(raw.tags) && raw.tags.length > 0
+        ? Array.from(new Set([...finalCats, ...raw.tags]))
+        : [...finalCats, '軟體作品'],
       techArchitecture: raw.techArchitecture || 'Web 網頁應用程式',
       targetGoal: raw.targetGoal || '打造流暢直覺且能解決真實痛點的數位體驗',
       referencedPainPoint: raw.referencedPainPoint || '傳統流程繁瑣、缺乏直覺操作介面',
@@ -307,7 +329,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       appName: '',
       title: '',
       description: '',
-      category: (preferredCategory as SoftwareCategory) || '網站程式',
+      category: preferredCategories[0] || '網站程式',
+      categories: preferredCategories.length > 0 ? [...preferredCategories] : ['網站程式'],
       tags: [],
       techArchitecture: 'Web 網頁應用程式',
       targetGoal: '',
@@ -467,7 +490,10 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     try {
       for (const item of toPublish) {
         const cleanUrl = item.websiteUrl;
-        const finalCategory = item.category || '網站程式';
+        const finalCategories: SoftwareCategory[] = (item.categories && item.categories.length > 0)
+          ? item.categories
+          : (item.category ? [item.category] : ['網站程式']);
+        const primaryCategory = finalCategories[0] || '網站程式';
         const finalAuthorName = (item.authorName && item.authorName.trim()) || PLATFORM_CURATED_NAME;
         const finalAuthorTitle = (item.authorTitle && item.authorTitle.trim()) || '官方審核精選';
 
@@ -483,9 +509,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             postType: 'vibecoding_app',
             specialZone: 'vibecoding',
             category: '網站程式',
-            subcategory: finalCategory,
-            subcategories: [finalCategory],
-            tags: item.tags.length > 0 ? item.tags : [finalCategory, '網站程式', '軟體作品'],
+            subcategory: primaryCategory,
+            subcategories: finalCategories,
+            tags: item.tags.length > 0
+              ? Array.from(new Set([...finalCategories, ...item.tags, '網站程式', '軟體作品']))
+              : [...finalCategories, '網站程式', '軟體作品'],
             coverImage: item.coverImage,
             showCardImage: true,
             cardDisplayImage: item.coverImage,
@@ -516,9 +544,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             postType: 'innovation_proposal',
             specialZone: 'create_ideas',
             category: '創新創業',
-            subcategory: finalCategory,
-            subcategories: [finalCategory],
-            tags: item.tags.length > 0 ? Array.from(new Set([...item.tags, '創新提案'])) : [finalCategory, '創新提案'],
+            subcategory: primaryCategory,
+            subcategories: finalCategories,
+            tags: item.tags.length > 0
+              ? Array.from(new Set([...finalCategories, ...item.tags, '創新提案']))
+              : [...finalCategories, '創新提案'],
             coverImage: item.coverImage,
             showCardImage: true,
             cardDisplayImage: item.coverImage,
@@ -698,34 +728,39 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                 <span className="text-[11px] text-stone-400">（可複選，同時發布至雙專區）</span>
               </div>
 
-              {/* 分類指定（選填） */}
+              {/* 分類指定（選填，支援複選） */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-stone-700">分類：</span>
+                <span className="text-xs font-black text-stone-700">分類偏好：</span>
                 <button
                   type="button"
-                  onClick={() => setPreferredCategory('')}
+                  onClick={() => setPreferredCategories([])}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                    !preferredCategory
-                      ? 'bg-purple-600 text-white border-purple-600'
+                    preferredCategories.length === 0
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                       : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
                   }`}
                 >
                   ✨ AI 自動判定
                 </button>
-                {CATEGORY_OPTIONS.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setPreferredCategory(preferredCategory === cat.id ? '' : cat.id)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                      preferredCategory === cat.id
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+                {CATEGORY_OPTIONS.map((cat) => {
+                  const isSelected = preferredCategories.includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => togglePreferredCategory(cat.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                        isSelected
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                          : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
+                <span className="text-[11px] text-stone-400">（可複選分類，留空則全由 AI 研判）</span>
               </div>
 
               {/* 網址輸入框 */}
@@ -995,11 +1030,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                                 {item.title || item.websiteUrl}
                               </p>
 
-                              {/* 專區標籤 */}
+                              {/* 專區與分類標籤 */}
                               <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
-                                  {item.category}
-                                </span>
+                                {(item.categories && item.categories.length > 0 ? item.categories : [item.category]).map((c) => (
+                                  <span key={c} className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200/60">
+                                    {c}
+                                  </span>
+                                ))}
                                 {item.destinations.includes('vibecoding_app') && (
                                   <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-indigo-100 text-indigo-700">
                                     作品
@@ -1140,22 +1177,46 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                     {/* 分類與封面微調 */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                       <div className="space-y-1">
-                        <label className="block text-[11px] font-black text-stone-700">分類</label>
+                        <label className="block text-[11px] font-black text-stone-700 flex items-center justify-between">
+                          <span>分類（可複選）</span>
+                          {(activeItem.categories?.length || 0) > 1 && (
+                            <span className="text-[10px] text-purple-600 font-bold">已選 {activeItem.categories?.length} 個分類</span>
+                          )}
+                        </label>
                         <div className="flex gap-1 flex-wrap">
-                          {CATEGORY_OPTIONS.map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => updateActiveItem({ category: cat.id })}
-                              className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                activeItem.category === cat.id
-                                  ? 'bg-purple-600 text-white border-purple-600'
-                                  : 'bg-white text-stone-700 border-stone-200'
-                              }`}
-                            >
-                              {cat.label}
-                            </button>
-                          ))}
+                          {CATEGORY_OPTIONS.map((cat) => {
+                            const currentCats = activeItem.categories && activeItem.categories.length > 0
+                              ? activeItem.categories
+                              : [activeItem.category || '網站程式'];
+                            const isSelected = currentCats.includes(cat.id);
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => {
+                                  let next: SoftwareCategory[];
+                                  if (currentCats.includes(cat.id)) {
+                                    // 至少保留一個分類
+                                    next = currentCats.length > 1 ? currentCats.filter((c) => c !== cat.id) : currentCats;
+                                  } else {
+                                    next = [...currentCats, cat.id];
+                                  }
+                                  updateActiveItem({
+                                    categories: next,
+                                    category: next[0] || '網站程式',
+                                  });
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                  isSelected
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
+                                <span>{cat.label}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
