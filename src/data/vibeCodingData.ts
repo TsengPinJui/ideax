@@ -22,7 +22,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     authorAvatar: '/seed-covers/vibe-app-ezcook-pwa.png',
     createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
-    views: 1520,
+    views: 0,
     likes: 286,
     secondedCount: 79,
     sameQuestionCount: 38,

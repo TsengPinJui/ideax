@@ -27,6 +27,8 @@ import {
   Share2,
   ExternalLink,
   Flame,
+  ArrowRight,
+  Layers,
 } from 'lucide-react';
 import {
   isGuestUser,
@@ -61,27 +63,35 @@ interface VibeCodingExhibitionViewProps {
 
 import { SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
 
-const VIBE_CATEGORIES = [
-  { id: 'all', label: '全部分類', icon: LayoutGrid },
-  { id: '網站程式', label: '網站程式', icon: Globe },
-  { id: 'AI工具', label: 'AI工具', icon: Cpu },
-  { id: '遊戲', label: '遊戲', icon: Gamepad2 },
-  { id: '自動化', label: '自動化', icon: Workflow },
-  { id: '擴充功能', label: '擴充功能', icon: Puzzle },
+export const VIBE_CATEGORIES = [
+  { id: 'all', label: '全部分類', icon: LayoutGrid, description: '全站所有軟體網站、AI 工具與互動遊戲' },
+  { id: '遊戲', label: '遊戲', icon: Gamepad2, description: '熱門小遊戲、休閒互動、料理模擬與即時對戰' },
+  { id: 'AI工具', label: 'AI工具', icon: Cpu, description: 'AI Agent 助手、生成式創作、視覺影音與數據洞察' },
+  { id: '網站程式', label: '網站程式', icon: Globe, description: 'Web 服務、管理系統、電商平台與生活實用工具' },
+  { id: '自動化', label: '自動化', icon: Workflow, description: '自動化流程、定時排程與效率工作流' },
+  { id: '擴充功能', label: '擴充功能', icon: Puzzle, description: '瀏覽器外掛、開發工具與擴充套件' },
 ];
 
 export const normalizeVibeCategory = (raw: string): string => {
   const s = (raw || '').trim();
-  if (s === '網站程式' || s === '網站功能' || s === 'Web 應用程式' || s === 'Web應用') return '網站程式';
-  if (s === 'AI工具' || s === 'AI 智慧工具' || s === 'AI Agent 助手') return 'AI工具';
-  if (s === '遊戲' || s === '小遊戲' || s === '創新互動與遊戲') return '遊戲';
+  if (s === '網站程式' || s === '網站功能' || s === 'Web 應用程式' || s === 'Web應用' || s === '網站') return '網站程式';
+  if (s === 'AI工具' || s === 'AI 智慧工具' || s === 'AI Agent 助手' || s === 'AI' || s === 'AI應用') return 'AI工具';
+  if (s === '遊戲' || s === '小遊戲' || s === '創新互動與遊戲' || s === 'Game') return '遊戲';
   if (s === '自動化' || s === '自動化工作流' || s === '自動化流程' || s === '產業自動化流程') return '自動化';
-  if (s === '擴充功能' || s === '瀏覽器擴充功能' || s === '效率工具') return '擴充功能';
+  if (s === '擴充功能' || s === '瀏覽器擴充功能' || s === '效率工具' || s === '外掛') return '擴充功能';
   return s;
 };
 
 // 每個軟體作品嚴格只屬於單一分類
 export const getQuestionVibeCategory = (q: Question): string => {
+  if (
+    q.id?.startsWith('game-hot-') ||
+    q.subcategory === '遊戲' ||
+    q.subcategories?.includes('遊戲') ||
+    (q.tags && (q.tags.includes('遊戲') || q.tags.includes('小遊戲')))
+  ) {
+    return '遊戲';
+  }
   const raw = (Array.isArray(q.subcategories) && q.subcategories[0]) || q.subcategory || '網站程式';
   const normalized = normalizeVibeCategory(raw);
   return ['網站程式', 'AI工具', '遊戲', '自動化', '擴充功能'].includes(normalized) ? normalized : '網站程式';
@@ -132,6 +142,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
+  const [isGroupedView, setIsGroupedView] = useState<boolean>(true);
   const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
@@ -248,6 +259,27 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     () => vibeApps.reduce((acc, q) => acc + (q.supportPoints || 0), 0),
     [vibeApps]
   );
+
+  const groupedSections = useMemo(() => {
+    const categoriesToGroup = [
+      { id: '遊戲', label: '遊戲專區', icon: Gamepad2, subtitle: '熱門小遊戲、休閒互動、料理模擬與即時對戰' },
+      { id: 'AI工具', label: 'AI 智慧工具', icon: Cpu, subtitle: 'AI Agent 助手、生成式創作、視覺影音與智能分析' },
+      { id: '網站程式', label: '網站系統與服務', icon: Globe, subtitle: 'Web 服務、管理後台、電商平台與生活實用工具' },
+      { id: '自動化', label: '自動化工作流', icon: Workflow, subtitle: '定時排程、跨平台流程整合與效率機器人' },
+      { id: '擴充功能', label: '擴充功能與套件', icon: Puzzle, subtitle: '瀏覽器外掛、開發套件與介面增強工具' },
+    ];
+
+    return categoriesToGroup
+      .map((cat) => {
+        const items = filteredApps.filter((q) => getQuestionVibeCategory(q) === cat.id);
+        return {
+          ...cat,
+          items,
+          count: items.length,
+        };
+      })
+      .filter((group) => group.count > 0);
+  }, [filteredApps]);
 
   // 收藏切換
   const handleToggleBookmark = (e: React.MouseEvent, q: Question) => {
@@ -863,44 +895,56 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
         {/* 篩選分類、我的收藏、搜尋、排序與檢視切換 */}
         <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-2">
-          {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-            <div className="relative">
-              <select
-                value={selectedSubcat}
-                onChange={(e) => {
-                  setSelectedSubcat(e.target.value);
-                  setSelectedTertiary('all');
-                  setActiveTab('all');
-                }}
-                className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-                  activeTab === 'all'
-                    ? 'bg-indigo-600 text-white border border-indigo-600 shadow-xs'
-                    : 'bg-white/90 text-stone-800 hover:bg-white border border-indigo-300'
-                }`}
-              >
-                {VIBE_CATEGORIES.map((cat) => {
-                  const count = categoryCounts[cat.id] ?? 0;
-                  return (
-                    <option key={cat.id} value={cat.id} className="bg-white text-stone-900 font-bold">
-                      {cat.label} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+          {/* 上排：分類標籤按鈕列 (全部分類、遊戲、AI工具、網站程式、自動化、擴充功能) + 我的按讚收藏 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none py-1 -mx-1 px-1">
+            {VIBE_CATEGORIES.map((cat) => {
+              const count = categoryCounts[cat.id] ?? 0;
+              const isSelected = activeTab === 'all' && selectedSubcat === cat.id;
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubcat(cat.id);
+                    setSelectedTertiary('all');
+                    setActiveTab('all');
+                  }}
+                  className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-black ring-2 ring-indigo-200'
+                      : 'bg-white/90 hover:bg-white text-stone-700 hover:text-indigo-900 border-indigo-200/80 hover:border-indigo-300'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSelected ? 'text-white' : 'text-indigo-600'}`} />
+                  <span>{cat.label}</span>
+                  <span
+                    className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                      isSelected ? 'bg-indigo-700/80 text-white' : 'bg-indigo-50 text-indigo-700'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
 
             <button
               type="button"
               onClick={() => setActiveTab(activeTab === 'favorites' ? 'all' : 'favorites')}
-              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border ${
                 activeTab === 'favorites'
-                  ? 'bg-rose-600 text-white shadow-xs border border-rose-600'
-                  : 'bg-white/90 text-stone-700 hover:bg-white border border-indigo-200/90'
+                  ? 'bg-rose-600 text-white shadow-xs border-rose-600 font-black ring-2 ring-rose-200'
+                  : 'bg-white/90 text-stone-700 hover:bg-white border-indigo-200/80 hover:border-rose-300'
               }`}
             >
-              <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
-              <span className="truncate">我的 Like ({favoriteCount})</span>
+              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white text-white' : 'text-rose-500'}`} />
+              <span>我的 Like</span>
+              <span className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                activeTab === 'favorites' ? 'bg-rose-700/80 text-white' : 'bg-rose-50 text-rose-700'
+              }`}>
+                {favoriteCount}
+              </span>
             </button>
           </div>
 
@@ -983,6 +1027,23 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 )}
               </select>
 
+              {/* 依分類歸納切換鍵（全部分類時可用） */}
+              {selectedSubcat === 'all' && activeTab === 'all' && !searchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setIsGroupedView(!isGroupedView)}
+                  className={`px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    isGroupedView
+                      ? 'bg-indigo-50 text-indigo-900 border-indigo-300 font-black shadow-2xs'
+                      : 'bg-white text-stone-600 hover:bg-stone-50 border-indigo-200'
+                  }`}
+                  title={isGroupedView ? '目前：依分類歸納分組（點擊切換為平鋪列表）' : '目前：平鋪列表（點擊切換為依分類歸納分組）'}
+                >
+                  <Layers className={`w-3.5 h-3.5 ${isGroupedView ? 'text-indigo-600' : 'text-stone-400'}`} />
+                  <span className="hidden sm:inline">{isGroupedView ? '分類歸納' : '全部平鋪'}</span>
+                </button>
+              )}
+
               {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
               <div className="inline-flex rounded-xl bg-white/90 border border-indigo-200 p-0.5 sm:p-1 shrink-0">
                 <button
@@ -1060,6 +1121,78 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       ) : (
         (() => {
           const isGuest = isGuestUser(currentUser);
+          const shouldShowGrouped = isGroupedView && selectedSubcat === 'all' && activeTab === 'all' && !searchQuery.trim();
+
+          // 1. 按照分類歸納分組展示（遊戲、AI工具、網站程式、自動化、擴充功能）
+          if (shouldShowGrouped) {
+            return (
+              <div className="space-y-8 animate-in fade-in duration-200">
+                {groupedSections.map((group) => {
+                  const visibleGroupApps = isGuest ? group.items.slice(0, GUEST_VISIBLE_COUNT) : group.items;
+                  const Icon = group.icon;
+                  return (
+                    <section key={group.id} className="space-y-3.5">
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b-2 border-indigo-100">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200/90 flex items-center justify-center text-indigo-700 shadow-2xs shrink-0">
+                            <Icon className="w-4.5 h-4.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
+                                {group.label}
+                              </h2>
+                              <span className="text-xs font-mono font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                                {group.count} 件
+                              </span>
+                            </div>
+                            <p className="text-xs text-stone-500 font-medium truncate hidden sm:block">
+                              {group.subtitle}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubcat(group.id);
+                            setSelectedTertiary('all');
+                          }}
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all cursor-pointer shrink-0"
+                        >
+                          <span>查看專區</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div
+                        className={
+                          viewMode === 'grid'
+                            ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                            : viewMode === 'list'
+                            ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                            : 'grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5'
+                        }
+                      >
+                        {visibleGroupApps.map(renderVibeAppCard)}
+                      </div>
+                    </section>
+                  );
+                })}
+
+                {isGuest && filteredApps.length > GUEST_VISIBLE_COUNT && (
+                  <GuestBoardGateBlurOverlay
+                    remainingCount={filteredApps.length - GUEST_VISIBLE_COUNT}
+                    totalCount={filteredApps.length}
+                    boardName="軟體網站展場"
+                    onOpenAuth={() => openAuthModal('login')}
+                  />
+                )}
+              </div>
+            );
+          }
+
+          // 2. 單一分類或平鋪清單展示
           const visibleApps = isGuest ? filteredApps.slice(0, GUEST_VISIBLE_COUNT) : filteredApps;
           if (isGuest) registerGuestListExposure(filteredApps);
           const blurredApps = isGuest && filteredApps.length > GUEST_VISIBLE_COUNT ? filteredApps.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];

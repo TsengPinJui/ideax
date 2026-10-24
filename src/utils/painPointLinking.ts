@@ -109,7 +109,7 @@ export function findProposalsReferencingPainPoint(
     authorTitle: dp.teamName || dp.organizationName,
     createdAt: dp.createdAt,
     deadline: '2026-12-31',
-    views: dp.viewsCount || 320,
+    views: dp.viewsCount || 0,
     likes: dp.likeCount || 35,
     answersCount: dp.commentsCount || 5,
     postType: 'innovation_proposal',

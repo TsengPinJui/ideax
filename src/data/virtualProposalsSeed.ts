@@ -132,6 +132,9 @@ export function isSimulatedQuestion(qOrId?: Partial<Question> | string | null): 
   if (
     id.startsWith('q-vp-') ||
     id.startsWith('vibe-app-') ||
+    id.startsWith('game-hot-') ||
+    id.startsWith('demo-') ||
+    id.startsWith('test-') ||
     id.startsWith('demo-p-') ||
     id.startsWith('q-demo-') ||
     id.startsWith('q-mock-') ||
@@ -3891,6 +3894,8 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
     ...(resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {}),
     isSimulated: true,
     simulatedBatchId: q.simulatedBatchId || SIMULATED_BATCH_ID,
+    views: 0,
+    viewsCount: 0,
     likes: typeof q.likes === 'number' && q.likes > 0 ? q.likes : simLikes,
     secondedCount:
       typeof q.secondedCount === 'number' && q.secondedCount > 0

@@ -1534,7 +1534,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : {}),
       };
-      const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
+      const isFakeOrSeed = Boolean(seedQ || q.isSimulated || isMockQuestionId(q.id, q.authorId) || isSimulatedQuestion(q));
+      const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (isFakeOrSeed ? 0 : (q.views || 0));
       return {
         ...q,
         publishedPlatforms: Array.isArray(rawQ.publishedPlatforms)
@@ -2816,11 +2817,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const hasUserUpdates =
               Array.isArray(q?.updateLogs) &&
               q.updateLogs.length > (seedQ?.updateLogs?.length || 0);
-            const highestViews = Math.max(
-              typeof q.views === 'number' ? q.views : 0,
-              typeof q.viewsCount === 'number' ? q.viewsCount : 0,
-              typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
-            );
+            const isFakeOrSeed = Boolean(seedQ || q.isSimulated || isMockQuestionId(q.id, q.authorId) || isSimulatedQuestion(q));
+            const highestViews = isFakeOrSeed
+              ? (typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0)
+              : Math.max(
+                  typeof q.views === 'number' ? q.views : 0,
+                  typeof q.viewsCount === 'number' ? q.viewsCount : 0,
+                  typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
+                );
             return {
               ...q,
               ...(seedQ && !hasUserUpdates
@@ -3174,11 +3178,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const hasUserUpdates =
                   Array.isArray(rawQ?.updateLogs) &&
                   rawQ.updateLogs.length > (seedQ?.updateLogs?.length || 0);
-                const highestViews = Math.max(
-                  typeof rawQ.views === 'number' ? rawQ.views : 0,
-                  typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
-                  typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
-                );
+                const isFakeOrSeed = Boolean(seedQ || rawQ.isSimulated || isMockQuestionId(rawQ.id, rawQ.authorId) || isSimulatedQuestion(rawQ));
+                const highestViews = isFakeOrSeed
+                  ? (typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0)
+                  : Math.max(
+                      typeof rawQ.views === 'number' ? rawQ.views : 0,
+                      typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
+                      typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
+                    );
                 const finalQ: Question = {
                   ...rawQ,
                   ...(seedQ && !hasUserUpdates

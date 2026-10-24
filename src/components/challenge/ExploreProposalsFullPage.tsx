@@ -449,7 +449,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           tags: ['痛點', trackMeta.name, '徵點子'],
           authorName: p.authorName || '創星季參賽者',
           authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-          views: p.viewsCount || 36,
+          views: p.viewsCount || 0,
           solutionsCount: p.commentsCount || 0,
           description: p.summary,
           rawProposal: p,
@@ -618,7 +618,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 開啟詳情與留言（點看來看才算一次瀏覽次數）
   const handleOpenProposalDetail = async (proposal: StarSeasonProposal) => {
-    const nextViews = recordProposalViewClick(proposal.id, proposal.viewsCount || (proposal as any).views || 36);
+    const nextViews = recordProposalViewClick(proposal.id, proposal.viewsCount || (proposal as any).views || 0);
     setProposals((prev) =>
       prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: nextViews } : p))
     );
