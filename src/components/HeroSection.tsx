@@ -309,10 +309,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
           {/* 首頁三大展示核心：左側「精選遊戲 TOP 10」、中間「首頁輪播展示」、右側「熱度榜（嚴格對應圖一）」 */}
           <div className="w-full mb-3 sm:mb-4">
-            <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-3.5 lg:gap-4 xl:gap-6 w-full">
-              {/* 左邊：精選遊戲（放精選裡頭前10名）- 電腦版直接呈現 */}
-              <div className="hidden lg:block w-[260px] xl:w-[280px] shrink-0 h-[380px] text-left">
-                <FeaturedGamesBoard questions={questions} onSelectGame={handleGameClick} />
+            <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-2.5 lg:gap-3 xl:gap-4 w-full">
+              {/* 左邊：精選遊戲（收窄版面，留約一半寬度，嚴格按照首頁輪播順序） */}
+              <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
+                <FeaturedGamesBoard
+                  questions={questions}
+                  carouselQuestions={showcaseSlides.map((s) => s.q)}
+                  onSelectGame={handleGameClick}
+                />
               </div>
 
               {/* 中間：首頁創點子播放區 */}
@@ -341,14 +345,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 )}
               </div>
 
-              {/* 右邊：熱度榜（按照圖一之提案對應放置）- 電腦版直接呈現 */}
-              <div className="hidden lg:block w-[260px] xl:w-[280px] shrink-0 h-[380px] text-left">
+              {/* 右邊：熱度榜（收窄版面，留約一半寬度） */}
+              <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
                 <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
               </div>
             </div>
 
             {/* 行動裝置 / 平板 (lg:hidden)：Tab 切換瀏覽精選遊戲與熱度榜 */}
-            <div className="lg:hidden w-full max-w-md mx-auto mt-3">
+            <div className="lg:hidden w-full max-w-[260px] mx-auto mt-3">
               <div className="flex items-center justify-center p-1 rounded-2xl bg-amber-100/70 max-w-xs mx-auto mb-2 text-xs font-black shadow-2xs">
                 <button
                   type="button"
@@ -377,7 +381,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               </div>
 
               {mobileGameTab === 'featured' ? (
-                <FeaturedGamesBoard questions={questions} onSelectGame={handleGameClick} />
+                <FeaturedGamesBoard
+                  questions={questions}
+                  carouselQuestions={showcaseSlides.map((s) => s.q)}
+                  onSelectGame={handleGameClick}
+                />
               ) : (
                 <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
               )}
