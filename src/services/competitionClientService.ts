@@ -167,6 +167,10 @@ export async function submitProposal(params: {
   track: StarSeasonTrack;
   summary: string;
   description: string;
+  userId?: string;
+  userName?: string;
+  userAvatar?: string;
+  userRole?: string;
   sourcePainPointProposalId?: string;
   sourcePainPointTitle?: string;
   attachmentUrl?: string;
@@ -189,7 +193,8 @@ export async function submitProposal(params: {
   bankAccount?: string;
   idNumber?: string;
 }): Promise<{ success: boolean; proposalId?: string; message: string }> {
-  if (!auth.currentUser) {
+  const effectiveUserId = auth.currentUser?.uid || params.userId;
+  if (!effectiveUserId || effectiveUserId === 'user-guest') {
     return { success: false, message: '請先登入帳號再提交競賽提案' };
   }
 
@@ -197,10 +202,16 @@ export async function submitProposal(params: {
   const res = await fetch('/api/competition/proposals', {
     method: 'POST',
     headers,
-    body: JSON.stringify(params),
+    body: JSON.stringify({ ...params, userId: effectiveUserId }),
   });
 
   const data = await res.json();
+  if (!res.ok || !data.success) {
+    return {
+      success: false,
+      message: data.message || data.error || '提交失敗，請檢查填寫資料',
+    };
+  }
   return data;
 }
 
@@ -272,6 +283,41 @@ export async function adminReviewProposal(params: {
 }): Promise<{ success: boolean; message: string }> {
   const headers = await getAuthHeader();
   const res = await fetch('/api/competition/admin/review-proposal', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  });
+  return await res.json();
+}
+
+/**
+ * 管理員審核參賽者報名
+ */
+export async function adminReviewRegistration(params: {
+  registrationId: string;
+  status: 'approved' | 'rejected';
+  reviewNote?: string;
+}): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeader();
+  const res = await fetch('/api/competition/admin/review-registration', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  });
+  return await res.json();
+}
+
+/**
+ * 管理員審核專家資格
+ */
+export async function adminReviewExpert(params: {
+  expertId: string;
+  status: 'approved' | 'rejected';
+  isJudgeSelected?: boolean;
+  reviewNote?: string;
+}): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeader();
+  const res = await fetch('/api/competition/admin/review-expert', {
     method: 'POST',
     headers,
     body: JSON.stringify(params),
@@ -405,9 +451,15 @@ export async function registerParticipant(
     body: JSON.stringify({ ...data, userId: effectiveUserId }),
   });
   const json = await res.json();
+  if (!res.ok || !json.success) {
+    return {
+      success: false,
+      message: json.message || json.error || '報名失敗，請確認欄位是否填寫完整',
+    };
+  }
   return {
     ...json,
-    message: json.message || json.error || (json.success ? '報名成功' : '報名失敗'),
+    message: json.message || '報名參賽成功！您已完成創星季參賽者登錄。',
   };
 }
 

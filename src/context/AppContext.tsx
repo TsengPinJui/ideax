@@ -1272,7 +1272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const heartbeatTimer = setInterval(() => {
       sendPresenceHeartbeat(currentUser?.id);
       void touchUserLastActive(currentUser?.id); // 最多每 10 分鐘寫一次最近上線時間
-    }, 120000); // 每 2 分鐘回報一次在線（之前 25 秒，寫入量太大）
+    }, 30000); // 每 30 秒回報一次在線並累計在線停留時長
 
     const unsub = subscribePresenceFromFirestore((count) => {
       setOnlineUsersCount(count);

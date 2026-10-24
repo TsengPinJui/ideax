@@ -137,8 +137,8 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       return;
     }
 
-    if (currentUser?.verifiedExpert || currentUser?.role === 'solver' || currentUser?.expertCertStatus === 'verified') {
-      const msg = '依競賽辦法規範：不可兼任參賽者與專家！為維持評選公正與利益迴避，專家身分無法報名為參賽團隊。';
+    if ((currentUser as any)?.isStarSeasonJudge || (currentUser as any)?.isJudgeSelected) {
+      const msg = '依競賽辦法規範：不可兼任參賽團隊與創星季專家評審！為維持評審客觀與利益迴避原則，已擔任或申請創星季評審者無法報名為參賽團隊。';
       setSubmitErrorMsg(msg);
       showToast(msg, 'warning');
       return;

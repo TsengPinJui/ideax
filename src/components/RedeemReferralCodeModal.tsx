@@ -3,7 +3,13 @@ import { Gift, X, Sparkles, Check, AlertCircle, ArrowRight, UserCheck, Heart, Za
 import { useApp } from '../context/AppContext';
 import { isRealRegisteredUser } from '../data/mockData';
 import { bindAmbassadorReferralCode } from '../services/competitionClientService';
-import { recordReferralRedemption, getReferralStats } from '../services/referralService';
+import {
+  recordReferralRedemption,
+  getReferralStats,
+  findReferrerUser,
+  getUserReferralCode,
+  isPublicIdentityString,
+} from '../services/referralService';
 
 interface RedeemReferralCodeModalProps {
   isOpen: boolean;
@@ -63,48 +69,63 @@ export const RedeemReferralCodeModal: React.FC<RedeemReferralCodeModalProps> = (
       return;
     }
 
+    // 嚴格阻擋公開的用戶帳號、ID、會員編號或姓名
+    if (isPublicIdentityString(cleanCode, availableUsers)) {
+      setErrorMessage(
+        '公開的會員帳號、用戶 ID 或姓名不能當作推薦碼！推薦碼為每位會員專屬的 8 位隨機英數代碼（格式如：IX-9K4M7P），請向好友索取其「分享推薦碼」中的專屬隨機代碼。'
+      );
+      return;
+    }
+
     // 防自己兌換自己
+    const myCode = getUserReferralCode(currentUser).toUpperCase();
     if (
+      cleanCode === myCode ||
       cleanCode.toLowerCase() === currentUser.id.toLowerCase() ||
       (currentUser.username && cleanCode.toLowerCase() === currentUser.username.toLowerCase()) ||
+      (currentUser.memberId && cleanCode === currentUser.memberId.toUpperCase()) ||
       cleanCode === currentUser.name?.toUpperCase()
     ) {
-      setErrorMessage('不能兌換自己的推薦代碼！請填寫好友或合作夥伴的代碼。');
+      setErrorMessage('不能兌換自己的推薦代碼！請填寫好友或合作夥伴的專屬隨機推薦碼。');
+      return;
+    }
+
+    // 防重複兌換同一組代碼（不限兌換次數，但同一組代碼僅能兌換一次）
+    if (historyList.some((item) => item.code.toUpperCase() === cleanCode)) {
+      setErrorMessage('您已經兌換過此組推薦碼！您可以輸入其他好友的專屬隨機推薦碼繼續獲得好禮（不限總兌換次數）。');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. 在平台用戶清單中搜尋分享者（推薦人）
-      const sharer = availableUsers.find(
-        (u) =>
-          u.id.toLowerCase() === cleanCode.toLowerCase() ||
-          (u.username && u.username.toLowerCase() === cleanCode.toLowerCase()) ||
-          u.name.toLowerCase() === cleanCode.toLowerCase() ||
-          (u.referralCode && u.referralCode.toUpperCase() === cleanCode) ||
-          cleanCode.endsWith(u.id.slice(-6).toUpperCase())
-      );
+      // 1. 嚴格在平台真實用戶清單中搜尋分享者（推薦人）
+      const sharer = findReferrerUser(cleanCode, availableUsers);
 
-      const sharerName = sharer?.name || cleanCode;
+      // 若查無此會員推薦碼，嚴格阻擋並提示錯誤，絕不發放任何點數
+      if (!sharer) {
+        setErrorMessage('查無此推薦代碼！請向好友確認正確的 8 位隨機推薦代碼（例如：IX-9K4M7P）。公開帳號 ID 或姓名無法兌換。');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const sharerName = sharer.name || sharer.username || cleanCode;
 
       // 2. 為分享者（推薦人）發放推廣獎勵 +100 點！
-      if (sharer) {
-        adjustUserBalance(
-          sharer.id,
-          100,
-          `【推廣送好禮】好友（${currentUser.name}）兌換您的推薦碼【${cleanCode}】，獲得推廣獎勵 100 點！`
-        );
-      }
+      adjustUserBalance(
+        sharer.id,
+        100,
+        `【推廣送好禮】好友（${currentUser.name}）成功兌換您的推薦碼【${cleanCode}】，獲得推廣獎勵 100 點！`
+      );
 
       // 3. 也為兌換者（當前用戶本人）發放福利點數 +100 點！
       adjustUserBalance(
         currentUser.id,
         100,
-        `【推廣送好禮】成功兌換推薦碼【${cleanCode}】，獲得迎新福利 100 點！`
+        `【推廣送好禮】成功兌換好友【${sharerName}】的推薦碼【${cleanCode}】，獲得迎新福利 100 點！`
       );
 
       // 4. 記錄此筆兌換與推廣統計（不限次數累計）
-      recordReferralRedemption(currentUser, sharer || null, cleanCode);
+      recordReferralRedemption(currentUser, sharer, cleanCode);
 
       // 5. 非同步回報後端紀錄綁定與兌換
       try {
@@ -201,7 +222,7 @@ export const RedeemReferralCodeModal: React.FC<RedeemReferralCodeModalProps> = (
                   setCode(e.target.value.toUpperCase());
                   if (errorMessage) setErrorMessage(null);
                 }}
-                placeholder="例如：IX-884920 或好友用戶 ID"
+                placeholder="請輸入 8 位專屬隨機推薦碼（例如：IX-9K4M7P）"
                 className="w-full px-4 py-3 rounded-2xl border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-sm font-mono font-bold tracking-wider outline-none transition-all uppercase placeholder:normal-case placeholder:font-normal placeholder:tracking-normal"
                 autoFocus
               />
@@ -234,12 +255,15 @@ export const RedeemReferralCodeModal: React.FC<RedeemReferralCodeModalProps> = (
                 <b>兌換不限次數</b>：推薦越多、兌換越多，雙方獲得獎勵無上限！
               </li>
               <li>
+                <b>專屬隨機保密碼</b>：推薦碼為 8 位隨機英數代碼（格式如 IX-XXXXXX），公開的帳號 ID 或姓名無法兌換，保障安全與隱私。
+              </li>
+              <li>
                 每次成功填入，系統即刻為<b>分享者（推薦人）</b>發放 <b>+100 點</b>獎勵。
               </li>
               <li>
                 您亦可獲得 <b>+100 點</b>福利點數！
               </li>
-              <li>不可填寫自己的推薦代號。</li>
+              <li>不可填寫自己的推薦代碼。</li>
             </ul>
           </div>
 

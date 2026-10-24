@@ -1,18 +1,67 @@
 import { User, Transaction } from '../types';
 
 /**
- * 取得用戶專屬且乾淨易讀的推薦碼（例如：IX-884920 或大寫用戶代碼）
+ * 產生具有高熵值、不可從公開 ID 推測的隨機專屬推薦碼（例如：IX-9K4M7P）
+ */
+function generateSaltedRandomCode(seed: string): string {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 排除易混淆字元 0, O, 1, I
+  let h1 = 0xdeadbeef ^ 1337;
+  let h2 = 0x41c6ce57 ^ 2026;
+  const salted = `ideax_salt_secure_${seed}_2026_salt_entropy`;
+  for (let i = 0; i < salted.length; i++) {
+    const ch = salted.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  let num = Math.abs(h1 ^ h2);
+  let res = '';
+  for (let i = 0; i < 6; i++) {
+    res += chars[num % chars.length];
+    num = Math.floor(num / chars.length) ^ (Math.abs(h2) >>> (i * 4));
+    num = Math.abs(num);
+  }
+  return `IX-${res}`;
+}
+
+/**
+ * 取得用戶專屬且完全隨機亂碼的推薦碼（例如：IX-9K4M7P）
+ * ⚠️ 嚴格禁止使用用戶公開的 ID 當作推薦碼！
  */
 export function getUserReferralCode(user: User): string {
-  if (user.referralCode && user.referralCode.trim()) {
+  if (!user || user.id === 'user-guest') return 'IX-GUEST';
+
+  // 1. 若用戶已有儲存專屬的 referralCode（且不等於公開的 userId 或 username）
+  if (
+    user.referralCode &&
+    user.referralCode.trim() &&
+    user.referralCode.trim().toUpperCase() !== user.id.toUpperCase() &&
+    (!user.username || user.referralCode.trim().toUpperCase() !== user.username.toUpperCase())
+  ) {
     return user.referralCode.trim().toUpperCase();
   }
-  if (user.username && user.username.length >= 3 && !user.username.startsWith('user-')) {
-    return user.username.toUpperCase();
+
+  // 2. 檢查本地持久化儲存的隨機推薦碼
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(`ideax_user_random_code_${user.id}`);
+      if (stored && stored.trim() && !stored.startsWith('USER-') && stored !== user.id) {
+        user.referralCode = stored.trim().toUpperCase();
+        return user.referralCode;
+      }
+    } catch {}
   }
-  const raw = (user.id || 'user').replace(/^user-/, '').replace(/[^a-zA-Z0-9]/g, '');
-  const suffix = raw.slice(-6).toUpperCase().padStart(6, '8');
-  return `IX-${suffix}`;
+
+  // 3. 生成確定性高熵不可逆之隨機亂碼（非公開 ID）
+  const generated = generateSaltedRandomCode(user.id);
+  user.referralCode = generated;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`ideax_user_random_code_${user.id}`, generated);
+    } catch {}
+  }
+  return generated;
 }
 
 /**
@@ -50,6 +99,82 @@ export async function copyPureReferralCode(code: string): Promise<boolean> {
   }
 
   return false;
+}
+
+/**
+ * 檢查輸入字串是否為公開可見之用戶資訊（帳號 ID、用戶名、會員編號、暱稱等）
+ * 若是，立即回傳判定，嚴格禁止作為推薦碼兌換！
+ */
+export function isPublicIdentityString(code: string, availableUsers: User[] = []): boolean {
+  const target = code.trim().toUpperCase();
+  if (!target) return false;
+
+  // 1. 常見公開前綴特徵
+  if (
+    target.startsWith('USER-') ||
+    target.startsWith('VP-USER') ||
+    target.startsWith('AUTHOR-') ||
+    /^C\d{8,}/i.test(target) ||
+    /^A\d{8,}/i.test(target)
+  ) {
+    return true;
+  }
+
+  // 2. 比對所有會員之公開 ID、username、memberId、name
+  for (const u of availableUsers) {
+    if (!u) continue;
+    if (u.id && u.id.trim().toUpperCase() === target) return true;
+    if (u.username && u.username.trim().toUpperCase() === target) return true;
+    if (u.memberId && u.memberId.trim().toUpperCase() === target) return true;
+    if (u.name && u.name.trim().toUpperCase() === target) return true;
+  }
+
+  return false;
+}
+
+/**
+ * 嚴格查核推薦碼是否有對應的平台真實會員或推廣大使
+ * 杜絕隨意亂填代碼或填寫公開用戶 ID 也能兌換點數之漏洞
+ */
+export function findReferrerUser(cleanCode: string, availableUsers: User[]): User | null {
+  const target = cleanCode.trim().toUpperCase();
+  if (!target || target.length < 5) return null;
+
+  // ⚠️ 嚴格禁止輸入任何公開的用戶 ID、帳號名或會員編號！公開 ID 絕不能被當作推薦碼兌換！
+  if (isPublicIdentityString(target, availableUsers)) {
+    return null;
+  }
+
+  for (const u of availableUsers) {
+    if (!u || u.id === 'user-guest') continue;
+
+    // 嚴格比對專屬隨機亂碼推薦碼 (例如 IX-9K4M7P)
+    const userCode = getUserReferralCode(u).toUpperCase();
+    if (userCode === target) {
+      return u;
+    }
+
+    // 比對用戶資料庫中明確指定且非公開 ID 的專屬 referralCode
+    if (
+      u.referralCode &&
+      u.referralCode.trim().toUpperCase() === target &&
+      target !== u.id.toUpperCase() &&
+      (!u.username || target !== u.username.toUpperCase()) &&
+      (!u.memberId || target !== u.memberId.toUpperCase()) &&
+      target !== u.name?.toUpperCase() &&
+      (u.referralCode.startsWith('IX-') || u.referralCode.startsWith('STAR-') || u.referralCode.startsWith('AMB-'))
+    ) {
+      return u;
+    }
+
+    // 比對推廣大使隨機推薦碼 (STAR-XXXXXX, AMB-XXXXXX)
+    const ambCode = (u as any).ambassadorReferralCode;
+    if (typeof ambCode === 'string' && ambCode.trim().toUpperCase() === target) {
+      return u;
+    }
+  }
+
+  return null;
 }
 
 export interface ReferralHistoryItem {

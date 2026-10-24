@@ -127,7 +127,36 @@ function normalizeWebUrl(u: string): string {
     const parsed = new URL(raw);
     const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
     const pathname = parsed.pathname.replace(/\/+$/, '').toLowerCase();
-    return `${host}${pathname}`;
+
+    // 針對 Google Play Store：URL 格式如 https://play.google.com/store/apps/details?id=com.example.app
+    // 必須保留其 App 唯一 Package Name (?id=...)，否則所有 Google Play 應用的路徑皆為 /store/apps/details，
+    // 會因共用同個網域被誤判為重複網址而無法新增！
+    if (host.includes('play.google.com')) {
+      const appId = parsed.searchParams.get('id');
+      if (appId) {
+        return `${host}${pathname}?id=${appId.trim().toLowerCase()}`;
+      }
+    }
+
+    // 針對各大常見應用市集與常見平台保留關鍵 query（例如 Chrome Web Store, Steam, Itch 等）
+    // 排除純追蹤性參數 (utm_*, fbclid, gclid, etc.)
+    const TRACKING_PARAMS = new Set([
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'fbclid', 'gclid', 'ref', 'source', 'feature', 'hl', 'gl', 'pli', 'referrer',
+      '_ga', 'spm', 'from', 'si'
+    ]);
+
+    const cleanParams = new URLSearchParams();
+    parsed.searchParams.forEach((val, key) => {
+      const k = key.toLowerCase();
+      if (!TRACKING_PARAMS.has(k) && !k.startsWith('utm_')) {
+        cleanParams.append(k, val.trim().toLowerCase());
+      }
+    });
+
+    cleanParams.sort();
+    const queryString = cleanParams.toString();
+    return queryString ? `${host}${pathname}?${queryString}` : `${host}${pathname}`;
   } catch {
     return u.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '').toLowerCase();
   }

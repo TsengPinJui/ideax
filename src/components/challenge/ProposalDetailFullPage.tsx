@@ -23,6 +23,9 @@ import {
   Star,
   ThumbsUp,
   Trash2,
+  X,
+  AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { AdminDelistModal } from '../AdminDelistModal';
 import {
@@ -42,6 +45,7 @@ import {
 } from '../../utils/proposalContentHelper';
 import { ProposalRichContentDisplay } from './ProposalRichContentDisplay';
 import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
+import { adminReviewProposal } from '../../services/competitionClientService';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 import { isGuestPreviewOnly } from '../../utils/guestAccess';
 import { getYoutubeEmbedUrl } from '../../utils/youtubeUtils';
@@ -367,18 +371,80 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </button>
             )}
 
-            {/* 管理員直接下架提案 */}
+            {/* 管理員審核與下架控制 */}
             {currentUser?.role === 'admin' && (
-              <button
-                type="button"
-                onClick={() => setIsAdminDelistModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
-                title="管理員下架此提案"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span className="hidden sm:inline">下架提案</span>
-                <span className="sm:hidden">下架</span>
-              </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  proposal.status === 'approved'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : proposal.status === 'rejected'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {proposal.status === 'approved'
+                    ? '✅ 已通過'
+                    : proposal.status === 'rejected'
+                    ? '❌ 已退回'
+                    : '⏳ 待審核'}
+                </span>
+                {proposal.status !== 'approved' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await adminReviewProposal({
+                          proposalId: proposal.id,
+                          status: 'approved',
+                          reviewNote: '管理員審核通過',
+                        });
+                        alert(res.message || '✅ 提案審核通過！');
+                        window.location.reload();
+                      } catch (e: any) {
+                        alert(e.message || '審核失敗');
+                      }
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                    title="核准此提案並公開上架"
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>核准通過</span>
+                  </button>
+                )}
+                {proposal.status !== 'rejected' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const note = window.prompt('請輸入退回備註（通知參賽者）：', '請補充更完整的商業落地與技術規劃');
+                      if (note === null) return;
+                      try {
+                        const res = await adminReviewProposal({
+                          proposalId: proposal.id,
+                          status: 'rejected',
+                          reviewNote: note,
+                        });
+                        alert(res.message || '❌ 已退回該提案！');
+                        window.location.reload();
+                      } catch (e: any) {
+                        alert(e.message || '退回失敗');
+                      }
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                    title="退回此提案"
+                  >
+                    <X className="w-3.5 h-3.5 text-rose-600" />
+                    <span>退回提案</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsAdminDelistModalOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl border border-stone-300 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  title="管理員下架此提案"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-stone-500" />
+                  <span className="hidden sm:inline">下架</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -386,6 +452,27 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
       {/* 主要提案頁面內容容器 */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-7 space-y-6">
+        {/* 提案狀態通知橫幅（待審核或已退回時提示） */}
+        {proposal.status === 'rejected' && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
+            <div className="font-bold flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>此提案目前為「已退回」狀態</span>
+            </div>
+            {proposal.reviewNote && (
+              <p className="text-stone-600 pl-5">
+                審核備註：{proposal.reviewNote}
+              </p>
+            )}
+          </div>
+        )}
+        {proposal.status === 'pending_review' && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>此提案目前為「待審核」狀態，管理員審核通過後將正式上架至探索專區。</span>
+          </div>
+        )}
+
         {/* 1. 提案頂部標題區塊 */}
         <section id="module-header" className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-4">
           {/* 賽道與標籤 */}
@@ -488,52 +575,54 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </section>
         ) : (
         <>
-        {/* 2. ［注資創星幣］橫條 */}
-        <section id="module-support" className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>{usePoints ? '用點數打賞支持你認同的創新提案' : '注資創星幣支持你認同的創新提案'}</span>
+        {/* 2. ［注資創星幣］橫條（痛點不開放注資，僅解方提案展示） */}
+        {proposal.stage !== 'pain_point' && (
+          <section id="module-support" className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>{usePoints ? '用點數打賞支持你認同的創新提案' : '注資創星幣支持你認同的創新提案'}</span>
+                </div>
+                <div className="text-xs text-stone-500 mt-0.5">
+                  為優質作品表達認同與期待，推升點子排名與人氣指數
+                </div>
               </div>
-              <div className="text-xs text-stone-500 mt-0.5">
-                為優質作品表達認同與期待，推升點子排名與人氣指數
+              <div className="text-right">
+                <span className="font-mono font-black text-amber-900 text-xl sm:text-2xl">
+                  {(proposal.supportPoints || 0).toLocaleString()}
+                </span>
+                <span className="text-xs text-amber-950 font-bold ml-1.5">{supportUnit}</span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="font-mono font-black text-amber-900 text-xl sm:text-2xl">
-                {(proposal.supportPoints || 0).toLocaleString()}
+
+            <div className="flex items-center justify-between text-xs text-stone-600 bg-white/70 px-3.5 py-2.5 rounded-xl border border-amber-200/60">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-stone-500" />
+                <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
               </span>
-              <span className="text-xs text-amber-950 font-bold ml-1.5">{supportUnit}</span>
+              <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
+                <span>刊登狀態：</span>
+                <strong className="text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200">
+                  {proposal.unpublishAt ? `刊登至 ${proposal.unpublishAt} 止` : '♾️ 預設永久刊登'}
+                </strong>
+              </span>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between text-xs text-stone-600 bg-white/70 px-3.5 py-2.5 rounded-xl border border-amber-200/60">
-            <span className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-stone-500" />
-              <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
-            </span>
-            <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
-              <span>刊登狀態：</span>
-              <strong className="text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200">
-                {proposal.unpublishAt ? `刊登至 ${proposal.unpublishAt} 止` : '♾️ 預設永久刊登'}
-              </strong>
-            </span>
-          </div>
-
-          {onSupport && (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => onSupport(proposal)}
-                className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
-              >
-                <Coins className="w-4 h-4 text-amber-950" />
-                <span>{usePoints ? '打賞點數' : '注資創星幣'}</span>
-              </button>
-            </div>
-          )}
-        </section>
+            {onSupport && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => onSupport(proposal)}
+                  className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+                >
+                  <Coins className="w-4 h-4 text-amber-950" />
+                  <span>{usePoints ? '打賞點數' : '注資創星幣'}</span>
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* 3. 關聯痛點與引用痛點資訊 (支援點擊雙向跳轉) */}
         {(proposal.sourcePainPointTitle || proposal.referencedPainPoint) && (

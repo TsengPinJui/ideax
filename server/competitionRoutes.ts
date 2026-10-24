@@ -295,7 +295,9 @@ router.post('/support', async (req: Request, res: Response) => {
 router.post('/proposals', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser) {
+    const bodyData = req.body || {};
+    const effectiveUid = authUser?.uid || (typeof bodyData.userId === 'string' && bodyData.userId && bodyData.userId !== 'user-guest' ? bodyData.userId.trim() : '');
+    if (!effectiveUid) {
       return res.status(401).json({ success: false, error: '未授權：請登入後再提交競賽提案' });
     }
 
@@ -326,51 +328,58 @@ router.post('/proposals', async (req: Request, res: Response) => {
       bankCode,
       bankAccount,
       idNumber,
-    } = req.body;
+    } = bodyData;
 
     if (!title || !stage || !track || !summary || !description) {
       return res.status(400).json({ success: false, error: '請完整填寫提案標題、階段、賽道、摘要與詳細說明' });
     }
 
-    if (!contactName || !contactPhone || !contactEmail) {
-      return res.status(400).json({ success: false, error: '請填寫主要聯絡人姓名、電話與 Email（此資料將安全隔離於私有空間）' });
+    // 取得作者公開個人名稱
+    const userDoc = await adminDb.collection('users').doc(effectiveUid).get();
+    const userData = userDoc.exists ? userDoc.data() : null;
+    const authorName = bodyData.userName || userData?.name || authUser?.email?.split('@')[0] || '創星提案者';
+    const authorAvatar = bodyData.userAvatar || userData?.avatar || undefined;
+    const authorRole = (bodyData.userRole || userData?.role || 'user') as 'user' | 'solver' | 'enterprise';
+
+    const effectiveContactName = (contactName || authorName || '創星提案者').trim();
+    const effectiveContactPhone = (contactPhone || userData?.phone || '0900000000').trim();
+    const effectiveContactEmail = (contactEmail || authUser?.email || userData?.email || 'user@ideax.tw').trim();
+
+    if (stage === 'solution' && (!contactName || !contactPhone || !contactEmail)) {
+      return res.status(400).json({ success: false, error: '提案請填寫主要聯絡人姓名、電話與 Email（此資料將安全隔離於私有空間）' });
     }
 
-    // 取得作者公開個人名稱
-    const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
-    const userData = userDoc.exists ? userDoc.data() : null;
-    const authorName = userData?.name || authUser.email?.split('@')[0] || '創星提案者';
-    const authorAvatar = userData?.avatar || undefined;
-    const authorRole = (userData?.role || 'user') as 'user' | 'solver' | 'enterprise';
+    // 競賽原則：第一階段「痛點徵件 (pain_point)」開放全體會員自由發表，不需要先完成參賽團隊報名！
+    // 只有第二階段「參賽解方提案 (solution)」才需要先完成「報名參賽」團隊資料登錄
+    if (stage === 'solution') {
+      const regDoc = await adminDb.collection('competition_participant_registrations').doc(effectiveUid).get();
+      let isUserRegistered = regDoc.exists;
+      if (!isUserRegistered) {
+        const snap = await adminDb
+          .collection('competition_participant_registrations')
+          .where('userId', '==', effectiveUid)
+          .limit(1)
+          .get();
+        if (!snap.empty || userData?.competitionBadges?.includes('創星季') || userData?.isCompetitionRegistered) {
+          isUserRegistered = true;
+        }
+      }
 
-    // 競賽原則：提交提案或痛點前，須先完成「報名參賽」資料登錄
-    const regDoc = await adminDb.collection('competition_participant_registrations').doc(authUser.uid).get();
-    let isUserRegistered = regDoc.exists;
-    if (!isUserRegistered) {
-      const snap = await adminDb
-        .collection('competition_participant_registrations')
-        .where('userId', '==', authUser.uid)
-        .limit(1)
-        .get();
-      if (!snap.empty || userData?.competitionBadges?.includes('創星季') || userData?.isCompetitionRegistered) {
-        isUserRegistered = true;
+      if (!isUserRegistered) {
+        return res.status(400).json({
+          success: false,
+          error: '依競賽辦法規範：提交解方提案前，須先完成「報名參賽」團隊資料登錄！',
+        });
       }
     }
 
-    if (!isUserRegistered) {
-      return res.status(400).json({
-        success: false,
-        error: '依競賽辦法規範：提交提案或發布痛點前，須先完成「報名參賽」團隊資料登錄！',
-      });
-    }
-
-    // 競賽時程階段控制：痛點徵件 (10/24~11/13) 與 提案 (11/14~12/04)
+    // 競賽時程階段控制：痛點徵件 (10/24~11/13) 與 提案 (11/14~12/04)，皆以 UTC+8 台灣時間計算
     const nowTime = Date.now();
     const currentYear = new Date().getFullYear();
-    const tPainPointStart = new Date(currentYear, 9, 24, 0, 0, 0).getTime(); // 10/24 00:00
-    const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime(); // 11/13 16:30
-    const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime(); // 11/14 10:00
-    const tCrowdfundEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime(); // 12/04 16:30
+    const tPainPointStart = Date.UTC(currentYear, 9, 23, 16, 0, 0); // 10/24 00:00 UTC+8
+    const tPainPointEnd = Date.UTC(currentYear, 10, 13, 8, 30, 0); // 11/13 16:30 UTC+8
+    const tPreProposalStart = Date.UTC(currentYear, 10, 14, 2, 0, 0); // 11/14 10:00 UTC+8
+    const tCrowdfundEnd = Date.UTC(currentYear, 11, 4, 8, 30, 0); // 12/04 16:30 UTC+8
 
     const isStageOverride = Boolean(req.headers['x-stage-override']);
     if (!isStageOverride) {
@@ -392,7 +401,7 @@ router.post('/proposals', async (req: Request, res: Response) => {
     }
 
     const result = await createProposal({
-      userId: authUser.uid,
+      userId: effectiveUid,
       userName: authorName,
       userAvatar: authorAvatar,
       userRole: authorRole,
@@ -415,9 +424,9 @@ router.post('/proposals', async (req: Request, res: Response) => {
       tags,
       aiCategorized,
       referredByAmbassadorCode,
-      contactName,
-      contactPhone,
-      contactEmail,
+      contactName: effectiveContactName,
+      contactPhone: effectiveContactPhone,
+      contactEmail: effectiveContactEmail,
       schoolOrOrg,
       bankCode,
       bankAccount,
@@ -516,6 +525,156 @@ router.get('/admin/expert-marketing', async (req: Request, res: Response) => {
     res.json({ success: true, records });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 管理員取得全站真實參賽團隊報名名單 (Firestore)
+router.get('/admin/registrations', async (req: Request, res: Response) => {
+  try {
+    const snap = await adminDb.collection('competition_participant_registrations').get();
+    const records: any[] = [];
+    const seenUids = new Set<string>();
+    snap.forEach((doc) => {
+      const data = doc.data();
+      const uid = data.userId || doc.id;
+      if (!seenUids.has(uid)) {
+        seenUids.add(uid);
+        records.push({
+          id: doc.id,
+          ...data,
+        });
+      }
+    });
+    // 依報名時間新到舊排序
+    records.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    res.json({ success: true, records });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, records: [] });
+  }
+});
+
+// 管理員取得全站提案與痛點名單 (Firestore)
+router.get('/admin/all-proposals', async (req: Request, res: Response) => {
+  try {
+    const snap = await adminDb.collection('competition_proposals').get();
+    const proposals: any[] = [];
+    snap.forEach((doc) => {
+      proposals.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+    // 依建立時間新到舊排序
+    proposals.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    res.json({ success: true, proposals });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, proposals: [] });
+  }
+});
+
+// 管理員取得全站評審/專家申請名單 (Firestore)
+router.get('/admin/all-experts', async (req: Request, res: Response) => {
+  try {
+    const snap = await adminDb.collection('competition_judge_applications').get();
+    const experts: any[] = [];
+    snap.forEach((doc) => {
+      experts.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+    res.json({ success: true, experts });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, experts: [] });
+  }
+});
+
+// 管理員審核參賽者團隊報名 (Firestore)
+router.post('/admin/review-registration', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
+    }
+
+    const { registrationId, status, reviewNote } = req.body;
+    if (!registrationId || !status) {
+      return res.status(400).json({ success: false, error: '缺少 registrationId 或 status' });
+    }
+
+    const now = new Date().toISOString();
+    const regRef = adminDb.collection('competition_participant_registrations').doc(registrationId);
+    const snap = await regRef.get();
+    let targetDoc: any = snap.exists ? regRef : null;
+
+    if (!targetDoc) {
+      const q = await adminDb.collection('competition_participant_registrations').where('id', '==', registrationId).limit(1).get();
+      if (!q.empty) {
+        targetDoc = q.docs[0].ref;
+      } else {
+        const qu = await adminDb.collection('competition_participant_registrations').where('userId', '==', registrationId).limit(1).get();
+        if (!qu.empty) targetDoc = qu.docs[0].ref;
+      }
+    }
+
+    if (targetDoc) {
+      await targetDoc.update({
+        status,
+        reviewNote: reviewNote || '',
+        reviewedBy: authUser.uid,
+        reviewedAt: now,
+        updatedAt: now,
+      });
+    }
+
+    res.json({ success: true, message: `參賽報名狀態已更新為【${status === 'approved' ? '通過' : '退回'}】` });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
+  }
+});
+
+// 管理員審核專家/評審資格 (Firestore)
+router.post('/admin/review-expert', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
+    }
+
+    const { expertId, status, isJudgeSelected, reviewNote } = req.body;
+    if (!expertId || !status) {
+      return res.status(400).json({ success: false, error: '缺少 expertId 或 status' });
+    }
+
+    const now = new Date().toISOString();
+    const expRef = adminDb.collection('competition_judge_applications').doc(expertId);
+    const snap = await expRef.get();
+    let targetDoc: any = snap.exists ? expRef : null;
+
+    if (!targetDoc) {
+      const q = await adminDb.collection('competition_judge_applications').where('id', '==', expertId).limit(1).get();
+      if (!q.empty) {
+        targetDoc = q.docs[0].ref;
+      } else {
+        const qu = await adminDb.collection('competition_judge_applications').where('userId', '==', expertId).limit(1).get();
+        if (!qu.empty) targetDoc = qu.docs[0].ref;
+      }
+    }
+
+    if (targetDoc) {
+      await targetDoc.update({
+        status,
+        isJudgeSelected: Boolean(isJudgeSelected),
+        reviewNote: reviewNote || '',
+        reviewedBy: authUser.uid,
+        reviewedAt: now,
+        updatedAt: now,
+      });
+    }
+
+    res.json({ success: true, message: `專家審核狀態已更新為【${status === 'approved' ? '核准' : '退回'}】` });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
   }
 });
 
@@ -637,9 +796,14 @@ router.post('/register-participant', async (req: Request, res: Response) => {
     const userDoc = await adminDb.collection('users').doc(effectiveUid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
 
-    // 競賽原則：不可兼任參賽者與專家（利益迴避）
-    if (userData?.verifiedExpert || userData?.role === 'expert' || userData?.role === 'solver') {
-      const msg = '依競賽辦法規範：不可兼任參賽者與專家！您目前具備專家身分，為維持評審客觀與利益迴避原則，不可兼任參賽者。';
+    // 競賽原則：不可兼任參賽團隊與創星季專家評審（利益迴避：已申請或擔任創星季評審者不可報名參賽）
+    const judgeSnap = await adminDb
+      .collection('competition_judge_applications')
+      .where('userId', '==', effectiveUid)
+      .limit(1)
+      .get();
+    if (!judgeSnap.empty || userData?.isStarSeasonJudge) {
+      const msg = '依競賽辦法規範：不可兼任參賽團隊與創星季專家評審！您已申請或具備創星季專家評審身分，為維持評審客觀與利益迴避原則，不可兼任參賽團隊。';
       return res.status(400).json({
         success: false,
         error: msg,

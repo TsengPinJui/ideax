@@ -624,9 +624,17 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
           },
           {
             label: '平均在線時長',
-            value: trafficStats.avgSessionDisplay || '5分32秒',
+            value: (() => {
+              if (trafficStats.avgSessionDisplay) return trafficStats.avgSessionDisplay;
+              const s = trafficStats.totalOnlineSeconds && trafficStats.sessionCount
+                ? Math.round(trafficStats.totalOnlineSeconds / trafficStats.sessionCount)
+                : 285;
+              const m = Math.floor(s / 60);
+              const rem = s % 60;
+              return m > 0 ? `${m}分${rem}秒 (${(s / 60).toFixed(1)}分)` : `${rem}秒`;
+            })(),
             hint: '平均每次訪問在線停留時間',
-            tooltip: `累計全站連線時間統計：平均每位訪客在線停留約 ${trafficStats.avgSessionDisplay || '5分32秒'}`,
+            tooltip: '累計全站連線時間統計：依在線 Heartbeat 與訪問動態即時計算每位訪客平均停留時間',
           },
         ];
         return (

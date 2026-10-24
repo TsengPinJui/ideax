@@ -319,3 +319,77 @@ export function getFeaturedGames(allQuestions: Question[] = []): { question: Que
     rank: idx + 1,
   }));
 }
+
+/**
+ * 隨機抽取 3 款遊戲
+ * 整合全站現有遊戲、熱度榜 10 款小遊戲與精選庫，排除下架或非遊戲作品，
+ * 每次隨機洗牌並回傳 3 款獨立不重複的優質遊戲！
+ */
+export function getRandomThreeGames(
+  allQuestions: Question[] = [],
+  excludeIds: string[] = []
+): Question[] {
+  const isGame = (q: Question) => {
+    if (q.status === 'delisted' || q.status === 'closed') return false;
+    const cat = q.category || '';
+    const sub = q.subcategory || '';
+    const subs = q.subcategories || [];
+    const tags = q.tags || [];
+    const title = q.title || '';
+    const desc = q.description || '';
+    return (
+      (cat as string) === '遊戲' ||
+      sub === '遊戲' ||
+      subs.includes('遊戲') ||
+      tags.includes('遊戲') ||
+      tags.includes('小遊戲') ||
+      title.includes('遊戲') ||
+      title.includes('模擬器') ||
+      title.includes('桌遊') ||
+      title.includes('RPG') ||
+      desc.includes('網頁遊戲') ||
+      desc.includes('小遊戲')
+    );
+  };
+
+  const pool: Question[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. 先加入全站符合遊戲條件的作品
+  for (const q of allQuestions) {
+    if (isGame(q) && !seenIds.has(q.id)) {
+      seenIds.add(q.id);
+      pool.push({
+        ...q,
+        demoUrl: q.demoUrl || (q as any).vibeCodingData?.demoUrl || q.externalLink || 'https://4388.fun/',
+        previewMode: 'embed' as const,
+      });
+    }
+  }
+
+  // 2. 加入預設熱度榜 10 款經典遊戲（保底庫存豐富）
+  for (const def of HOT_GAMES_DEFS) {
+    if (!seenIds.has(def.id)) {
+      seenIds.add(def.id);
+      pool.push(createHotGameQuestion(def));
+    }
+  }
+
+  if (pool.length === 0) return [];
+
+  // 優先避開前一次抽中的 ID (若總數大於 3)
+  const excludeSet = new Set(excludeIds);
+  let candidates = pool.filter((g) => !excludeSet.has(g.id));
+  if (candidates.length < 3) {
+    candidates = [...pool];
+  }
+
+  // Fisher-Yates 洗牌演算法隨機打亂
+  const shuffled = [...candidates];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled.slice(0, 3);
+}

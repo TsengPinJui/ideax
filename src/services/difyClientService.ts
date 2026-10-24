@@ -173,22 +173,22 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
       body: JSON.stringify({ query: params.query, filters: {} }),
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok || !data?.success) throw new Error(data?.error || '整理搜尋入口失敗');
+    if (!response.ok || !data?.success) throw new Error(data?.error || '跨平台搜尋職缺失敗');
     const payload = {
-      mode: 'source-links-only',
       reply: data.reply,
+      jobs: Array.isArray(data.jobs) ? data.jobs : [],
       sources: Array.isArray(data.sources) ? data.sources : [],
     };
     return {
       success: true,
-      source: 'source-links-only',
+      source: 'ideax-cross-platform-job-search',
       rawOutput: JSON.stringify(payload, null, 2),
       parsedJson: payload,
       latencyMs: Date.now() - startedAt,
-      messageId: `source-links-${Date.now()}`,
+      messageId: `jobs-${Date.now()}`,
       conversationId: params.conversationId || '',
-      agentKey: 'IdeaX 求職網站搜尋入口',
-      notice: '只產生來源網站搜尋連結，不擷取或保存第三方職缺明細。',
+      agentKey: 'IdeaX 匯職缺跨平台全網搜尋',
+      notice: '跨平台搜尋在招職缺已完成。',
     };
   }
   const apiKey = params.apiKey || getDifyKeyForAgent(agentType);

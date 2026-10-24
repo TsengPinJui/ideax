@@ -1302,15 +1302,15 @@ export const JobExplorerView: React.FC = () => {
     setJobs([]);
     setReadyToSort(false);
     setArrivalOrder(false);
-    setSearchProgressText('正在整理來源網站搜尋入口…');
+    setSearchProgressText('正在跨求職平台搜尋最新在招職缺…');
     setStreamingBatchCount(0);
-    accompanyDuringSearch('正在依照你的條件整理求職網站入口。');
+    accompanyDuringSearch('探索者搜搜正在各求職網站為你尋找職缺。');
 
-    const botMsgId = `exp-links-${Date.now()}`;
+    const botMsgId = `exp-jobs-${Date.now()}`;
     setMessages((prev) => [...prev, {
       id: botMsgId,
       role: 'bot',
-      text: '已確認搜尋條件，正在整理求職網站搜尋入口…',
+      text: '已確認搜尋條件，搜搜正在各求職平台為您搜尋在招職缺…',
       confirmed: true,
     }]);
     setPendingConfirmedBrief('');
@@ -1364,6 +1364,78 @@ export const JobExplorerView: React.FC = () => {
     userBrowsingRef.current = false;
     void (async () => {
       try {
+        const streamRes = await fetch('/api/job-explorer/search-stream', {
+          method: 'POST',
+          signal: sess.controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: sess.brief, filters: sess.filters }),
+        });
+
+        if (streamRes.ok && streamRes.body) {
+          const reader = streamRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let receivedJobsCount = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data: ')) continue;
+              try {
+                const payload = JSON.parse(trimmed.slice(6));
+                if (searchSessionRef.current !== sess) return;
+
+                if (payload.type === 'progress' && payload.text) {
+                  setSearchProgressText(payload.text);
+                  accompanyDuringSearch(payload.text);
+                } else if (payload.type === 'batch') {
+                  const batchJobs: JobListing[] = Array.isArray(payload.jobs) ? payload.jobs : [];
+                  if (batchJobs.length > 0) {
+                    receivedJobsCount = payload.accumulated || batchJobs.length;
+                    setJobs(batchJobs);
+                    setStreamingBatchCount(payload.batchIndex || 1);
+                    setSearchProgressText(`探索者搜搜已跨平台找到 ${receivedJobsCount} 筆在招職缺…`);
+                  }
+                } else if (payload.type === 'sources') {
+                  const sources = Array.isArray(payload.sources)
+                    ? payload.sources.filter((s: any) => s && typeof s.url === 'string')
+                    : [];
+                  setSearchSourceLinks(sources);
+                } else if (payload.type === 'done') {
+                  if (Array.isArray(payload.jobs) && payload.jobs.length > 0) {
+                    setJobs(payload.jobs);
+                    receivedJobsCount = payload.jobs.length;
+                  }
+                  if (Array.isArray(payload.sources)) {
+                    setSearchSourceLinks(payload.sources);
+                  }
+                  setReadyToSort(true);
+                  setArrivalOrder(true);
+                  const total = receivedJobsCount || payload.totalJobs || 0;
+                  setSearchProgressText(total ? `全網搜尋完成，共精選 ${total} 筆在招職缺。` : '');
+                  updateBotMsg(sess, {
+                    text: total
+                      ? `已為您跨平台精選 ${total} 個在招職缺。點擊職缺卡片即可前往來源網站查看詳細招募資訊與投遞履歷。`
+                      : '目前各求職網站暫無完全相符的職缺，建議可調整條件或點選下方求職網站直達搜尋。',
+                    showPicked: total > 0,
+                    searchActions: undefined,
+                  });
+                }
+              } catch (e) {
+                // Ignore chunk parse error
+              }
+            }
+          }
+          return;
+        }
+
+        // Fallback to non-streaming POST /api/job-explorer/search
         const response = await fetch('/api/job-explorer/search', {
           method: 'POST',
           signal: sess.controller.signal,
@@ -1371,24 +1443,35 @@ export const JobExplorerView: React.FC = () => {
           body: JSON.stringify({ query: sess.brief, filters: sess.filters }),
         });
         const data = await response.json().catch(() => null);
-        if (!response.ok || !data?.success) throw new Error(data?.error || '整理搜尋入口失敗');
+        if (!response.ok || !data?.success) throw new Error(data?.error || '跨平台搜尋失敗');
         if (searchSessionRef.current !== sess) return;
-        const sources = Array.isArray(data.sources) ? data.sources.filter((source: any) => source && typeof source.url === 'string' && /^https:\/\//.test(source.url)) : [];
+
+        const foundJobs: JobListing[] = Array.isArray(data.jobs) ? data.jobs : [];
+        const sources = Array.isArray(data.sources)
+          ? data.sources.filter((s: any) => s && typeof s.url === 'string')
+          : [];
+
+        setJobs(foundJobs);
         setSearchSourceLinks(sources);
-        setSearchProgressText(sources.length ? `已整理 ${sources.length} 個來源網站搜尋入口。` : '沒有可用的來源網站入口，請調整條件後再試。');
+        setReadyToSort(true);
+        setArrivalOrder(true);
+        setSearchProgressText(foundJobs.length ? `全網搜尋完成，共精選 ${foundJobs.length} 筆在招職缺。` : '');
         updateBotMsg(sess, {
-          text: sources.length
-            ? `已整理 ${sources.length} 個求職網站搜尋入口。點選後會前往來源網站查看職缺內容、薪資與最新招募狀態。IdeaX 不會匯入或保存職缺明細。`
-            : '這次沒有可用的來源網站入口，請調整搜尋條件或選擇其他求職網站再試。',
+          text: foundJobs.length
+            ? `已為您跨平台精選 ${foundJobs.length} 個在招職缺。點擊職缺卡片即可前往來源網站查看詳細招募資訊。`
+            : '這次沒有找到符合條件的職缺，請調整條件後再試。',
           searchActions: undefined,
-          showPicked: false,
+          showPicked: foundJobs.length > 0,
         });
       } catch (error: any) {
         if (error?.name === 'AbortError' || searchSessionRef.current !== sess) return;
-        console.warn('[Job Search Links]', error);
-        setSearchSourceLinks([]);
+        console.warn('[Job Search Error]', error);
         setSearchProgressText('');
-        updateBotMsg(sess, { text: error?.message || '整理來源網站搜尋入口時發生錯誤，請稍後再試。', searchActions: undefined, showPicked: false });
+        updateBotMsg(sess, {
+          text: error?.message || '跨平台搜尋職缺時發生錯誤，請稍後再試。',
+          searchActions: undefined,
+          showPicked: false,
+        });
       } finally {
         if (searchSessionRef.current === sess) {
           setIsSearching(false);
@@ -2931,7 +3014,7 @@ export const JobExplorerView: React.FC = () => {
         {jobs.length > 0 && <JobsInstallPrompt />}
 
         {/* 排序列 ＆ 大卡片／條列式／小卡片切換（手機橫向滑動不擁擠） */}
-        {(searchSourceLinks.length === 0 || showSavedOnly) && (
+        {(filteredAndSortedJobs.length > 0 || showSavedOnly) && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
             {(
@@ -3061,66 +3144,72 @@ export const JobExplorerView: React.FC = () => {
           </div>
         )}
 
-        {/* 搜尋結果只提供來源網站入口，不匯入職缺明細 */}
-        {searchSourceLinks.length > 0 && !showSavedOnly ? (
-          <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
-            <div className="space-y-1">
-              <h2 className="text-base font-bold text-[#1e3a8a]">求職網站搜尋入口</h2>
-              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">選擇一個網站，在來源網站查看最新職缺、薪資、條件與招募狀態。</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {searchSourceLinks.map((source) => (
-                <a
-                  key={source.id}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 hover:border-[#1e3a8a]/40 hover:bg-blue-50/50 transition-colors"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-bold text-stone-800 truncate">{source.site}</span>
-                    <span className="block mt-0.5 text-[11px] text-stone-500">{source.actionLabel}</span>
-                  </span>
-                  <ExternalLink className="w-4 h-4 shrink-0 text-[#1e3a8a] group-hover:translate-x-0.5 transition-transform" />
-                </a>
-              ))}
-            </div>
-            <p className="text-[11px] text-stone-500 border-t border-stone-100 pt-3">IdeaX 只整理搜尋連結，不擷取、不暫存或保存第三方職缺明細；職缺資訊以來源網站為準。</p>
-          </section>
-        ) : isSearching && filteredAndSortedJobs.length === 0 ? (
+        {/* 搜尋中 / 無職缺 / 職缺卡片列表 */}
+        {isSearching && filteredAndSortedJobs.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200/90 py-16 text-center space-y-2.5">
             <Loader2 className="w-6 h-6 text-[#1e3a8a] animate-spin mx-auto" />
             <p className="text-xs sm:text-sm font-bold text-[#1e3a8a]">
-              {searchProgressText || '【IdeaX創點子】正在整理來源網站搜尋入口…'}
+              {searchProgressText || '【IdeaX創點子】正在跨求職平台搜尋最新職缺…'}
             </p>
           </div>
         ) : filteredAndSortedJobs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-stone-200/90 py-14 px-4 text-center space-y-3">
-            <p className="text-sm font-bold text-stone-700">
-              {showSavedOnly
-                ? '尚無收藏的職缺'
-                : pendingFallbackBrief
-                ? '搜搜似乎斷線了，要改由小燈泡繼續搜尋嗎?'
-                : hasSearched
-                ? '沒有符合條件的職缺'
-                : '輸入職位條件或展開篩選開始搜尋'}
-            </p>
-            {pendingFallbackBrief && !showSavedOnly && (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => void handleForwardToExplorerAgent(pendingFallbackBrief, undefined, true)}
-                  className="px-4 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>改由小燈泡繼續搜尋</span>
-                </button>
-              </div>
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-stone-200/90 py-14 px-4 text-center space-y-3">
+              <p className="text-sm font-bold text-stone-700">
+                {showSavedOnly
+                  ? '尚無收藏的職缺'
+                  : pendingFallbackBrief
+                  ? '搜搜似乎斷線了，要改由小燈泡繼續搜尋嗎?'
+                  : hasSearched
+                  ? '沒有符合條件的職缺'
+                  : '輸入職位條件或展開篩選開始搜尋'}
+              </p>
+              {pendingFallbackBrief && !showSavedOnly && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => void handleForwardToExplorerAgent(pendingFallbackBrief, undefined, true)}
+                    className="px-4 py-2 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>改由小燈泡繼續搜尋</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {searchSourceLinks.length > 0 && !showSavedOnly && (
+              <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-[#1e3a8a]">求職網站搜尋入口</h2>
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">選擇一個網站，在來源網站查看最新職缺、薪資、條件與招募狀態。</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {searchSourceLinks.map((source) => (
+                    <a
+                      key={source.id}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 hover:border-[#1e3a8a]/40 hover:bg-blue-50/50 transition-colors"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold text-stone-800 truncate">{source.site}</span>
+                        <span className="block mt-0.5 text-[11px] text-stone-500">{source.actionLabel}</span>
+                      </span>
+                      <ExternalLink className="w-4 h-4 shrink-0 text-[#1e3a8a] group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  ))}
+                </div>
+                <p className="text-[11px] text-stone-500 border-t border-stone-100 pt-3">IdeaX 匯集全網職缺，職缺資訊以各來源網站為準。</p>
+              </section>
             )}
           </div>
-        ) : viewMode === 'small_card' ? (
-          /* 小卡片（電腦預設） */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        ) : (
+          <div className="space-y-4">
+            {viewMode === 'small_card' ? (
+              /* 小卡片（電腦預設） */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredAndSortedJobs.map((job, idx) => {
               const isSaved = Boolean(savedJobsMap[job.id]);
               const extraText = getExtraText(job);
@@ -3393,6 +3482,35 @@ export const JobExplorerView: React.FC = () => {
             })}
           </div>
         )}
+
+        {searchSourceLinks.length > 0 && !showSavedOnly && (
+          <section className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4 shadow-2xs mt-4">
+            <div className="space-y-1">
+              <h2 className="text-base font-bold text-[#1e3a8a]">各求職平台直達搜尋捷徑</h2>
+              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">選擇平台直接開啟最新搜尋結果，在來源網站查看最新職缺、薪資、條件與招募狀態。</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {searchSourceLinks.map((source) => (
+                <a
+                  key={source.id}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 hover:border-[#1e3a8a]/40 hover:bg-blue-50/50 transition-colors"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-stone-800 truncate">{source.site}</span>
+                    <span className="block mt-0.5 text-[11px] text-stone-500">{source.actionLabel}</span>
+                  </span>
+                  <ExternalLink className="w-4 h-4 shrink-0 text-[#1e3a8a] group-hover:translate-x-0.5 transition-transform" />
+                </a>
+              ))}
+            </div>
+            <p className="text-[11px] text-stone-500 border-t border-stone-100 pt-3">IdeaX 匯集全網職缺，職缺資訊以各來源網站為準。</p>
+          </section>
+        )}
+      </div>
+    )}
       </div>
     </div>
   );

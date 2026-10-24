@@ -545,8 +545,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       (typeof window !== 'undefined' && currentUser?.id && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`))
     );
 
-    if (!isRegisteredParticipant) {
-      showToast('【尚未完成報名】提案參賽前須先完成「報名參賽」團隊資料登錄！系統將為您導向報名頁。');
+    if (formStage === 'solution' && !isRegisteredParticipant) {
+      showToast('【尚未完成報名】解方提案前須先完成「報名參賽」團隊資料登錄！系統將為您導向報名頁。');
       onNavigate('participant');
       return;
     }
@@ -624,6 +624,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       const primaryAtt = formAttachments[0] || formAttachment;
 
       const res = await submitProposal({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userAvatar: currentUser.avatar,
+        userRole: currentUser.role,
         stage: formStage,
         track: effectiveTrack,
         title: formTitle.trim(),

@@ -47,12 +47,15 @@ import { isFakeProposal } from './challenge/StarSeasonView';
 import {
   CompetitionRegistrationRecord,
   getCompetitionRegistrations,
+  saveAllCompetitionRegistrations,
   updateCompetitionRegistrationStatus,
   getCompetitionProposalsForAdmin,
+  saveAllCompetitionProposals,
   updateCompetitionProposalReviewStatus,
   updateCompetitionProposalAward,
   CompetitionExpertRecord,
   getCompetitionExperts,
+  saveAllCompetitionExperts,
   updateCompetitionExpertStatus,
   getCompetitionHomepageStatsConfig,
   saveCompetitionHomepageStatsConfig,
@@ -60,6 +63,11 @@ import {
   resetCompetitionDataToZero,
 } from '../services/competitionAdminSync';
 import { notifyExpertReviewEmail } from '../services/expertNotificationService';
+import {
+  adminReviewProposal,
+  adminReviewRegistration,
+  adminReviewExpert,
+} from '../services/competitionClientService';
 import {
   StarSeasonProposal,
   STAR_SEASON_TRACKS,
@@ -119,6 +127,54 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     setStatsConfig(getCompetitionHomepageStatsConfig());
     setAdminMetrics(getCompetitionAggregatedMetrics());
     setAutoRewardStatus(getAutomatedDistributionStatus());
+
+    // 非同步從雲端 Firestore 取得跨裝置提交之最新真實團隊報名、提案與痛點
+    Promise.all([
+      fetch('/api/competition/admin/registrations').then((r) => r.json()).catch(() => null),
+      fetch('/api/competition/admin/all-proposals').then((r) => r.json()).catch(() => null),
+      fetch('/api/competition/admin/all-experts').then((r) => r.json()).catch(() => null),
+    ]).then(([regsRes, propsRes, expRes]) => {
+      if (regsRes?.success && Array.isArray(regsRes.records)) {
+        const localRegs = getCompetitionRegistrations();
+        const mergedMap = new Map<string, CompetitionRegistrationRecord>();
+        localRegs.forEach((r) => mergedMap.set(r.id || r.userId, r));
+        regsRes.records.forEach((r: any) => {
+          const key = r.id || r.userId;
+          const existing = mergedMap.get(key);
+          mergedMap.set(key, { ...existing, ...r });
+        });
+        const mergedList = Array.from(mergedMap.values());
+        setRegistrations(mergedList);
+        saveAllCompetitionRegistrations(mergedList);
+      }
+
+      if (propsRes?.success && Array.isArray(propsRes.proposals)) {
+        const localProps = getCompetitionProposalsForAdmin();
+        const mergedPropsMap = new Map<string, StarSeasonProposal>();
+        localProps.forEach((p) => mergedPropsMap.set(p.id, p));
+        propsRes.proposals.forEach((p: any) => {
+          const existing = mergedPropsMap.get(p.id);
+          mergedPropsMap.set(p.id, { ...existing, ...p });
+        });
+        const mergedPropList = Array.from(mergedPropsMap.values());
+        setProposals(mergedPropList);
+        saveAllCompetitionProposals(mergedPropList);
+      }
+
+      if (expRes?.success && Array.isArray(expRes.experts)) {
+        const localExp = getCompetitionExperts();
+        const mergedExpMap = new Map<string, CompetitionExpertRecord>();
+        localExp.forEach((e) => mergedExpMap.set(e.id || e.userId, e));
+        expRes.experts.forEach((e: any) => {
+          const key = e.id || e.userId;
+          const existing = mergedExpMap.get(key);
+          mergedExpMap.set(key, { ...existing, ...e });
+        });
+        const mergedExpList = Array.from(mergedExpMap.values());
+        setExperts(mergedExpList);
+        saveAllCompetitionExperts(mergedExpList);
+      }
+    }).catch(() => {});
   };
 
   useEffect(() => {
@@ -164,7 +220,16 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   };
 
   // 1. 審核報名
-  const handleReviewReg = (id: string, status: 'approved' | 'rejected', defaultNote?: string) => {
+  const handleReviewReg = async (id: string, status: 'approved' | 'rejected', defaultNote?: string) => {
+    try {
+      await adminReviewRegistration({
+        registrationId: id,
+        status,
+        reviewNote: defaultNote,
+      });
+    } catch (err: any) {
+      console.warn('[CompetitionAdmin] API review registration warning:', err?.message);
+    }
     const success = updateCompetitionRegistrationStatus(
       id,
       status,
@@ -172,6 +237,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     );
     if (success) {
       loadAll();
+      window.dispatchEvent(new CustomEvent('ideax_competition_registrations_updated'));
       triggerToast(status === 'approved' ? '✅ 已核准該團隊參賽報名！' : '❌ 已退回該參賽報名。');
       if (onNotify) {
         onNotify('創星季審核通知', status === 'approved' ? '已核准團隊參賽報名' : '已退回參賽報名');
@@ -183,6 +249,16 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const handleReviewExpert = async (id: string, status: 'approved' | 'rejected', isJudgeSelected = false, defaultNote?: string) => {
     const targetExpert = experts.find((e) => e.id === id);
     const finalNote = defaultNote || (status === 'approved' ? '專家身分審核通過，已配發 3,000,000 創星幣！' : '專家證明資料未通過');
+    try {
+      await adminReviewExpert({
+        expertId: id,
+        status,
+        isJudgeSelected,
+        reviewNote: finalNote,
+      });
+    } catch (err: any) {
+      console.warn('[CompetitionAdmin] API review expert warning:', err?.message);
+    }
     const success = updateCompetitionExpertStatus(
       id,
       status,
@@ -220,7 +296,19 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   };
 
   // 3. 審核提案
-  const handleReviewProp = (proposalId: string, status: 'approved' | 'rejected', defaultNote?: string) => {
+  const handleReviewProp = async (proposalId: string, status: 'approved' | 'rejected', defaultNote?: string) => {
+    try {
+      const apiRes = await adminReviewProposal({
+        proposalId,
+        status,
+        reviewNote: defaultNote,
+      });
+      if (!apiRes.success) {
+        console.warn('[CompetitionAdmin] API review proposal warning:', apiRes.message);
+      }
+    } catch (err: any) {
+      console.warn('[CompetitionAdmin] API review proposal warning:', err?.message);
+    }
     const success = updateCompetitionProposalReviewStatus(
       proposalId,
       status,
@@ -250,6 +338,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
         }
       }
       loadAll();
+      window.dispatchEvent(new CustomEvent('ideax_competition_proposals_updated'));
       triggerToast(status === 'approved' ? '✅ 已核准該競賽提案！' : '❌ 已退回該提案。');
     }
   };

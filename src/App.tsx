@@ -3321,6 +3321,10 @@ function MainContent() {
               setUserDashboardTab('profile');
               setActiveTab('user_dashboard');
             }}
+            onNavigateToCompetition={() => {
+              setActiveTab('star_season');
+              window.history.pushState(null, '', '/star-season');
+            }}
             onSuccess={(newQ) => {
               if (newQ.postType === 'innovation_proposal') {
                 setSpecialZone('all');

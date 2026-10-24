@@ -55,22 +55,27 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  // 精確切點時間物件 (精確到分)
+  // 創星季競賽時間依台灣時間 (UTC+8) 精確計算
+  const toUtc8Ms = (year: number, monthIndex: number, day: number, hour: number = 0, minute: number = 0, second: number = 0) => {
+    return Date.UTC(year, monthIndex, day, hour - 8, minute, second);
+  };
+
+  // 精確切點時間物件 (依 UTC+8 台灣時間)
   // 10/17 00:00 報名開始
-  const tRegistrationStart = new Date(currentYear, 9, 17, 0, 0, 0).getTime(); // 10/17 00:00
+  const tRegistrationStart = toUtc8Ms(currentYear, 9, 17, 0, 0, 0); // 10/17 00:00
   // 10/24 00:00 ~ 11/13 16:30 痛點徵件
-  const tPainPointStart = new Date(currentYear, 9, 24, 0, 0, 0).getTime();   // 10/24 00:00
-  const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime(); // 11/13 16:30
+  const tPainPointStart = toUtc8Ms(currentYear, 9, 24, 0, 0, 0);   // 10/24 00:00
+  const tPainPointEnd = toUtc8Ms(currentYear, 10, 13, 16, 30, 0); // 11/13 16:30
   // 11/14 10:00 ~ 11/15 16:30 預先提案
-  const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime(); // 11/14 10:00
-  const tPreProposalEnd = new Date(currentYear, 10, 15, 16, 30, 0).getTime();   // 11/15 16:30
+  const tPreProposalStart = toUtc8Ms(currentYear, 10, 14, 10, 0, 0); // 11/14 10:00
+  const tPreProposalEnd = toUtc8Ms(currentYear, 10, 15, 16, 30, 0);   // 11/15 16:30
   // 11/16 10:00 ~ 12/04 16:30 模擬募資
-  const tCrowdfundStart = new Date(currentYear, 10, 16, 10, 0, 0).getTime();   // 11/16 10:00
-  const tCrowdfundEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime();      // 12/04 16:30
+  const tCrowdfundStart = toUtc8Ms(currentYear, 10, 16, 10, 0, 0);   // 11/16 10:00
+  const tCrowdfundEnd = toUtc8Ms(currentYear, 11, 4, 16, 30, 0);      // 12/04 16:30
   // 12/05 ~ 12/11 進入決選 (評審)
-  const tExpertReviewEnd = new Date(currentYear, 11, 11, 23, 59, 59).getTime(); // 12/11 23:59:59
+  const tExpertReviewEnd = toUtc8Ms(currentYear, 11, 11, 23, 59, 59); // 12/11 23:59:59
   // 12/12 ~ 12/16 公布結果
-  const tResultsEnd = new Date(currentYear, 11, 16, 23, 59, 59).getTime(); // 12/16 23:59:59
+  const tResultsEnd = toUtc8Ms(currentYear, 11, 16, 23, 59, 59); // 12/16 23:59:59
 
   const nowTime = now.getTime();
   let stage = 0;

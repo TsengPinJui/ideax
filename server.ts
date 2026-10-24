@@ -20,6 +20,8 @@ import { recordFeatureUse, getFeatureUsage, getPublicFeatureTotals } from './ser
 import { ALL_REPAIR_CATEGORIES, runDataRepair } from './server/dataRepair';
 import { buildJobDocResult, detectDocKind, docKindMimeType, extractDocxText, MAX_DOC_BYTES } from './server/docText';
 import { buildJobSearchLinks } from './server/jobSearchLinks';
+import { executeJobSearch } from './server/jobSearchService';
+import { diagnoseJobUrl } from './server/jobUrlVerify';
 import { MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
 import { APP_VERSION } from './src/data/versionData';
@@ -4708,10 +4710,20 @@ async function parseJobIntakeWithGemini(params: {
   return null;
 }
 
-// 舊版職缺連結驗證端點已停用：IdeaX 不再代替使用者請求或解析第三方職缺頁。
-app.get('/api/job-explorer/check-link', (_req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(410).json({ ok: false, error: '職缺連結驗證已停用，請直接到來源網站確認。' });
+// 職缺連結診斷與驗證端點
+app.get('/api/job-explorer/check-link', async (req: Request, res: Response) => {
+  try {
+    const url = String(req.query?.url || '').trim();
+    const title = String(req.query?.title || '').trim();
+    const company = String(req.query?.company || '').trim();
+    if (!url) return res.status(400).json({ ok: false, error: '請提供職缺網址' });
+    const diag = await diagnoseJobUrl(url, title, company);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(diag);
+  } catch (err: any) {
+    console.error('[Check Job Link Error]', err?.message || err);
+    res.status(500).json({ ok: false, error: '連結診斷失敗，請稍後再試' });
+  }
 });
 
 // ─── 會員「最近上線時間」：存在獨立的 user_activity，不寫進大家都在即時監聽的會員資料（不然每寫一次，所有在線的人都要重讀一次） ───
@@ -5474,41 +5486,61 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   }
 });
 
-// 匯職缺搜尋只產生來源網站搜尋入口，不擷取、驗證或保存第三方職缺資料。
+// 匯職缺跨平台全網即時串流搜尋
 app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) => {
   try {
     const query = String(req.body?.query || '').trim().slice(0, 600);
     if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
-    const sources = buildJobSearchLinks(query, req.body?.filters);
+
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store');
     res.setHeader('Connection', 'keep-alive');
-    res.write(`data: ${JSON.stringify({ type: 'sources', sources, reply: `已整理 ${sources.length} 個求職網站搜尋入口。` })}\n\n`);
-    res.write(`data: ${JSON.stringify({ type: 'done', totalSources: sources.length })}\n\n`);
-    res.end();
+
+    let batchCount = 0;
+    const result = await executeJobSearch(query, req.body?.filters, {
+      onProgress: (text) => {
+        if (!res.writableEnded) {
+          res.write(`data: ${JSON.stringify({ type: 'progress', text })}\n\n`);
+        }
+      },
+      onBatch: (jobs, accumulated) => {
+        if (!res.writableEnded) {
+          batchCount++;
+          res.write(`data: ${JSON.stringify({ type: 'batch', batchIndex: batchCount, jobs, accumulated })}\n\n`);
+        }
+      },
+    });
+
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ type: 'sources', sources: result.sources })}\n\n`);
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        totalJobs: result.jobs.length,
+        totalSources: result.sources.length,
+        jobs: result.jobs,
+        reply: result.reply,
+      })}\n\n`);
+      res.end();
+    }
   } catch (err: any) {
-    console.error('[Job Explorer Search Links]', err?.message || err);
-    if (!res.headersSent) res.status(500).json({ success: false, error: '整理搜尋入口時發生錯誤，請稍後再試' });
+    console.error('[Job Explorer Search Stream Error]', err?.message || err);
+    if (!res.headersSent) res.status(500).json({ success: false, error: '跨平台搜尋職缺時發生錯誤，請稍後再試' });
     else res.end();
   }
 });
 
-app.post('/api/job-explorer/search', (req: Request, res: Response) => {
+// 匯職缺跨平台非串流搜尋端點
+app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
   try {
     const query = String(req.body?.query || '').trim().slice(0, 600);
     if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
-    const sources = buildJobSearchLinks(query, req.body?.filters);
+
+    const result = await executeJobSearch(query, req.body?.filters);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({
-      success: true,
-      mode: 'source-links-only',
-      reply: `已整理 ${sources.length} 個求職網站搜尋入口。點選後請至來源網站查看職缺內容與最新狀態。`,
-      sources,
-      jobs: [],
-    });
+    res.json(result);
   } catch (err: any) {
-    console.error('[Job Explorer Search Links]', err?.message || err);
-    res.status(500).json({ success: false, error: '整理搜尋入口時發生錯誤，請稍後再試', sources: [], jobs: [] });
+    console.error('[Job Explorer Search Error]', err?.message || err);
+    res.status(500).json({ success: false, error: '跨平台搜尋職缺時發生錯誤，請稍後再試', sources: [], jobs: [] });
   }
 });
 // 後台轉接檢查：三位助理各用哪個環境變數、對應 Dify 哪個應用、是否共用同一把金鑰（不回傳金鑰本身）

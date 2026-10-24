@@ -1571,36 +1571,38 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           }}
                           className="py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer shrink-0"
                         >
-                          查看提案
+                          {proposal.stage === 'pain_point' ? '查看痛點' : '查看提案'}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (stageInfo.activeStage === 0) {
-                              showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/24 00:00 正式開跑！');
-                              return;
-                            }
-                            if (stageInfo.isPreProposalStage) {
-                              showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，暫時關閉募資(投資)功能，僅供審核與預覽！11/16 起開放注資。');
-                              return;
-                            }
-                            if (!stageInfo.isInvestmentEnabled) {
-                              showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
-                              return;
-                            }
-                            setSelectedProposalForSupport(proposal);
-                            setIsSupportModalOpen(true);
-                          }}
-                          className={`py-1.5 px-3 rounded-xl text-xs transition-colors cursor-pointer shadow-2xs ${
-                            !stageInfo.isInvestmentEnabled
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 font-bold'
-                              : 'bg-amber-400 hover:bg-amber-300 text-stone-950 font-black'
-                          }`}
-                        >
-                          {stageInfo.isPreProposalStage ? '預覽中' : '為他注資'}
-                        </button>
+                        {proposal.stage !== 'pain_point' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (stageInfo.activeStage === 0) {
+                                showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/24 00:00 正式開跑！');
+                                return;
+                              }
+                              if (stageInfo.isPreProposalStage) {
+                                showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，暫時關閉募資(投資)功能，僅供審核與預覽！11/16 起開放注資。');
+                                return;
+                              }
+                              if (!stageInfo.isInvestmentEnabled) {
+                                showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
+                                return;
+                              }
+                              setSelectedProposalForSupport(proposal);
+                              setIsSupportModalOpen(true);
+                            }}
+                            className={`py-1.5 px-3 rounded-xl text-xs transition-colors cursor-pointer shadow-2xs ${
+                              !stageInfo.isInvestmentEnabled
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 font-bold'
+                                : 'bg-amber-400 hover:bg-amber-300 text-stone-950 font-black'
+                            }`}
+                          >
+                            {stageInfo.isPreProposalStage ? '預覽中' : '為他注資'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -281,11 +281,26 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                 {EMBED_PLATFORM_LABEL[platform]}
               </span>
             )}
+
+            {question.tertiaryCategory && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                <span>🎮 遊戲 › {question.tertiaryCategory}</span>
+              </span>
+            )}
           </div>
         </div>
 
-        {/* 右側：網址、重新載入、在新分頁開啟、分享與關閉 */}
+        {/* 右側：網址、詳細說明、重新載入、在新分頁開啟、分享與關閉 */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onViewDescription(question)}
+            className="px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors border border-stone-700/80 cursor-pointer shadow-xs"
+            title="查看作品詳細說明、架構與版本日誌"
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">詳細說明</span>
+          </button>
           {isValidWebUrl && !isFailed && (
             <button
               type="button"

@@ -130,8 +130,9 @@ export const ShareReferralModal: React.FC<ShareReferralModalProps> = ({
             </div>
             <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-stone-500">
               <li>推薦好友加入或於「兌換推薦碼」輸入您的代碼，您即可獲得 <b>+100 點/人</b>。</li>
+              <li><b>專屬隨機保密碼</b>：推薦碼為個人專屬 8 位隨機英數代碼，獨立於公開的帳號 ID 與姓名，保護隱私安全。</li>
               <li><b>兌換不限次數</b>：推薦越多好友，獲得的獎勵點數無上限累積！</li>
-              <li>複製時僅複製代碼本身，方便好友直接貼入兌換。</li>
+              <li>複製時僅複製純代碼本身，方便好友直接貼入兌換。</li>
             </ul>
           </div>
 

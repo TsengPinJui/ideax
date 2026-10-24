@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { isRealRegisteredUser } from '../data/mockData';
 import { getCachedRealTrafficStats } from './AdminSiteTrafficChart';
-import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift, Trophy, Flame } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift, Trophy, Flame, Dices } from 'lucide-react';
 import { Category, Question } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
 import { HomeShowcasePlayer, useShowcaseSlides } from './HomeShowcasePlayer';
 import { FeaturedGamesBoard, HotGamesRankingBoard } from './HomeHeroSideBoards';
+import { RandomGameDrawModal } from './RandomGameDrawModal';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -32,6 +33,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenAppEmbed,
 }) => {
   const [mobileGameTab, setMobileGameTab] = useState<'featured' | 'hot'>('featured');
+  const [isRandomDrawOpen, setIsRandomDrawOpen] = useState(false);
   const {
     questions,
     answers,
@@ -63,6 +65,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     const on = () => setTodayVisitors(Number(getCachedRealTrafficStats().visitorsDaily?.[utc8Today()]) || 0);
     window.addEventListener('ideax_site_traffic_updated', on);
     return () => window.removeEventListener('ideax_site_traffic_updated', on);
+  }, []);
+
+  useEffect(() => {
+    const handleOpen = () => setIsRandomDrawOpen(true);
+    window.addEventListener('IDEAX_OPEN_RANDOM_GAME_DRAW', handleOpen);
+    return () => window.removeEventListener('IDEAX_OPEN_RANDOM_GAME_DRAW', handleOpen);
   }, []);
 
   // 近 7 天新註冊會員（依註冊日期，不含測試帳號）
@@ -392,6 +400,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           </div>
 
+          {/* 首頁隨機抽 3 款遊戲按鈕（桌面與手機通用核心展示） */}
+          <div className="my-2 sm:my-3 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setIsRandomDrawOpen(true)}
+              className="group relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs sm:text-sm shadow-md shadow-amber-200/70 hover:shadow-lg hover:shadow-amber-300/80 active:scale-95 transition-all cursor-pointer border border-amber-300/50"
+              title="想不到玩什麼？隨機抽取 3 款遊戲，立即線上試玩！"
+            >
+              <span className="p-1 rounded-full bg-white/20 group-hover:rotate-180 transition-transform duration-500 shrink-0">
+                <Dices className="w-4 h-4 text-white" />
+              </span>
+              <span>隨機抽 3 款遊戲</span>
+              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-black/20 text-amber-100 flex items-center gap-0.5">
+                <Sparkles className="w-3 h-3 text-amber-200" />
+                想不到玩什麼？
+              </span>
+            </button>
+          </div>
+
           {/* Main Headline（管理員可隱藏：隱藏時只是畫面上看不到，搜尋引擎與讀屏仍讀得到） */}
           <h1 className={homeShowcaseConfig.hideHeroTitles ? 'sr-only' : 'text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2'}>
             一個問題，找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
@@ -473,6 +500,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         )}
       </div>
+
+      {/* 隨機抽 3 款遊戲彈窗 */}
+      <RandomGameDrawModal
+        isOpen={isRandomDrawOpen}
+        onClose={() => setIsRandomDrawOpen(false)}
+        questions={questions}
+        onSelectGame={handleGameClick}
+      />
     </section>
   );
 };

@@ -73,6 +73,7 @@ interface CreateQuestionModalProps {
   onClose: () => void;
   onSuccess: (created: Question) => void;
   onNavigateToProfile?: () => void;
+  onNavigateToCompetition?: () => void;
   isFullPage?: boolean;
   initialCategory?: Category;
   initialSubcategory?: string;
@@ -176,6 +177,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   onClose,
   onSuccess,
   onNavigateToProfile,
+  onNavigateToCompetition,
   isFullPage = false,
   initialCategory,
   initialSubcategory,
@@ -1144,6 +1146,39 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         }}
         className={`relative p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}
       >
+        {/* 創星季參賽者重要提醒橫幅：提出痛點時最上方醒目標示 */}
+        {postType === 'pain_point' && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-2 border-rose-400 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-black text-sm">
+                ⚠️
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-black text-rose-950">
+                  創星季參賽者重要提醒
+                </p>
+                <p className="text-xs text-rose-900 font-bold mt-0.5 leading-relaxed">
+                  若為創星季參賽者請至創星季官網提出，在創點子提出的不會算入參賽名單。
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToCompetition) {
+                  onNavigateToCompetition();
+                } else {
+                  window.location.href = '/star-season';
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white text-xs font-black shrink-0 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <span>前往創星季官網提出</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* 草稿偵測橫幅 */}
         {detectedDraft && (
           <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-3 animate-in fade-in">

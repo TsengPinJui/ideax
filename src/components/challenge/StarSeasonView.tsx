@@ -151,6 +151,16 @@ import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposal
 
 export const isFakeProposal = (p: any): boolean => {
   if (!p) return false;
+  // 小美余 是真實參賽者，其痛點與未來提案一律納入參賽範圍，切勿過濾
+  if (
+    p.authorName === '小美余' ||
+    p.leaderName === '小美余' ||
+    p.authorId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+    p.userId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+    p.id === 'star-prop-1792853867316-1ymcj'
+  ) {
+    return false;
+  }
   const id = String(p.id || '');
   const authorId = String(p.authorId || '');
   return (
@@ -160,9 +170,12 @@ export const isFakeProposal = (p: any): boolean => {
     id.startsWith('q-mock-') ||
     id.startsWith('q-test-') ||
     id.startsWith('q-vp-') ||
+    id.startsWith('q-179') ||
     authorId.startsWith('demo-u-') ||
     authorId.startsWith('test-') ||
     authorId.startsWith('mock-') ||
+    authorId.startsWith('u-vp-') ||
+    authorId.startsWith('u-agent-') ||
     Boolean(p.isSimulated) ||
     isSimulatedUser(authorId)
   );
@@ -1848,17 +1861,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 提交提案
   const handleSubmitProposalForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) {
+    if (!currentUser || currentUser.id === 'user-guest') {
       onOpenAuth();
       return;
     }
 
     if (!formTitle.trim() || !formSummary.trim() || !formDescription.trim()) {
-      showToast('請完整填寫提案標題、摘要與說明');
+      showToast('請完整填寫標題、摘要與說明');
       return;
     }
-    if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
-      showToast('請填寫主要聯絡人姓名、電話與 Email（此敏感資料將受安全隔離保護）');
+    if (formStage === 'solution' && (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim())) {
+      showToast('提案請填寫主要聯絡人姓名、電話與 Email（此敏感資料將受安全隔離保護）');
       return;
     }
 
@@ -1881,13 +1894,20 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setIsSubmittingProposal(true);
     try {
       const sourcePainPoint = painPointProposals.find((p) => p.id === formSourcePainPointId);
+      const effectiveContactName = (contactName || currentUser.name || '痛點提問人').trim();
+      const effectiveContactPhone = (contactPhone || currentUser.phone || '0900000000').trim();
+      const effectiveContactEmail = (contactEmail || currentUser.email || 'user@ideax.tw').trim();
 
       const res = await submitProposal({
-        title: formTitle,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userAvatar: currentUser.avatar,
+        userRole: currentUser.role,
+        title: formTitle.trim(),
         stage: formStage,
         track: formTrack,
-        summary: formSummary,
-        description: formDescription,
+        summary: formSummary.trim(),
+        description: formDescription.trim(),
         sourcePainPointProposalId: formStage === 'solution' ? formSourcePainPointId : undefined,
         sourcePainPointTitle: formStage === 'solution' ? sourcePainPoint?.title : undefined,
         attachmentUrl: formAttachment?.url,
@@ -1895,12 +1915,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         attachmentSize: formAttachment?.size,
         attachmentMime: formAttachment?.mime,
         referredByAmbassadorCode: formAmbassadorCode,
-        contactName,
-        contactPhone,
-        contactEmail,
-        schoolOrOrg,
-        bankCode,
-        bankAccount,
+        contactName: effectiveContactName,
+        contactPhone: effectiveContactPhone,
+        contactEmail: effectiveContactEmail,
+        schoolOrOrg: formStage === 'solution' ? schoolOrOrg : undefined,
+        bankCode: formStage === 'solution' ? bankCode : undefined,
+        bankAccount: formStage === 'solution' ? bankAccount : undefined,
         idNumber,
       });
 
@@ -2324,15 +2344,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <span className="font-mono font-black text-amber-700 text-sm">
                   {account.availablePoints.toLocaleString()}
                 </span>
-                {account.role === 'admin' ? (
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                    👑 管理員 (1,000萬)
-                  </span>
-                ) : account.role === 'solver' ? (
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                    👑 專家 (300萬)
-                  </span>
-                ) : null}
               </div>
             )}
 
@@ -3255,18 +3266,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <Compass className="w-4 h-4 text-amber-500" />
                 <span>探索Idea</span>
               </button>
-
-              {/* 次行動 2：痛點 (同風格白底微邊框卡片，統一圖示與圓角尺寸) */}
-              <button
-                type="button"
-                onClick={scrollToPainPointsBoard}
-                className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-bold text-sm sm:text-base shadow-2xs border border-stone-200/90 hover:border-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 group"
-                title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
-              >
-                <Flame className="w-4 h-4 text-rose-500" />
-                <span>痛點</span>
-                <ArrowRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
             </div>
 
             {/* 6. 次要身分入口：統一边框粗細 (1px)、背景與圖示間距，整齊乾淨 */}
@@ -3870,10 +3869,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                     e.stopPropagation();
                                     navigateToSubView('proposal', p.id);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs active:scale-95"
-                                  title="為此提案注資支持"
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer shadow-2xs active:scale-95 ${
+                                    p.stage === 'pain_point'
+                                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                                      : 'bg-amber-400 hover:bg-amber-300 text-stone-950'
+                                  }`}
+                                  title={p.stage === 'pain_point' ? '查看痛點詳情' : '為此提案注資支持'}
                                 >
-                                  為他注資
+                                  {p.stage === 'pain_point' ? '查看痛點' : '為他注資'}
                                 </button>
                               </div>
                             </div>
@@ -5030,6 +5033,71 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
 
+              {/* 管理員專屬審核操作列 */}
+              {account?.role === 'admin' && (
+                <div className="p-3 rounded-2xl bg-stone-100 border border-stone-300 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>提案狀態：</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      selectedProposalForDetail.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : selectedProposalForDetail.status === 'rejected'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-100 text-amber-800 animate-pulse'
+                    }`}>
+                      {selectedProposalForDetail.status === 'approved'
+                        ? '✅ 已核准通過'
+                        : selectedProposalForDetail.status === 'rejected'
+                        ? '❌ 已退回'
+                        : '⏳ 待審核'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedProposalForDetail.status !== 'approved' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await adminReviewProposal({
+                            proposalId: selectedProposalForDetail.id,
+                            status: 'approved',
+                            reviewNote: '管理員審核通過',
+                          });
+                          showToast(res.message || '✅ 已通過該提案！');
+                          setSelectedProposalForDetail((prev) => prev ? { ...prev, status: 'approved' } : null);
+                          loadData();
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-xs flex items-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>通過提案</span>
+                      </button>
+                    )}
+                    {selectedProposalForDetail.status !== 'rejected' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const note = window.prompt('請輸入退回原因（將記錄於審核備註）：', '內容需要進一步補充與調整');
+                          if (note === null) return;
+                          const res = await adminReviewProposal({
+                            proposalId: selectedProposalForDetail.id,
+                            status: 'rejected',
+                            reviewNote: note,
+                          });
+                          showToast(res.message || '❌ 已退回該提案！');
+                          setSelectedProposalForDetail((prev) => prev ? { ...prev, status: 'rejected', reviewNote: note } : null);
+                          loadData();
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-black text-xs cursor-pointer shadow-xs flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>退回提案</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* 底部投點與提案操作按鈕 */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 {selectedProposalForDetail.stage === 'pain_point' && (
@@ -5088,37 +5156,42 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       </button>
                     </div>
                   )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (stageInfo.isPreProposalStage) {
-                      showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，募資(投資)功能暫時關閉，僅供提案審核與預覽！11/16 起正式開放注資。');
-                      return;
-                    }
-                    if (!stageInfo.isInvestmentEnabled) {
-                      showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
-                      return;
-                    }
-                    setSelectedProposalForSupport(selectedProposalForDetail);
-                    setSelectedProposalForDetail(null);
-                    setIsSupportModalOpen(true);
-                  }}
-                  className={`py-2.5 rounded-xl border border-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 ${
-                    !stageInfo.isInvestmentEnabled
-                      ? 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
-                      : selectedProposalForDetail.stage === 'pain_point'
-                      ? 'bg-amber-100 hover:bg-amber-200 px-4'
-                      : 'flex-1 bg-amber-400 hover:bg-amber-300'
-                  }`}
-                  title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 正式開放' : undefined}
-                >
-                  <Heart className={`w-4 h-4 ${stageInfo.isInvestmentEnabled ? 'fill-current text-rose-500' : 'text-stone-400'}`} />
-                  <span>
-                    {stageInfo.isPreProposalStage
-                      ? '預先提案期（募資暫未開放）'
-                      : `使用創星幣支持${selectedProposalForDetail.stage === 'pain_point' ? '痛點' : '提案'}`}
-                  </span>
-                </button>
+                {selectedProposalForDetail.stage !== 'pain_point' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (stageInfo.isPreProposalStage) {
+                        showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，募資(投資)功能暫時關閉，僅供提案審核與預覽！11/16 起正式開放注資。');
+                        return;
+                      }
+                      if (!stageInfo.isInvestmentEnabled) {
+                        showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
+                        return;
+                      }
+                      setSelectedProposalForSupport(selectedProposalForDetail);
+                      setSelectedProposalForDetail(null);
+                      setIsSupportModalOpen(true);
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl border border-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 ${
+                      !stageInfo.isInvestmentEnabled
+                        ? 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                        : 'bg-amber-400 hover:bg-amber-300'
+                    }`}
+                    title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 正式開放' : undefined}
+                  >
+                    <Heart className={`w-4 h-4 ${stageInfo.isInvestmentEnabled ? 'fill-current text-rose-500' : 'text-stone-400'}`} />
+                    <span>
+                      {stageInfo.isPreProposalStage
+                        ? '預先提案期（募資暫未開放）'
+                        : '使用創星幣支持提案'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex-1 py-2 px-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 font-bold flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span>痛點徵件項目不開放注資創星幣，歡迎針對此痛點提出解方提案！</span>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedProposalForDetail(null)}
@@ -5364,27 +5437,31 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-stone-600 mb-1">銀行代號 (選填)</label>
-                    <input
-                      type="text"
-                      value={bankCode}
-                      onChange={(e) => setBankCode(e.target.value)}
-                      placeholder="例如：822 (中國信託)"
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 text-xs"
-                    />
-                  </div>
+                  {formStage === 'solution' && (
+                    <>
+                      <div>
+                        <label className="block text-stone-600 mb-1">銀行代號 (選填)</label>
+                        <input
+                          type="text"
+                          value={bankCode}
+                          onChange={(e) => setBankCode(e.target.value)}
+                          placeholder="例如：822 (中國信託)"
+                          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 text-xs"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-stone-600 mb-1">撥款帳號 (選填)</label>
-                    <input
-                      type="text"
-                      value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="獲獎撥款用"
-                      className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 text-xs"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-stone-600 mb-1">撥款帳號 (選填)</label>
+                        <input
+                          type="text"
+                          value={bankAccount}
+                          onChange={(e) => setBankAccount(e.target.value)}
+                          placeholder="獲獎撥款用"
+                          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 text-xs"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -5400,7 +5477,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   disabled={isSubmittingProposal}
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-md disabled:opacity-50"
                 >
-                  {isSubmittingProposal ? '提案加密提交中...' : '確認提交提案（待官方初審後公開）'}
+                  {isSubmittingProposal
+                    ? (formStage === 'pain_point' ? '痛點發佈中...' : '提案提交中...')
+                    : (formStage === 'pain_point' ? '確認送出痛點' : '確認提交提案')}
                 </button>
               </div>
             </form>

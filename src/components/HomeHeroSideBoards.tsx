@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Play, Trophy } from 'lucide-react';
+import { Flame, Play, Trophy, Dices } from 'lucide-react';
 import type { Question } from '../types';
 import { getHotRankedGames, getFeaturedGames } from '../data/hotGamesData';
 
