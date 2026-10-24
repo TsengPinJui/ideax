@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRealRegisteredUser } from '../data/mockData';
+import { ShareReferralModal } from './ShareReferralModal';
 import { RedeemReferralCodeModal } from './RedeemReferralCodeModal';
+import { getUserReferralCode, copyPureReferralCode } from '../services/referralService';
 
 interface HomeAnnouncementBannerProps {
   onOpenRegister: () => void;
@@ -36,17 +38,18 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
   const isRegistered = isRealRegisteredUser(currentUser);
   const [isCopied, setIsCopied] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
   const [showPublishDropdown, setShowPublishDropdown] = useState(false);
   const [showPostDropdown, setShowPostDropdown] = useState(false);
 
   if (isDismissed) return null;
 
-  // 複製專屬推薦碼 / 邀請連結
-  const handleCopyReferral = async (e: React.MouseEvent) => {
+  // 點擊「分享推薦碼」：直接彈窗顯示並複製純代碼（絕不包含網址或其他文字）
+  const handleOpenShareReferral = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isRegistered) {
-      showCenterToast('請先登入或註冊', '登入後即可取得您的專屬推薦碼與邀請連結！', {
+      showCenterToast('請先登入或註冊', '登入後即可取得您的專屬推薦碼！', {
         type: 'info',
         duration: 2500,
       });
@@ -54,24 +57,19 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
       return;
     }
 
-    const referralCode = currentUser.id || 'ideax-user';
-    const referralUrl = `${window.location.origin}/?ref=${encodeURIComponent(referralCode)}`;
-    const shareText = `【IdeaX 創點子】加入全台最大的痛點許願、軟體作品展場與創新提案孵化平台！註冊立即送 100 點，填入推薦碼「${referralCode}」一起探索：${referralUrl}`;
-
-    try {
-      await navigator.clipboard.writeText(shareText);
+    const referralCode = getUserReferralCode(currentUser);
+    // 只複製推薦碼純代碼，絕不含有網址或其他文字
+    const success = await copyPureReferralCode(referralCode);
+    if (success) {
       setIsCopied(true);
-      showCenterToast('🎉 推薦連結已複製！', '分享給好友註冊填入，每位成功兌換即為您送上 +100 點獎勵！', {
+      showCenterToast('已複製純推薦碼！', `推薦代碼：${referralCode}（已複製純代碼）`, {
         type: 'success',
-        duration: 3500,
+        duration: 2500,
       });
       setTimeout(() => setIsCopied(false), 2500);
-    } catch {
-      showCenterToast('推薦碼複製完成', `您的專屬推薦代碼為：${referralCode}`, {
-        type: 'success',
-        duration: 3000,
-      });
     }
+    // 直接打開專屬推薦碼彈窗清晰展示
+    setIsShareModalOpen(true);
   };
 
   return (
@@ -109,12 +107,12 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
               {/* 複製推薦碼按鍵 */}
               <button
                 type="button"
-                onClick={handleCopyReferral}
+                onClick={handleOpenShareReferral}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-amber-100/80 active:scale-95 text-amber-800 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
-                title="複製您的專屬推薦碼分享給好友"
+                title="查看並複製您的專屬推薦碼（純代碼）分享給好友"
               >
                 {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{isCopied ? '已複製' : '分享推薦碼'}</span>
+                <span>{isCopied ? '已複製純碼' : '分享推薦碼'}</span>
               </button>
 
               {/* 關閉按鈕 */}
@@ -159,9 +157,9 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
 
             {/* 步驟 2: 分享推薦碼+100點/人 */}
             <div
-              onClick={handleCopyReferral}
+              onClick={handleOpenShareReferral}
               className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white hover:bg-amber-100/80 text-stone-800 cursor-pointer active:scale-98 transition-all shadow-2xs"
-              title="點擊複製您的推薦碼分享給朋友"
+              title="點擊查看並直接複製推薦碼，好友兌換不限次數享 +100 點/人"
             >
               <div className="w-4 h-4 rounded-md bg-orange-500 text-white flex items-center justify-center shrink-0">
                 <Share2 className="w-2.5 h-2.5" />
@@ -275,10 +273,18 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
         </div>
       </div>
 
-      {/* 兌換推薦碼彈窗 */}
+      {/* 專屬推薦碼彈窗（直接展示並支援一鍵只複製純代碼） */}
+      <ShareReferralModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        onOpenRedeem={() => setIsRedeemModalOpen(true)}
+      />
+
+      {/* 兌換推薦碼彈窗（不限兌換次數，推薦越多獎勵越多） */}
       <RedeemReferralCodeModal
         isOpen={isRedeemModalOpen}
         onClose={() => setIsRedeemModalOpen(false)}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
       />
     </>
   );

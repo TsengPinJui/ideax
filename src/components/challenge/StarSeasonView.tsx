@@ -143,6 +143,7 @@ import { getCompetitionExperts } from '../../services/competitionAdminSync';
 import { getProposalDrafts } from '../../services/draftService';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
+import { resolveClientCompetitionAccount } from '../../utils/competitionAccountUtils';
 import { isGuestUser } from '../../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../../utils/guestAccess';
@@ -978,16 +979,31 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [adminFinalRankInput, setAdminFinalRankInput] = useState<number>(1);
   const [adminAdoptedApproved, setAdminAdoptedApproved] = useState<boolean>(true);
 
-  // 載入資料
+  // 載入提案資料與依登入身分精確結算創星幣
   const loadData = async () => {
     setLoading(true);
     try {
       const list = await fetchProposals();
       const effectiveList = list.filter((p) => !isFakeProposal(p));
       setProposals(applyRealClicksToProposals(effectiveList));
-      if (auth.currentUser) {
-        const accRes = await fetchMyCompetitionAccount();
-        if (accRes.account) setAccount(accRes.account);
+
+      // 嚴格依登入狀態與身份計算創星幣（未登入/登出狀態清空為 null 絕不顯示錢包；已登入依身分配發不同額度）
+      const userIsLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
+      if (!userIsLoggedIn) {
+        setAccount(null);
+      } else {
+        // 先以目前登入身分即時解析創星幣（管理員 1,000萬 / 專家 300萬 / 一般會員與參賽者 10萬）
+        const resolvedAccount = resolveClientCompetitionAccount(currentUser, null);
+        setAccount(resolvedAccount);
+
+        if (auth.currentUser) {
+          try {
+            const accRes = await fetchMyCompetitionAccount();
+            if (accRes.account) {
+              setAccount(resolveClientCompetitionAccount(currentUser, accRes.account));
+            }
+          } catch {}
+        }
       }
     } catch (err) {
       console.warn('loadData failed', err);
@@ -998,7 +1014,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   useEffect(() => {
     loadData();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.role, currentUser?.verifiedExpert, currentUser?.expertCertStatus, currentUser?.accountType]);
 
   // 監聽 URL 參數或路徑，支援以 ?proposalId=xxx 或 /proposal/:id 開啟單一提案
   useEffect(() => {
@@ -2301,13 +2317,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           {/* 右側：創星幣錢包 + 頭像/身分控制選單 + 痛點快捷鍵 */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {account && (
+            {isLoggedIn && account && (
               <div className="hidden md:flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-amber-300 text-xs shadow-2xs">
                 <Coins className="w-4 h-4 text-amber-500 shrink-0" />
                 <span className="text-stone-500 text-[11px]">創星幣：</span>
                 <span className="font-mono font-black text-amber-700 text-sm">
                   {account.availablePoints.toLocaleString()}
                 </span>
+                {account.role === 'admin' ? (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                    👑 管理員 (1,000萬)
+                  </span>
+                ) : account.role === 'solver' ? (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                    👑 專家 (300萬)
+                  </span>
+                ) : null}
               </div>
             )}
 
@@ -2408,12 +2433,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         </div>
                       </div>
                     </div>
-                    {account && (
+                    {isLoggedIn && account && (
                       <div className="mt-2.5 pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs">
                         <span className="text-stone-500 font-bold">競賽可用創星幣：</span>
-                        <span className="font-mono font-black text-amber-700">
-                          {account.availablePoints.toLocaleString()} 創星幣
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-black text-amber-700">
+                            {account.availablePoints.toLocaleString()} 創星幣
+                          </span>
+                          {account.role === 'admin' ? (
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">1,000萬</span>
+                          ) : account.role === 'solver' ? (
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">300萬</span>
+                          ) : null}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2826,6 +2858,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               await auth.signOut();
                             } catch {}
                             logoutAccount();
+                            setAccount(null);
                             showToast('已登出目前帳號');
                           }}
                           className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-rose-50 flex items-center justify-between cursor-pointer group transition-all"

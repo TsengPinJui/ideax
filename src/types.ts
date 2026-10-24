@@ -599,6 +599,7 @@ export interface User {
   aiCrmLastScanAt?: string; // 伺服器 AI-CRM 最後巡檢時間
   aiCrmLastScanMatches?: number; // 最後一次巡檢找到的案件數
   memberId?: string; // 規範ID（首字英文字母+亂數編排9碼，共10碼，例如 c123456789, a000000001, b987654321）
+  referralCode?: string; // 專屬推薦碼（推廣好禮與大使綁定）
   accountType?: 'user' | 'admin' | 'enterprise'; // ID種類：一般用戶 (c) | 管理員 (a) | 企業機構 (b)
   username?: string; // 註冊帳號 (4~20 位英數字或底線)
   password?: string; // 帳號密碼 (6~20 位英數組合)

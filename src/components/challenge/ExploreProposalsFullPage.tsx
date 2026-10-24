@@ -981,13 +981,20 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             </div>
 
             {/* 快速注資點數卡片 */}
-            {account && (
+            {!isGuestUser(currentUser) && account && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300 shadow-2xs flex items-center gap-3 shrink-0 self-start sm:self-auto">
                 <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
                   <Coins className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <div className="text-[11px] text-stone-500 font-bold">您的可用創星幣</div>
+                  <div className="text-[11px] text-stone-500 font-bold flex items-center gap-1.5">
+                    <span>您的可用創星幣</span>
+                    {account.role === 'admin' ? (
+                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">👑 管理員</span>
+                    ) : account.role === 'solver' ? (
+                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">👑 專家</span>
+                    ) : null}
+                  </div>
                   <div className="font-mono font-black text-amber-700 text-lg">
                     {account.availablePoints.toLocaleString()} <span className="text-xs text-stone-600">創星幣</span>
                   </div>

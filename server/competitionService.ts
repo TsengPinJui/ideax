@@ -922,22 +922,25 @@ export async function getOrCreateCompetitionAccount(userId: string, userRole: 'u
   const accountRef = adminDb.collection('competition_accounts').doc(userId);
   const snap = await accountRef.get();
 
-  // 若已是創點子平台認證專家，自動享有競賽專家身分與 3,000,000 點投資額度
+  // 若已是創點子平台認證專家，自動享有競賽專家身分與 3,000,000 點投資額度；管理員享有 10,000,000 點
   const isExpert = userRole === 'solver' || (await isVerifiedExpert(userId));
   const effectiveRole: 'user' | 'solver' | 'admin' = userRole === 'admin' ? 'admin' : isExpert ? 'solver' : userRole;
 
+  const targetInitialPoints = effectiveRole === 'admin'
+    ? 10_000_000
+    : isExpert
+      ? COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS // 3,000,000
+      : COMPETITION_POINTS_CONFIG.INITIAL_USER_POINTS; // 100,000
+
   if (snap.exists) {
     const existing = snap.data() as CompetitionAccount;
-    if (isExpert && existing.initialPoints < COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS) {
-      const upgradedAvailable = Math.max(
-        existing.availablePoints || 0,
-        COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS - (existing.spentPoints || 0)
-      );
+    if (existing.initialPoints < targetInitialPoints) {
+      const diff = targetInitialPoints - (existing.initialPoints || 0);
       const upgraded: CompetitionAccount = {
         ...existing,
         role: effectiveRole,
-        initialPoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
-        availablePoints: upgradedAvailable,
+        initialPoints: targetInitialPoints,
+        availablePoints: Math.max(existing.availablePoints || 0, targetInitialPoints - (existing.spentPoints || 0)),
         updatedAt: new Date().toISOString(),
       };
       await accountRef.set(upgraded, { merge: true });
@@ -946,11 +949,9 @@ export async function getOrCreateCompetitionAccount(userId: string, userRole: 'u
     return existing;
   }
 
-  // 判斷專家或一般用戶初始點數
-  // 專家 3,000,000 點，一般用戶/提案者 100,000 點
-  const initialPoints = isExpert 
-    ? COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS 
-    : COMPETITION_POINTS_CONFIG.INITIAL_USER_POINTS;
+  // 判斷專家、管理員或一般用戶初始點數
+  // 管理員 10,000,000 點，專家 3,000,000 點，一般用戶/提案者 100,000 點
+  const initialPoints = targetInitialPoints;
 
   // 生成唯一推薦碼 (9碼亂數)
   const randomSuffix = Math.floor(100000000 + Math.random() * 900000000).toString();
@@ -1036,9 +1037,11 @@ export async function supportProposalWithPoints(params: {
     return { success: false, message: '支持點數必須為正整數' };
   }
 
-  // 單案支持上限約束：參賽者與一般用戶 50,000 創星幣，專家 2,000,000 創星幣
+  // 單案支持上限約束：平台管理員 10,000,000、參賽者與一般用戶 50,000 創星幣、專家 2,000,000 創星幣
   let maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.user; // 50,000
-  if (userRole === 'solver') {
+  if ((userRole as string) === 'admin') {
+    maxLimit = 10_000_000;
+  } else if (userRole === 'solver') {
     maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.solver; // 2,000,000
   } else if (userRole === 'questioner') {
     maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.questioner; // 50,000
