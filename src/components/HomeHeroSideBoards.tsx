@@ -49,7 +49,7 @@ export const FeaturedGamesBoard: React.FC<{
               className="group w-full py-1.5 px-1.5 rounded-xl flex items-center justify-between gap-2 hover:bg-amber-50/80 active:scale-[0.99] transition-all text-left cursor-pointer"
               title={`點擊全螢幕試玩：《${question.title}》`}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span
                   className={`w-4 text-center font-mono font-black text-xs shrink-0 ${
                     isTop3 ? 'text-amber-600' : 'text-stone-400 font-bold'
@@ -63,12 +63,9 @@ export const FeaturedGamesBoard: React.FC<{
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                <span className="hidden group-hover:inline-flex items-center gap-0.5 text-[10px] font-black text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded-md animate-in fade-in duration-100">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 text-[10px] font-black text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded-md">
                   <Play className="w-2.5 h-2.5 fill-current" />
                   試玩
-                </span>
-                <span className="group-hover:hidden text-[11px] font-bold text-amber-600 bg-amber-50/80 px-1.5 py-0.5 rounded border border-amber-200/60 font-mono">
-                  ★ {question.experienceScore ? `${question.experienceScore}分` : '精選'}
                 </span>
               </div>
             </button>
@@ -118,7 +115,7 @@ export const HotGamesRankingBoard: React.FC<{
               className="group w-full py-1.5 px-1.5 rounded-xl flex items-center justify-between gap-2 hover:bg-rose-50/70 active:scale-[0.99] transition-all text-left cursor-pointer"
               title={`點擊直接進入全螢幕體驗：《${question.title}》`}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 {/* 前三名紅色，4-10名灰色，完全遵照圖一 */}
                 <span
                   className={`w-4 text-center font-mono font-black text-xs shrink-0 ${
@@ -133,13 +130,9 @@ export const HotGamesRankingBoard: React.FC<{
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                <span className="hidden group-hover:inline-flex items-center gap-0.5 text-[10px] font-black text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-md animate-in fade-in duration-100">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 text-[10px] font-black text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-md">
                   <Play className="w-2.5 h-2.5 fill-current" />
                   體驗
-                </span>
-                {/* 熱度值 (如 17k, 13k, 9.5k...) 遵照圖一右側字樣 */}
-                <span className="group-hover:hidden text-xs font-mono font-semibold text-stone-400">
-                  {heat}
                 </span>
               </div>
             </button>
