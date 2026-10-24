@@ -189,12 +189,12 @@ export const questionToStarSeasonProposal = (q: Question): import('../types/comp
         ? q.supportPoints < 2000
           ? q.supportPoints * 100
           : q.supportPoints
-        : 38000 + (q.likes || 25) * 650,
-    supporterCount: q.supporterCount || Math.max(15, Math.floor((q.likes || 25) * 0.7)),
+        : 0,
+    supporterCount: typeof q.supporterCount === 'number' ? q.supporterCount : 0,
     targetFundingAmount: 100000,
-    viewsCount: q.views || 320,
-    likeCount: q.likes || 28,
-    commentsCount: q.answersCount || 4,
+    viewsCount: typeof q.views === 'number' ? q.views : 0,
+    likeCount: typeof q.likes === 'number' ? q.likes : 0,
+    commentsCount: typeof q.answersCount === 'number' ? q.answersCount : 0,
     createdAt: q.createdAt,
     updatedAt: q.updateLogs && q.updateLogs.length > 0 ? q.updateLogs[0].timestamp : q.createdAt,
     currentVersion: q.currentVersion,

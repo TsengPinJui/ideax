@@ -171,9 +171,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         const existing = map.get(p.id)!;
         map.set(p.id, {
           ...existing,
-          likeCount: typeof p.likeCount === 'number' && p.likeCount > 0 ? p.likeCount : existing.likeCount,
-          supportPoints: typeof p.supportPoints === 'number' && p.supportPoints > 0 ? p.supportPoints : existing.supportPoints,
-          supporterCount: typeof p.supporterCount === 'number' && p.supporterCount > 0 ? p.supporterCount : existing.supporterCount,
+          likeCount: typeof p.likeCount === 'number' ? p.likeCount : existing.likeCount,
+          supportPoints: typeof p.supportPoints === 'number' ? p.supportPoints : existing.supportPoints,
+          supporterCount: typeof p.supporterCount === 'number' ? p.supporterCount : existing.supporterCount,
           images: p.images && p.images.length > 0 ? p.images : existing.images,
           youtubeUrl: p.youtubeUrl || existing.youtubeUrl,
           coverMode: p.coverMode || existing.coverMode,
