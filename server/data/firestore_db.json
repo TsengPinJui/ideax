@@ -13114,6 +13114,230 @@
       "likes": 1,
       "showCardImage": true,
       "updatedAt": "2026-10-24T14:58:06.862Z"
+    },
+    "q-1792860615041": {
+      "id": "q-1792860615041",
+      "techArchitecture": "建議採用響應式 Web 前端搭配雲端後端服務，定期彙整公開市場資料，並以圖表元件呈現板塊與個股資訊；透過推播服務提供盤後通知。",
+      "publishIdentity": "platform",
+      "category": "網站程式",
+      "level": "L1",
+      "authorAvatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
+      "subcategories": [
+        "網站程式"
+      ],
+      "bounty": 0,
+      "status": "open",
+      "isStarSeason": false,
+      "previewMode": "embed",
+      "views": 0,
+      "showCardImage": true,
+      "authorId": "platform",
+      "tags": [
+        "網站程式",
+        "台股",
+        "法人資金流向",
+        "板塊輪動",
+        "投資資訊",
+        "軟體作品"
+      ],
+      "publishedPlatforms": [
+        {
+          "name": "Web 網頁版",
+          "url": "https://tide-tw.app/?src=app"
+        }
+      ],
+      "authorName": "平台嚴選",
+      "likes": 1,
+      "title": "以法人資金流向掌握台股板塊輪動",
+      "deadline": "2026-11-07",
+      "description": "整合臺灣證券交易所與櫃買中心公開資料，以泡泡圖、排行榜及資金輪動回放呈現台股各板塊的法人買賣趨勢。使用者可查看近期資金變化、追蹤自選股，並設定籌碼異動與盤後重點通知，也能參與大盤多空投票。資訊僅供彙整參考，不構成投資建議。",
+      "demoUrl": "https://tide-tw.app/?src=app",
+      "cardDisplayImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Ftide-tw.app%2F%3Fsrc%3Dapp?w=1280&h=720",
+      "viewsCount": 0,
+      "appName": "Tide 潮汐",
+      "authorAuthUid": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "subcategory": "網站程式",
+      "authorTitle": "官方審核精選",
+      "answersCount": 0,
+      "isOfficial": true,
+      "updatedAt": "2026-10-24T17:26:40.867Z",
+      "createdAt": "2026-10-24T16:50:15.041Z",
+      "postType": "vibecoding_app",
+      "coverImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Ftide-tw.app%2F%3Fsrc%3Dapp?w=1280&h=720",
+      "disputeStatus": "none",
+      "externalLink": "https://tide-tw.app/?src=app",
+      "withheldBounty": 0,
+      "specialZone": "vibecoding",
+      "secondedCount": 1
+    },
+    "q-1792860563924": {
+      "id": "q-1792860563924",
+      "isOfficial": true,
+      "level": "L1",
+      "showCardImage": true,
+      "answersCount": 0,
+      "subcategories": [
+        "網站程式"
+      ],
+      "specialZone": "vibecoding",
+      "authorTitle": "官方審核精選",
+      "views": 0,
+      "postType": "vibecoding_app",
+      "coverImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Fethera-v02-beta.vercel.app%2F?w=1280&h=720",
+      "externalLink": "https://ethera-v02-beta.vercel.app/",
+      "updatedAt": "2026-10-24T17:26:39.984Z",
+      "createdAt": "2026-10-24T16:49:23.924Z",
+      "bounty": 0,
+      "status": "open",
+      "viewsCount": 0,
+      "subcategory": "網站程式",
+      "description": "ETHERA 以「找到你本來就在其中的世界」為核心概念，邀請使用者從共同想法出發，探索可能相遇的社群。網站目前以品牌敘事與加入入口呈現，描繪先共享一個概念世界、再逐步看見彼此的體驗，可發展為串連興趣、觀點與創作主題的互動平台。",
+      "publishedPlatforms": [
+        {
+          "name": "Web 網頁版",
+          "url": "https://ethera-v02-beta.vercel.app/"
+        }
+      ],
+      "title": "以共同概念連結彼此的探索社群",
+      "cardDisplayImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Fethera-v02-beta.vercel.app%2F?w=1280&h=720",
+      "likes": 0,
+      "deadline": "2026-11-07",
+      "authorAuthUid": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "appName": "ETHERA",
+      "authorName": "平台嚴選",
+      "demoUrl": "https://ethera-v02-beta.vercel.app/",
+      "authorId": "platform",
+      "tags": [
+        "網站程式",
+        "社群平台",
+        "共同興趣",
+        "主題探索",
+        "品牌敘事",
+        "軟體作品"
+      ],
+      "previewMode": "embed",
+      "disputeStatus": "none",
+      "authorAvatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
+      "publishIdentity": "platform",
+      "category": "網站程式",
+      "withheldBounty": 0,
+      "techArchitecture": "建議採用 React／TypeScript 建置響應式網站，搭配雲端資料庫與會員系統，支援主題探索及社群互動功能。",
+      "isStarSeason": false,
+      "secondedCount": 0
+    },
+    "q-1792860782841": {
+      "id": "q-1792860782841",
+      "isStarSeason": false,
+      "deadline": "2026-11-07",
+      "isOfficial": true,
+      "authorAvatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
+      "authorAuthUid": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "publishedPlatforms": [
+        {
+          "url": "https://wattcraftgame.com/zh-hant/",
+          "name": "Web 網頁版"
+        }
+      ],
+      "coverImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Fwattcraftgame.com%2Fzh-hant%2F?w=1280&h=720",
+      "previewMode": "embed",
+      "disputeStatus": "none",
+      "withheldBounty": 0,
+      "postType": "vibecoding_app",
+      "viewsCount": 0,
+      "techArchitecture": "建議採用跨平台遊戲架構，以 TypeScript 搭配 Canvas 或 WebGL 呈現地圖與電網，並以 PWA 支援多裝置及離線遊玩；排行榜功能可透過雲端 API 與資料庫提供。",
+      "description": "以城市供電為核心的策略遊戲，玩家需建造發電廠、變電站、電塔與電池，鋪設電線並監控負載，讓持續擴張的城市維持供電。可挑戰香港、台北真實街道或隨機生成城市，應對日落、酷熱與風暴帶來的用電壓力；支援多種裝置與離線遊玩，且沒有廣告或應用程式內購買。",
+      "tags": [
+        "遊戲",
+        "電網建設",
+        "城市策略",
+        "能源管理",
+        "離線遊玩",
+        "網站程式",
+        "軟體作品"
+      ],
+      "demoUrl": "https://wattcraftgame.com/zh-hant/",
+      "createdAt": "2026-10-24T16:53:02.841Z",
+      "updatedAt": "2026-10-24T17:26:41.823Z",
+      "subcategories": [
+        "遊戲"
+      ],
+      "category": "網站程式",
+      "showCardImage": true,
+      "level": "L1",
+      "appName": "Wattcraft",
+      "authorName": "平台嚴選",
+      "publishIdentity": "platform",
+      "views": 0,
+      "subcategory": "遊戲",
+      "authorTitle": "官方審核精選",
+      "authorId": "platform",
+      "cardDisplayImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Fwattcraftgame.com%2Fzh-hant%2F?w=1280&h=720",
+      "externalLink": "https://wattcraftgame.com/zh-hant/",
+      "status": "open",
+      "bounty": 0,
+      "likes": 1,
+      "title": "城市電網建設與尖峰供電策略遊戲",
+      "answersCount": 0,
+      "specialZone": "vibecoding",
+      "secondedCount": 1
+    },
+    "q-1792860615042": {
+      "id": "q-1792860615042",
+      "specialZone": "create_ideas",
+      "category": "創新創業",
+      "publishIdentity": "platform",
+      "authorTitle": "官方審核精選",
+      "authorName": "平台嚴選",
+      "referencedPainPoint": "台股公開資訊分散於不同來源，投資人難以快速比較各板塊資金變化，也容易錯過法人籌碼異動與盤後重點。",
+      "subcategory": "網站程式",
+      "publishedPlatforms": [
+        {
+          "name": "Web 網頁版",
+          "url": "https://tide-tw.app/?src=app"
+        }
+      ],
+      "showCardImage": true,
+      "authorId": "platform",
+      "proposalProgressStage": "prototype",
+      "answersCount": 0,
+      "subcategories": [
+        "網站程式"
+      ],
+      "externalLink": "https://tide-tw.app/?src=app",
+      "description": "整合臺灣證券交易所與櫃買中心公開資料，以泡泡圖、排行榜及資金輪動回放呈現台股各板塊的法人買賣趨勢。使用者可查看近期資金變化、追蹤自選股，並設定籌碼異動與盤後重點通知，也能參與大盤多空投票。資訊僅供彙整參考，不構成投資建議。",
+      "withheldBounty": 0,
+      "techArchitecture": "建議採用響應式 Web 前端搭配雲端後端服務，定期彙整公開市場資料，並以圖表元件呈現板塊與個股資訊；透過推播服務提供盤後通知。",
+      "tags": [
+        "網站程式",
+        "台股",
+        "法人資金流向",
+        "板塊輪動",
+        "投資資訊",
+        "創新提案"
+      ],
+      "demoUrl": "https://tide-tw.app/?src=app",
+      "deadline": "2026-11-07",
+      "isOfficial": true,
+      "disputeStatus": "none",
+      "level": "L1",
+      "appName": "Tide 潮汐",
+      "isStarSeason": false,
+      "views": 0,
+      "authorAvatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
+      "targetGoal": "協助使用者快速掌握法人資金流向與板塊變化，透過自選追蹤及即時通知提升市場資訊整理效率，作為自主研究與判斷的參考。",
+      "coverImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Ftide-tw.app%2F%3Fsrc%3Dapp?w=1280&h=720",
+      "authorAuthUid": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "viewsCount": 0,
+      "updatedAt": "2026-10-24T17:26:44.000Z",
+      "createdAt": "2026-10-24T16:50:15.042Z",
+      "previewMode": "embed",
+      "postType": "innovation_proposal",
+      "bounty": 0,
+      "status": "open",
+      "likes": 1,
+      "title": "以法人資金流向掌握台股板塊輪動",
+      "cardDisplayImage": "https://s0.wp.com/mshots/v1/https%3A%2F%2Ftide-tw.app%2F%3Fsrc%3Dapp?w=1280&h=720",
+      "secondedCount": 1
     }
   },
   "answers": {
@@ -27701,7 +27925,7 @@
         "L3": 14,
         "L4": 9
       },
-      "updatedAt": "2026-10-24T14:36:31.464Z",
+      "updatedAt": "2026-10-24T17:15:01.334Z",
       "isDeactivated": false,
       "honorLevel": 1,
       "expertCertStatus": "verified",
@@ -28596,16 +28820,15 @@
       "username": "google_WcJAf17Z",
       "agreedGeneralTermsAt": "2026-10-20T15:04:16.338Z",
       "authUid": "WcJAf17ZIqfL9NK8IZpEJiE6zg92",
-      "verifiedBadge": "創星季特邀專家",
-      "role": "solver",
+      "role": "questioner",
       "domain": "生活創新與商業模式",
       "domains": [
         "生活創新與商業模式"
       ],
-      "title": "實踐大學 學生",
-      "expertApplicationStatus": "approved",
-      "updatedAt": "2026-10-20T15:09:34.462Z",
-      "verifiedExpert": true,
+      "title": "一般會員",
+      "expertApplicationStatus": "rejected",
+      "updatedAt": "2026-10-24T18:04:15.474Z",
+      "verifiedExpert": false,
       "rating": 0,
       "bio": "",
       "dataRepairedAt": "2026-10-22T07:44:35.432Z",
@@ -30043,6 +30266,13 @@
       "updatedAt": "2026-10-23T03:53:29.189Z",
       "pointsRecalculatedAt": "2026-10-23T22:14:34.137Z",
       "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
+    },
+    "K338pnIB8JMJ5Af9K5blbECuX8R2": {
+      "role": "questioner",
+      "verifiedExpert": false,
+      "expertApplicationStatus": "rejected",
+      "updatedAt": "2026-10-24T18:04:15.474Z",
+      "title": "一般會員"
     }
   },
   "platform_settings": {
@@ -34753,6 +34983,318 @@
       "track": "ict",
       "updatedAt": "2026-10-24T14:41:22.202Z",
       "status": "approved"
+    }
+  },
+  "competition_judge_applications": {
+    "ZRXZWS8iiPg91CUV6vQrehK6ZW62": {
+      "userId": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "name": "Devin",
+      "phone": "0930738018",
+      "email": "devin25893619@gmail.com",
+      "domain": "智慧物聯與硬體整合",
+      "organization": "南洋理工大學",
+      "jobTitle": "數位IC工程師",
+      "experienceYears": 3,
+      "credentialsNote": "專業資格證明及在職審查文件",
+      "bio": "南洋理工大學 數位IC工程師，專業領域涵蓋 智慧物聯與硬體整合。",
+      "referralSource": "獎金獵人",
+      "referralSourceOther": "",
+      "reviewPledgeAgreed": true,
+      "status": "approved",
+      "createdAt": "2026-10-22T23:08:23.610Z",
+      "updatedAt": "2026-10-22T23:08:23.610Z"
+    }
+  },
+  "solvers": {
+    "solver-1": {
+      "verifiedBadge": true,
+      "rating": 4.9,
+      "bio": "8 年新創產品從 0 到 1 實戰經驗。專精共享硬體營運、B2B 商家廣告分成協議與訂閱留存模型。",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "title": "前新創產品經理 / 雙邊市場商業顧問",
+      "skills": [
+        "產品策略",
+        "SaaS",
+        "市場驗證",
+        "雙邊市場",
+        "異業聯盟"
+      ],
+      "earnings": 128500,
+      "answerCount": 87,
+      "tier": "認證專家",
+      "reviewCount": 92,
+      "domain": "創新創業",
+      "acceptedRate": 91,
+      "name": "柯育任",
+      "subdomain": "服務餐飲",
+      "id": "solver-1",
+      "subcategory": "服務餐飲",
+      "featuredCase": {
+        "title": "校園共享空間 3 個月翻倍單車位月坪效",
+        "outcome": "透過週邊早餐店優惠券廣告置換，租借收入佔比降至 30%，周邊導流收益達 70%。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "test_solver_musky4ib_380": {
+      "verifiedBadge": true,
+      "rating": 4.9,
+      "bio": "【測試環境一鍵生成帳號】專為免註冊、免登入快速驗證各項功能而建立。",
+      "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+      "title": "AI 商業策略與技術架構專家",
+      "skills": [
+        "商業模式",
+        "市場驗證",
+        "落地方案"
+      ],
+      "earnings": 18000,
+      "answerCount": 6,
+      "tier": "認證專家",
+      "reviewCount": 9,
+      "domain": "創新創業",
+      "acceptedRate": 96,
+      "name": "測試專家顧問 380",
+      "id": "test_solver_musky4ib_380",
+      "featuredCase": {
+        "description": "協助企業落地 AI 策略顧問與系統對接",
+        "title": "AI 商業化落地方案",
+        "outcome": "成功提升 3 倍營運效能並縮短 40% 決策週期"
+      },
+      "updatedAt": "2026-10-03T16:01:57.587Z"
+    },
+    "solver-5": {
+      "verifiedBadge": true,
+      "rating": 4.91,
+      "bio": "協助深科技（Deep Tech）與生醫/材料團隊申請政府研發補助、專利智財授權評估。",
+      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80",
+      "title": "台大創新育成產學顧問 / 科技政策研究員",
+      "skills": [
+        "產學合作",
+        "專利技術移轉",
+        "科研補助計畫",
+        "法規沙盒"
+      ],
+      "earnings": 67000,
+      "answerCount": 35,
+      "tier": "特邀顧問",
+      "reviewCount": 39,
+      "domain": "學術探討",
+      "acceptedRate": 92,
+      "name": "李立衡博士",
+      "subdomain": "生技醫療",
+      "id": "solver-5",
+      "subcategory": "生技醫療",
+      "featuredCase": {
+        "title": "生醫感測晶片實驗室技轉方案評估",
+        "outcome": "成功媒合上市電子廠產學合資，取得天使期 1,500 萬技術授權款。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-ZRXZWS8iiPg91CUV6vQrehK6ZW62": {
+      "verifiedBadge": true,
+      "rating": 5,
+      "verified": true,
+      "bio": "南洋理工大學 數位IC工程師。創星季特邀專業評審團成員。南洋理工大學 數位IC工程師，專業領域涵蓋 智慧物聯與硬體整合。",
+      "domains": [
+        "智慧物聯與硬體整合"
+      ],
+      "avatar": "/avatars/preset-03.svg",
+      "title": "南洋理工大學 數位IC工程師",
+      "userId": "ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "verifiedExpert": true,
+      "skills": [
+        "產學創新",
+        "技術審查",
+        "新創輔導",
+        "投資評估"
+      ],
+      "createdAt": "2026-10-22T23:08:23.610Z",
+      "credentialsNote": "專業資格證明及在職審查文件",
+      "earnings": 0,
+      "answerCount": 0,
+      "tier": "認證專家",
+      "credentialProofUrl": null,
+      "referralSource": "獎金獵人",
+      "reviewCount": 1,
+      "domain": "智慧物聯與硬體整合",
+      "acceptedRate": 100,
+      "name": "Devin",
+      "id": "solver-ZRXZWS8iiPg91CUV6vQrehK6ZW62",
+      "featuredCase": {
+        "description": "受邀擔任創星季與各項青年創新創業競賽專業評審委員。",
+        "title": "創星季創新創業與產學審查",
+        "outcome": "提供專業商業模式驗證、產業對接建議與技術可行性評估。"
+      },
+      "updatedAt": "2026-10-22T23:08:23.610Z"
+    },
+    "solver-8": {
+      "verifiedBadge": true,
+      "rating": 4.96,
+      "bio": "25 年實體水電工程與智慧家庭水電設計經驗，專解各種疑難雜症漏水跳電與老屋整修管線規劃。",
+      "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80",
+      "title": "甲級水電技師 / 建築機電整合顧問",
+      "skills": [
+        "老屋電線抽換",
+        "高低壓配電",
+        "抓漏檢測",
+        "機電負載計算"
+      ],
+      "earnings": 89000,
+      "answerCount": 82,
+      "tier": "特邀顧問",
+      "reviewCount": 78,
+      "domain": "專業問題",
+      "acceptedRate": 96,
+      "name": "陳金水 師傅",
+      "subdomain": "水電",
+      "id": "solver-8",
+      "subcategory": "水電",
+      "featuredCase": {
+        "title": "老舊商業大樓隱匿性漏水點紅外線熱成像查核",
+        "outcome": "精準找出 7 樓管道間暗管破裂點，免敲大面積磁磚省下 15 萬修繕費。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-4": {
+      "verifiedBadge": true,
+      "rating": 4.82,
+      "bio": "擅長以低預算達成高聲量，拆解跨通路社群轉換漏斗與內容裂變飛輪。",
+      "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+      "title": "D2C 品牌增長策略師 / 數位社群操盤手",
+      "skills": [
+        "冷啟動流量",
+        "KOL 合作模型",
+        "集客式行銷",
+        "社群分銷"
+      ],
+      "earnings": 52000,
+      "answerCount": 41,
+      "tier": "專業解答者",
+      "reviewCount": 47,
+      "domain": "創新創業",
+      "acceptedRate": 85,
+      "name": "黃雅筑 Alice",
+      "subdomain": "文創工藝",
+      "id": "solver-4",
+      "subcategory": "文創工藝",
+      "featuredCase": {
+        "title": "環保生活小物單月募資突破 300 萬實戰",
+        "outcome": "打造創作者種草矩陣，ROI 達 4.3，有效累積前 5,000 位忠誠會員。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-2": {
+      "verifiedBadge": true,
+      "rating": 4.95,
+      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+      "tier": "特邀顧問",
+      "domain": "專業問題",
+      "id": "solver-2",
+      "skills": [
+        "SaaS 定價",
+        "Unit Economics",
+        "PLG 增長",
+        "客戶成功"
+      ],
+      "earnings": 98000,
+      "answerCount": 52,
+      "reviewCount": 64,
+      "acceptedRate": 94,
+      "name": "陳美琪 Maggie",
+      "bio": "專為種子輪與 A 輪企業診斷定價分級、客戶獲取成本 (CAC) 與生命週期價值 (LTV) 槓桿。",
+      "subdomain": "企業管理",
+      "title": "B2B SaaS 商業架構師 / 前矽谷增長負責人",
+      "subcategory": "企業管理",
+      "featuredCase": {
+        "description": "輔導企業完成數位轉型與高效算力架構。",
+        "title": "協助企管軟體改制 Freemium 轉向 Seat-based",
+        "outcome": "年經常性收入 (ARR) 於 6 個月內提升 180%，Churn rate 降低 4.2%。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-6": {
+      "verifiedBadge": true,
+      "rating": 4.86,
+      "bio": "10 年軟體與半導體獵才歷練，一對一輔導超過 300 位工程與產品人才達成年薪躍升。",
+      "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+      "title": "科技獵頭總監 / 職涯策略諮詢師",
+      "skills": [
+        "科技業薪資談判",
+        "跨領域轉職",
+        "主管領導力",
+        "個人品牌"
+      ],
+      "earnings": 49500,
+      "answerCount": 59,
+      "tier": "專業解答者",
+      "reviewCount": 52,
+      "domain": "日常疑難",
+      "acceptedRate": 88,
+      "name": "周承翰 Ryan",
+      "subdomain": "職場",
+      "id": "solver-6",
+      "subcategory": "職場",
+      "featuredCase": {
+        "title": "傳統硬體工程師轉進外商 AI 產品經理",
+        "outcome": "重新包裝技術資產與跨部門專案亮點，成功獲取 1.6 倍年薪 Offer。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-7": {
+      "verifiedBadge": true,
+      "rating": 4.93,
+      "bio": "審查超過 800 份創業商業計畫書，精準洞察投資人關注的核心防禦力指標。",
+      "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+      "title": "早期天使投資機構投資經理 / 財務分析師",
+      "skills": [
+        "BP 募資簡報",
+        "估值模型",
+        "投資條款清單",
+        "股權架構設計"
+      ],
+      "earnings": 58000,
+      "answerCount": 28,
+      "tier": "認證專家",
+      "reviewCount": 33,
+      "domain": "專業問題",
+      "acceptedRate": 93,
+      "name": "徐宛婷 Sonia",
+      "subdomain": "法律智財",
+      "id": "solver-7",
+      "subcategory": "法律智財",
+      "featuredCase": {
+        "title": "無人零售新創 Pre-A 輪 3,000 萬融資架構梳理",
+        "outcome": "優化 Cap Table 與毛利結構，一個月內取得 2 家領投機構 Term Sheet。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
+    },
+    "solver-3": {
+      "verifiedBadge": true,
+      "rating": 4.88,
+      "bio": "專門解決企業導入大語言模型時的幻覺、Token 爆表與資料隱私隔離等落地難題。",
+      "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+      "title": "AI 解決方案架構師 / 雲端全端資深工程師",
+      "skills": [
+        "LLM 應用",
+        "RAG 知識庫",
+        "高併發架構",
+        "向量資料庫",
+        "成本優化"
+      ],
+      "earnings": 84000,
+      "answerCount": 63,
+      "tier": "認證專家",
+      "reviewCount": 58,
+      "domain": "創新創業",
+      "acceptedRate": 89,
+      "name": "張維哲 Allen",
+      "subdomain": "資訊科技",
+      "id": "solver-3",
+      "subcategory": "資訊科技",
+      "featuredCase": {
+        "title": "智慧法務合約檢索系統私有化架構",
+        "outcome": "以混合檢索 + 語意快取，將推理成本壓低 72%，精準度維持在 94% 以上。"
+      },
+      "updatedAt": "2026-10-17T15:18:21.882Z"
     }
   }
 }

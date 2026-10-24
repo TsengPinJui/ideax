@@ -48,7 +48,7 @@ import { ProposalComment } from '../types/competition';
 import { ProposalDetailFullPage } from './challenge/ProposalDetailFullPage';
 import { TipPainPointModal } from './TipPainPointModal';
 import type { Question } from '../types';
-import { recordProposalViewClick } from '../utils/proposalClicks';
+import { recordProposalViewClick, getEffectiveProposalViews } from '../utils/proposalClicks';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { auth } from '../services/firebase';
 import { findReferencedPainPoint } from '../utils/painPointLinking';
@@ -129,6 +129,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     setQuestionLikeState,
     isSimulatedDataPurged,
     openAuthModal,
+    publicMetricsConfig,
   } = useApp();
   const [showZoneHelp, setShowZoneHelp] = useState(false);
   // 創點子提案的打賞視窗（使用點數）
@@ -906,6 +907,15 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                           <MessageSquare className="w-3 h-3" />
                           {proposal.commentsCount || 0}
                         </span>
+                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                          <span
+                            className="flex items-center gap-0.5 text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs"
+                            title="管理員限定：累計點進內頁瀏覽次數"
+                          >
+                            <Eye className="w-2.5 h-2.5 text-purple-600" />
+                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1036,6 +1046,15 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                           <Coins className="w-3 h-3" />
                           {(proposal.supportPoints || 0).toLocaleString()} 點
                         </span>
+                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                          <span
+                            className="flex items-center gap-0.5 text-purple-700 bg-purple-50 border border-purple-200 px-1 py-0.5 rounded text-[9px] font-mono shadow-2xs"
+                            title="管理員限定：累計點進內頁瀏覽次數"
+                          >
+                            <Eye className="w-2.5 h-2.5 text-purple-600" />
+                            <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1207,6 +1226,15 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
                         <span>{proposal.commentsCount || 0}</span>
                       </span>
+                      {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                        <span
+                          className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[10px] font-mono shadow-2xs"
+                          title="管理員限定：累計點進內頁瀏覽次數"
+                        >
+                          <Eye className="w-3 h-3 text-purple-600" />
+                          <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)} 次</span>
+                        </span>
+                      )}
                       <span
                         onClick={
                           isAuthorOrAdmin

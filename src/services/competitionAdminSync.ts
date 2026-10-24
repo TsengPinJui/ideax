@@ -289,25 +289,59 @@ export function updateCompetitionProposalAward(
 }
 
 /**
- * 取得所有專家申請與名單
+ * 取得所有專家申請與名單（嚴格過濾退回與遭撤銷身分者）
  */
 export function getCompetitionExperts(): CompetitionExpertRecord[] {
   try {
     const raw = localStorage.getItem(EXPERTS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        // 嚴格過濾：被退回或被撤銷資格者、以及指定未通過審核者一律剔除
+        const filtered = parsed.filter(
+          (e) =>
+            e &&
+            e.status !== 'rejected' &&
+            e.userId !== 'K338pnIB8JMJ5Af9K5blbECuX8R2' &&
+            e.userId !== 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' &&
+            !e.organization?.includes('逢甲') &&
+            !e.organization?.includes('實踐') &&
+            !e.expertName?.includes('廖音淇') &&
+            !e.expertName?.includes('周怡君') &&
+            !e.expertName?.includes('料因其') &&
+            !e.expertName?.includes('K imi')
+        );
+        if (filtered.length !== parsed.length) {
+          try {
+            localStorage.setItem(EXPERTS_STORAGE_KEY, JSON.stringify(filtered));
+          } catch {}
+        }
+        return filtered;
+      }
     }
   } catch {}
   return [];
 }
 
 /**
- * 儲存所有專家名單
+ * 儲存所有專家名單（嚴格過濾退回與遭撤銷資格者）
  */
 export function saveAllCompetitionExperts(experts: CompetitionExpertRecord[]): void {
   try {
-    localStorage.setItem(EXPERTS_STORAGE_KEY, JSON.stringify(experts));
+    const cleaned = (experts || []).filter(
+      (e) =>
+        e &&
+        e.status !== 'rejected' &&
+        e.userId !== 'K338pnIB8JMJ5Af9K5blbECuX8R2' &&
+        e.userId !== 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' &&
+        !e.organization?.includes('逢甲') &&
+        !e.organization?.includes('實踐') &&
+        !e.expertName?.includes('廖音淇') &&
+        !e.expertName?.includes('周怡君') &&
+        !e.expertName?.includes('料因其') &&
+        !e.expertName?.includes('K imi')
+    );
+    localStorage.setItem(EXPERTS_STORAGE_KEY, JSON.stringify(cleaned));
   } catch {}
 }
 

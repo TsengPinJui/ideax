@@ -1527,6 +1527,7 @@ export interface PublicMetricsConfig {
   showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
   showTotalViews?: boolean;        // 網站總瀏覽量（進入網站的總瀏覽次數）
+  showCardViews?: boolean;         // 卡片內頁瀏覽次數（僅限管理員在各卡片查閱）
   showUniqueVisitors?: boolean;    // 不重複訪客（不重複裝置數）
   showTodayVisitors?: boolean;     // 今日不重複訪客
   showNewMembers7d?: boolean;      // 近 7 天新註冊會員
@@ -1542,7 +1543,7 @@ export interface PublicMetricsConfig {
 
 /** 各項公開數據的開關（不含統一開關），計算「已公開 N / M 項」用 */
 export const PUBLIC_METRIC_TOGGLE_KEYS: Array<keyof PublicMetricsConfig> = [
-  'showTotalViews', 'showUniqueVisitors', 'showTodayVisitors', 'showOnlineUsers', 'showTotalMembers', 'showNewMembers7d', 'showVerifiedSolvers',
+  'showTotalViews', 'showCardViews', 'showUniqueVisitors', 'showTodayVisitors', 'showOnlineUsers', 'showTotalMembers', 'showNewMembers7d', 'showVerifiedSolvers',
   'showQuestionsCount', 'showProposalsCount', 'showJobsUsers', 'showSolvedCount', 'showTotalBounty', 'showHighestBounty', 'showTotalDeals',
   'showAvgResponseSpeed', 'showSatisfactionRate', 'showTotalGMV',
 ];

@@ -56,6 +56,7 @@ import {
   isQuestionExpired,
 } from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
+import { recordQuestionViewClick } from './utils/proposalClicks';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
 import { MascotHost } from './components/mascot/MascotHost';
@@ -142,6 +143,7 @@ function MainContent() {
     secondedQuestionIds,
     sameQuestionIds,
     allowGuestPosting,
+    setQuestions,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
@@ -531,6 +533,8 @@ function MainContent() {
 
   const handleOpenAppEmbed = (app: Question) => {
     recordUserViewedQuestion(currentUser.id, app);
+    recordQuestionViewClick(app.id, app.views || 0);
+    incrementQuestionViews(app.id);
     setUserProfileVersion((v) => v + 1);
     setFullscreenEmbedApp(app);
   };

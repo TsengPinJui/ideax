@@ -117,6 +117,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     getQuestionSecondCount,
     isSimulatedDataPurged,
     isRaceMode,
+    publicMetricsConfig,
   } = useApp();
   const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
 
@@ -1559,6 +1560,16 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                           <span className="text-[11px] font-mono text-amber-600">{proposal.commentsCount || 0}</span>
                         </button>
+
+                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                          <span
+                            className="p-1.5 px-2 rounded-lg bg-purple-50/80 border border-purple-200/80 text-purple-700 text-xs font-bold flex items-center gap-1 font-mono shadow-2xs"
+                            title="管理員限定：累計點進內頁瀏覽次數"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-purple-600" />
+                            <span>{proposal.viewsCount || (proposal as any).views || 0} 次</span>
+                          </span>
+                        )}
                       </div>
 
                       {/* 按鈕組：查看提案 & 注資創星幣 */}

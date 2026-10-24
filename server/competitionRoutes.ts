@@ -578,9 +578,30 @@ router.get('/admin/all-experts', async (req: Request, res: Response) => {
     const snap = await adminDb.collection('competition_judge_applications').get();
     const experts: any[] = [];
     snap.forEach((doc) => {
+      const data = doc.data() || {};
       experts.push({
         id: doc.id,
-        ...doc.data(),
+        userId: data.userId || doc.id,
+        expertName: data.expertName || data.name || '專家申請者',
+        expertPhone: data.expertPhone || data.phone || '',
+        expertEmail: data.expertEmail || data.email || '',
+        organization: data.organization || '',
+        jobTitle: data.jobTitle || '',
+        expertiseTracks: data.expertiseTracks || [data.domain || 'ict'],
+        yearsOfExperience: data.yearsOfExperience || data.experienceYears || 0,
+        bio: data.bio || '',
+        proofDocumentUrl: data.proofDocumentUrl || data.credentialProofUrl || '',
+        status: data.status || 'pending_review',
+        pointsAllocated: data.pointsAllocated || 3000000,
+        singleProjectCap: data.singleProjectCap || 2000000,
+        isJudgeSelected: Boolean(data.isJudgeSelected),
+        reviewNote: data.reviewNote || '',
+        reviewedBy: data.reviewedBy || '',
+        reviewedAt: data.reviewedAt || '',
+        referralSource: data.referralSource || '',
+        referralSourceOther: data.referralSourceOther || '',
+        createdAt: data.createdAt || data.appliedAt || '',
+        ...data,
       });
     });
     res.json({ success: true, experts });
@@ -648,18 +669,25 @@ router.post('/admin/review-expert', async (req: Request, res: Response) => {
 
     const now = new Date().toISOString();
     const expRef = adminDb.collection('competition_judge_applications').doc(expertId);
-    const snap = await expRef.get();
+    let snap = await expRef.get();
     let targetDoc: any = snap.exists ? expRef : null;
 
     if (!targetDoc) {
       const q = await adminDb.collection('competition_judge_applications').where('id', '==', expertId).limit(1).get();
       if (!q.empty) {
         targetDoc = q.docs[0].ref;
+        snap = q.docs[0];
       } else {
         const qu = await adminDb.collection('competition_judge_applications').where('userId', '==', expertId).limit(1).get();
-        if (!qu.empty) targetDoc = qu.docs[0].ref;
+        if (!qu.empty) {
+          targetDoc = qu.docs[0].ref;
+          snap = qu.docs[0];
+        }
       }
     }
+
+    const appData = snap?.data() || {};
+    const targetUserId = appData.userId || expertId;
 
     if (targetDoc) {
       await targetDoc.update({
@@ -672,7 +700,104 @@ router.post('/admin/review-expert', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({ success: true, message: `專家審核狀態已更新為【${status === 'approved' ? '核准' : '退回'}】` });
+    // 跨集合同步身分與點數
+    const batch = adminDb.batch();
+    const userRef = adminDb.collection('users').doc(targetUserId);
+    const solverRef = adminDb.collection('solvers').doc(`solver-${targetUserId}`);
+    const accountRef = adminDb.collection('competition_accounts').doc(targetUserId);
+
+    if (status === 'approved') {
+      // 1. 核准通過：賦予舊站認證專家身分
+      batch.set(
+        userRef,
+        {
+          role: 'solver',
+          verifiedExpert: true,
+          verifiedBadge: '創星季特邀專家',
+          expertApplicationStatus: 'approved',
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      // 2. 錄入舊站 solvers 集合
+      batch.set(
+        solverRef,
+        {
+          id: `solver-${targetUserId}`,
+          userId: targetUserId,
+          name: appData.name || '認證專家',
+          title: `${appData.organization || ''} ${appData.jobTitle || '專家'}`.trim(),
+          domain: appData.domain || '創新創業',
+          domains: [appData.domain || '創新創業'],
+          skills: ['產學創新', '技術審查', '新創輔導', '投資評估'],
+          rating: 5.0,
+          reviewCount: 1,
+          answerCount: 0,
+          acceptedRate: 100,
+          tier: '認證專家',
+          bio: `${appData.organization || ''} ${appData.jobTitle || ''}。創星季特邀專業評審團成員。${appData.bio || ''}`,
+          earnings: 0,
+          verifiedBadge: true,
+          verified: true,
+          verifiedExpert: true,
+          credentialsNote: appData.credentialsNote || '',
+          credentialProofUrl: appData.credentialProofUrl || null,
+          referralSource: appData.referralSource || null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      // 3. 升級競賽錢包為專家額度 (3,000,000 點)
+      batch.set(
+        accountRef,
+        {
+          userId: targetUserId,
+          role: 'solver',
+          initialPoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
+          availablePoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    } else {
+      // 2. 退回或撤銷資格：回退為一般會員 (questioner)，清除特邀徽章與 300 萬點額度
+      batch.set(
+        userRef,
+        {
+          role: 'questioner',
+          verifiedExpert: false,
+          verifiedBadge: null,
+          expertApplicationStatus: 'rejected',
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      batch.delete(solverRef);
+
+      batch.set(
+        accountRef,
+        {
+          userId: targetUserId,
+          role: 'general',
+          initialPoints: COMPETITION_POINTS_CONFIG.INITIAL_USER_POINTS,
+          availablePoints: COMPETITION_POINTS_CONFIG.INITIAL_USER_POINTS,
+          badge: null,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
+
+    await batch.commit();
+
+    res.json({
+      success: true,
+      message: `專家審核狀態已更新為【${status === 'approved' ? '核准' : '退回'}】，且全站會員權限與競賽點數錢包已同步連動生效！`,
+    });
   } catch (err: any) {
     res.status(403).json({ success: false, error: err.message });
   }

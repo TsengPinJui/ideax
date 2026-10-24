@@ -101,6 +101,7 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../u
 import { isSampleContent } from '../utils/sampleContent';
 import { isGuestPreviewOnly } from '../utils/guestAccess';
 import { MindMapSection } from './mindmap/MindMapSection';
+import { recordQuestionViewClick } from '../utils/proposalClicks';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -320,7 +321,16 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   const viewCountedIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    if (!question?.id) return;
+    if (viewCountedIdRef.current === question.id) return;
+    viewCountedIdRef.current = question.id;
 
+    const nextViews = recordQuestionViewClick(question.id, question.views || 0);
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === question.id ? { ...q, views: nextViews } : q))
+    );
+  }, [question?.id, setQuestions]);
 
   const isBookmarked = isQuestionBookmarked(question.id);
   const isRegisteredParticipant = Boolean(
@@ -929,11 +939,6 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 ? '痛點/創點子'
                 : `${question.level} · ${levelConfig.name}`}
             </span>
-            {isVibeCodingApp && isComingSoonWork(liveQuestion) && (
-              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-400 text-stone-950 border border-amber-500 shadow-2xs">
-                ⏳ 即將開放
-              </span>
-            )}
             {question.status === 'delisted' ? (
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> 已被管理員下架

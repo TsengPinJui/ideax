@@ -131,12 +131,6 @@ export function calculateNewExperienceRating(
 /**
  * 判斷作品是否帶有「即將開放」標籤
  */
-export function isComingSoonWork(question?: Partial<Question> | null): boolean {
-  if (!question) return false;
-  if ((question as any).isComingSoon === true) return true;
-  const tags = question.tags || [];
-  return tags.some((t) => {
-    const s = String(t).trim();
-    return s === '即將開放' || s === '即將上線' || s === '即將推出';
-  });
+export function isComingSoonWork(_question?: Partial<Question> | null): boolean {
+  return false;
 }

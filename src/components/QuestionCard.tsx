@@ -20,6 +20,7 @@ import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { extractYoutubeVideoId } from '../utils/youtubeUtils';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
+import { getEffectiveQuestionViews } from '../utils/proposalClicks';
 
 interface QuestionCardProps {
   question: Question;
@@ -77,7 +78,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     questions,
     answers,
     setSelectedQuestion,
+    currentUser,
+    publicMetricsConfig,
   } = useApp();
+  const isAdmin = currentUser?.role === 'admin';
+  const shouldShowViews = isAdmin && (publicMetricsConfig?.showCardViews ?? true);
+  const effectiveViews = getEffectiveQuestionViews(question.id, question.views || 0);
   const isBookmarked = isQuestionBookmarked(question.id);
   const [isShareCopied, setIsShareCopied] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -285,11 +291,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {displayCategoryLabel}
               </span>
-              {isVibeCoding && isComingSoonWork(question) && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
-                  ⏳ 即將開放
-                </span>
-              )}
               {isVibeCoding && getExperienceScore(question).totalRatings > 0 && (
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600/90 text-white shadow-xs">
                   👍 {getExperienceScore(question).score}分
@@ -521,6 +522,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span className="font-mono font-black">+1</span>
                 <span className="font-mono text-[9.5px] sm:text-xs">{secondCount || 0}</span>
               </button>
+            )}
+
+            {shouldShowViews && (
+              <span
+                className="font-mono text-[9.5px] sm:text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs"
+                title="管理員限定：累計點進內頁瀏覽次數"
+              >
+                <Eye className="w-2.5 h-2.5 text-purple-600" />
+                <span>{effectiveViews}</span>
+              </span>
             )}
 
             {isSolved ? (
@@ -777,6 +788,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="font-mono">{discussionsCount ?? 0}</span>
             </span>
 
+            {shouldShowViews && (
+              <span
+                className="flex items-center gap-1 text-[11px] font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg shadow-2xs"
+                title="管理員限定：累計點進內頁瀏覽次數"
+              >
+                <Eye className="w-3.5 h-3.5 text-purple-600" />
+                <span>{effectiveViews} 次</span>
+              </span>
+            )}
+
             {isSolved ? (
               <span className="font-bold text-emerald-600">已採納</span>
             ) : hasSolutions ? (
@@ -864,11 +885,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               )}
               {isVibeCoding ? (
                 <>
-                  {isComingSoonWork(question) && (
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
-                      ⏳ 即將開放
-                    </span>
-                  )}
                   {getExperienceScore(question).totalRatings > 0 && (
                     <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-600/95 backdrop-blur-md text-white shadow-xs" title={`平均體驗評分：${getExperienceScore(question).score}分`}>
                       👍 {getExperienceScore(question).score}分
@@ -1237,6 +1253,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             <MessageCircle className="w-3.5 h-3.5" />
             <span className="font-mono">{discussionsCount ?? questionDiscussions.length}</span>
           </span>
+
+          {shouldShowViews && (
+            <span
+              className="flex items-center gap-1 font-mono text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full shadow-2xs"
+              title="管理員限定：累計點進內頁瀏覽次數"
+            >
+              <Eye className="w-3.5 h-3.5 text-purple-600" />
+              <span>{effectiveViews} 次</span>
+            </span>
+          )}
 
           {isSolved ? (
             <span className="font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px]">

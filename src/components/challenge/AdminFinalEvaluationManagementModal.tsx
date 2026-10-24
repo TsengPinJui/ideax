@@ -26,6 +26,7 @@ import { StarSeasonProposal } from '../../types/competition';
 import {
   CompetitionExpertRecord,
   getCompetitionExperts,
+  saveAllCompetitionExperts,
   updateCompetitionExpertStatus,
 } from '../../services/competitionAdminSync';
 import {
@@ -66,8 +67,25 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   const [activeTab, setActiveTab] = useState<'nomination' | 'judges' | 'scoring' | 'rewards'>(
     mode === 'rewards' ? 'rewards' : 'scoring'
   );
+  // 嚴格判定專家是否不合格/被撤銷/非核准
+  const isExpertDisqualifiedOrNotApproved = (e: any): boolean => {
+    if (!e) return true;
+    if (e.status !== 'approved') return true;
+    const uid = e.userId || e.id || '';
+    if (uid === 'K338pnIB8JMJ5Af9K5blbECuX8R2' || uid === 'WcJAf17ZIqfL9NK8IZpEJiE6zg92') return true;
+    const org = e.organization || '';
+    const name = e.expertName || e.name || '';
+    if (org.includes('逢甲') || org.includes('實踐')) return true;
+    if (name.includes('廖音淇') || name.includes('周怡君') || name.includes('料因其') || name.includes('K imi')) return true;
+    return false;
+  };
+
+  const sanitizeApprovedExperts = (list: CompetitionExpertRecord[]): CompetitionExpertRecord[] => {
+    return (list || []).filter((e) => !isExpertDisqualifiedOrNotApproved(e));
+  };
+
   const [nominatedIds, setNominatedIds] = useState<string[]>(() => getNominatedProposalIds());
-  const [experts, setExperts] = useState<CompetitionExpertRecord[]>(() => getCompetitionExperts());
+  const [experts, setExperts] = useState<CompetitionExpertRecord[]>(() => sanitizeApprovedExperts(getCompetitionExperts()));
   const [isPublished, setIsPublished] = useState<boolean>(() => getIsFinalResultsPublished());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [distributionRecord, setDistributionRecord] = useState<RewardsDistributionRecord | null>(() => getRewardsDistributionHistory());
@@ -78,9 +96,23 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   // 重新載入最新狀態
   const reloadData = () => {
     setNominatedIds(getNominatedProposalIds());
-    setExperts(getCompetitionExperts());
+    const sanitized = sanitizeApprovedExperts(getCompetitionExperts());
+    setExperts(sanitized);
+    saveAllCompetitionExperts(sanitized);
     setIsPublished(getIsFinalResultsPublished());
     setDistributionRecord(getRewardsDistributionHistory());
+
+    // 實時從後端 API 同步最新審核通過的專家 (雲端即時連動)
+    fetch('/api/competition/admin/all-experts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.experts)) {
+          const cloudApproved = sanitizeApprovedExperts(data.experts);
+          setExperts(cloudApproved);
+          saveAllCompetitionExperts(cloudApproved);
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -664,12 +696,21 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                   <span>決選專家評審委員指派管理</span>
                 </h4>
                 <p className="text-xs text-stone-500">
-                  評審身分為專家，由管理員在後台指派。被指派的評審立即具備「決選評分」專屬功能，並獲得審查車馬費 NT$5,000。不可兼任參賽者。
+                  評審身分為通過管理員審核之特邀專家，由管理員在後台指派。被指派的評審立即具備「決選評分」專屬功能，並獲得審查車馬費 NT$5,000。不可兼任參賽者。未通過審核或已被退回者無法在此被指派。
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {experts.map((exp) => {
+              {experts.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-stone-300 space-y-2">
+                  <ShieldCheck className="w-10 h-10 text-stone-300 mx-auto" />
+                  <p className="text-sm font-bold text-stone-700">目前尚無審核通過之專家可供指派</p>
+                  <p className="text-xs text-stone-400 max-w-md mx-auto">
+                    僅具備管理員審核通過資格（審核狀態為「通過」）之特邀專家方能在此指派為決選評審。未經審核通過或已被撤銷／退回之申請者將自動被排除。
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {experts.map((exp) => {
                   const isAppointed = !!exp.isJudgeSelected;
 
                   return (
@@ -736,6 +777,7 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                   );
                 })}
               </div>
+              )}
             </div>
           )}
 

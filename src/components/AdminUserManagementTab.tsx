@@ -46,6 +46,7 @@ import {
   Camera,
   Upload,
   Save,
+  ArrowUpDown,
 } from 'lucide-react';
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
@@ -92,6 +93,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   } = useApp();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'real' | 'normal' | 'enterprise' | 'admin' | 'simulated' | 'blocked' | 'deactivated'>('real');
+  const [sortBy, setSortBy] = useState<'newest' | 'active' | 'points' | 'oldest' | 'default'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
@@ -433,7 +435,60 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     '帳號涉嫌異常登入與安全性風險',
   ];
 
-  const pagedUsers = usePagedList(filteredUsers, 20);
+  // 取得用戶最權威的時間戳記（註冊日、建立時間、更新時間、上線時間）
+  const getUserTimestamp = (u: User) => {
+    const dates = [
+      (u as any).createdAt,
+      (u as any).registeredAt,
+      (u as any).agreedGeneralTermsAt,
+      u.updatedAt,
+      userActivity[u.id],
+      u.joinedDate,
+    ];
+    for (const d of dates) {
+      if (!d) continue;
+      const ms = new Date(d).getTime();
+      if (Number.isFinite(ms) && ms > 0) return ms;
+    }
+    return 0;
+  };
+
+  const getUserActiveTimestamp = (u: User) => {
+    return latestSeen(
+      userActivity[u.id],
+      u.updatedAt,
+      (u as any).createdAt
+    );
+  };
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (sortBy === 'newest') {
+      const tA = getUserTimestamp(a);
+      const tB = getUserTimestamp(b);
+      if (tA !== tB) return tB - tA; // 由新到舊
+      return b.id.localeCompare(a.id);
+    }
+    if (sortBy === 'oldest') {
+      const tA = getUserTimestamp(a);
+      const tB = getUserTimestamp(b);
+      if (tA !== tB) return tA - tB; // 由舊到新
+      return a.id.localeCompare(b.id);
+    }
+    if (sortBy === 'active') {
+      const aA = getUserActiveTimestamp(a);
+      const aB = getUserActiveTimestamp(b);
+      if (aA !== aB) return aB - aA;
+      return getUserTimestamp(b) - getUserTimestamp(a);
+    }
+    if (sortBy === 'points') {
+      const pA = a.balance ?? 0;
+      const pB = b.balance ?? 0;
+      return pB - pA;
+    }
+    return 0;
+  });
+
+  const pagedUsers = usePagedList(sortedUsers, 20);
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* 頂部訊息反饋 */}
@@ -720,26 +775,46 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           </button>
         </div>
 
-        {/* 搜尋框 */}
-        <div className="relative sm:w-72">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="搜尋用戶姓名、ID、Email、手機或身分..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-purple-500 outline-none"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
-              title="清除搜尋"
+        {/* 排序與搜尋控制列 */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:w-auto">
+          {/* 排序控制 */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-stone-50 px-2.5 py-1.5 rounded-xl border border-stone-200">
+            <ArrowUpDown className="w-3.5 h-3.5 text-stone-500" />
+            <span className="text-[11px] font-bold text-stone-500">排序：</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-xs font-bold text-stone-800 outline-none cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+              <option value="newest">🔥 最新加入／更新（由新到舊）</option>
+              <option value="active">⚡ 最近上線活躍</option>
+              <option value="points">💰 點數最多</option>
+              <option value="oldest">⏳ 最早加入（由舊到新）</option>
+              <option value="default">預設名單</option>
+            </select>
+          </div>
+
+          {/* 搜尋框 */}
+          <div className="relative sm:w-72">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="搜尋用戶姓名、ID、Email、手機或身分..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-purple-500 outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+                title="清除搜尋"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

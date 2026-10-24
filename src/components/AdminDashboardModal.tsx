@@ -1058,6 +1058,42 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 }`} />
               </button>
             </div>
+
+            {/* Metric 14: 卡片內頁瀏覽次數（明顯高亮設計，管理員專屬查閱） */}
+            <div className={`p-3.5 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
+              (localPublicMetrics.showCardViews ?? true)
+                ? 'bg-gradient-to-r from-purple-50 via-white to-amber-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+            }`}>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-extrabold text-xs text-purple-950 flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span>卡片內頁瀏覽次數</span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs">
+                    👁️ 管理員專屬查閱
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                  有點進內頁才算瀏覽 · 僅管理員可見卡片瀏覽數，一般用戶不可見
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showCardViews: !(prev.showCardViews ?? true) }))}
+                className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                  (localPublicMetrics.showCardViews ?? true)
+                    ? 'bg-purple-600 ring-2 ring-purple-300'
+                    : 'bg-stone-300'
+                }`}
+                title={(localPublicMetrics.showCardViews ?? true) ? '點擊關閉管理員卡片瀏覽次數顯示' : '點擊開啟管理員卡片瀏覽次數顯示'}
+              >
+                <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                  (localPublicMetrics.showCardViews ?? true) ? 'translate-x-5.5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
           </div>
           )}
         </div>

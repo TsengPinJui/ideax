@@ -216,6 +216,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     getQuestionSecondCount,
     isSimulatedDataPurged,
     isRaceMode,
+    publicMetricsConfig,
   } = useApp();
   const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
   const isLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
@@ -1700,69 +1701,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         } catch (e) {
           console.warn('Sync expert application error:', e);
         }
-        // 申請評審的用戶會同時錄入舊站的認證專家身份與專家名單
+        // 申請專家的用戶狀態設為 pending（審核中），不可直接通過，需等待管理員審核
         const updatedUser = {
           ...currentUser,
-          role: 'solver' as const,
-          verifiedExpert: true,
-          verifiedBadge: '創星季專家',
+          expertApplicationStatus: 'pending' as const,
+          verifiedExpert: false,
           title: `${judgeOrg} ${judgeJobTitle}`,
           domain: judgeDomain as any,
           domains: [judgeDomain as any],
-          expertApplicationStatus: 'approved' as const,
         };
         setCurrentUser(updatedUser);
-        setAvailableUsers((prev) => prev.map((u) => u.id === currentUser.id ? updatedUser : u));
-
-        // 同步新增/更新舊站 solvers 列表
-        const solverId = res.solverId || `solver-${currentUser.id}`;
-        setSolvers((prev) => {
-          const existingIdx = prev.findIndex((s) => s.id === solverId || s.userId === currentUser.id);
-          const newSolverRecord = {
-            id: solverId,
-            userId: currentUser.id,
-            name: judgeName || currentUser.name,
-            title: `${judgeOrg} ${judgeJobTitle}`,
-            avatar: currentUser.avatar,
-            domain: judgeDomain as any,
-            domains: [judgeDomain as any],
-            skills: ['產學創新', '技術審查', '新創輔導', '投資評估'],
-            rating: 5.0,
-            reviewCount: 1,
-            answerCount: 0,
-            acceptedRate: 100,
-            tier: '認證專家' as const,
-            bio: `${judgeOrg} ${judgeJobTitle}。創星季專業評審團成員。${judgeBio}`,
-            earnings: 0,
-            verifiedBadge: true,
-            verified: true,
-            verifiedExpert: true,
-            featuredCase: {
-              title: '創星季創新創業與產學審查',
-              description: '受邀擔任創星季與各項青年創新創業競賽專業評審委員。',
-              outcome: '提供專業商業模式驗證、產業對接建議與技術可行性評估。',
-            },
-          };
-          if (existingIdx >= 0) {
-            const clone = [...prev];
-            clone[existingIdx] = newSolverRecord;
-            return clone;
-          } else {
-            return [newSolverRecord, ...prev];
-          }
-        });
-
-        // 升級競賽點數帳戶為專家 3,000,000 點
-        setAccount((prev) =>
-          prev
-            ? {
-                ...prev,
-                role: 'solver',
-                availablePoints: 3000000,
-                initialPoints: 3000000,
-              }
-            : null
-        );
+        setAvailableUsers((prev) => (prev.map((u) => (u.id === currentUser.id ? updatedUser : u))));
 
         setIsRegistrationModalOpen(false);
         await loadData();
@@ -3187,7 +3136,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <div className="space-y-1.5 text-xs sm:text-sm md:text-base text-stone-700 max-w-xl mx-auto font-medium leading-relaxed">
               <p>加入 IdeaX 創星季，提出創新 idea，獲得市場支持與專業回饋。</p>
               <p className="text-amber-700 font-bold">
-                提出你的創新想法，讓市場與專業者共同驗證。
+                提出你的創新 Idea，讓市場與專業共同驗證。
               </p>
             </div>
 
@@ -3832,6 +3781,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                   <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                                   <span className="font-mono text-[11px]">{p.commentsCount}</span>
                                 </span>
+                                {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                                  <span
+                                    className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[11px] font-mono shadow-2xs"
+                                    title="管理員限定：累計點進內頁瀏覽次數"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-purple-600" />
+                                    <span>{(p as any).viewsCount || (p as any).views || 0} 次</span>
+                                  </span>
+                                )}
                               </div>
 
                               <div
@@ -4104,6 +4062,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                                 <span>{pp.solutionsCount} 個解方</span>
                               </span>
+                              {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                                <span
+                                  className="flex items-center gap-1 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-[10px] font-mono shadow-2xs"
+                                  title="管理員限定：累計點進內頁瀏覽次數"
+                                >
+                                  <Eye className="w-3 h-3 text-purple-600" />
+                                  <span>{pp.views || 0} 次</span>
+                                </span>
+                              )}
                               <span
                                 id={batchIdx === 0 && ppIdx === 0 ? 'star-tour-solve-painpoint-btn' : undefined}
                                 className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-amber-50 group-hover:bg-amber-400 group-hover:text-stone-950 text-amber-900 text-[10px] font-black transition-colors"

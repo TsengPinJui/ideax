@@ -1916,6 +1916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showSatisfactionRate: true,
     showHighestBounty: true,
     showTotalViews: false,
+    showCardViews: true,
     showUniqueVisitors: false,
     showOnlineUsers: false,
     showTotalMembers: false,

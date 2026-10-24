@@ -408,10 +408,8 @@ export const ProposalModuleShuttleBaiMiao: React.FC<{
 }> = ({
   modules = [
     { id: 'case-intro', label: '作品介紹', icon: '🌟', speech: '喵！來看看這個提案的創作初衷與背景！' },
-    { id: 'case-features', label: '核心功能', icon: '⚡', speech: '喵嗚！核心功能解決了關鍵痛點問題喔！' },
-    { id: 'case-usage', label: '使用方式', icon: '📖', speech: '跟著 3 個步驟就能輕鬆上手體驗喵～' },
-    { id: 'case-discussions', label: '討論回饋', icon: '💬', speech: '歡迎留下你的建議或鼓勵，給作者滿滿靈感！' },
     { id: 'case-tech', label: '技術架構', icon: '🛠️', speech: '查看背後的技術堆疊與實現工具喵～' },
+    { id: 'case-discussions', label: '討論回饋', icon: '💬', speech: '歡迎留下你的建議或鼓勵，給作者滿滿靈感！' },
   ],
   className = '',
 }) => {

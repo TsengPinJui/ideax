@@ -2299,7 +2299,8 @@ export async function registerParticipant(
 
 /**
  * 成為專家 / 特邀專家申請：
- * 申請成為專家的用戶經管理員審核通過後會轉為專家帳號，錄入認證專家名單，並享有 3,000,000 點競賽投資點數（單案上限 2,000,000 點），後續可由專家中遴選為評審
+ * 提交專家申請後，狀態一律設為 'pending'（待審核），絕不自動通過！
+ * 必須由管理員在後台審核通過後，才會賦予專家資格 (role: 'solver' / verifiedExpert: true) 及配發 3,000,000 點競賽投資點數。
  */
 export async function applyJudge(
   userId: string,
@@ -2310,90 +2311,42 @@ export async function applyJudge(
   const solverId = `solver-${userId}`;
   const batch = adminDb.batch();
 
-  // 1. 更新舊站用戶身份：role = 'solver', verifiedExpert = true, verifiedBadge = '創星季特邀專家'
+  // 1. 登記用戶專家申請狀態為 pending（待審核），維持既有 role（不變更為 solver）、verifiedExpert 維持 false、不發放專家徽章
   const userRef = adminDb.collection('users').doc(userId);
   batch.set(
     userRef,
     {
-      role: 'solver',
-      verifiedExpert: true,
-      verifiedBadge: '創星季特邀專家',
+      expertApplicationStatus: 'pending',
+      verifiedExpert: false,
       title: `${data.organization} ${data.jobTitle}`,
       domain: data.domain,
       domains: [data.domain],
-      expertApplicationStatus: 'approved',
       updatedAt: now,
     },
     { merge: true }
   );
 
-  // 2. 錄入舊站 solvers 集合（舊站專家名單立即可查閱）
-  const solverRef = adminDb.collection('solvers').doc(solverId);
+  // 2. 記錄評審申請資料，狀態為 pending（待管理員審核）
+  const appRef = adminDb.collection('competition_judge_applications').doc(userId);
   batch.set(
-    solverRef,
+    appRef,
     {
-      id: solverId,
       userId,
-      name: data.name || userProfile.name,
-      title: `${data.organization} ${data.jobTitle}`,
-      avatar: userProfile.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${userId}`,
-      domain: data.domain,
-      domains: [data.domain],
-      skills: ['產學創新', '技術審查', '新創輔導', '投資評估'],
-      rating: 5.0,
-      reviewCount: 1,
-      answerCount: 0,
-      acceptedRate: 100,
-      tier: '認證專家',
-      bio: `${data.organization} ${data.jobTitle}。創星季特邀專業評審團成員。${data.bio || ''}`,
-      earnings: 0,
-      verifiedBadge: true,
-      verified: true,
-      verifiedExpert: true,
-      credentialsNote: data.credentialsNote,
-      credentialProofUrl: data.credentialProofUrl || null,
-      referralSource: data.referralSource || null,
-      featuredCase: {
-        title: '創星季創新創業與產學審查',
-        description: '受邀擔任創星季與各項青年創新創業競賽專業評審委員。',
-        outcome: '提供專業商業模式驗證、產業對接建議與技術可行性評估。',
-      },
+      ...data,
+      status: 'pending',
+      appliedAt: now,
       createdAt: now,
       updatedAt: now,
     },
     { merge: true }
   );
 
-  // 3. 升級競賽點數錢包為專家額度 (3,000,000 點)
-  const accountRef = adminDb.collection('competition_accounts').doc(userId);
-  batch.set(
-    accountRef,
-    {
-      userId,
-      role: 'solver',
-      initialPoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
-      availablePoints: COMPETITION_POINTS_CONFIG.INITIAL_EXPERT_POINTS,
-      updatedAt: now,
-    },
-    { merge: true }
-  );
-
-  // 4. 記錄評審申請資料
-  const appRef = adminDb.collection('competition_judge_applications').doc(userId);
-  batch.set(appRef, {
-    userId,
-    ...data,
-    status: 'approved',
-    createdAt: now,
-    updatedAt: now,
-  });
-
   await batch.commit();
 
   return {
     success: true,
     solverId,
-    message: '恭喜！您已成功加入創星季專業評審團，並同步獲得舊站「認證專家」資格與 300 萬點專業評選額度！',
+    message: '專家申請已成功送出！您的資料已進入管理團隊人工審核程序，審核通過前維持一般身分，審核核准後將自動開通特邀專家資格與 3,000,000 點評選額度。',
   };
 }
 

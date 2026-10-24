@@ -995,7 +995,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           ? (selectedTertiary || SOFTWARE_TERTIARY_CATEGORIES[selectedVibeCategory]?.[0])
           : (postType === 'innovation_proposal' ? selectedInnovationSub : undefined),
         tags: postType === 'vibecoding_app'
-          ? Array.from(new Set(['網站程式', selectedVibeCategory, selectedTertiary, ...(isComingSoon ? ['即將開放'] : []), ...finalTags].filter(Boolean)))
+          ? Array.from(new Set(['網站程式', selectedVibeCategory, selectedTertiary, ...finalTags].filter(Boolean)))
           : (postType === 'innovation_proposal'
               ? Array.from(new Set(['創新提案', selectedInnovationCategory, selectedInnovationSub, ...finalTags].filter(Boolean)))
               : finalTags),
@@ -2208,27 +2208,6 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
                   />
                 </div>
-
-                {/* 標記為「即將開放」 */}
-                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100/60 cursor-pointer transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    checked={isComingSoon}
-                    onChange={(e) => setIsComingSoon(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer shrink-0"
-                  />
-                  <div className="text-xs leading-relaxed flex-1">
-                    <div className="font-black text-amber-950 flex items-center gap-1.5 flex-wrap">
-                      <span>⏳ 標記為「即將開放」</span>
-                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/90 px-1.5 py-0.2 rounded border border-amber-300">
-                        作品牆篩選標籤
-                      </span>
-                    </div>
-                    <p className="text-stone-600 mt-0.5">
-                      若作品仍在最後封測階段或準備中，勾選此項將在作品卡片顯示「⏳ 即將開放」標籤，並可被作品牆「即將開放」篩選分類快速檢索。
-                    </p>
-                  </div>
-                </label>
 
                 <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />

@@ -33,7 +33,14 @@ export function getCalculatedVersionState(): VersionState {
     const raw = localStorage.getItem(STORAGE_KEY_VERSION_META);
     if (raw) {
       const parsed: VersionState = JSON.parse(raw);
-      if (parsed && parsed.currentVersion) {
+      // 若儲存的版號或更新時間與代碼最新設定不一致，以最新靜態常數為準
+      if (
+        parsed &&
+        parsed.currentVersion === `v${APP_VERSION}` &&
+        parsed.seqNumber === APP_SEQUENCE_NUMBER &&
+        parsed.lastReleaseDate === APP_RELEASE_DATE &&
+        parsed.lastReleaseTime === APP_RELEASE_TIME
+      ) {
         return parsed;
       }
     }
@@ -41,15 +48,21 @@ export function getCalculatedVersionState(): VersionState {
     console.warn('Error reading version state:', e);
   }
 
-  // 靜態版本發布紀錄（不要變時鐘，固定依更新時間 2026.10.08 04:00 紀錄）
-  return {
-    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v1.6.6',
-    seqNumber: APP_SEQUENCE_NUMBER || '#017',
-    lastReleaseDate: APP_RELEASE_DATE || '2026.10.08',
-    lastReleaseTime: APP_RELEASE_TIME || '04:00',
+  // 靜態版本發布紀錄（固定依 UTC+8 台灣時間發布戳記）
+  const authoritativeState: VersionState = {
+    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v3.7.0',
+    seqNumber: APP_SEQUENCE_NUMBER || '#198',
+    lastReleaseDate: APP_RELEASE_DATE || '2026.10.25',
+    lastReleaseTime: APP_RELEASE_TIME || '00:48',
     dailyIncrementCount: 1,
     letterSuffix: '',
   };
+  try {
+    localStorage.setItem(STORAGE_KEY_VERSION_META, JSON.stringify(authoritativeState));
+  } catch {
+    // ignore
+  }
+  return authoritativeState;
 }
 
 /**
@@ -58,8 +71,28 @@ export function getCalculatedVersionState(): VersionState {
 export function bumpVersionState(reason?: string): VersionState {
   const currentState = getCalculatedVersionState();
   const now = new Date();
-  const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // 強制以 Asia/Taipei (UTC+8 台灣時間) 格式化日期與時間，避免被伺服器或容器的 UTC+0 時區干擾
+  const taipeiDateParts = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const taipeiTimeParts = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+
+  const year = taipeiDateParts.find((p) => p.type === 'year')?.value || '2026';
+  const month = taipeiDateParts.find((p) => p.type === 'month')?.value || '10';
+  const day = taipeiDateParts.find((p) => p.type === 'day')?.value || '25';
+  const todayStr = `${year}.${month}.${day}`;
+
+  const hour = taipeiTimeParts.find((p) => p.type === 'hour')?.value || '00';
+  const minute = taipeiTimeParts.find((p) => p.type === 'minute')?.value || '00';
+  const timeStr = `${hour}:${minute}`;
 
   // Parse current version numbers: v1.5.7 -> [1, 5, 7]
   const cleanVer = currentState.currentVersion.replace(/^v/, '').replace(/[a-z]+$/i, '');

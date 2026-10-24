@@ -423,7 +423,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     ) {
       return false;
     }
-    if (statusFilter === 'pending' && r.status !== 'pending_review') return false;
+    if (statusFilter === 'pending' && (r.status as string) !== 'pending_review' && (r.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && r.status !== 'approved') return false;
     if (statusFilter === 'rejected' && r.status !== 'rejected') return false;
     if (searchQuery.trim()) {
@@ -438,7 +438,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   });
 
   const filteredExperts = experts.filter((e) => {
-    if (statusFilter === 'pending' && e.status !== 'pending_review') return false;
+    if (statusFilter === 'pending' && (e.status as string) !== 'pending_review' && (e.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && e.status !== 'approved') return false;
     if (statusFilter === 'rejected' && e.status !== 'rejected') return false;
     if (searchQuery.trim()) {
@@ -453,7 +453,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
 
   const filteredProposals = proposals.filter((p) => {
     if (isFakeProposal(p)) return false;
-    if (statusFilter === 'pending' && p.status !== 'pending_review') return false;
+    if (statusFilter === 'pending' && (p.status as string) !== 'pending_review' && (p.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && p.status !== 'approved') return false;
     if (statusFilter === 'rejected' && p.status !== 'rejected') return false;
     if (searchQuery.trim()) {
@@ -1397,17 +1397,43 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                     {/* 審核操作按鍵 */}
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
                       {exp.status === 'approved' ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleReviewExpert(exp.id, 'approved', !exp.isJudgeSelected)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                              exp.isJudgeSelected
+                                ? 'bg-amber-500 hover:bg-amber-600 text-stone-950 font-black'
+                                : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                            }`}
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            <span>{exp.isJudgeSelected ? '已選為複賽評審（點擊取消）' : '選為複賽評審委員'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveReviewNoteModal({
+                                id: exp.id,
+                                type: 'expert',
+                                title: `${exp.expertName}（${exp.expertEmail}）`,
+                                targetStatus: 'rejected',
+                              })
+                            }
+                            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>撤銷/退回資格</span>
+                          </button>
+                        </div>
+                      ) : exp.status === 'rejected' ? (
                         <button
                           type="button"
-                          onClick={() => handleReviewExpert(exp.id, 'approved', !exp.isJudgeSelected)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                            exp.isJudgeSelected
-                              ? 'bg-amber-500 hover:bg-amber-600 text-stone-950 font-black'
-                              : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                          }`}
+                          onClick={() => handleReviewExpert(exp.id, 'approved', true)}
+                          className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                         >
-                          <Award className="w-3.5 h-3.5" />
-                          <span>{exp.isJudgeSelected ? '已選為複賽評審（點擊取消）' : '選為複賽評審委員'}</span>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>重新核准專家資格</span>
                         </button>
                       ) : (
                         <>

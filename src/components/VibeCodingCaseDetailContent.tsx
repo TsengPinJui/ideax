@@ -7,7 +7,6 @@ import { VibeCodingEmbedPreview } from './VibeCodingEmbedPreview';
 import {
   ExternalLink,
   Code2,
-  CheckCircle2,
   Cpu,
   Target,
   Image as ImageIcon,
@@ -774,61 +773,10 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         </div>
       </div>
 
-      {/* 3B. Main Two-Column Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column (8 cols) */}
-        <div className="lg:col-span-8 space-y-5">
-          {/* 主要功能 */}
-          <section id="case-features" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
-            <h3 className="text-base font-bold text-stone-900">
-              主要功能
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {meta.features.map((feat, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-lg bg-stone-50 border border-stone-200/80 space-y-1"
-                >
-                  <h4 className="text-xs sm:text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{feat.title}</span>
-                  </h4>
-                  <p className="text-xs text-stone-600 leading-relaxed pl-5.5">
-                    {feat.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* 使用方式 */}
-          <section id="case-usage" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
-            <h3 className="text-base font-bold text-stone-900">
-              使用方式
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {meta.workflowSteps.map((ws, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-lg bg-stone-50 border border-stone-200/80 space-y-1"
-                >
-                  <div className="text-xs font-mono font-bold text-stone-400">
-                    步驟 {ws.step}
-                  </div>
-                  <div className="text-xs sm:text-sm font-bold text-stone-900">
-                    {ws.title}
-                  </div>
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    {ws.detail}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Right Column (4 cols) */}
-        <div className="lg:col-span-4 space-y-5">
+      {/* 3B. 作品資訊與技術架構 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+        {/* 左側：作者與作品資訊、近期目標 (5 cols on lg) */}
+        <div className="lg:col-span-5 space-y-5">
           {/* 作者與作品資訊 */}
           <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-4">
             <h3 className="text-sm font-bold text-stone-900">
@@ -892,6 +840,22 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
             )}
           </section>
 
+          {/* 目標 */}
+          {question.targetGoal && (
+            <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-2">
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-emerald-600" />
+                <span>近期目標</span>
+              </h3>
+              <p className="text-xs text-stone-700 leading-relaxed">
+                {question.targetGoal}
+              </p>
+            </section>
+          )}
+        </div>
+
+        {/* 右側：技術與工具、心智圖 (7 cols on lg) */}
+        <div className="lg:col-span-7 space-y-5">
           {/* 技術與工具 */}
           <section id="case-tech" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
             <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
@@ -932,19 +896,6 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
               ))}
             </div>
           </section>
-
-          {/* 目標 */}
-          {question.targetGoal && (
-            <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-2">
-              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-emerald-600" />
-                <span>近期目標</span>
-              </h3>
-              <p className="text-xs text-stone-700 leading-relaxed">
-                {question.targetGoal}
-              </p>
-            </section>
-          )}
 
           {/* 心智圖（作者選填） */}
           <MindMapSection data={question.mindMap} className="rounded-xl" />

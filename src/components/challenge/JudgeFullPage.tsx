@@ -274,7 +274,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
       });
 
       if (res.success) {
-        showToast('評審申請已提交！已為您同步登錄 IdeaX 創點子平台認證專家身分與評審額度。');
+        showToast(res.message || '評審申請已提交！已進入管理團隊審核程序，審核通過後將開通特邀專家身分。');
 
         try {
           recordNewExpertApplication({
@@ -295,51 +295,16 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
           console.warn('Sync expert record error:', e);
         }
 
-        // 同步更新用戶資料庫認證專家身分
+        // 登記申請為審核中（pending），維持原有用戶身分，等待管理員審核
         setCurrentUser((prev: any) => {
           if (!prev) return prev;
           return {
             ...prev,
-            verifiedExpert: true,
-            role: prev.role === 'admin' ? 'admin' : 'solver',
+            expertApplicationStatus: 'pending',
+            verifiedExpert: false,
             expertDomain: judgeDomain,
             expertTitle: judgeJobTitle.trim(),
           };
-        });
-
-        // 同步更新 IdeaX 創點子平台解題專家清單
-        setSolvers((prev: any) => {
-          const exists = prev.some((s: any) => s.id === currentUser.id);
-          if (exists) {
-            return prev.map((s: any) =>
-              s.id === currentUser.id
-                ? {
-                    ...s,
-                    name: judgeName.trim() || s.name,
-                    title: judgeJobTitle.trim() || s.title,
-                    bio: judgeBio.trim() || s.bio,
-                    verified: true,
-                  }
-                : s
-            );
-          }
-          return [
-            {
-              id: currentUser.id,
-              name: judgeName.trim() || currentUser.name,
-              avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-              title: judgeJobTitle.trim() || '專業審查委員',
-              bio: judgeBio.trim() || `${judgeInstitution.trim()} ${judgeJobTitle.trim()}，專業領域涵蓋 ${judgeDomain}。`,
-              verified: true,
-              rating: 5.0,
-              completedCases: 1,
-              skills: [judgeDomain, '決選評估', '新創輔導'],
-              category: '創新創業',
-              pricingRate: 1500,
-              earnings: 0,
-            },
-            ...prev,
-          ];
         });
 
         onSuccess();

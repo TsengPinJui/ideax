@@ -334,11 +334,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                {isComingSoon && (
-                  <span className="text-[10px] font-black text-amber-950 bg-amber-400 border border-amber-500 px-1.5 py-0.2 rounded shadow-2xs">
-                    ⏳ 即將開放
-                  </span>
-                )}
                 {expScore.totalRatings > 0 && (
                   <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded" title={`平均體驗分數：${expScore.score}分（${expScore.totalRatings}人評分）`}>
                     👍 {expScore.score}分
@@ -444,11 +439,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <span>{primaryCategory}</span>
                 {app.tertiaryCategory && <span className="text-amber-300 font-bold">› {app.tertiaryCategory}</span>}
               </span>
-              {isComingSoon && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 shadow-xs border border-amber-300">
-                  ⏳ 即將開放
-                </span>
-              )}
               {expScore.totalRatings > 0 && (
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white border border-emerald-400/50 shadow-xs" title={`平均體驗評分：${expScore.score}分`}>
                   👍 {expScore.score}分
@@ -557,11 +547,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </>
                 )}
               </span>
-              {isComingSoon && (
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs">
-                  ⏳ 即將開放
-                </span>
-              )}
               {expScore.totalRatings > 0 && (
                 <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white border border-emerald-400/50 shadow-xs" title={`平均體驗評分：${expScore.score}分 (${expScore.totalRatings}位評分)`}>
                   👍 {expScore.score}分
@@ -874,20 +859,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             >
               <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
               <span className="truncate">我的 Like ({favoriteCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setOnlyComingSoon(!onlyComingSoon)}
-              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                onlyComingSoon
-                  ? 'bg-amber-400 text-stone-950 shadow-xs border border-amber-500 ring-2 ring-amber-400/30'
-                  : 'bg-white/90 text-stone-700 hover:bg-white border border-indigo-200/90'
-              }`}
-              title="篩選標記為即將開放的作品"
-            >
-              <span className="shrink-0">⏳</span>
-              <span className="truncate">即將開放 ({comingSoonCount})</span>
             </button>
           </div>
 
