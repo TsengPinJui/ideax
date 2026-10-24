@@ -959,6 +959,12 @@ export interface Question {
   demoUrl?: string; // 網站網址或嵌入預覽連結
   externalLink?: string; // 外部連結 / 專屬網站連結 (選填)
   previewMode?: 'embed' | 'external'; // 作品預覽模式：'embed' 內嵌網頁互動 | 'external' 外部連結開啟
+  isComingSoon?: boolean; // 是否為「即將開放」狀態
+  experienceThumbsUpCount?: number; // 體驗「讚」人數 (每個 100 分)
+  experienceNeutralCount?: number; // 體驗「普通」人數 (每個 0 分)
+  experienceThumbsDownCount?: number; // 體驗「倒讚」人數 (每個 0 分)
+  experienceScore?: number; // 平均體驗評分 (0 ~ 100 分)
+  experienceRatingsCount?: number; // 體驗評分總人次
   fileLink?: string; // 檔案下載連結
   fileUrl?: string; // 檔案下載連結 / 成果檔案
   targetGoal?: string; // 希望達成的目標 (選填)
