@@ -1,7 +1,9 @@
 import { Question } from '../types';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
+import { HOT_GAMES_DEFS, createHotGameQuestion } from './hotGamesData';
 
 export const DEFAULT_VIBECODING_APPS: Question[] = [
+  ...HOT_GAMES_DEFS.map(createHotGameQuestion),
   {
     id: 'vibe-app-1',
     appName: 'VibeForm AI',

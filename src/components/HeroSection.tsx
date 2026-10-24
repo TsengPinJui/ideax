@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { isRealRegisteredUser } from '../data/mockData';
 import { getCachedRealTrafficStats } from './AdminSiteTrafficChart';
-import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift } from 'lucide-react';
-import { Category } from '../types';
+import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift, Trophy, Flame } from 'lucide-react';
+import { Category, Question } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
 import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
 import { HomeShowcasePlayer, useShowcaseSlides } from './HomeShowcasePlayer';
+import { FeaturedGamesBoard, HotGamesRankingBoard } from './HomeHeroSideBoards';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -19,6 +20,7 @@ interface HeroSectionProps {
   onFindExpertsClick?: () => void;
   onExploreClick: () => void;
   onLeaderboardClick?: () => void;
+  onOpenAppEmbed?: (app: Question) => void;
   highestBountyQuestion?: { id: string; title: string; bounty: number; level: string };
 }
 
@@ -27,7 +29,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onFindExpertsClick,
   onExploreClick,
   onLeaderboardClick,
+  onOpenAppEmbed,
 }) => {
+  const [mobileGameTab, setMobileGameTab] = useState<'featured' | 'hot'>('featured');
   const {
     questions,
     answers,
@@ -288,35 +292,97 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   const visibleMetrics = isMetricsExpanded ? allMetricItems : allMetricItems.slice(0, 4);
 
+  const handleGameClick = (game: Question) => {
+    if (onOpenAppEmbed) {
+      onOpenAppEmbed(game);
+    } else {
+      try {
+        window.dispatchEvent(new CustomEvent('IDEAX_OPEN_APP_EMBED', { detail: { app: game } }));
+      } catch {}
+    }
+  };
+
   return (
     <section className="relative pt-3 pb-1.5 sm:pt-6 sm:pb-2.5 lg:pt-7 lg:pb-3 overflow-hidden">
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col items-center text-center max-w-3xl lg:max-w-5xl mx-auto">
-          {/* 首頁創點子播放區：管理員在儀表板啟用並勾選「優秀作品／付費推播／自選」（homeShowcaseConfig，可複選）後輪流播放；
-              沒有啟用或沒有可播放的內容時，顯示創點子標誌 */}
-          {showcaseSlides.length > 0 ? (
-            <div data-home-showcase-slot={homeShowcaseConfig.modes.join(',')} className="relative mb-2 sm:mb-4 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto">
-              <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
-              <HomeShowcasePlayer slides={showcaseSlides} />
-            </div>
-          ) : (
-            <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
-              <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
-              <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
-                <img
-                  src="/logo-bulb.png"
-                  alt="IdeaX 燈泡"
-                  className="h-16 sm:h-24 md:h-32 lg:h-36 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
-                />
-                <img
-                  src="/logo-chuangdianzi-text.png"
-                  alt="創點子 IdeaX"
-                  className="h-11 sm:h-16 md:h-[88px] lg:h-[104px] w-auto object-contain shrink-0"
-                />
+        <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
+          {/* 首頁三大展示核心：左側「精選遊戲 TOP 10」、中間「首頁輪播展示」、右側「熱度榜（嚴格對應圖一）」 */}
+          <div className="w-full mb-3 sm:mb-4">
+            <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-3.5 lg:gap-4 xl:gap-6 w-full">
+              {/* 左邊：精選遊戲（放精選裡頭前10名）- 電腦版直接呈現 */}
+              <div className="hidden lg:block w-[260px] xl:w-[280px] shrink-0 h-[380px] text-left">
+                <FeaturedGamesBoard questions={questions} onSelectGame={handleGameClick} />
+              </div>
+
+              {/* 中間：首頁創點子播放區 */}
+              <div className="flex-1 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto flex flex-col justify-center">
+                {showcaseSlides.length > 0 ? (
+                  <div data-home-showcase-slot={homeShowcaseConfig.modes.join(',')} className="relative w-full">
+                    <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
+                    <HomeShowcasePlayer slides={showcaseSlides} />
+                  </div>
+                ) : (
+                  <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative group inline-flex w-full justify-center">
+                    <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
+                    <div className="relative w-full py-4 px-6 md:py-6 md:px-8 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-4 transition-all duration-300">
+                      <img
+                        src="/logo-bulb.png"
+                        alt="IdeaX 燈泡"
+                        className="h-20 sm:h-28 md:h-32 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+                      />
+                      <img
+                        src="/logo-chuangdianzi-text.png"
+                        alt="創點子 IdeaX"
+                        className="h-14 sm:h-20 md:h-24 w-auto object-contain shrink-0"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 右邊：熱度榜（按照圖一之提案對應放置）- 電腦版直接呈現 */}
+              <div className="hidden lg:block w-[260px] xl:w-[280px] shrink-0 h-[380px] text-left">
+                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
               </div>
             </div>
-          )}
+
+            {/* 行動裝置 / 平板 (lg:hidden)：Tab 切換瀏覽精選遊戲與熱度榜 */}
+            <div className="lg:hidden w-full max-w-md mx-auto mt-3">
+              <div className="flex items-center justify-center p-1 rounded-2xl bg-amber-100/70 max-w-xs mx-auto mb-2 text-xs font-black shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setMobileGameTab('featured')}
+                  className={`flex-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    mobileGameTab === 'featured'
+                      ? 'bg-white text-amber-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Trophy className="w-3.5 h-3.5 text-amber-600" />
+                  <span>精選遊戲</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileGameTab('hot')}
+                  className={`flex-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    mobileGameTab === 'hot'
+                      ? 'bg-white text-rose-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5 text-rose-600" />
+                  <span>熱度榜</span>
+                </button>
+              </div>
+
+              {mobileGameTab === 'featured' ? (
+                <FeaturedGamesBoard questions={questions} onSelectGame={handleGameClick} />
+              ) : (
+                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
+              )}
+            </div>
+          </div>
 
           {/* Main Headline（管理員可隱藏：隱藏時只是畫面上看不到，搜尋引擎與讀屏仍讀得到） */}
           <h1 className={homeShowcaseConfig.hideHeroTitles ? 'sr-only' : 'text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2'}>

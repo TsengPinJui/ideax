@@ -535,6 +535,16 @@ function MainContent() {
     setFullscreenEmbedApp(app);
   };
 
+  useEffect(() => {
+    const handleEmbedEvent = (e: any) => {
+      if (e?.detail?.app) {
+        handleOpenAppEmbed(e.detail.app);
+      }
+    };
+    window.addEventListener('IDEAX_OPEN_APP_EMBED', handleEmbedEvent);
+    return () => window.removeEventListener('IDEAX_OPEN_APP_EMBED', handleEmbedEvent);
+  }, []);
+
   const handleViewAppDescription = (app: Question) => {
     setFullscreenEmbedApp(null);
     recordUserViewedQuestion(currentUser.id, app);
@@ -2206,6 +2216,7 @@ function MainContent() {
                   const el = document.getElementById('market-grid');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
+                onOpenAppEmbed={handleOpenAppEmbed}
               />
             </div>
 

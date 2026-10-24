@@ -965,6 +965,7 @@ export interface Question {
   experienceThumbsDownCount?: number; // 體驗「倒讚」人數 (每個 0 分)
   experienceScore?: number; // 平均體驗評分 (0 ~ 100 分)
   experienceRatingsCount?: number; // 體驗評分總人次
+  heatDisplay?: string; // 熱度值顯示（如：17k, 13k）
   fileLink?: string; // 檔案下載連結
   fileUrl?: string; // 檔案下載連結 / 成果檔案
   targetGoal?: string; // 希望達成的目標 (選填)
