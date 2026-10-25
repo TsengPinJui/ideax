@@ -40,6 +40,7 @@ import { MindMapEditor } from './mindmap/MindMapEditor';
 import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import type { MindMapData } from '../types';
 import { ProjectPlanExportButton } from './ProjectPlanExportButton';
+import { isComingSoonWork } from '../utils/experienceRating';
 
 interface UpdateProposalModalProps {
   question: Question;
@@ -123,6 +124,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [proposalProgressStage, setProposalProgressStage] = useState<InnovationProgressStage | string>(
     question.proposalProgressStage || ''
   );
+  const [isComingSoon, setIsComingSoon] = useState<boolean>(() => isComingSoonWork(question));
   const [showCardImage, setShowCardImage] = useState<boolean>(question.showCardImage !== false);
   const [selectedCardImage, setSelectedCardImage] = useState<string>(question.cardDisplayImage || '');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -595,6 +597,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         appName: isVibeCoding ? appName.trim() : undefined,
         title: title.trim(),
         description: description.trim(),
+        isComingSoon: isVibeCoding ? isComingSoon : undefined,
         subcategory: isVibeCoding ? selectedSubcategory : undefined,
         subcategories: isVibeCoding ? [selectedSubcategory] : undefined,
         tertiaryCategory: isVibeCoding ? tertiaryCategory : undefined,
@@ -855,6 +858,53 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* 上架狀態設定：正式上架 ⇄ 即將上架（互不隸屬） */}
+            {isVibeCoding && (
+              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                    <span>作品上架狀態設定</span>
+                    <span className="text-[10px] text-stone-500 font-normal">（正式上架與即將上架互不隸屬）</span>
+                  </label>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isComingSoon
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                    }`}
+                  >
+                    {isComingSoon ? '⏳ 即將上架（預告中）' : '🚀 正式上架（可立即體驗）'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsComingSoon(false)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      !isComingSoon
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black ring-2 ring-emerald-200'
+                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                    }`}
+                  >
+                    <span>🚀 正式上架</span>
+                    <span className="text-[10px] opacity-80 font-normal">（可試玩體驗）</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsComingSoon(true)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isComingSoon
+                        ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-black ring-2 ring-amber-200'
+                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                    }`}
+                  >
+                    <span>⏳ 即將上架</span>
+                    <span className="text-[10px] opacity-80 font-normal">（排程預告展示）</span>
+                  </button>
                 </div>
               </div>
             )}

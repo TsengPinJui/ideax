@@ -86,8 +86,8 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
                   <Sparkles className="w-2.5 h-2.5 text-amber-600" />
                   <span>持續上新中~</span>
                 </span>
-                <span className="hidden lg:inline text-[11px] font-medium text-stone-500">
-                  · 分享推薦碼或兌換好友推薦碼，即享點數激勵！
+                <span className="text-[11px] sm:text-xs font-bold text-amber-900/90">
+                  · 沒上榜？別氣餒✨IdeaX收錄的都是百里挑一的佳作,加油！💪
                 </span>
               </h2>
             </div>

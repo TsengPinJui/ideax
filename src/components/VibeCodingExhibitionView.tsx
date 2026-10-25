@@ -138,7 +138,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   // 點「體驗」時，先讓觀眾選作者填的上架平台
   const platformChooser = usePlatformLinkChooser();
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
-  const [onlyComingSoon, setOnlyComingSoon] = useState(false);
+  // 正式上架 (live) ⇄ 即將上架 (coming_soon) 即時切換，互不隸屬
+  const [releaseTab, setReleaseTab] = useState<'live' | 'coming_soon'>('live');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
@@ -158,9 +159,23 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     );
   }, [questions]);
 
-  const comingSoonCount = useMemo(() => {
-    return vibeApps.filter(isComingSoonWork).length;
+  // 正式上架作品池（互不隸屬，排除即將上架作品）
+  const liveApps = useMemo(() => {
+    return vibeApps.filter((q) => !isComingSoonWork(q));
   }, [vibeApps]);
+
+  // 即將上架作品池（互不隸屬，僅收錄即將上架作品）
+  const comingSoonApps = useMemo(() => {
+    return vibeApps.filter(isComingSoonWork);
+  }, [vibeApps]);
+
+  const comingSoonCount = comingSoonApps.length;
+  const liveCount = liveApps.length;
+
+  // 當前看板專屬工作池（正式上架與即將上架互不隸屬）
+  const activePool = useMemo(() => {
+    return releaseTab === 'coming_soon' ? comingSoonApps : liveApps;
+  }, [releaseTab, comingSoonApps, liveApps]);
 
   const isAppSavedByUser = (qId: string) => {
     return (
@@ -171,32 +186,28 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   };
 
   const favoriteCount = useMemo(() => {
-    return vibeApps.filter((q) => isAppSavedByUser(q.id)).length;
-  }, [vibeApps, questions]);
+    return activePool.filter((q) => isAppSavedByUser(q.id)).length;
+  }, [activePool, questions]);
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: vibeApps.length };
+    const counts: Record<string, number> = { all: activePool.length };
     VIBE_CATEGORIES.forEach((c) => {
       if (c.id !== 'all') counts[c.id] = 0;
     });
-    vibeApps.forEach((q) => {
+    activePool.forEach((q) => {
       const cat = getQuestionVibeCategory(q);
       if (counts[cat] !== undefined) {
         counts[cat] += 1;
       }
     });
     return counts;
-  }, [vibeApps]);
+  }, [activePool]);
 
   const filteredApps = useMemo(() => {
-    let list = [...vibeApps];
+    let list = [...activePool];
 
     if (activeTab === 'favorites') {
       list = list.filter((q) => isAppSavedByUser(q.id));
-    }
-
-    if (onlyComingSoon) {
-      list = list.filter(isComingSoonWork);
     }
 
     if (selectedSubcat !== 'all') {
@@ -249,15 +260,15 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     });
 
     return list;
-  }, [vibeApps, activeTab, onlyComingSoon, selectedSubcat, selectedTertiary, searchQuery, sortBy, answers, questions]);
+  }, [activePool, activeTab, selectedSubcat, selectedTertiary, searchQuery, sortBy, answers, questions]);
 
   const totalLikes = useMemo(
-    () => vibeApps.reduce((acc, q) => acc + (q.likes || 0), 0),
-    [vibeApps]
+    () => activePool.reduce((acc, q) => acc + (q.likes || 0), 0),
+    [activePool]
   );
   const totalSupportPoints = useMemo(
-    () => vibeApps.reduce((acc, q) => acc + (q.supportPoints || 0), 0),
-    [vibeApps]
+    () => activePool.reduce((acc, q) => acc + (q.supportPoints || 0), 0),
+    [activePool]
   );
 
   const groupedSections = useMemo(() => {
@@ -375,6 +386,11 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <span>{primaryCategory}</span>
                 {app.tertiaryCategory && <span className="text-amber-300">› {app.tertiaryCategory}</span>}
               </span>
+              {isComingSoon && (
+                <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-stone-950 shadow-xs">
+                  ⏳ 即將上架
+                </span>
+              )}
             </div>
 
             <div className="min-w-0 flex-1 space-y-1">
@@ -493,6 +509,12 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <span>{primaryCategory}</span>
                 {app.tertiaryCategory && <span className="text-amber-300 font-bold">› {app.tertiaryCategory}</span>}
               </span>
+              {isComingSoon && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 border border-amber-600 shadow-xs flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+                  <span>⏳ 即將上架</span>
+                </span>
+              )}
               {expScore.totalRatings > 0 && (
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600/90 backdrop-blur-md text-white border border-emerald-400/50 shadow-xs" title={`平均體驗評分：${expScore.score}分`}>
                   👍 {expScore.score}分
@@ -619,7 +641,12 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               )}
             </div>
 
-            {app.demoUrl ? (
+            {isComingSoon ? (
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 border border-amber-600 flex items-center gap-1 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+                <span>⏳ 即將上架</span>
+              </span>
+            ) : app.demoUrl ? (
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span>可試玩體驗</span>
@@ -824,51 +851,127 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         )}
 
         <div className="relative z-10 space-y-2.5">
-          {/* 第一列：圖示 + 標題 + 釘選 + 數量 */}
-          <div className="flex items-center gap-2.5 flex-wrap pr-10">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
-              <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {/* 第一列：圖示 + 標題 + 釘選 + 即時切換（🚀 正式上架 ⇄ ⏳ 即將上架，互不隸屬） */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+              </div>
+              <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+                <span>軟體網站作品牆</span>
+                {onTogglePin && (
+                  <button
+                    type="button"
+                    onClick={onTogglePin}
+                    className={`p-1 rounded-lg transition-all cursor-pointer ${
+                      isPinned
+                        ? 'bg-indigo-600 text-white border border-indigo-700 shadow-xs'
+                        : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
+                    }`}
+                    title={isPinned ? '取消釘選此專區' : '釘選為首頁專區'}
+                  >
+                    <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+                  </button>
+                )}
+              </h1>
             </div>
-            <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>軟體網站作品牆</span>
-              {onTogglePin && (
-                <button
-                  type="button"
-                  onClick={onTogglePin}
-                  className={`p-1 rounded-lg transition-all cursor-pointer ${
-                    isPinned
-                      ? 'bg-indigo-600 text-white border border-indigo-700 shadow-xs'
-                      : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
+
+            {/* 即時切換看板：🚀 正式上架 ⇄ ⏳ 即將上架（互不隸屬） */}
+            <div className="inline-flex rounded-2xl bg-white/95 p-1 border border-indigo-200 shadow-2xs self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setReleaseTab('live');
+                  setSelectedSubcat('all');
+                  setSelectedTertiary('all');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  releaseTab === 'live'
+                    ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                }`}
+                title="切換至正式上架看板（互不隸屬）"
+              >
+                <span>🚀 正式上架</span>
+                <span
+                  className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                    releaseTab === 'live' ? 'bg-indigo-700 text-white' : 'bg-stone-100 text-stone-700'
                   }`}
-                  title={isPinned ? '取消釘選此專區' : '釘選為首頁專區'}
                 >
-                  <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
-                </button>
-              )}
-              <span className="text-[11px] font-mono font-black text-indigo-900 bg-indigo-100 border border-indigo-300 px-2 py-0.5 rounded-full">
-                {vibeApps.length} 件作品
-              </span>
-            </h1>
+                  {liveCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReleaseTab('coming_soon');
+                  setSelectedSubcat('all');
+                  setSelectedTertiary('all');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  releaseTab === 'coming_soon'
+                    ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-amber-50/60'
+                }`}
+                title="切換至即將上架看板（互不隸屬）"
+              >
+                <span>⏳ 即將上架</span>
+                <span
+                  className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                    releaseTab === 'coming_soon'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}
+                >
+                  {comingSoonCount}
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* 第二列：說明按鈕 (左) + 刊登作品按鈕 (置右) */}
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowZoneHelp(!showZoneHelp)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-                showZoneHelp
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                  : 'bg-white/90 hover:bg-white text-indigo-900 border-indigo-300'
-              }`}
-              title="點擊展開/收合專區說明"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>說明</span>
-              {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
+          {/* 第二列：說明按鈕 (左) + 百里挑一標語 + 刊登作品按鈕 (置右) */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowZoneHelp(!showZoneHelp)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                  showZoneHelp
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : 'bg-white/90 hover:bg-white text-indigo-900 border-indigo-300'
+                }`}
+                title="點擊展開/收合專區說明"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>說明</span>
+                {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+
+              <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
+                “能上IdeaX的作品都是百里挑一！”
+              </span>
+            </div>
 
             <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab(activeTab === 'favorites' ? 'all' : 'favorites')}
+                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border ${
+                  activeTab === 'favorites'
+                    ? 'bg-rose-500 text-white shadow-xs border-rose-500 font-black ring-2 ring-rose-200'
+                    : 'bg-white text-stone-700 hover:bg-rose-50/60 border-stone-200 hover:border-rose-300'
+                }`}
+                title={activeTab === 'favorites' ? '查看全部作品' : '查看我收藏/Like的作品'}
+              >
+                <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span>收藏</span>
+                <span className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                  activeTab === 'favorites' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700'
+                }`}>
+                  {favoriteCount}
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleOpenCreate}
@@ -885,11 +988,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         {showZoneHelp && (
           <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-1.5 animate-in fade-in duration-150">
             <p className="text-xs font-medium text-stone-700 leading-relaxed">
-              收錄網站程式、AI工具、遊戲、自動化與擴充功能，可直接試用、留言回饋或給予開發者點數支持。
+              收錄網站程式、AI工具、遊戲、自動化與擴充功能，歡迎直接試玩體驗、留言回饋交流或給予開發者點數支持。
             </p>
-            <div className="text-[11px] text-indigo-800 font-bold">
-              累計 {totalLikes.toLocaleString()} 個讚 · 累計支持 {totalSupportPoints.toLocaleString()} 點
-            </div>
           </div>
         )}
 
@@ -928,24 +1028,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 </button>
               );
             })}
-
-            <button
-              type="button"
-              onClick={() => setActiveTab(activeTab === 'favorites' ? 'all' : 'favorites')}
-              className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border ${
-                activeTab === 'favorites'
-                  ? 'bg-rose-600 text-white shadow-xs border-rose-600 font-black ring-2 ring-rose-200'
-                  : 'bg-white/90 text-stone-700 hover:bg-white border-indigo-200/80 hover:border-rose-300'
-              }`}
-            >
-              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white text-white' : 'text-rose-500'}`} />
-              <span>我的 Like</span>
-              <span className={`text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 rounded-full ${
-                activeTab === 'favorites' ? 'bg-rose-700/80 text-white' : 'bg-rose-50 text-rose-700'
-              }`}>
-                {favoriteCount}
-              </span>
-            </button>
           </div>
 
           {/* 第三級分類標籤（例如：軟體 > 遊戲 > 模擬） */}
@@ -967,7 +1049,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               </button>
               {(SOFTWARE_TERTIARY_CATEGORIES[selectedSubcat as SoftwareCategory] || []).map((tCat) => {
                 const isTSelected = selectedTertiary === tCat;
-                const tCount = vibeApps.filter(
+                const tCount = activePool.filter(
                   (q) => getQuestionVibeCategory(q) === selectedSubcat && q.tertiaryCategory === tCat
                 ).length;
                 return (
@@ -1090,32 +1172,69 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
       {/* Exhibition Grid */}
       {filteredApps.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-stone-200 p-10 text-center space-y-3">
-          <h3 className="text-sm font-bold text-stone-800">
-            {activeTab === 'favorites' ? '尚無 Like 的軟體作品' : '沒有找到符合條件的作品'}
-          </h3>
-          <p className="text-xs text-stone-500">
-            {activeTab === 'favorites'
-              ? '瀏覽作品時點擊 ❤️，即可在此快速查看！'
-              : '試試看切換其他分類，或直接刊登你的第一件軟體作品。'}
-          </p>
-          {activeTab === 'favorites' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('all')}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer"
-            >
-              瀏覽全部作品
-            </button>
+        <div className={`rounded-3xl border p-10 text-center space-y-3 ${
+          releaseTab === 'coming_soon'
+            ? 'bg-amber-50/40 border-dashed border-amber-300'
+            : 'bg-white border-stone-200'
+        }`}>
+          {releaseTab === 'coming_soon' ? (
+            <>
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto text-xl font-bold shadow-2xs">
+                ⏳
+              </div>
+              <h3 className="text-sm font-black text-stone-900">
+                目前尚無即將上架的作品
+              </h3>
+              <p className="text-xs text-stone-500 max-w-md mx-auto">
+                「即將上架」與正式上架互不隸屬，專供預告展示與提前造勢。管理員於後台或創作者於發布/編輯頁皆可設定作品為「即將上架」。
+              </p>
+              <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setReleaseTab('live')}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                >
+                  切換至正式上架 ({liveCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenCreate}
+                  className="px-4 py-2 rounded-xl border-2 border-amber-600 bg-white text-amber-800 hover:bg-amber-600 hover:text-white font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>刊登預告作品</span>
+                </button>
+              </div>
+            </>
           ) : (
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="px-4 py-2 rounded-lg border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>刊登作品</span>
-            </button>
+            <>
+              <h3 className="text-sm font-bold text-stone-800">
+                {activeTab === 'favorites' ? '尚無 Like 的軟體作品' : '沒有找到符合條件的作品'}
+              </h3>
+              <p className="text-xs text-stone-500">
+                {activeTab === 'favorites'
+                  ? '瀏覽作品時點擊 ❤️，即可在此快速查看！'
+                  : '試試看切換其他分類，或直接刊登你的第一件軟體作品。'}
+              </p>
+              {activeTab === 'favorites' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('all')}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer"
+                >
+                  瀏覽全部作品
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenCreate}
+                  className="px-4 py-2 rounded-lg border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>刊登作品</span>
+                </button>
+              )}
+            </>
           )}
         </div>
       ) : (

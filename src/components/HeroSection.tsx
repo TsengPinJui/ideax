@@ -431,6 +431,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span className="inline-flex items-center gap-0.5 text-xs sm:text-sm font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
                 持續上新中~
               </span>
+              <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
+                “能上IdeaX的作品都是百里挑一！”
+              </span>
             </div>
           )}
           {!isRealRegisteredUser(currentUser) && (

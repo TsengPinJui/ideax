@@ -325,6 +325,7 @@ interface AppContextType {
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      isComingSoon?: boolean;
       /** 心智圖：null＝移除 */
       mindMap?: MindMapData | null;
       version?: string;
@@ -5650,6 +5651,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showCardImage?: boolean;
       cardDisplayImage?: string;
       proposalProgressStage?: string;
+      isComingSoon?: boolean;
       /** 心智圖：null＝移除 */
       mindMap?: MindMapData | null;
       version?: string;
@@ -5695,6 +5697,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.title && params.title !== currentQ.title) changedFields.push('標題');
     if (params.description && params.description !== currentQ.description) changedFields.push('內容說明');
     if (params.subcategories !== undefined) changedFields.push('分類');
+    if (params.isComingSoon !== undefined && params.isComingSoon !== currentQ.isComingSoon) {
+      changedFields.push(params.isComingSoon ? '改為即將上架' : '改為正式上架');
+    }
     if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
     if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('網址');
     if (params.publishedPlatforms !== undefined) changedFields.push('已上架平台');
@@ -5731,7 +5736,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tertiaryCategory: params.tertiaryCategory !== undefined ? params.tertiaryCategory : currentQ.tertiaryCategory,
       targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,
       referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
-      tags: params.tags !== undefined ? params.tags : currentQ.tags,
+      isComingSoon: params.isComingSoon !== undefined ? params.isComingSoon : currentQ.isComingSoon,
+      tags: (() => {
+        const baseTags = params.tags !== undefined ? params.tags : (currentQ.tags || []);
+        if (params.isComingSoon === true) {
+          return Array.from(new Set([...baseTags, '即將上架']));
+        }
+        if (params.isComingSoon === false) {
+          return baseTags.filter((t) => t !== '即將上架' && t !== '即將開放');
+        }
+        return baseTags;
+      })(),
       demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.demoUrl,
       externalLink: params.externalLink !== undefined ? params.externalLink : currentQ.externalLink,
       previewMode: params.previewMode !== undefined ? params.previewMode : currentQ.previewMode,

@@ -150,7 +150,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       {/* 3. 下方區塊：真實載入進度條 */}
       <div className="flex flex-col items-center w-full max-w-xs sm:max-w-sm">
         <div className="w-full flex items-center justify-between text-[11px] font-extrabold text-amber-800 mb-1.5 px-0.5">
-          <span>系統與資料庫同步進度</span>
+          <span>載入資料...</span>
           <span className="font-mono text-amber-600">{Math.round(displayProgress)}%</span>
         </div>
 

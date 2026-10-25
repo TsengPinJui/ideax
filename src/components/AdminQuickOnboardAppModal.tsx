@@ -91,6 +91,7 @@ export interface ScrapedAppItem {
   screenshotUrl: string;
   ogImage: string | null;
   previewMode?: 'embed' | 'external';
+  isComingSoon?: boolean;
   authorName?: string;
   authorTitle?: string;
 }
@@ -369,6 +370,7 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       screenshotUrl: '',
       ogImage: null,
       previewMode: 'embed',
+      isComingSoon: false,
       authorName: PLATFORM_CURATED_NAME,
       authorTitle: '官方審核精選',
     }));
@@ -540,9 +542,16 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             category: '網站程式',
             subcategory: primaryCategory,
             subcategories: finalCategories,
-            tags: item.tags.length > 0
-              ? Array.from(new Set([...finalCategories, ...item.tags, '網站程式', '軟體作品']))
-              : [...finalCategories, '網站程式', '軟體作品'],
+            tags: (() => {
+              const baseTags = item.tags.length > 0
+                ? Array.from(new Set([...finalCategories, ...item.tags, '網站程式', '軟體作品']))
+                : [...finalCategories, '網站程式', '軟體作品'];
+              if (item.isComingSoon) {
+                return Array.from(new Set([...baseTags, '即將上架']));
+              }
+              return baseTags.filter((t) => t !== '即將上架');
+            })(),
+            isComingSoon: Boolean(item.isComingSoon),
             coverImage: item.coverImage,
             showCardImage: true,
             cardDisplayImage: item.coverImage,
@@ -1071,6 +1080,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                                     作品
                                   </span>
                                 )}
+                                {item.destinations.includes('vibecoding_app') && item.isComingSoon && (
+                                  <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                    ⏳即將上架
+                                  </span>
+                                )}
                                 {item.destinations.includes('innovation_proposal') && (
                                   <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800">
                                     提案
@@ -1132,6 +1146,42 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                         })}
                       </div>
                     </div>
+
+                    {/* 上架狀態設定：正式上架 vs 即將上架（互不隸屬） */}
+                    {activeItem.destinations.includes('vibecoding_app') && (
+                      <div className="p-2.5 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-2 flex-wrap">
+                        <div>
+                          <span className="text-[11px] font-black text-stone-800 block">軟體作品上架狀態</span>
+                          <span className="text-[10px] text-stone-500">（正式上架與即將上架看板互不隸屬）</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => updateActiveItem({ isComingSoon: false })}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                              !activeItem.isComingSoon
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black ring-2 ring-emerald-200'
+                                : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                            }`}
+                          >
+                            <span>🚀 正式上架</span>
+                            <span className="text-[10px] opacity-80 font-normal">（可立即試玩）</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateActiveItem({ isComingSoon: true })}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                              activeItem.isComingSoon
+                                ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-black ring-2 ring-amber-200'
+                                : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                            }`}
+                          >
+                            <span>⏳ 即將上架</span>
+                            <span className="text-[10px] opacity-80 font-normal">（排程預告展示）</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 兩欄網格：名稱與標題 */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

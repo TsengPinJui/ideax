@@ -1468,6 +1468,53 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           )}
         </div>
 
+        {/* 軟體作品上架狀態設定：正式上架 ⇄ 即將上架（互不隸屬） */}
+        {postType === 'vibecoding_app' && (
+          <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/90 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                <span>作品上架狀態設定</span>
+                <span className="text-[10px] text-stone-500 font-normal">（正式上架與即將上架互不隸屬）</span>
+              </label>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isComingSoon
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                }`}
+              >
+                {isComingSoon ? '⏳ 即將上架（預告中）' : '🚀 正式上架（可立即體驗）'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsComingSoon(false)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  !isComingSoon
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black ring-2 ring-emerald-200'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                <span>🚀 正式上架</span>
+                <span className="text-[10px] opacity-80 font-normal">（可試玩體驗）</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsComingSoon(true)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  isComingSoon
+                    ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-black ring-2 ring-amber-200'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                <span>⏳ 即將上架</span>
+                <span className="text-[10px] opacity-80 font-normal">（排程預告展示）</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 軟體或網站名稱（作品名稱） - 程式或網站必填，藍色顯示於卡片左下角 */}
         {postType === 'vibecoding_app' && (
           <div>

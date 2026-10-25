@@ -129,8 +129,15 @@ export function calculateNewExperienceRating(
 }
 
 /**
- * 判斷作品是否帶有「即將開放」標籤
+ * 判斷作品是否為「即將上架」狀態（與正式上架互不隸屬）
  */
-export function isComingSoonWork(_question?: Partial<Question> | null): boolean {
+export function isComingSoonWork(question?: Partial<Question> | null): boolean {
+  if (!question) return false;
+  if (question.isComingSoon === true) return true;
+  if ((question as any)?.releaseStatus === 'coming_soon') return true;
+  if (Array.isArray(question.tags) && question.tags.some((t) => t === '即將上架' || t === '即將開放' || (typeof t === 'string' && t.toLowerCase() === 'coming soon'))) {
+    return true;
+  }
   return false;
 }
+
