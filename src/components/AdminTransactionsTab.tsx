@@ -144,7 +144,47 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
       bg: 'bg-stone-200 text-stone-800 border-stone-300',
       text: '帳戶提領',
     },
-    types: ['提領申請', '提現申請'],
+    types: ['提領申請', '提現申請', '提領出金'],
+  },
+  {
+    key: 'admin_transfer',
+    label: ' 管理員獎勵與系統調度',
+    shortLabel: '管理調度',
+    badge: {
+      bg: 'bg-purple-100 text-purple-900 border-stone-200',
+      text: '管理員調度',
+    },
+    types: ['管理員獎勵轉入', '管理轉入', '系統補償', '平台調度', '獎勵轉入'],
+  },
+  {
+    key: 'rebate',
+    label: ' 平台抽成返還與費用減免',
+    shortLabel: '抽成返還',
+    badge: {
+      bg: 'bg-emerald-100 text-emerald-900 border-stone-200',
+      text: '抽成返還',
+    },
+    types: ['抽成返還', '手續費減免返還', '平台服務費返還', '服務費返還'],
+  },
+  {
+    key: 'promotion',
+    label: ' 置頂廣告與行銷推播',
+    shortLabel: '行銷推播',
+    badge: {
+      bg: 'bg-pink-100 text-pink-900 border-stone-200',
+      text: '行銷推播',
+    },
+    types: ['置頂廣告', '首頁推播', '全站推播廣告', '行銷曝光宣傳', '推播廣告'],
+  },
+  {
+    key: 'other',
+    label: ' 其他雜項收支',
+    shortLabel: '其他收支',
+    badge: {
+      bg: 'bg-stone-100 text-stone-800 border-stone-200',
+      text: '其他收支',
+    },
+    types: ['其他', '雜項收支', '一般收支'],
   },
 ];
 
@@ -153,9 +193,12 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
  * 採用優先級比對，確保精確性（如含有「退款」或「退還」一律歸入爭議審查，不被「預扣」誤攔）
  */
 export const getTransactionCategory = (rawType: string): TransactionCategoryDef => {
+  const fallback =
+    TRANSACTION_CATEGORIES.find((c) => c.key === 'other') ||
+    TRANSACTION_CATEGORIES[0];
   const type = (rawType || '').trim();
   if (!type) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'other')!;
+    return fallback;
   }
 
   // 1. 完全比對已定義類型清單
@@ -167,46 +210,46 @@ export const getTransactionCategory = (rawType: string): TransactionCategoryDef 
 
   // 2. 關鍵字優先級比對（順序極關鍵：退款/自訂提案優先於一般收支）
   if (type.includes('自訂提案支付') || type.includes('自訂專案支付') || type.includes('私聊專案支付') || type.includes('委託提案付款')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_payment')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_payment') || fallback;
   }
   if (type.includes('自訂提案收入') || type.includes('自訂專案收入') || type.includes('自訂接案收入') || type.includes('私聊專案收益') || type.includes('階段交付驗收收益')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_income')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_income') || fallback;
   }
   if (type.includes('退款') || type.includes('退還') || type.includes('爭議')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'refund')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'refund') || fallback;
   }
   if (type.includes('託管') || type.includes('懸賞') || (type.includes('預扣') && !type.includes('折抵'))) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'escrow')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'escrow') || fallback;
   }
   if (type.includes('採納') || type.includes('拆款') || type.includes('收益') || type.includes('結算')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'payout')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'payout') || fallback;
   }
   if (type.includes('解鎖') || type.includes('私聊') || type.includes('方案交易')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'unlock')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'unlock') || fallback;
   }
   if (type.includes('訂閱') || type.includes('會員方案') || type.includes('會員等級')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'subscription')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'subscription') || fallback;
   }
   if (type.includes('儲值') || type.includes('充值') || type.includes('入金')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'deposit')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'deposit') || fallback;
   }
   if (type.includes('扣抵') || type.includes('折抵') || type.includes('消費') || type.includes('支出')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'deduction')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'deduction') || fallback;
   }
-  if (type.includes('管理員') || type.includes('調度') || type.includes('管理轉入')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'admin_transfer')!;
+  if (type.includes('管理員') || type.includes('調度') || type.includes('管理轉入') || type.includes('獎勵轉入')) {
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'admin_transfer') || fallback;
   }
   if (type.includes('提領') || type.includes('提現') || type.includes('出金')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'withdrawal')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'withdrawal') || fallback;
   }
   if (type.includes('返還') || type.includes('抽成') || type.includes('手續費')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'rebate')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'rebate') || fallback;
   }
   if (type.includes('推播') || type.includes('置頂') || type.includes('廣告') || type.includes('廣播')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'promotion')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'promotion') || fallback;
   }
 
-  return TRANSACTION_CATEGORIES.find((c) => c.key === 'other')!;
+  return fallback;
 };
 
 export const getTransactionBadge = (type: string) => {
@@ -421,9 +464,10 @@ export const AdminTransactionsTab: React.FC = () => {
     });
 
     transactions.forEach((tx) => {
-      if (!tx.type || !tx.type.trim()) return;
+      if (!tx || !tx.type || !tx.type.trim()) return;
       const cleanType = tx.type.trim();
       const matchedCat = getTransactionCategory(cleanType);
+      if (!matchedCat || !matchedCat.key) return;
       const entry = map.get(matchedCat.key);
       if (entry) {
         entry.types.add(cleanType);
@@ -449,6 +493,7 @@ export const AdminTransactionsTab: React.FC = () => {
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     transactions.forEach((tx) => {
+      if (!tx) return;
       if ((isNoPaymentMode || !isDemoMode) && isMockTransactionId(tx.id)) return;
       const t = tx.type ? tx.type.trim() : '其他';
       counts[t] = (counts[t] || 0) + 1;
@@ -464,10 +509,13 @@ export const AdminTransactionsTab: React.FC = () => {
     });
 
     transactions.forEach((tx) => {
+      if (!tx) return;
       if ((isNoPaymentMode || !isDemoMode) && isMockTransactionId(tx.id)) return;
       counts.all += 1;
-      const cat = getTransactionCategory(tx.type);
-      counts[cat.key] = (counts[cat.key] || 0) + 1;
+      const cat = getTransactionCategory(tx.type || '');
+      if (cat && cat.key) {
+        counts[cat.key] = (counts[cat.key] || 0) + 1;
+      }
     });
 
     return counts;
@@ -476,6 +524,7 @@ export const AdminTransactionsTab: React.FC = () => {
   // 4. 複合篩選
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
+      if (!tx) return false;
       if ((isNoPaymentMode || !isDemoMode) && isMockTransactionId(tx.id)) {
         return false;
       }
@@ -491,8 +540,8 @@ export const AdminTransactionsTab: React.FC = () => {
       if (selectedType !== 'all') {
         if (selectedType.startsWith('group:')) {
           const groupKey = selectedType.replace('group:', '');
-          const cat = getTransactionCategory(tx.type);
-          if (cat.key !== groupKey) return false;
+          const cat = getTransactionCategory(tx.type || '');
+          if (!cat || cat.key !== groupKey) return false;
         } else {
           // 精準單一類型比對
           if (tx.type !== selectedType) return false;
@@ -524,12 +573,14 @@ export const AdminTransactionsTab: React.FC = () => {
   // 計算平台收入（平台服務費 + 其他該用戶支付給平台的費用，如會員訂閱、點數儲值等）
   const totalPlatformRevenue = useMemo(() => {
     return filteredTransactions.reduce((acc, t) => {
+      if (!t) return acc;
+      const typeStr = (t.type || '');
       // 1. 若該筆交易是直接支付給平台（如會員訂閱、點數儲值、付費推播等）
       const isDirectToPlatform =
-        t.type.includes('會員訂閱') ||
-        t.type.includes('會員方案') ||
-        t.type.includes('儲值') ||
-        t.type.includes('推播') ||
+        typeStr.includes('會員訂閱') ||
+        typeStr.includes('會員方案') ||
+        typeStr.includes('儲值') ||
+        typeStr.includes('推播') ||
         (t.toUserName && (t.toUserName.includes('平台') || t.toUserName.includes('IdeaX') || t.toUserName.includes('金流中心')));
 
       if (isDirectToPlatform) {

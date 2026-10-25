@@ -1591,16 +1591,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                     </button>
                   )}
 
-                  {/* 呼叫白喵和事佬調解按鈕 */}
-                  <button
-                    type="button"
-                    onClick={() => setIsMediationModalOpen(true)}
-                    className="px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-black transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                    title="呼叫市場顧問白喵進行爭議調解（坐下戴眼鏡＋拿紙筆書寫）"
-                  >
-                    <span>🐾 白喵調解</span>
-                  </button>
-
                   {/* 聊天室新手教學重啟按鈕 */}
                   <button
                     type="button"
