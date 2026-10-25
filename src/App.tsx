@@ -74,8 +74,8 @@ const AiCrmView = lazyNamed<typeof import('./components/AiCrmView').AiCrmView>((
 const MembershipAndTopupFullPage = lazyNamed<typeof import('./components/MembershipAndTopupFullPage').MembershipAndTopupFullPage>(() => import('./components/MembershipAndTopupFullPage'), 'MembershipAndTopupFullPage');
 const ChatView = lazyNamed<typeof import('./components/ChatView').ChatView>(() => import('./components/ChatView'), 'ChatView');
 const StarSeasonView = lazyNamed<typeof import('./components/challenge/StarSeasonView').StarSeasonView>(() => import('./components/challenge/StarSeasonView'), 'StarSeasonView');
-// 首頁載入完成、瀏覽器閒置後，預先下載最常用的頁面（發布、創星季、私訊）
-preloadWhenIdle([CreateQuestionModal.preload, StarSeasonView.preload, ChatView.preload]);
+// 首頁載入完成、瀏覽器閒置後，預先下載最常用的頁面（發布、創星季、私訊、個人中心）
+preloadWhenIdle([CreateQuestionModal.preload, StarSeasonView.preload, ChatView.preload, UserDashboardModal.preload]);
 
 const CATEGORIES: Category[] = [
   '專業問題',

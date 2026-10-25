@@ -17,28 +17,42 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
 });
 
-// 註冊 PWA Service Worker 以滿足瀏覽器原生安裝條件，並主動清理舊版帶有 redirected 旗標的快取
+// PWA Service Worker 管理：在開發/預覽環境自動註銷並清除快取，防止舊版 Vite 依賴模組衝突
 if ('serviceWorker' in navigator) {
-  if ('caches' in window) {
-    caches.keys().then((keys) => {
-      keys.forEach((key) => {
-        if (key !== 'ideax-pwa-v10') {
-          caches.delete(key).catch(() => {});
-        }
-      });
+  const isDevOrPreview =
+    Boolean(import.meta.env?.DEV) ||
+    window.location.hostname.includes('run.app') ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1';
+
+  if (isDevOrPreview) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.unregister().catch(() => {}));
     }).catch(() => {});
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => caches.delete(key).catch(() => {}));
+      }).catch(() => {});
+    }
+  } else {
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => {
+          if (key !== 'ideax-pwa-v11') {
+            caches.delete(key).catch(() => {});
+          }
+        });
+      }).catch(() => {});
+    }
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          reg.update().catch(() => {});
+        })
+        .catch(() => {});
+    });
   }
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { updateViaCache: 'none' })
-      .then((reg) => {
-        reg.update().catch(() => {});
-        console.log('IdeaX PWA Service Worker registered:', reg.scope);
-      })
-      .catch((err) => {
-        console.warn('IdeaX PWA Service Worker registration warning:', err);
-      });
-  });
 }
 
 createRoot(document.getElementById('root')!).render(

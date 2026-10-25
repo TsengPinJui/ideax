@@ -1,5 +1,5 @@
 // IdeaX 創點子 - Progressive Web App Service Worker
-const CACHE_NAME = 'ideax-pwa-v10';
+const CACHE_NAME = 'ideax-pwa-v11';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -81,6 +81,11 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/__/') || // Firebase 登入處理頁（由 Vercel 轉送），不可被 SW 改成首頁
     url.pathname.startsWith('/_vercel/') || // Vercel Web Analytics 腳本與回報請求不經 SW 快取
+    url.pathname.startsWith('/node_modules/') || // Vite 依賴套件不可由 SW 舊快取劫持
+    url.pathname.startsWith('/@') || // Vite 內部模組 (/@vite/, /@fs/, /@id/)
+    url.pathname.startsWith('/src/') || // 原始碼動態載入
+    url.search.includes('v=') || // Vite 模組版本參數
+    url.search.includes('t=') || // Vite HMR 時間戳參數
     url.hostname.includes('googletagmanager.com') ||
     url.hostname.includes('google-analytics.com')
   ) {
