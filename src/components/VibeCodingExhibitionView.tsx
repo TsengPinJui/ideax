@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PublishedPlatformsBadges, usePlatformLinkChooser, platformLinksOf } from './PublishedPlatforms';
 import { Question, MarketViewMode, SpecialZone } from '../types';
 import { useApp } from '../context/AppContext';
@@ -147,6 +147,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
+
+  // 全部分類 和 遊戲時版面預設小卡片 (grid)
+  useEffect(() => {
+    if (selectedSubcat === 'all' || selectedSubcat === '遊戲') {
+      setViewMode('grid');
+    }
+  }, [selectedSubcat]);
 
   const vibeApps = useMemo(() => {
     return questions.filter(
@@ -1009,6 +1016,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     setSelectedSubcat(cat.id);
                     setSelectedTertiary('all');
                     setActiveTab('all');
+                    if (cat.id === 'all' || cat.id === '遊戲') {
+                      setViewMode('grid');
+                    }
                   }}
                   className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border ${
                     isSelected
@@ -1276,6 +1286,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                           onClick={() => {
                             setSelectedSubcat(group.id);
                             setSelectedTertiary('all');
+                            if (group.id === '遊戲' || group.id === 'all') {
+                              setViewMode('grid');
+                            }
                           }}
                           className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all cursor-pointer shrink-0"
                         >
