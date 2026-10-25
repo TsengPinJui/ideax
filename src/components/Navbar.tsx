@@ -990,9 +990,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 {q.title}
                               </p>
                               <div className="flex items-center gap-1.5 text-[10px] text-stone-500 mt-0.5">
-                                <span className="font-semibold text-amber-700">NT$ {q.bounty.toLocaleString()}</span>
-                                <span>· {q.category}</span>
-                                <span>· {q.authorName}{q.authorTitle ? ` · ${q.authorTitle}` : ''}</span>
+                                {typeof q.bounty === 'number' && q.bounty > 0 && (
+                                  <span className="font-semibold text-amber-700">NT$ {q.bounty.toLocaleString()} ·</span>
+                                )}
+                                <span>{q.category || '作品'}</span>
+                                {q.authorName && (
+                                  <span>· {q.authorName}{q.authorTitle ? ` · ${q.authorTitle}` : ''}</span>
+                                )}
                               </div>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 shrink-0" />

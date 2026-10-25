@@ -3,6 +3,7 @@ import { PublishedPlatformsBadges, usePlatformLinkChooser, platformLinksOf } fro
 import { Question, Answer } from '../types';
 import { getQuestionVibeCategories } from './VibeCodingExhibitionView';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
+import { SimilarRecommendationsSection } from './SimilarRecommendationsSection';
 import { VibeCodingEmbedPreview } from './VibeCodingEmbedPreview';
 import {
   ExternalLink,
@@ -373,7 +374,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
   onRequestLogin,
   onOpenReportModal,
 }) => {
-  const { toggleLikeDiscussionAnswer, isDiscussionAnswerLiked, getDiscussionAnswerLikesCount, openAboutModal, openCustomerService } = useApp();
+  const { toggleLikeDiscussionAnswer, isDiscussionAnswerLiked, getDiscussionAnswerLikesCount, openAboutModal, openCustomerService, setSelectedQuestion } = useApp();
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -986,6 +987,12 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         question={question}
         canUpdate={canUpdateProposal}
         onOpenUpdateModal={onOpenUpdateModal}
+      />
+
+      {/* 6. 頁尾：「類似推薦」橫向滑動卡片列 */}
+      <SimilarRecommendationsSection
+        currentQuestion={question}
+        onSelectQuestion={(q) => setSelectedQuestion?.(q)}
       />
       </>
       )}

@@ -1753,10 +1753,11 @@ function MainContent() {
         }
 
         // 1. 標題 (問題標題)
-        const matchTitle = q.title.toLowerCase().includes(qTerm);
+        const matchTitle = (q.title || '').toLowerCase().includes(qTerm) ||
+          (q.appName && q.appName.toLowerCase().includes(qTerm));
 
         // 2. 內文 (問題詳細背景說明與描述)
-        const matchDescription = q.description.toLowerCase().includes(qTerm);
+        const matchDescription = (q.description || '').toLowerCase().includes(qTerm);
 
         // 3. 內文 (所有關聯解答方案與留言之內文、完整內容、交付大綱、附件名稱、多階段說明)
         const questionAnswers = answers.filter((a) => a.questionId === q.id);
@@ -1765,13 +1766,13 @@ function MainContent() {
           const matchFull = a.fullContent && a.fullContent.toLowerCase().includes(qTerm);
           const matchDelivery = a.deliveryType && a.deliveryType.toLowerCase().includes(qTerm);
           const matchMeeting = a.meetingDetails && (
-            a.meetingDetails.meetingAgenda.toLowerCase().includes(qTerm) ||
-            a.meetingDetails.availableTimeSlots.toLowerCase().includes(qTerm)
+            (a.meetingDetails.meetingAgenda || '').toLowerCase().includes(qTerm) ||
+            (a.meetingDetails.availableTimeSlots || '').toLowerCase().includes(qTerm)
           );
-          const matchAtt = a.attachments && a.attachments.some((att) => att.name.toLowerCase().includes(qTerm));
+          const matchAtt = a.attachments && a.attachments.some((att) => (att?.name || '').toLowerCase().includes(qTerm));
           const matchPhases = a.phases && a.phases.some((ph) =>
-            ph.title.toLowerCase().includes(qTerm) ||
-            ph.description.toLowerCase().includes(qTerm) ||
+            (ph.title || '').toLowerCase().includes(qTerm) ||
+            (ph.description || '').toLowerCase().includes(qTerm) ||
             (ph.submittedContent && ph.submittedContent.toLowerCase().includes(qTerm))
           );
           return matchPreview || matchFull || matchDelivery || matchMeeting || matchAtt || matchPhases;
@@ -1779,52 +1780,57 @@ function MainContent() {
 
         // 4. 問題 (主分類、次分類、標籤、問題等級、問題類型)
         const matchCategory =
-          q.category.toLowerCase().includes(qTerm) ||
-          (q.subcategory && q.subcategory.toLowerCase().includes(qTerm));
-        const matchTags = q.tags.some((t) => t.toLowerCase().includes(qTerm));
-        const matchLevel =
-          q.level.toLowerCase().includes(qTerm) ||
+          Boolean(q.category && q.category.toLowerCase().includes(qTerm)) ||
+          Boolean(q.subcategory && q.subcategory.toLowerCase().includes(qTerm)) ||
+          Boolean(q.tertiaryCategory && q.tertiaryCategory.toLowerCase().includes(qTerm));
+        const matchTags = Array.isArray(q.tags) && q.tags.some((t) => (t || '').toLowerCase().includes(qTerm));
+        const matchLevel = Boolean(
+          (q.level && q.level.toLowerCase().includes(qTerm)) ||
           (qTerm === 'l0' && q.level === 'L0') ||
           (qTerm === 'l1' && q.level === 'L1') ||
           (qTerm === 'l2' && q.level === 'L2') ||
           (qTerm === 'l3' && q.level === 'L3') ||
-          (qTerm === 'l4' && q.level === 'L4');
+          (qTerm === 'l4' && q.level === 'L4')
+        );
         const matchPostType =
           (q.postType === 'pain_point' && (qTerm.includes('痛點') || '痛點'.includes(qTerm))) ||
           (q.postType === 'chat_discussion' && (qTerm.includes('討論') || qTerm.includes('閒聊') || '閒聊'.includes(qTerm))) ||
-          (q.postType === 'seek_solution' && (qTerm.includes('解答') || qTerm.includes('懸賞') || '懸賞'.includes(qTerm)));
+          (q.postType === 'seek_solution' && (qTerm.includes('解答') || qTerm.includes('懸賞') || '懸賞'.includes(qTerm))) ||
+          (q.postType === 'vibecoding_app' && (qTerm.includes('作品') || qTerm.includes('軟體') || qTerm.includes('遊戲')));
         const matchStatus =
           (q.status === 'open' && (qTerm.includes('招募中') || qTerm.includes('進行中') || qTerm.includes('待解'))) ||
           (q.status === 'solved' && (qTerm.includes('已解決') || qTerm.includes('已採納')));
 
         // 5. 人物帳號 (提問者姓名、帳號 ID、頭銜)
-        const matchAuthor =
-          q.authorName.toLowerCase().includes(qTerm) ||
-          q.authorId.toLowerCase().includes(qTerm) ||
-          (q.authorTitle && q.authorTitle.toLowerCase().includes(qTerm));
+        const matchAuthor = Boolean(
+          (q.authorName && q.authorName.toLowerCase().includes(qTerm)) ||
+          (q.authorId && q.authorId.toLowerCase().includes(qTerm)) ||
+          (q.authorTitle && q.authorTitle.toLowerCase().includes(qTerm))
+        );
 
         // 6. 人物帳號 (解答專家姓名、專家帳號 ID、專家職稱頭銜)
         const matchAnswerers = questionAnswers.some(
           (a) =>
-            a.solverName.toLowerCase().includes(qTerm) ||
-            a.solverId.toLowerCase().includes(qTerm) ||
-            a.solverTitle.toLowerCase().includes(qTerm)
+            (a.solverName && a.solverName.toLowerCase().includes(qTerm)) ||
+            (a.solverId && a.solverId.toLowerCase().includes(qTerm)) ||
+            (a.solverTitle && a.solverTitle.toLowerCase().includes(qTerm))
         );
 
         // 7. AI 分析內文與專家畫像維度
-        const matchAI =
+        const matchAI = Boolean(
           q.aiAnalysis &&
-          (q.aiAnalysis.summary.toLowerCase().includes(qTerm) ||
-            q.aiAnalysis.solverProfileAdvice.toLowerCase().includes(qTerm) ||
-            q.aiAnalysis.structuredNeed.some((n) => n.toLowerCase().includes(qTerm)));
+          (((q.aiAnalysis.summary || '').toLowerCase().includes(qTerm)) ||
+            ((q.aiAnalysis.solverProfileAdvice || '').toLowerCase().includes(qTerm)) ||
+            (Array.isArray(q.aiAnalysis.structuredNeed) && q.aiAnalysis.structuredNeed.some((n) => (n || '').toLowerCase().includes(qTerm))))
+        );
 
         // 8. 智庫人物帳號連動（若搜尋某專家之帳號 ID、姓名、技能或簡介，關聯適配該領域問題）
         const matchedSolvers = solvers.filter((s) =>
-          s.name.toLowerCase().includes(qTerm) ||
-          s.id.toLowerCase().includes(qTerm) ||
-          s.title.toLowerCase().includes(qTerm) ||
+          (s.name && s.name.toLowerCase().includes(qTerm)) ||
+          (s.id && s.id.toLowerCase().includes(qTerm)) ||
+          (s.title && s.title.toLowerCase().includes(qTerm)) ||
           (s.bio && s.bio.toLowerCase().includes(qTerm)) ||
-          s.skills.some((sk) => sk.toLowerCase().includes(qTerm))
+          (Array.isArray(s.skills) && s.skills.some((sk) => (sk || '').toLowerCase().includes(qTerm)))
         );
         const matchSolverDomain = matchedSolvers.some(
           (s) =>
@@ -2032,12 +2038,12 @@ function MainContent() {
     });
 
     return Array.from(userMap.values()).filter((s) => {
-      const matchName = s.name.toLowerCase().includes(qTerm);
-      const matchId = s.id.toLowerCase().includes(qTerm);
-      const matchTitle = s.title.toLowerCase().includes(qTerm);
-      const matchBio = s.bio && s.bio.toLowerCase().includes(qTerm);
-      const matchSkills = s.skills && s.skills.some((sk) => sk.toLowerCase().includes(qTerm));
-      const matchDomain = s.domain && s.domain.toLowerCase().includes(qTerm);
+      const matchName = Boolean(s.name && s.name.toLowerCase().includes(qTerm));
+      const matchId = Boolean(s.id && s.id.toLowerCase().includes(qTerm));
+      const matchTitle = Boolean(s.title && s.title.toLowerCase().includes(qTerm));
+      const matchBio = Boolean(s.bio && s.bio.toLowerCase().includes(qTerm));
+      const matchSkills = Boolean(Array.isArray(s.skills) && s.skills.some((sk) => (sk || '').toLowerCase().includes(qTerm)));
+      const matchDomain = Boolean(s.domain && s.domain.toLowerCase().includes(qTerm));
       return (
         matchName ||
         matchId ||

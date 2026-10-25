@@ -2415,7 +2415,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
                   <span>第三級分類（軟體 › {selectedVibeCategory} › 子分類）*</span>
                 </label>
-                <span className="text-[10px] text-indigo-700 font-bold">例如：軟體 › 遊戲 › 模擬</span>
+                <span className="text-[10px] text-indigo-700 font-bold">例如：軟體 › 遊戲 › 策略益智</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {(SOFTWARE_TERTIARY_CATEGORIES[selectedVibeCategory as SoftwareCategory] || []).map((tc) => {

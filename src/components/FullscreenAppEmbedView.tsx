@@ -290,16 +290,16 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
           </div>
         </div>
 
-        {/* 右側：網址、詳細說明、重新載入、在新分頁開啟、分享與關閉 */}
+        {/* 右側：網址、詳細說明（桌面版保留，手機版隱藏防擁擠）、重新載入、在新分頁開啟、分享與關閉 */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => onViewDescription(question)}
-            className="px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors border border-stone-700/80 cursor-pointer shadow-xs"
+            className="hidden sm:inline-flex px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs font-bold items-center gap-1.5 transition-colors border border-stone-700/80 cursor-pointer shadow-xs"
             title="查看作品詳細說明、架構與版本日誌"
           >
             <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">詳細說明</span>
+            <span>詳細說明</span>
           </button>
           {isValidWebUrl && !isFailed && (
             <button
@@ -339,11 +339,11 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
             <button
               type="button"
               onClick={() => setIsAdminDelistModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-rose-700/80 cursor-pointer shadow-xs"
+              className="hidden md:inline-flex px-2.5 py-1.5 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold items-center gap-1 transition-colors border border-rose-700/80 cursor-pointer shadow-xs"
               title="管理員下架此作品"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">下架作品</span>
+              <span className="hidden lg:inline">下架作品</span>
             </button>
           )}
 
@@ -520,31 +520,16 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
         )}
       </main>
 
-      {/* ⭐ 核心按鍵：右下角「詳細內容」浮動按鈕 ⭐ */}
-      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[160] pointer-events-auto">
+      {/* 邊框貼邊精簡按鍵：依箭頭移至右下角、縮窄寬度（「詳情」2字、不佔畫面與遊戲視線） */}
+      <div className="fixed right-0 bottom-16 sm:bottom-20 z-[160] pointer-events-auto">
         <button
           type="button"
           onClick={() => onViewDescription(question)}
-          className="group relative px-5 py-3 sm:px-6 sm:py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 active:from-amber-500 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-2xl shadow-black/80 hover:shadow-amber-500/40 border-2 border-amber-200/90 flex items-center gap-3 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-md ring-4 ring-black/40 hover:ring-amber-400/50"
-          title="查看完整詳細內容、版本紀錄、技術架構與社群討論"
+          className="group pl-2 pr-1.5 py-1 rounded-l-md bg-stone-900/85 hover:bg-amber-400 text-stone-300 hover:text-stone-950 border-y border-l border-stone-700/80 hover:border-amber-300 shadow-md backdrop-blur-xs flex items-center gap-1 transition-all duration-150 cursor-pointer active:scale-95"
+          title="查看作品詳細內容、版本紀錄與討論"
         >
-          {/* 光暈特效 */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 to-amber-300 rounded-2xl blur-xs opacity-40 group-hover:opacity-75 transition duration-200 pointer-events-none" />
-
-          <div className="relative w-8 h-8 rounded-xl bg-stone-950/15 flex items-center justify-center text-stone-950 group-hover:scale-110 transition-transform">
-            <FileText className="w-4.5 h-4.5" />
-          </div>
-
-          <div className="relative flex flex-col text-left">
-            <span className="text-stone-950 font-black tracking-tight leading-none text-sm sm:text-[15px]">
-              詳細內容
-            </span>
-            <span className="text-[10px] text-amber-950/80 font-bold hidden sm:block mt-0.5">
-              規格、版本日誌與討論
-            </span>
-          </div>
-
-          <ChevronRight className="relative w-4.5 h-4.5 text-stone-950 opacity-80 group-hover:translate-x-1 group-hover:opacity-100 transition-all shrink-0" />
+          <FileText className="w-3 h-3 text-amber-400 group-hover:text-stone-950 transition-colors shrink-0" />
+          <span className="text-[11px] font-black tracking-tight">詳情</span>
         </button>
       </div>
 

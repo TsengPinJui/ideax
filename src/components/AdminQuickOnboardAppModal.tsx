@@ -21,6 +21,7 @@ import {
   Upload,
   Lightbulb,
   List,
+  Plus,
   Trash2,
   CheckSquare,
   Square,
@@ -28,10 +29,11 @@ import {
   Layers,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Question } from '../types';
+import { Question, SOFTWARE_TERTIARY_CATEGORIES } from '../types';
 import { getAuthHeaders } from '../services/authHeader';
 import { PLATFORM_CURATED_NAME, PLATFORM_CURATED_AVATAR } from '../utils/userDisplay';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
+import { getEffectiveTertiaryCategory, GAME_TERTIARY_CATEGORIES } from '../utils/gameClassification';
 
 interface AdminQuickOnboardAppModalProps {
   isOpen: boolean;
@@ -82,6 +84,7 @@ export interface ScrapedAppItem {
   description: string;
   category: SoftwareCategory;
   categories?: SoftwareCategory[];
+  tertiaryCategory?: string;
   tags: string[];
   techArchitecture: string;
   targetGoal?: string;
@@ -251,6 +254,28 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     return count;
   }, [parsedBatchUrls, existingPublishedUrls]);
 
+  // 臨時新增連結追加判定狀態
+  const [showAppendPanel, setShowAppendPanel] = useState(false);
+  const [appendUrlInput, setAppendUrlInput] = useState('');
+  const [isAppending, setIsAppending] = useState(false);
+  const [appendProgress, setAppendProgress] = useState({ current: 0, total: 0 });
+  const [appendErrorMessage, setAppendErrorMessage] = useState('');
+
+  const appendParsedUrls = useMemo(() => extractUrls(appendUrlInput), [appendUrlInput]);
+
+  const appendDuplicateCount = useMemo(() => {
+    if (appendParsedUrls.length === 0) return 0;
+    const reviewedUrls = new Set(reviewedItems.map((it) => normalizeWebUrl(it.websiteUrl)));
+    let dupes = 0;
+    for (const u of appendParsedUrls) {
+      const norm = normalizeWebUrl(u);
+      if (existingPublishedUrls.has(norm) || reviewedUrls.has(norm)) {
+        dupes++;
+      }
+    }
+    return dupes;
+  }, [appendParsedUrls, reviewedItems, existingPublishedUrls]);
+
   if (!isOpen) return null;
 
   const toggleDefaultDestination = (dest: PublishDestination) => {
@@ -299,15 +324,28 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     const primaryCat: SoftwareCategory = rawCats[0] || raw.category || '網站程式';
     const finalCats = rawCats.length > 0 ? rawCats : [primaryCat];
 
+    const finalCleanTitle = stripAppNameFromTitle(raw.title || '無標題', cleanAppName);
+    const resolvedTertiary = raw.tertiaryCategory || (primaryCat === '遊戲' || finalCats.includes('遊戲')
+      ? getEffectiveTertiaryCategory({
+          id: 'temp',
+          title: finalCleanTitle,
+          appName: cleanAppName,
+          description: raw.description || '',
+          tags: Array.isArray(raw.tags) ? raw.tags : [],
+          subcategory: primaryCat,
+        })
+      : (SOFTWARE_TERTIARY_CATEGORIES[primaryCat as SoftwareCategory]?.[0] || ''));
+
     return {
       appName: cleanAppName,
-      title: stripAppNameFromTitle(raw.title || '無標題', cleanAppName),
+      title: finalCleanTitle,
       description: raw.description || '',
       category: primaryCat,
       categories: finalCats,
+      tertiaryCategory: resolvedTertiary,
       tags: Array.isArray(raw.tags) && raw.tags.length > 0
-        ? Array.from(new Set([...finalCats, ...raw.tags]))
-        : [...finalCats, '軟體作品'],
+        ? Array.from(new Set([...finalCats, ...raw.tags, resolvedTertiary].filter(Boolean)))
+        : [...finalCats, resolvedTertiary, '軟體作品'].filter(Boolean),
       techArchitecture: raw.techArchitecture || 'Web 網頁應用程式',
       targetGoal: raw.targetGoal || '打造流暢直覺且能解決真實痛點的數位體驗',
       referencedPainPoint: raw.referencedPainPoint || '傳統流程繁瑣、缺乏直覺操作介面',
@@ -444,6 +482,135 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     }
   };
 
+  // 臨時追加新網址並進行判定
+  const handleExecuteAppend = async () => {
+    setAppendErrorMessage('');
+    const targetUrls = appendParsedUrls;
+    if (targetUrls.length === 0) {
+      setAppendErrorMessage('請輸入有效的網址（支援一行一個多網址輸入）');
+      return;
+    }
+
+    setIsAppending(true);
+    setAppendProgress({ current: 0, total: targetUrls.length });
+
+    const newItems: ScrapedAppItem[] = targetUrls.map((url, idx) => ({
+      id: `item-append-${Date.now()}-${idx}`,
+      websiteUrl: url,
+      status: 'pending',
+      destinations: [...defaultDestinations],
+      selectedForPublish: true,
+      appName: '',
+      title: '',
+      description: '',
+      category: preferredCategories[0] || '網站程式',
+      categories: preferredCategories.length > 0 ? [...preferredCategories] : ['網站程式'],
+      tags: [],
+      techArchitecture: 'Web 網頁應用程式',
+      targetGoal: '',
+      referencedPainPoint: '',
+      proposalProgressStage: 'prototype',
+      coverImage: '',
+      screenshotUrl: '',
+      ogImage: null,
+      previewMode: 'embed',
+      isComingSoon: false,
+      authorName: PLATFORM_CURATED_NAME,
+      authorTitle: '官方審核精選',
+    }));
+
+    // 即時追加至既有審核列表中
+    setReviewedItems((prev) => [...prev, ...newItems]);
+
+    const reviewedNorms = new Set(reviewedItems.map((it) => normalizeWebUrl(it.websiteUrl)));
+    const seenInAppend = new Set<string>();
+
+    for (let i = 0; i < newItems.length; i++) {
+      const item = newItems[i];
+      setAppendProgress({ current: i + 1, total: newItems.length });
+      const url = item.websiteUrl;
+      const norm = normalizeWebUrl(url);
+
+      // 檢查是否與全站已發布重複
+      const existingMatch = existingPublishedUrls.get(norm);
+      if (existingMatch) {
+        setReviewedItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id
+              ? {
+                  ...it,
+                  status: 'error',
+                  errorMessage: `此網址來源已在平台發布過（與《${(existingMatch.appName || existingMatch.title).slice(0, 20)}》重複），已略過 AI 分析`,
+                  selectedForPublish: false,
+                }
+              : it
+          )
+        );
+        continue;
+      }
+
+      // 檢查是否在當前審核清單中重複
+      if (reviewedNorms.has(norm) || seenInAppend.has(norm)) {
+        setReviewedItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id
+              ? {
+                  ...it,
+                  status: 'error',
+                  errorMessage: '此網址來源已在審核清單中重複，已略過 AI 分析',
+                  selectedForPublish: false,
+                }
+              : it
+          )
+        );
+        continue;
+      }
+      seenInAppend.add(norm);
+
+      setReviewedItems((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, status: 'scraping' } : it))
+      );
+
+      try {
+        const scraped = await scrapeSingleUrl(url);
+        setReviewedItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id
+              ? {
+                  ...it,
+                  ...scraped,
+                  status: 'success',
+                  selectedForPublish: true,
+                }
+              : it
+          )
+        );
+        setActiveItemId(item.id);
+      } catch (err: any) {
+        console.error(`Append scrape failed for ${url}:`, err);
+        setReviewedItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id
+              ? {
+                  ...it,
+                  status: 'error',
+                  errorMessage: err?.message || '讀取失敗',
+                  selectedForPublish: false,
+                }
+              : it
+          )
+        );
+      }
+    }
+
+    setIsAppending(false);
+    setAppendUrlInput('');
+    setShowAppendPanel(false);
+    if (showCenterToast) {
+      showCenterToast('已完成追加判定！', `共判定 ${targetUrls.length} 個新網址`, { type: 'success', duration: 2500 });
+    }
+  };
+
   // 審核項微調修改
   const updateActiveItem = (patch: Partial<ScrapedAppItem>) => {
     if (!activeItem) return;
@@ -530,6 +697,16 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
 
         const finalAppName = item.appName.trim() || item.title.trim();
         const finalTitle = stripAppNameFromTitle(item.title.trim(), finalAppName) || item.title.trim();
+        const effectiveTertiary = item.tertiaryCategory || (primaryCategory === '遊戲' || finalCategories.includes('遊戲')
+          ? getEffectiveTertiaryCategory({
+              id: 'temp',
+              title: finalTitle,
+              appName: finalAppName,
+              description: item.description,
+              tags: item.tags,
+              subcategory: primaryCategory,
+            })
+          : (SOFTWARE_TERTIARY_CATEGORIES[primaryCategory as SoftwareCategory]?.[0] || ''));
 
         // 1. 若刊登至軟體作品
         if (item.destinations.includes('vibecoding_app')) {
@@ -542,10 +719,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             category: '網站程式',
             subcategory: primaryCategory,
             subcategories: finalCategories,
+            tertiaryCategory: effectiveTertiary,
             tags: (() => {
               const baseTags = item.tags.length > 0
-                ? Array.from(new Set([...finalCategories, ...item.tags, '網站程式', '軟體作品']))
-                : [...finalCategories, '網站程式', '軟體作品'];
+                ? Array.from(new Set([...finalCategories, effectiveTertiary, ...item.tags, '網站程式', '軟體作品'].filter(Boolean)))
+                : [...finalCategories, effectiveTertiary, '網站程式', '軟體作品'].filter(Boolean);
               if (item.isComingSoon) {
                 return Array.from(new Set([...baseTags, '即將上架']));
               }
@@ -584,9 +762,10 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             category: '創新創業',
             subcategory: primaryCategory,
             subcategories: finalCategories,
+            tertiaryCategory: effectiveTertiary,
             tags: item.tags.length > 0
-              ? Array.from(new Set([...finalCategories, ...item.tags, '創新提案']))
-              : [...finalCategories, '創新提案'],
+              ? Array.from(new Set([...finalCategories, effectiveTertiary, ...item.tags, '創新提案'].filter(Boolean)))
+              : [...finalCategories, effectiveTertiary, '創新提案'].filter(Boolean),
             coverImage: item.coverImage,
             showCardImage: true,
             cardDisplayImage: item.coverImage,
@@ -972,23 +1151,132 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3 text-stone-400" />
-                  <span>重新輸入網址</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAppendPanel((prev) => !prev);
+                      setAppendErrorMessage('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      showAppendPanel
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100 ring-2 ring-indigo-200'
+                        : 'bg-indigo-50/90 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>臨時新增連結判定</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3 text-stone-400" />
+                    <span>重新輸入網址</span>
+                  </button>
+                </div>
               </div>
 
               {/* 雙欄：左側列表清單，右側編輯面板 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                 {/* 左側：項目列表（若單項則簡化顯示） */}
                 <div className="lg:col-span-4 space-y-2">
+                  {/* 臨時追加新網址判定面板 */}
+                  {showAppendPanel && (
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-purple-50/60 to-white border-2 border-indigo-300 shadow-sm space-y-2.5 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>臨時新增連結判定</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAppendPanel(false)}
+                          className="text-stone-400 hover:text-stone-700 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <textarea
+                          rows={2}
+                          value={appendUrlInput}
+                          onChange={(e) => setAppendUrlInput(e.target.value)}
+                          placeholder="請貼上欲追加的網站連結（一行一個，支援單筆或多筆）..."
+                          className="w-full p-2 rounded-xl border border-indigo-200 text-xs text-stone-900 bg-white placeholder-stone-400 outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 font-mono resize-none leading-relaxed"
+                        />
+                        
+                        {/* 網址計數與重複警示 */}
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-indigo-700 font-bold">
+                            {appendParsedUrls.length > 0 ? `已辨識 ${appendParsedUrls.length} 個有效連結` : '支援單筆或批量網址'}
+                          </span>
+                          {appendDuplicateCount > 0 && (
+                            <span className="text-amber-800 font-bold bg-amber-100/90 px-1.5 py-0.2 rounded">
+                              ⚠️ 包含 {appendDuplicateCount} 個已重複網址
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {appendErrorMessage && (
+                        <div className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 p-1.5 rounded-lg">
+                          {appendErrorMessage}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppendUrlInput('');
+                            setAppendErrorMessage('');
+                            setShowAppendPanel(false);
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                        >
+                          取消
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isAppending || appendParsedUrls.length === 0}
+                          onClick={handleExecuteAppend}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {isAppending ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>判定中 ({appendProgress.current}/{appendProgress.total})...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>開始判定並加入 ({appendParsedUrls.length})</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-xs font-black text-stone-600 flex items-center justify-between px-1">
                     <span>待審核清單（點選切換）</span>
-                    <span className="text-[11px] text-stone-400 font-medium">已勾選 {selectedCount} 項</span>
+                    <div className="flex items-center gap-2">
+                      {!showAppendPanel && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAppendPanel(true)}
+                          className="text-[11px] text-indigo-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>追加網址</span>
+                        </button>
+                      )}
+                      <span className="text-[11px] text-stone-400 font-medium">已勾選 {selectedCount} 項</span>
+                    </div>
                   </div>
 
                   <div className="max-h-[58vh] overflow-y-auto space-y-2 pr-1">
@@ -1064,8 +1352,17 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                                 </button>
                               </div>
 
-                              <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                                {item.title || item.websiteUrl}
+                              {/* 顯示各網站網址（避免批量上架時分不出） */}
+                              <div
+                                className="flex items-center gap-1 text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50/90 border border-indigo-200/90 rounded px-1.5 py-0.5 mt-1 truncate"
+                                title={item.websiteUrl}
+                              >
+                                <Globe className="w-2.5 h-2.5 shrink-0 text-indigo-500" />
+                                <span className="truncate">{item.websiteUrl}</span>
+                              </div>
+
+                              <p className="text-[11px] text-stone-600 truncate mt-0.5 font-medium" title={item.title}>
+                                {item.title || '（無標題）'}
                               </p>
 
                               {/* 專區與分類標籤 */}
@@ -1075,6 +1372,11 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                                     {c}
                                   </span>
                                 ))}
+                                {item.tertiaryCategory && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shadow-2xs">
+                                    {(item.categories?.includes('遊戲') || item.category === '遊戲') ? `🎮 ${item.tertiaryCategory}` : item.tertiaryCategory}
+                                  </span>
+                                )}
                                 {item.destinations.includes('vibecoding_app') && (
                                   <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-indigo-100 text-indigo-700">
                                     作品
@@ -1145,6 +1447,24 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                           );
                         })}
                       </div>
+                    </div>
+
+                    {/* 來源網址展示（避免批量時分不出） */}
+                    <div className="flex items-center gap-2 text-xs font-mono bg-white border border-indigo-200 rounded-xl px-3 py-2 shadow-2xs">
+                      <Globe className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                      <span className="font-bold text-stone-600 shrink-0">來源網址：</span>
+                      <span className="truncate flex-1 select-all text-indigo-900 font-bold" title={activeItem.websiteUrl}>
+                        {activeItem.websiteUrl}
+                      </span>
+                      <a
+                        href={activeItem.websiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 shrink-0 ml-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>另開檢視</span>
+                      </a>
                     </div>
 
                     {/* 上架狀態設定：正式上架 vs 即將上架（互不隸屬） */}
@@ -1336,6 +1656,53 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
                             </button>
                           )}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* 第三級分類選擇（遊戲 10 大分類 / 其他軟體子分類） */}
+                    <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black text-purple-950 flex items-center gap-1.5">
+                          <Layers className="w-3 h-3 text-purple-600" />
+                          <span>第三級分類（細分子類別）</span>
+                        </label>
+                        <span className="text-[10px] text-purple-700 font-bold">
+                          {activeItem.categories?.includes('遊戲') || activeItem.category === '遊戲'
+                            ? '遊戲 10 大分類（休閒派對/模擬體驗/策略益智/多人冒險/競技對戰/卡牌桌遊/恐怖驚悚/解謎劇情/親子兒童/甜蜜浪漫）'
+                            : `${activeItem.category || '網站程式'} 子分類`}
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {(() => {
+                          const isGame = activeItem.categories?.includes('遊戲') || activeItem.category === '遊戲';
+                          const options = isGame
+                            ? GAME_TERTIARY_CATEGORIES
+                            : (SOFTWARE_TERTIARY_CATEGORIES[activeItem.category || '網站程式'] || []);
+                          const currentTertiary = activeItem.tertiaryCategory || (isGame ? '休閒派對' : (options[0] || ''));
+                          return options.map((tc) => {
+                            const isSelected = currentTertiary === tc;
+                            return (
+                              <button
+                                key={tc}
+                                type="button"
+                                onClick={() => {
+                                  updateActiveItem({
+                                    tertiaryCategory: tc,
+                                    tags: Array.from(new Set([...(activeItem.tags || []), tc])),
+                                  });
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                  isSelected
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                    : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/70'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-2.5 h-2.5 stroke-[2.5]" />}
+                                <span>{tc}</span>
+                              </button>
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
 

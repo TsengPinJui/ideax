@@ -26,6 +26,8 @@ import {
   Bookmark,
   Save,
   FileText,
+  Gamepad2,
+  Layers,
 } from 'lucide-react';
 import { ImageCropperModal, CropAspectRatio } from './common/ImageCropperModal';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
@@ -41,6 +43,7 @@ import { sanitizeMindMap } from './mindmap/mindMapUtils';
 import type { MindMapData } from '../types';
 import { ProjectPlanExportButton } from './ProjectPlanExportButton';
 import { isComingSoonWork } from '../utils/experienceRating';
+import { isGameQuestion, getEffectiveTertiaryCategory, GAME_TERTIARY_CATEGORIES } from '../utils/gameClassification';
 
 interface UpdateProposalModalProps {
   question: Question;
@@ -58,17 +61,22 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const { currentUser, updateProposalContent, openAboutModal, showCenterToast, deleteQuestionPermanently } = useApp();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isGame = isGameQuestion(question);
   const isInnovationProposal = question.postType === 'innovation_proposal';
   const isVibeCoding =
-    !isInnovationProposal && (
+    isGame ||
+    (!isInnovationProposal && (
       question.postType === 'vibecoding_app' ||
       Boolean(question.vibeCodingData) ||
       Boolean(question.appName) ||
       question.specialZone === 'vibecoding' ||
       question.category === '網站程式'
-    );
+    ));
 
   const getInitialCats = () => {
+    if (isGame) {
+      return ['遊戲'];
+    }
     const raw =
       Array.isArray(question.subcategories) && question.subcategories.length > 0
         ? question.subcategories.filter((c) => (VIBECODING_CATEGORIES as readonly string[]).includes(c))
@@ -87,16 +95,22 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     return cur;
   };
 
-  const initialSubcat = getInitialCats()[0] || '網站程式';
+  const initialCats = getInitialCats();
+  const initialSubcat = isGame ? '遊戲' : (initialCats[0] || '網站程式');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>(
-    question.subcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(question.subcategory)
-      ? question.subcategory
-      : initialSubcat
+    isGame
+      ? '遊戲'
+      : (question.subcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(question.subcategory)
+        ? question.subcategory
+        : initialSubcat)
   );
-  const [tertiaryCategory, setTertiaryCategory] = useState<string>(
-    question.tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[(question.subcategory || initialSubcat) as SoftwareCategory]?.[0] || '一般')
-  );
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([initialSubcat]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCats);
+  const [tertiaryCategory, setTertiaryCategory] = useState<string>(() => {
+    if (isGame || selectedSubcategory === '遊戲' || initialCats.includes('遊戲')) {
+      return getEffectiveTertiaryCategory(question);
+    }
+    return question.tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[(question.subcategory || initialSubcat) as SoftwareCategory]?.[0] || '社群互動');
+  });
   const [appName, setAppName] = useState(question.appName || question.vibeCodingData?.appName || '');
   const [title, setTitle] = useState(question.title || '');
   const [description, setDescription] = useState(question.description || '');
@@ -593,14 +607,39 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         cardDisplayImage: resolvedCardImage,
       });
 
+      const isTargetGame = selectedSubcategory === '遊戲' || selectedCategories.includes('遊戲') || isGameQuestion({ ...question, subcategory: selectedSubcategory, tags: selectedCategories });
+      const mainSubcat = isTargetGame ? '遊戲' : (selectedSubcategory || selectedCategories[0] || '網站程式');
+      const finalTertiary = isTargetGame
+        ? (tertiaryCategory && (GAME_TERTIARY_CATEGORIES as readonly string[]).includes(tertiaryCategory as any)
+            ? tertiaryCategory
+            : getEffectiveTertiaryCategory({
+                ...question,
+                title,
+                appName,
+                description,
+                subcategory: '遊戲',
+                tags: selectedCategories,
+                tertiaryCategory,
+              }))
+        : (tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[mainSubcat as SoftwareCategory]?.[0] || ''));
+
       const res = await updateProposalContent(question.id, {
         appName: isVibeCoding ? appName.trim() : undefined,
         title: title.trim(),
         description: description.trim(),
         isComingSoon: isVibeCoding ? isComingSoon : undefined,
-        subcategory: isVibeCoding ? selectedSubcategory : undefined,
-        subcategories: isVibeCoding ? [selectedSubcategory] : undefined,
-        tertiaryCategory: isVibeCoding ? tertiaryCategory : undefined,
+        subcategory: isVibeCoding ? mainSubcat : undefined,
+        subcategories: isVibeCoding ? (selectedCategories.length > 0 ? selectedCategories : [mainSubcat]) : undefined,
+        tertiaryCategory: isVibeCoding ? finalTertiary : undefined,
+        tags: isVibeCoding
+          ? Array.from(new Set([
+              ...(question.tags || []),
+              ...selectedCategories,
+              mainSubcat,
+              finalTertiary,
+              '軟體作品',
+            ].filter(Boolean)))
+          : undefined,
         referencedPainPoint: referencedPainPoint.trim(),
         targetGoal: targetGoal.trim(),
         // 心智圖：關掉或清空時存 null（移除）
@@ -822,42 +861,102 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
 
             {/* Software Categories (up to 3) */}
             {isVibeCoding && (
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700">
-                    軟體分類（最多選 3 個）*
-                  </label>
-                  <span className="text-[11px] font-semibold text-indigo-600">
-                    已選 {selectedCategories.length} / 3
-                  </span>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-stone-700">
+                      軟體分類（最多選 3 個）*
+                    </label>
+                    <span className="text-[11px] font-semibold text-indigo-600">
+                      已選 {selectedCategories.length} / 3
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {VIBECODING_CATEGORIES.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategories((prev) => {
+                              let next: string[];
+                              if (prev.includes(cat)) {
+                                if (prev.length <= 1) return prev;
+                                next = prev.filter((c) => c !== cat);
+                              } else {
+                                if (prev.length >= 3) return prev;
+                                next = [...prev, cat];
+                              }
+                              const main = next.includes('遊戲') ? '遊戲' : (next[0] || '網站程式');
+                              setSelectedSubcategory(main);
+                              if (main === '遊戲') {
+                                if (!(GAME_TERTIARY_CATEGORIES as readonly string[]).includes(tertiaryCategory as any)) {
+                                  setTertiaryCategory(getEffectiveTertiaryCategory({ ...question, subcategory: '遊戲', tags: next }));
+                                }
+                              } else {
+                                const valid = SOFTWARE_TERTIARY_CATEGORIES[main as SoftwareCategory] || [];
+                                if (!valid.includes(tertiaryCategory)) {
+                                  setTertiaryCategory(valid[0] || '');
+                                }
+                              }
+                              return next;
+                            });
+                          }}
+                          className={`px-2.5 py-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : 'bg-white text-stone-700 border-stone-200 hover:border-indigo-400 hover:text-indigo-700 hover:bg-indigo-50/40'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {VIBECODING_CATEGORIES.map((cat) => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategories((prev) => {
-                            if (prev.includes(cat)) {
-                              if (prev.length <= 1) return prev;
-                              return prev.filter((c) => c !== cat);
-                            }
-                            if (prev.length >= 3) return prev;
-                            return [...prev, cat];
-                          });
-                        }}
-                        className={`px-2.5 py-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                            : 'bg-white text-stone-700 border-stone-200 hover:border-indigo-400 hover:text-indigo-700 hover:bg-indigo-50/40'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    );
-                  })}
+
+                {/* 第三級分類 / 遊戲分類 (10 大分類) */}
+                <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/90 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                      <Gamepad2 className="w-3.5 h-3.5 text-purple-600" />
+                      <span>
+                        {selectedCategories.includes('遊戲') || selectedSubcategory === '遊戲'
+                          ? '遊戲分類（10 大分類）*'
+                          : `${selectedSubcategory || '網站程式'} 第三級分類*`}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-purple-700 font-bold">
+                      {selectedCategories.includes('遊戲') || selectedSubcategory === '遊戲'
+                        ? GAME_TERTIARY_CATEGORIES.join(' · ')
+                        : '細分子類別'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {(selectedCategories.includes('遊戲') || selectedSubcategory === '遊戲'
+                      ? GAME_TERTIARY_CATEGORIES
+                      : (SOFTWARE_TERTIARY_CATEGORIES[selectedSubcategory as SoftwareCategory] || [])
+                    ).map((catName) => {
+                      const isSelected = tertiaryCategory === catName;
+                      return (
+                        <button
+                          key={catName}
+                          type="button"
+                          onClick={() => setTertiaryCategory(catName)}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs font-black'
+                              : 'bg-white hover:bg-purple-100/60 text-purple-950 border-purple-200'
+                          }`}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />}
+                          <span>{catName}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

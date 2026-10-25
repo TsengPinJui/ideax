@@ -84,7 +84,7 @@ import {
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { stripAppNameFromTitle, sanitizeQuestionTitle } from '../utils/titleFormat';
-import { getEffectiveTertiaryCategory } from '../utils/gameClassification';
+import { getEffectiveTertiaryCategory, isGameQuestion, GAME_TERTIARY_CATEGORIES } from '../utils/gameClassification';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
 import { getFormattedPlatformId, generatePlatformUserId } from '../services/userIdService';
@@ -2874,6 +2874,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (q.vibeCodingData?.publishedPlatforms || [])),
               views: highestViews,
               viewsCount: highestViews,
+              tertiaryCategory: getEffectiveTertiaryCategory(q),
             };
           });
 
@@ -3226,6 +3227,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
                   views: highestViews,
                   viewsCount: highestViews,
+                  tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
                 };
                 return finalQ;
               });
@@ -3265,9 +3267,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               } catch {}
             }
             const mergedById = new Map<string, Question>();
-            filteredQ.forEach((q) => mergedById.set(q.id, q));
-            missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, vq));
+            filteredQ.forEach((q) => mergedById.set(q.id, { ...q, tertiaryCategory: getEffectiveTertiaryCategory(q) }));
+            missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, { ...vq, tertiaryCategory: getEffectiveTertiaryCategory(vq) }));
             const finalMergedQ = Array.from(mergedById.values());
+
+            // 確保雲端所有小遊戲皆具備合規的 7 大第三級分類，若有未標記者自動回寫雲端補正
+            if (connected) {
+              const unclassifiedGames = finalMergedQ.filter(
+                (q) => isGameQuestion(q) && (!q.tertiaryCategory || !GAME_TERTIARY_CATEGORIES.includes(q.tertiaryCategory as any))
+              );
+              if (unclassifiedGames.length > 0) {
+                const patchList = unclassifiedGames.map((g) => ({
+                  ...g,
+                  subcategory: '遊戲',
+                  subcategories: Array.from(new Set([...(g.subcategories || []), '遊戲'])),
+                  tertiaryCategory: getEffectiveTertiaryCategory(g),
+                }));
+                syncQuestionsToFirestore(patchList);
+              }
+            }
+
             setQuestions(finalMergedQ);
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
@@ -3396,6 +3415,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((rawQ) => ({
               ...rawQ,
               tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
+              tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
             }));
           setQuestions((prevQuestions) => {
             const cloudIds = new Set(valid.map((q) => q.id));

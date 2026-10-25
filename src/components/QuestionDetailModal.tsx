@@ -75,6 +75,7 @@ import {
 import { TipPainPointModal } from './TipPainPointModal';
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
+import { SimilarRecommendationsSection } from './SimilarRecommendationsSection';
 import { UpdateProposalModal } from './UpdateProposalModal';
 import { AdminTransferWorkOwnershipModal } from './AdminTransferWorkOwnershipModal';
 import { AdminConvertWorkTypeModal } from './AdminConvertWorkTypeModal';
@@ -3232,6 +3233,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
           />
         )}
+
+        {/* 頁尾：「類似推薦」橫向右滑探索區塊 */}
+        <SimilarRecommendationsSection
+          currentQuestion={liveQuestion || question}
+          onSelectQuestion={handleSelectQuestion}
+          className="mt-4"
+        />
         </>
         )}
       </div>

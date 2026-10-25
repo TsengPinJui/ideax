@@ -48,7 +48,7 @@ import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExpos
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getEffectiveQuestionViews } from '../utils/proposalClicks';
-import { getEffectiveTertiaryCategory } from '../utils/gameClassification';
+import { getEffectiveTertiaryCategory, isGameQuestion } from '../utils/gameClassification';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -85,12 +85,7 @@ export const normalizeVibeCategory = (raw: string): string => {
 
 // 每個軟體作品嚴格只屬於單一分類
 export const getQuestionVibeCategory = (q: Question): string => {
-  if (
-    q.id?.startsWith('game-hot-') ||
-    q.subcategory === '遊戲' ||
-    q.subcategories?.includes('遊戲') ||
-    (q.tags && (q.tags.includes('遊戲') || q.tags.includes('小遊戲')))
-  ) {
+  if (isGameQuestion(q)) {
     return '遊戲';
   }
   const raw = (Array.isArray(q.subcategories) && q.subcategories[0]) || q.subcategory || '網站程式';
@@ -229,13 +224,14 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       const kw = searchQuery.toLowerCase();
       list = list.filter(
         (q) =>
-          (q.appName && q.appName.toLowerCase().includes(kw)) ||
-          q.title.toLowerCase().includes(kw) ||
-          q.description.toLowerCase().includes(kw) ||
-          (q.authorName && q.authorName.toLowerCase().includes(kw)) ||
-          (q.techArchitecture && q.techArchitecture.toLowerCase().includes(kw)) ||
-          (q.referencedPainPoint && q.referencedPainPoint.toLowerCase().includes(kw)) ||
-          (q.tags && q.tags.some((t) => t.toLowerCase().includes(kw)))
+          Boolean(q.appName && q.appName.toLowerCase().includes(kw)) ||
+          Boolean((q.title || '').toLowerCase().includes(kw)) ||
+          Boolean((q.description || '').toLowerCase().includes(kw)) ||
+          Boolean(q.authorName && q.authorName.toLowerCase().includes(kw)) ||
+          Boolean(q.techArchitecture && q.techArchitecture.toLowerCase().includes(kw)) ||
+          Boolean(q.referencedPainPoint && q.referencedPainPoint.toLowerCase().includes(kw)) ||
+          Boolean(q.tertiaryCategory && q.tertiaryCategory.toLowerCase().includes(kw)) ||
+          Boolean(q.tags && q.tags.some((t) => (t || '').toLowerCase().includes(kw)))
       );
     }
 
@@ -369,6 +365,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     const categories = getQuestionVibeCategories(app);
     const primaryCategory = categories[0] || '網站程式';
     const effectiveTertiary = getEffectiveTertiaryCategory(app);
+    const isGame = isGameQuestion(app) || primaryCategory === '遊戲';
     const isComingSoon = isComingSoonWork(app);
     const expScore = getExperienceScore(app);
 
@@ -392,8 +389,17 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 }}
               />
               <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-black/75 text-white backdrop-blur-xs flex items-center gap-0.5">
-                <span>{primaryCategory}</span>
-                {effectiveTertiary && <span className="text-amber-300">› {effectiveTertiary}</span>}
+                {isGame ? (
+                  <>
+                    <span className="text-purple-300">🎮 遊戲</span>
+                    {effectiveTertiary && <span className="text-amber-300">› {effectiveTertiary}</span>}
+                  </>
+                ) : (
+                  <>
+                    <span>{primaryCategory}</span>
+                    {effectiveTertiary && <span className="text-amber-300">› {effectiveTertiary}</span>}
+                  </>
+                )}
               </span>
               {isComingSoon && (
                 <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-stone-950 shadow-xs">
@@ -404,6 +410,12 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
+                {isGame && (
+                  <span className="text-[10px] font-black text-purple-700 bg-purple-100 border border-purple-300 px-1.5 py-0.2 rounded flex items-center gap-1">
+                    <span>🎮</span>
+                    <span>{effectiveTertiary}</span>
+                  </span>
+                )}
                 {expScore.totalRatings > 0 && (
                   <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded" title={`平均體驗分數：${expScore.score}分（${expScore.totalRatings}人評分）`}>
                     👍 {expScore.score}分
@@ -514,10 +526,18 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             heightClass="aspect-video"
           >
             <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10 flex-wrap max-w-[85%]">
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
-                <span>{primaryCategory}</span>
-                {effectiveTertiary && <span className="text-amber-300 font-bold">› {effectiveTertiary}</span>}
-              </span>
+              {isGame ? (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-950/85 backdrop-blur-md text-white border border-purple-400/80 shadow-xs flex items-center gap-1">
+                  <span className="text-purple-300">🎮 遊戲</span>
+                  <span className="text-stone-400">›</span>
+                  <span className="text-amber-300 font-bold">{effectiveTertiary}</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
+                  <span>{primaryCategory}</span>
+                  {effectiveTertiary && <span className="text-amber-300 font-bold">› {effectiveTertiary}</span>}
+                </span>
+              )}
               {isComingSoon && (
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 border border-amber-600 shadow-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
@@ -561,7 +581,27 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </ProposalCardMediaBanner>
 
           <div className="p-3 flex-1 flex flex-col justify-between gap-2">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              {/* 小卡片專屬：遊戲分類標籤 (休閒派對/模擬體驗/策略益智/多人冒險/競技對戰/卡牌桌遊/恐怖驚悚/解謎劇情) */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isGame ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-purple-50 text-purple-800 border border-purple-200 shadow-2xs">
+                    <span>🎮</span>
+                    <span>{effectiveTertiary}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <span>{primaryCategory}</span>
+                    {effectiveTertiary && <span>· {effectiveTertiary}</span>}
+                  </span>
+                )}
+                {isComingSoon && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                    ⏳ 即將上架
+                  </span>
+                )}
+              </div>
+
               <h3 className="text-xs sm:text-sm font-black text-stone-900 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-snug">
                 {displayAppName ? (
                   <>
@@ -635,11 +675,21 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none z-10">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
-                <span>軟體 › {primaryCategory}</span>
-                {effectiveTertiary && (
+                {isGame ? (
                   <>
+                    <span className="text-purple-300">🎮 遊戲</span>
                     <span className="text-stone-400">›</span>
                     <span className="text-amber-300 font-bold">{effectiveTertiary}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>軟體 › {primaryCategory}</span>
+                    {effectiveTertiary && (
+                      <>
+                        <span className="text-stone-400">›</span>
+                        <span className="text-amber-300 font-bold">{effectiveTertiary}</span>
+                      </>
+                    )}
                   </>
                 )}
               </span>

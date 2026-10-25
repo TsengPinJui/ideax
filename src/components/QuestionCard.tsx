@@ -21,6 +21,7 @@ import { extractYoutubeVideoId } from '../utils/youtubeUtils';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getEffectiveQuestionViews } from '../utils/proposalClicks';
+import { isGameQuestion, getEffectiveTertiaryCategory } from '../utils/gameClassification';
 
 interface QuestionCardProps {
   question: Question;
@@ -146,12 +147,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const isPromoted = question.status === 'open' && question.isFeatured;
   const isPainPoint = isPainPointQuestion(question);
   const isL0Discussion = isL0DiscussionQuestion(question);
+  const isGame = isGameQuestion(question);
+  const effectiveTertiary = getEffectiveTertiaryCategory(question);
   const isVibeCoding =
+    isGame ||
     question.category === '網站程式' ||
     question.postType === 'vibecoding_app' ||
     question.specialZone === 'vibecoding';
   const isInnovationProposal = question.postType === 'innovation_proposal';
-  const displayCategoryLabel = isVibeCoding ? '軟體網站' : question.category;
+  const displayCategoryLabel = isGame ? '遊戲' : (isVibeCoding ? '軟體網站' : question.category);
   const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(question);
   const referencedPainPointObj = findReferencedPainPoint(question, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(question, questions) : [];
@@ -288,9 +292,17 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             heightClass="aspect-video"
           >
             <div className="absolute top-2 left-2 flex items-center gap-1 flex-wrap pointer-events-none z-10 max-w-[85%]">
-              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
-                {displayCategoryLabel}
-              </span>
+              {isGame ? (
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-950/85 backdrop-blur-md text-white border border-purple-400/80 shadow-xs flex items-center gap-1">
+                  <span className="text-purple-300">🎮 遊戲</span>
+                  <span className="text-stone-400">›</span>
+                  <span className="text-amber-300 font-bold">{effectiveTertiary}</span>
+                </span>
+              ) : (
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                  {displayCategoryLabel}
+                </span>
+              )}
               {isVibeCoding && getExperienceScore(question).totalRatings > 0 && (
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600/90 text-white shadow-xs">
                   👍 {getExperienceScore(question).score}分
@@ -334,14 +346,23 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               onClick={handleSubcategoryClick}
               className="text-[10px] font-bold text-stone-500 hover:text-stone-900 truncate max-w-[125px] select-none transition-colors"
               title={
-                question.subcategories && question.subcategories.length > 0
+                isGame
+                  ? `遊戲 · ${effectiveTertiary}`
+                  : question.subcategories && question.subcategories.length > 0
                   ? question.subcategories.join(' · ')
                   : question.subcategory || question.category
               }
             >
-              {question.subcategories && question.subcategories.length > 0
-                ? question.subcategories.slice(0, 3).join(' · ')
-                : question.subcategory || question.category}
+              {isGame ? (
+                <span className="text-purple-700 font-black flex items-center gap-1">
+                  <span>🎮</span>
+                  <span>{effectiveTertiary}</span>
+                </span>
+              ) : (
+                question.subcategories && question.subcategories.length > 0
+                  ? question.subcategories.slice(0, 3).join(' · ')
+                  : question.subcategory || question.category
+              )}
             </span>
 
             <div className="shrink-0 font-mono text-right flex items-center gap-1">
@@ -393,7 +414,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           </h3>
 
           {/* 標籤 (極簡無外框文字標籤) */}
-          {question.tags && question.tags.length > 0 && (
+          {isGame ? (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-[10px] font-black text-purple-700 bg-purple-50 border border-purple-200/80 px-1.5 py-0.2 rounded flex items-center gap-0.5 shadow-2xs">
+                <span>🎮</span>
+                <span>{effectiveTertiary}</span>
+              </span>
+              {question.tags && question.tags.filter((t) => t !== '遊戲' && t !== effectiveTertiary).slice(0, 1).map((tag, idx) => (
+                <span
+                  key={`${tag}-${idx}`}
+                  className="text-[10px] font-medium text-stone-400 truncate max-w-[80px] select-none pointer-events-none"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          ) : question.tags && question.tags.length > 0 ? (
             <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
               {question.tags.slice(0, 2).map((tag, idx) => (
                 <span
@@ -404,7 +440,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               ))}
             </div>
-          )}
+          ) : null}
 
           {/* 無圖片卡片之空白處自動遞補顯示：1. 詳述 -> 2. AI 摘要 -> 3. 熱門留言 */}
           {!showGridCover && (cleanDescription || aiSummaryText || topCommentText) && (

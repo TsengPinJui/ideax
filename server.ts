@@ -26,6 +26,7 @@ import { MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
 import { APP_VERSION } from './src/data/versionData';
 import { stripAppNameFromTitle } from './src/utils/titleFormat';
+import { getEffectiveTertiaryCategory } from './src/utils/gameClassification';
 /** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
 const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
 
@@ -1809,6 +1810,13 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
 4. 「自動化」：爬蟲工具、流程自動化、Webhook/API 串接整合、定時排程、生產力自動化腳本。
 5. 「擴充功能」：瀏覽器外掛 Extension (Chrome/Edge/Firefox)、VSCode 插件或工具外掛。
 
+【第三級分類規範（若分類為「遊戲」或包含遊戲，必須嚴格從以下 10 個分類中選擇 1 個最相符的填入 tertiaryCategory）】
+- 遊戲 10 大分類：休閒派對、模擬體驗、策略益智、多人冒險、競技對戰、卡牌桌遊、恐怖驚悚、解謎劇情、親子兒童、甜蜜浪漫
+- 網站程式分類：社群互動、內容媒體、電商服務、管理後台、形象展示、實用工具
+- AI工具分類：智能助手、知識問答、圖像影音、文本寫作、代碼輔助、數據分析
+- 自動化分類：流程整合、資料爬取、定時排程、訊息機器人、文件處理、自動化工作流
+- 擴充功能分類：瀏覽器外掛、開發套件、效率增強、介面美化、輔助外掛
+
 【請輸出嚴格 JSON 格式】
 \`\`\`json
 {
@@ -1817,6 +1825,7 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
   "description": "作品繁體中文完整簡述（若原網站說明是外文請將其轉為繁體中文，說明功能、特色與使用情境，不可繁轉簡，約 80~160 字）",
   "category": "${hasValidPreferred ? userSelectedCategories[0] : '主分類，必須精準歸入上述五個分類之一：網站程式 / AI工具 / 遊戲 / 自動化 / 擴充功能'}",
   "categories": ["符合的分類（可複選，例如：網站程式、AI工具）"],
+  "tertiaryCategory": "第三級子分類（若為遊戲必須為：休閒派對 / 模擬體驗 / 策略益智 / 多人冒險 / 競技對戰 / 卡牌桌遊 / 恐怖驚悚 / 解謎劇情 / 親子兒童 / 甜蜜浪漫 之一）",
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
   "techArchitecture": "建議的技術架構（繁體中文，如：Web 全端架構 React / TypeScript）",
   "targetGoal": "創新提案目標與預期效益（繁體中文，說明能為使用者達成什麼成果，約 30~80 字）",
@@ -1835,6 +1844,7 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
           type: Type.ARRAY,
           items: { type: Type.STRING },
         },
+        tertiaryCategory: { type: Type.STRING },
         tags: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
@@ -1968,6 +1978,18 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
       tags = Array.from(new Set([...finalCategories, ...tags]));
     }
 
+    const finalTertiaryCategory = (parsedResult?.tertiaryCategory && ['休閒派對', '模擬體驗', '策略益智', '多人冒險', '競技對戰', '卡牌桌遊', '恐怖驚悚'].includes(parsedResult.tertiaryCategory))
+      ? parsedResult.tertiaryCategory
+      : getEffectiveTertiaryCategory({
+          title,
+          appName,
+          description,
+          tags,
+          subcategory: primaryCategory,
+          subcategories: finalCategories,
+          demoUrl: cleanUrl,
+        });
+
     return res.json({
       success: true,
       data: {
@@ -1977,6 +1999,7 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
         description,
         category: primaryCategory,
         categories: finalCategories,
+        tertiaryCategory: finalTertiaryCategory,
         tags,
         techArchitecture,
         targetGoal,
