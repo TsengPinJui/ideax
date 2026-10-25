@@ -398,8 +398,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
     `${question.appName || question.title.split('：')[0]} 畫面 ${activeImageIdx + 1}`;
 
   const platformChooser = usePlatformLinkChooser();
-  const workUrl = question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '';
-  const chooserItem = { title: question.appName || question.title, demoUrl: workUrl, platforms: question.publishedPlatforms };
+  const workUrl = question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || question.vibeCodingData?.externalLink || '';
   // 作者沒填作品網址、但有填平台網址時，外部連結按鈕也照樣出現（嵌入預覽只用作品網址）
   const demoUrl = workUrl || platformLinksOf(question.publishedPlatforms)[0]?.url || '';
   const previewMode: 'embed' | 'external' =
@@ -740,6 +739,13 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           url={workUrl}
           title={appName || question.title}
           previewMode={previewMode}
+        />
+      )}
+      {!workUrl && demoUrl && (
+        <VibeCodingEmbedPreview
+          url={demoUrl}
+          title={appName || question.title}
+          previewMode="external"
         />
       )}
 

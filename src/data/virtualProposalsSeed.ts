@@ -152,6 +152,20 @@ export function isSimulatedQuestion(qOrId?: Partial<Question> | string | null): 
   return false;
 }
 
+export function reduceSimulatedProposalLikes(question: Question): Question {
+  if (
+    question.postType !== 'innovation_proposal' ||
+    !isSimulatedQuestion(question) ||
+    question.simulatedProposalLikesReduced
+  ) {
+    return question;
+  }
+
+  const likes = Math.max(0, Math.round((question.likes || 0) / 10));
+  const secondedCount = Math.max(0, Math.round((question.secondedCount ?? question.likes ?? 0) / 10));
+  return { ...question, likes, secondedCount, simulatedProposalLikesReduced: true };
+}
+
 export function isSimulatedAnswer(aOrId?: Partial<Answer> | string | null): boolean {
   if (!aOrId) return false;
   const id = typeof aOrId === 'string' ? aOrId : aOrId.id || '';
@@ -3892,7 +3906,7 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
   const seed = hashSeedStr(q.id);
   const simSameCount = 3 + ((seed * 7) % 36); // 3 ~ 38 人同問，每篇貼文數量皆不同且不為 0
   const simLikes = isGame ? 0 : 8 + ((seed * 13) % 65);
-  return {
+  return reduceSimulatedProposalLikes({
     ...q,
     ...(existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {}),
     ...(resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {}),
@@ -3916,7 +3930,7 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
     tippersCount: q.tippersCount && q.tippersCount > 0 ? q.tippersCount : simTips.tippersCount,
     supporterCount: q.supporterCount && q.supporterCount > 0 ? q.supporterCount : simTips.supporterCount,
     tipsHistory: q.tipsHistory && q.tipsHistory.length > 0 ? q.tipsHistory : simTips.tipsHistory,
-  };
+  });
 }
 
 // 原創 IP 角色發的痛點、提案與日常討論

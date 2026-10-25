@@ -12,6 +12,8 @@ import {
   Lightbulb,
   Globe,
   PlusCircle,
+  Map as MapIcon,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRealRegisteredUser } from '../data/mockData';
@@ -25,6 +27,7 @@ interface HomeAnnouncementBannerProps {
   onOpenCreatePainPoint: () => void;
   onOpenCreateApp: () => void;
   onOpenCreateProposal: () => void;
+  onOpenIsland: () => void;
 }
 
 export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
@@ -33,8 +36,9 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
   onOpenCreatePainPoint,
   onOpenCreateApp,
   onOpenCreateProposal,
+  onOpenIsland,
 }) => {
-  const { currentUser, showCenterToast, openAuthModal } = useApp();
+  const { currentUser, showCenterToast, openAuthModal, publicMetricsConfig } = useApp();
   const isRegistered = isRealRegisteredUser(currentUser);
   const [isCopied, setIsCopied] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -77,22 +81,16 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
       {/* 精簡、無邊框版位設計 */}
       <div className="relative z-20 w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-1.5 pb-1">
         <div className="relative bg-amber-50/50 backdrop-blur-sm rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-stone-900 transition-all">
-          {/* 頂部標題列與功能按鍵區 */}
-          <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xs sm:text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+          {/* 頂部功能列：推薦碼靠左，右側保留創點島地圖卡入口 */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-2.5 mb-1.5 items-stretch">
+            <div className="min-w-0 flex flex-wrap items-center gap-1.5">
+              <h2 className="text-xs sm:text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5 mr-1">
                 <span className="text-amber-800">推廣送好禮</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-800 text-[10px] font-bold">
                   <Sparkles className="w-2.5 h-2.5 text-amber-600" />
                   <span>持續上新中~</span>
                 </span>
-                <span className="text-[11px] sm:text-xs font-bold text-amber-900/90">
-                  · 沒上榜？別氣餒✨IdeaX收錄的都是百里挑一的佳作,加油！💪
-                </span>
               </h2>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
               {/* 兌換推薦碼按鍵 */}
               <button
                 type="button"
@@ -126,6 +124,26 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {publicMetricsConfig.showIslandMap !== false && <button
+              type="button"
+              onClick={onOpenIsland}
+              className="group relative flex min-h-[66px] items-center gap-3 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-3 py-2 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm cursor-pointer"
+              aria-label="開啟創點島互動地圖"
+            >
+              <span className="relative grid h-11 w-12 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-white shadow-inner">
+                <span className="absolute left-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-300" />
+                <span className="absolute right-1.5 top-2.5 h-3 w-3 rounded-full bg-amber-300" />
+                <span className="absolute bottom-1.5 left-2.5 h-3 w-3 rounded-full bg-rose-300" />
+                <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-sky-300" />
+                <MapIcon className="relative z-10 h-4 w-4 text-emerald-900 drop-shadow-sm" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島互動地圖</span>
+                <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">俯視五座主題島嶼，點選開始探索</span>
+              </span>
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-700 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </button>}
           </div>
 
           {/* 流程步驟橫條（註冊送100點 -> 分享推薦碼+100點/人 -> 發布討論或痛點+100點 -> 刊登作品或創新提案+300點） */}

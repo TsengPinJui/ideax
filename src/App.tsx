@@ -60,6 +60,8 @@ import { recordQuestionViewClick, getEffectiveQuestionViews } from './utils/prop
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
 import { MascotHost } from './components/mascot/MascotHost';
+import { IslandWorldView } from './components/island/IslandWorldView';
+import { IslandAction } from './data/islandWorld';
 import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
 
 // 需要時才載入的頁面（程式碼分割）：縮小首頁第一次下載的檔案大小
@@ -164,6 +166,7 @@ function MainContent() {
 
         // 0. 創點子/探索問題/痛點集/VibeCoding/L0討論區 子網址
         const normalizedPath = targetPath.replace(/\/+$/, '');
+        if (normalizedPath === '/island' || normalizedPath === '/idea-island') return 'island_explorer';
         if (parseIdeaDetailPath()) return 'explore';
         if (
           normalizedPath === '/explore' ||
@@ -350,6 +353,7 @@ function MainContent() {
     tab: AppTab;
     userDashboardTab?: UserDashboardTab;
   } | null>(null);
+  const questionReturnScrollRef = useRef<number | null>(null);
   const [dashboardResetCount, setDashboardResetCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | '全部'>('全部');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | '全部'>('全部');
@@ -577,6 +581,11 @@ function MainContent() {
   }, [fullscreenEmbedApp]);
 
   const handleViewAppDescription = (app: Question) => {
+    questionReturnScrollRef.current = window.scrollY;
+    setReturnTabAfterQuestion({
+      tab: activeTab,
+      userDashboardTab: activeTab === 'user_dashboard' ? userDashboardTab : undefined,
+    });
     setFullscreenEmbedApp(null);
     recordUserViewedQuestion(currentUser.id, app);
     setUserProfileVersion((v) => v + 1);
@@ -855,6 +864,7 @@ function MainContent() {
   // 當任何卡片、痛點或提案關聯點擊設定 selectedQuestion 時，自動進入貼文詳情全頁並記憶來源分頁
   useEffect(() => {
     if (selectedQuestion && activeTab !== 'question_detail' && activeTab !== 'create_question') {
+      questionReturnScrollRef.current = window.scrollY;
       setReturnTabAfterQuestion({
         tab: activeTab,
         userDashboardTab: activeTab === 'user_dashboard' ? userDashboardTab : undefined,
@@ -910,13 +920,25 @@ function MainContent() {
   const prevActiveTabRef = useRef(activeTab);
   useEffect(() => {
     if (prevActiveTabRef.current !== activeTab) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const shouldRestoreQuestionList = activeTab !== 'question_detail' && questionReturnScrollRef.current !== null;
+      const savedQuestionListScroll = questionReturnScrollRef.current;
+      window.scrollTo({ top: 0, behavior: shouldRestoreQuestionList ? 'auto' : 'smooth' });
       prevActiveTabRef.current = activeTab;
+      if (shouldRestoreQuestionList && savedQuestionListScroll !== null) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => window.scrollTo({ top: savedQuestionListScroll, behavior: 'auto' }));
+        });
+        questionReturnScrollRef.current = null;
+      }
     }
     try {
       if (typeof window !== 'undefined') {
         const curPath = window.location.pathname.toLowerCase();
-        if (activeTab === 'star_season') {
+        if (activeTab === 'island_explorer') {
+          if (curPath !== '/island') {
+            window.history.pushState({ tab: 'island_explorer' }, '', '/island');
+          }
+        } else if (activeTab === 'star_season') {
           if (!curPath.startsWith('/challenge') && !curPath.startsWith('/proposal')) {
             const searchStr = window.location.search;
             const target = searchStr ? `/challenge${searchStr}` : '/challenge';
@@ -1031,6 +1053,7 @@ function MainContent() {
               curPath === '/my-cases' ||
               curPath === '/my_projects' ||
               curPath === '/my_cases' ||
+              curPath === '/island' ||
               curPath.startsWith('/challenge'))
           ) {
             window.history.pushState({ tab: 'explore' }, '', '/');
@@ -2138,6 +2161,63 @@ function MainContent() {
     } catch {}
   };
 
+  const handleIslandAction = (action: IslandAction) => {
+    setSelectedQuestion(null);
+    setSelectedSolver(null);
+    switch (action) {
+      case 'pain_feed':
+        setSpecialZone('pain_points');
+        setActiveTab('explore');
+        break;
+      case 'discussion_feed':
+        setSpecialZone('l0_discussion');
+        setActiveTab('explore');
+        break;
+      case 'vibecoding_feed':
+        setSpecialZone('vibecoding');
+        setActiveTab('explore');
+        break;
+      case 'ideas_feed':
+        setSpecialZone('create_ideas');
+        setActiveTab('explore');
+        break;
+      case 'jobs':
+        setActiveTab('job_explorer');
+        break;
+      case 'experts':
+        setActiveTab('solvers');
+        break;
+      case 'create_pain_point':
+        handleOpenCreateWithType('pain_point');
+        break;
+      case 'create_discussion':
+        handleOpenCreateWithType('chat_discussion');
+        break;
+      case 'create_app':
+        handleOpenCreateWithType('vibecoding_app');
+        break;
+      case 'create_proposal':
+        handleOpenCreateWithType('innovation_proposal');
+        break;
+      case 'home':
+      default:
+        setSpecialZone('all');
+        setActiveTab('explore');
+        break;
+    }
+  };
+
+  const handleReturnFromIsland = () => {
+    setSelectedQuestion(null);
+    setSelectedSolver(null);
+    setSpecialZone('all');
+    setActiveTab('explore');
+    try {
+      window.history.pushState({ tab: 'explore' }, '', '/');
+    } catch {}
+    resetSEOToDefault();
+  };
+
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
@@ -2179,6 +2259,7 @@ function MainContent() {
           onOpenAiCrm={() => setActiveTab('ai_crm')}
           isCategorySidebarOpen={isCategorySidebarOpen}
           setIsCategorySidebarOpen={setIsCategorySidebarOpen}
+          onReturnFromIsland={handleReturnFromIsland}
           onStartOnboarding={() => setIsOnboardingOpen(true)}
           onNavigateToAbout={(section) => {
             setAboutPageSection(section || 'others');
@@ -2224,7 +2305,15 @@ function MainContent() {
       )}
 
       {/* Main Full-Page Views */}
-      <main className="flex-1 pb-16 lg:pb-0">
+      <main className={`flex-1 ${activeTab === 'island_explorer' ? 'pb-0' : 'pb-16 lg:pb-0'}`}>
+        {activeTab === 'island_explorer' && (
+          <IslandWorldView
+            questions={questions}
+            onOpenQuestion={handleViewAppDescription}
+            onAction={handleIslandAction}
+          />
+        )}
+
         {/* 創點子提案獨立頁（/ideas/:id） */}
         {activeTab === 'explore' && createIdeasDetailId && (
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-12 sm:pb-16">
@@ -2252,6 +2341,11 @@ function MainContent() {
               onOpenCreatePainPoint={() => handleOpenCreateWithType('pain_point')}
               onOpenCreateApp={() => handleOpenCreateWithType('vibecoding_app')}
               onOpenCreateProposal={() => handleOpenCreateWithType('innovation_proposal')}
+              onOpenIsland={() => {
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+                setActiveTab('island_explorer');
+              }}
             />
 
             {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與緊湊銜接) */}
@@ -3643,7 +3737,7 @@ function MainContent() {
 
       {/* 創點子頁面專屬：右上羅盤浮動懸停導覽入口（只在創點子頁面時出現） */}
       <FloatingOnboardingCompass
-        isVisible={!isOnboardingOpen && activeTab !== 'star_season'}
+        isVisible={!isOnboardingOpen && activeTab !== 'star_season' && activeTab !== 'island_explorer'}
         onStartOnboarding={() => {
           setIsOnboardingFromAbout(true);
           setSelectedQuestion(null);
@@ -3654,7 +3748,7 @@ function MainContent() {
       />
 
       {/* Footer (創星季獨立站模式下不顯示舊站大頁尾) */}
-      {activeTab !== 'star_season' && (
+      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && (
         <Footer
           onNavClick={(tab, section) => {
             if (section) {
@@ -3678,7 +3772,7 @@ function MainContent() {
       {['explore', 'solvers', 'job_explorer', 'star_season', 'leaderboard', 'my_projects'].includes(activeTab) && <BackToTopButton />}
 
       {/* 手機行動裝置專屬底部導覽列 (創星季獨立站模式下隱藏，保持獨立單頁體驗) */}
-      {activeTab !== 'star_season' && (
+      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && (
         <MobileBottomNav
           activeTab={activeTab}
           userDashboardTab={userDashboardTab}

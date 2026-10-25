@@ -96,7 +96,7 @@ import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getAnswerSpecifications } from '../utils/answerUtils';
-import { PublishedPlatformsBlock, usePlatformLinkChooser } from './PublishedPlatforms';
+import { PublishedPlatformsBlock, platformLinksOf, usePlatformLinkChooser } from './PublishedPlatforms';
 import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
@@ -159,6 +159,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     deleteQuestionPermanently,
     deleteAnswerPermanently,
     delistQuestion,
+    unpublishOwnQuestion,
     relistQuestion,
     addNotification,
     openAuthModal,
@@ -272,6 +273,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     liveQuestion?.specialZone === 'vibecoding' ||
     liveQuestion?.category === '網站程式' ||
     (liveQuestion as any)?.isVibeCodingApp === true;
+  const workUrl = liveQuestion.demoUrl || liveQuestion.externalLink || liveQuestion.vibeCodingData?.demoUrl || platformLinksOf(liveQuestion.publishedPlatforms)[0]?.url || '';
   const referencedPainPointObj = findReferencedPainPoint(liveQuestion, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(liveQuestion, questions) : [];
 
@@ -428,6 +430,11 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
   const isAuthorUser = currentUser.id === question.authorId || currentUser.id === liveQuestion?.authorId || currentUser.role === 'admin';
+  const isOwnPublishedWork = Boolean(
+    currentUser.id !== 'user-guest' &&
+    (currentUser.id === liveQuestion?.authorId || currentUser.id === liveQuestion?.transferredToUserId) &&
+    (liveQuestion?.postType === 'vibecoding_app' || liveQuestion?.postType === 'innovation_proposal' || liveQuestion?.specialZone === 'vibecoding' || liveQuestion?.category === '網站程式')
+  );
   const isTransferredWork = Boolean(
     liveQuestion?.isTransferred ||
     liveQuestion?.isOwnershipTransferred ||
@@ -976,7 +983,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 text-rose-900 font-extrabold text-sm">
                   <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>此提問因違反平台規範已被管理員強制下架（前台市場已隱藏）</span>
+                  <span>{question.delistedReason === '作者自行下架' ? '此內容已由作者自行下架（公開列表已隱藏）' : '此提問因違反平台規範已被管理員強制下架（前台市場已隱藏）'}</span>
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-1.5">
@@ -999,7 +1006,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   </div>
                 )}
               </div>
-              {question.delistedReason && (
+              {question.delistedReason && question.delistedReason !== '作者自行下架' && (
                 <p className="text-rose-800 font-medium">違規原因：{question.delistedReason}</p>
               )}
               {question.delistedFeedback && (
@@ -1356,7 +1363,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         ) : (
         <>
         {/* 多媒體大圖、YouTube 介紹影片、圖集、技術架構與線上網址 */}
-        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl || (question.publishedPlatforms && question.publishedPlatforms.length > 0)) && (
+        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || workUrl || (liveQuestion.publishedPlatforms && liveQuestion.publishedPlatforms.length > 0)) && (
           <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
             {/* YouTube 介紹影片 */}
             {(() => {
@@ -1452,17 +1459,17 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   <p className="font-mono text-stone-700 leading-normal">{question.techArchitecture}</p>
                 </div>
               )}
-              {question.demoUrl && (
+              {workUrl && (
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex flex-col justify-between gap-2">
                   <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-emerald-600" />
                     <span>線上成果網站 / 檔案連結</span>
                   </div>
                   <a
-                    href={question.demoUrl}
+                    href={workUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => platformChooser.onLinkClick(e, { title: question.appName || question.title, demoUrl: question.demoUrl, platforms: question.publishedPlatforms })}
+                    onClick={(e) => platformChooser.onLinkClick(e, { title: liveQuestion.appName || liveQuestion.title, demoUrl: workUrl, platforms: liveQuestion.publishedPlatforms })}
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                   >
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1470,7 +1477,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   </a>
                 </div>
               )}
-              <PublishedPlatformsBlock platforms={question.publishedPlatforms} className="sm:col-span-2" />
+              <PublishedPlatformsBlock platforms={liveQuestion.publishedPlatforms} className="sm:col-span-2" />
             </div>
             {platformChooser.chooser}
           </div>
@@ -3255,6 +3262,28 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-nowrap overflow-x-auto">
+          {isOwnPublishedWork && liveQuestion.status !== 'delisted' && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!window.confirm('要將這件作品／提案下架嗎？下架後不會出現在公開列表，之後仍可聯繫平台協助恢復。')) return;
+                  if (unpublishOwnQuestion(liveQuestion.id)) onClose();
+                }}
+                className="px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+              >
+                <span>自行下架</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsConfirmDeleteQuestionOpen(true)}
+                className="px-3 py-2 rounded-xl border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1"
+              >
+                <Trash className="w-3.5 h-3.5" />
+                <span>永久刪除</span>
+              </button>
+            </>
+          )}
           {isAdmin && question.status !== 'delisted' && (
             <button
               type="button"
@@ -3738,18 +3767,18 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="font-black text-base text-stone-900">永久刪除此問題確認</h3>
+                <h3 className="font-black text-base text-stone-900">永久刪除此{isOwnPublishedWork ? '作品／提案' : '問題'}確認</h3>
                 <p className="text-xs text-rose-600 font-bold">直接刪除且不再存在・資料庫同步全端抹除</p>
               </div>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 text-xs text-stone-700 space-y-2">
-              <p className="font-bold text-rose-950">您即將永久刪除以下問題：</p>
+              <p className="font-bold text-rose-950">您即將永久刪除以下{isOwnPublishedWork ? '作品／提案' : '問題'}：</p>
               <p className="font-extrabold text-stone-900 bg-white p-2.5 rounded-xl border border-rose-100 line-clamp-2">
                 {question.title}
               </p>
               <ul className="list-disc list-inside space-y-1 text-stone-600 pt-1 text-[11px] leading-relaxed">
-                <li>此問題將自全站、前台市場、個人中心與雲端資料庫（Firestore）徹底永久抹除。</li>
+                <li>此{isOwnPublishedWork ? '作品／提案' : '問題'}將自全站、前台市場、個人中心與雲端資料庫（Firestore）徹底永久抹除。</li>
                 {(question.bounty || 0) > 0 && question.status !== 'solved' && (
                   <li className="font-bold text-emerald-800">
                     系統將自動將原發案預扣之懸賞金 <strong>NT$ {(question.bounty || 0).toLocaleString()}</strong> 點 100% 全額原路退還至您的帳戶可用餘額。
@@ -3782,7 +3811,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 ) : (
                   <>
                     <Trash className="w-3.5 h-3.5" />
-                    <span>確認永久刪除問題</span>
+                    <span>確認永久刪除{isOwnPublishedWork ? '作品／提案' : '問題'}</span>
                   </>
                 )}
               </button>

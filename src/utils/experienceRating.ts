@@ -37,8 +37,8 @@ export function saveLocalExperienceVote(questionId: string, vote: ExperienceVote
 
 /**
  * 計算體驗評分平均分數
- * 規則：每個讚 (thumbs_up) 是 100 分，普通 (neutral) 是 0 分，倒讚 (thumbs_down) 是 0 分。
- * 平均分數 = Math.round((thumbsUp * 100 + neutral * 0 + thumbsDown * 0) / total)
+ * 規則：讚是 100 分、普通是 50 分、倒讚是 0 分。
+ * 平均分數 = Math.round((讚數 * 100 + 普通數 * 50 + 倒讚數 * 0) / 總評分數)
  */
 export function getExperienceScore(question?: Partial<Question> | null): ExperienceScoreInfo {
   if (!question) {
@@ -54,14 +54,10 @@ export function getExperienceScore(question?: Partial<Question> | null): Experie
   const hasRated = Boolean(question.id && localVotes[question.id]);
 
   if (total === 0) {
-    // 若尚未有投票，但在 question.experienceScore 曾有手動設定
-    if (typeof question.experienceScore === 'number' && question.experienceScore >= 0) {
-      return { score: Math.min(100, Math.max(0, question.experienceScore)), total: 1, totalRatings: 1, thumbsUp: 1, neutral: 0, thumbsDown: 0, hasRated };
-    }
     return { score: null, total: 0, totalRatings: 0, thumbsUp: 0, neutral: 0, thumbsDown: 0, hasRated };
   }
 
-  const score = Math.round((thumbsUp * 100) / total);
+  const score = Math.round((thumbsUp * 100 + neutral * 50) / total);
   return { score, total, totalRatings: total, thumbsUp, neutral, thumbsDown, hasRated };
 }
 
@@ -103,7 +99,7 @@ export function calculateNewExperienceRating(
   else if (vote === 'thumbs_down') newDown += 1;
 
   const total = newUp + newNeutral + newDown;
-  const score = total > 0 ? Math.round((newUp * 100) / total) : 0;
+  const score = total > 0 ? Math.round((newUp * 100 + newNeutral * 50) / total) : 0;
 
   if (currentQuestion.id) {
     saveLocalExperienceVote(currentQuestion.id, vote);

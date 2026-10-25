@@ -204,6 +204,10 @@ export const HOT_GAMES_DEFS: HotGameDef[] = [
  * 將熱度榜資料轉換為標準的 Question 物件，可直接嵌入 FullscreenAppEmbedView 與全站相容
  */
 export function createHotGameQuestion(def: HotGameDef): Question {
+  const experienceThumbsUpCount = Math.round(def.rawViews * 0.075);
+  const experienceNeutralCount = Math.round(def.rawViews * 0.004);
+  const experienceThumbsDownCount = Math.round(def.rawViews * 0.001);
+  const experienceRatingsCount = experienceThumbsUpCount + experienceNeutralCount + experienceThumbsDownCount;
   return {
     id: def.id,
     appName: def.title.split('—')[0]?.split('|')[0]?.trim() || def.title,
@@ -236,11 +240,11 @@ export function createHotGameQuestion(def: HotGameDef): Question {
     coverImage: def.coverImage,
     currentVersion: 'v1.0.0',
     isFeatured: def.rank <= 3,
-    experienceThumbsUpCount: Math.round(def.rawViews * 0.075),
-    experienceNeutralCount: Math.round(def.rawViews * 0.004),
-    experienceThumbsDownCount: Math.round(def.rawViews * 0.001),
-    experienceScore: 98 - def.rank,
-    experienceRatingsCount: Math.round(def.rawViews * 0.08),
+    experienceThumbsUpCount,
+    experienceNeutralCount,
+    experienceThumbsDownCount,
+    experienceScore: Math.round((experienceThumbsUpCount * 100 + experienceNeutralCount * 50) / experienceRatingsCount),
+    experienceRatingsCount,
     heatDisplay: def.heatDisplay,
   } as Question;
 }

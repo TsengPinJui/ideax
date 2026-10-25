@@ -34,6 +34,7 @@ import {
   RefreshCw,
   Award,
   ArrowRight,
+  ArrowLeft,
   Search,
   Sparkles,
   Flame,
@@ -59,6 +60,7 @@ import {
   Mail,
   Copy,
   ClipboardList,
+  Map as MapIcon,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -81,6 +83,7 @@ interface NavbarProps {
   setIsCategorySidebarOpen?: (open: boolean) => void;
   onStartOnboarding?: () => void;
   onNavigateToAbout?: (section?: string) => void;
+  onReturnFromIsland?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -101,6 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setIsCategorySidebarOpen: setIsCategorySidebarOpenProp,
   onStartOnboarding,
   onNavigateToAbout,
+  onReturnFromIsland,
 }) => {
   const {
     currentUser,
@@ -137,6 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     pendingDisputesCount,
     pendingTicketsCount,
     pendingReportsCount,
+    publicMetricsConfig,
     adminMailBadgeCount,
     addTestAccount,
     promptLogin,
@@ -515,19 +520,34 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Left Section: 側邊欄入口 + Logo + 導覽 */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* 左上燈泡圖片左側側邊欄入口 */}
-          <button
-            id="onboarding-step-6-sidebar-btn"
-            type="button"
-            onClick={() => setIsCategorySidebarOpen(true)}
-            className="p-2 -ml-1 sm:ml-0 rounded-full text-stone-600 hover:text-stone-950 hover:bg-stone-100 active:bg-stone-200/70 transition-all flex items-center justify-center cursor-pointer group"
-            title="開啟分類與專區側邊欄"
-            aria-label="開啟分類與專區側邊欄"
-          >
-            <PanelLeft className="w-5 h-5 text-stone-600 group-hover:text-stone-950 transition-colors" />
-          </button>
+          {activeTab === 'island_explorer' ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onReturnFromIsland || (() => setActiveTab('explore'))}
+                className="p-2 -ml-1 sm:ml-0 rounded-full text-stone-600 hover:text-stone-950 hover:bg-stone-100 active:bg-stone-200/70 transition-all flex items-center justify-center cursor-pointer group"
+                title="返回 IdeaX 網站"
+                aria-label="返回 IdeaX 網站"
+              >
+                <ArrowLeft className="w-5 h-5 text-stone-600 group-hover:text-stone-950 transition-colors" />
+              </button>
+              <span className="text-sm sm:text-base font-semibold tracking-wide text-stone-700 whitespace-nowrap">IdeaX 地圖</span>
+            </div>
+          ) : (
+            <button
+              id="onboarding-step-6-sidebar-btn"
+              type="button"
+              onClick={() => setIsCategorySidebarOpen(true)}
+              className="p-2 -ml-1 sm:ml-0 rounded-full text-stone-600 hover:text-stone-950 hover:bg-stone-100 active:bg-stone-200/70 transition-all flex items-center justify-center cursor-pointer group"
+              title="開啟分類與專區側邊欄"
+              aria-label="開啟分類與專區側邊欄"
+            >
+              <PanelLeft className="w-5 h-5 text-stone-600 group-hover:text-stone-950 transition-colors" />
+            </button>
+          )}
 
           {/* Desktop Logo (點選回到首頁頂部) */}
-          <div
+          {activeTab !== 'island_explorer' && <div
             role="button"
             tabIndex={0}
             onClick={() => {
@@ -569,7 +589,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer"
           >
             <IdeaXLogo variant="bulb" size="lg" />
-          </div>
+          </div>}
 
           {/* 創星季 按鍵 (創星季 logo) */}
           <button
@@ -1107,6 +1127,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
+
+          {/* 創點島地圖入口：所有傳統頁面都能從右上角進入探索模式 */}
+          {publicMetricsConfig.showIslandMap !== false && <button
+            type="button"
+            onClick={() => {
+              setActiveTab('island_explorer');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+            }}
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+              activeTab === 'island_explorer'
+                ? 'bg-emerald-100 text-emerald-950 border-emerald-300 shadow-inner'
+                : 'bg-emerald-50/80 text-emerald-900 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+            }`}
+            title="開啟創點島互動地圖"
+            aria-label="開啟創點島互動地圖"
+          >
+            <MapIcon className="w-4 h-4" />
+            <span className="hidden sm:inline text-[11px] font-black">創點島</span>
+          </button>}
 
           {/* 我的案件 (電腦版顯示，無冗餘外框) */}
           <button

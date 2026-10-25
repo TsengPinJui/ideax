@@ -26,6 +26,7 @@ import {
   X,
   AlertCircle,
   Clock,
+  EyeOff,
 } from 'lucide-react';
 import { AdminDelistModal } from '../AdminDelistModal';
 import {
@@ -65,6 +66,8 @@ interface ProposalDetailFullPageProps {
   onSolvePainPoint?: (proposal: StarSeasonProposal) => void;
   onEditProposal?: (proposal: StarSeasonProposal) => void;
   onWithdrawProposal?: (proposal: StarSeasonProposal) => void;
+  onUnpublish?: (proposal: StarSeasonProposal) => void;
+  onDelete?: (proposal: StarSeasonProposal) => Promise<void> | void;
   showToast?: (msg: string) => void;
   allProposals?: StarSeasonProposal[];
   onSelectProposal?: (proposal: StarSeasonProposal) => void;
@@ -88,6 +91,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   onSolvePainPoint,
   onEditProposal,
   onWithdrawProposal,
+  onUnpublish,
+  onDelete,
   showToast,
   allProposals = [],
   onSelectProposal,
@@ -840,6 +845,32 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {isFromCreate && onUnpublish && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('要將這件提案下架嗎？下架後不會出現在公開列表。')) onUnpublish(proposal);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                  title="將提案從公開列表下架"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>下架提案</span>
+                </button>
+              )}
+              {isFromCreate && onDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('確定永久刪除此提案？此操作無法復原。')) void onDelete(proposal);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                  title="永久刪除此提案"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>刪除提案</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleEditThisProposal}

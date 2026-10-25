@@ -79,7 +79,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
     // 背景同步至雲端 Firestore
     void syncQuestionToFirestore(updatedQuestion).catch(() => {});
 
-    const voteLabel = vote === 'thumbs_up' ? '👍🏻 讚 (100分)' : vote === 'neutral' ? '😐 普通 (0分)' : '👎🏻 倒讚 (0分)';
+    const voteLabel = vote === 'thumbs_up' ? '👍🏻 讚 (100分)' : vote === 'neutral' ? '😐 普通 (50分)' : '👎🏻 倒讚 (0分)';
     if (showCenterToast) {
       showCenterToast(`感謝您的回饋！【${voteLabel}】`, `平均體驗評分已即時計算為 ${score} 分 (共 ${total} 人評分)`, {
         type: 'success',
@@ -439,10 +439,10 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
 
               <div className="space-y-2">
                 <h3 className="text-lg sm:text-xl font-black text-white">
-                  此網站限制內嵌連線，已為您準備好「前往網站」
+                  暫時無法連線到作品
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-400 leading-relaxed">
-                  {blockReason || '目標網站設有安全保護政策（禁止 iframe 嵌入）或連線載入超時，請點擊下方按鈕直接前往官方網站體驗與支持。'}
+                  {blockReason || '目標網站設有安全保護政策或連線載入超時。您可以先返回提案／作品說明頁，再決定是否重新試玩或前往官方網站。'}
                 </p>
                 <div className="text-[11px] font-mono text-stone-500 break-all p-2 rounded-xl bg-stone-950/80 border border-stone-800">
                   {openUrl || targetRawUrl}
@@ -450,11 +450,19 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
               </div>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => onViewDescription(question)}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>返回提案／作品說明</span>
+                </button>
                 <a
                   href={openUrl || targetRawUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
                 >
                   <Globe className="w-4 h-4" />
                   <span>前往網站</span>
@@ -590,7 +598,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
               );
             })()}
 
-            {/* 三種評價選項按鈕：👍🏻 讚 (100分)、😐 普通 (0分)、👎🏻 倒讚 (0分) */}
+            {/* 三種評價選項按鈕：👍🏻 讚 (100分)、😐 普通 (50分)、👎🏻 倒讚 (0分) */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
               {/* 👍🏻 讚 */}
               <button
@@ -630,7 +638,7 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
                   普通
                 </span>
                 <span className="text-[10px] font-bold text-amber-400/90 bg-amber-500/10 px-1.5 py-0.2 rounded">
-                  0 分
+                  50 分
                 </span>
               </button>
 

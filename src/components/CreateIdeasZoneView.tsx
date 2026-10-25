@@ -128,6 +128,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     toggleSecondQuestion,
     setQuestionLikeState,
     isSimulatedDataPurged,
+    unpublishOwnQuestion,
+    deleteQuestionPermanently,
     openAuthModal,
     publicMetricsConfig,
   } = useApp();
@@ -532,6 +534,26 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         onSelectProposal={(p) => (detailProposalId !== undefined ? onSelectProposal(p) : handleOpenProposalInCreateIdeas(p))}
         isFromCreateIdeas={true}
         supportCurrency="points"
+        onUnpublish={() => {
+          if (!unpublishOwnQuestion(liveProposal.id)) {
+            showCenterToast('只有提案發布者本人可以下架此提案。');
+            return;
+          }
+          showCenterToast('提案已下架。');
+          setSelectedProposalForDetail(null);
+          onBackFromDetail?.();
+        }}
+        onDelete={async () => {
+          const ownedQuestion = (questions || []).find((item) => item.id === liveProposal.id && (item.authorId === currentUser?.id || item.transferredToUserId === currentUser?.id));
+          if (!ownedQuestion) {
+            showCenterToast('只有提案發布者本人可以刪除此提案。');
+            return;
+          }
+          await deleteQuestionPermanently(liveProposal.id);
+          showCenterToast('提案已永久刪除。');
+          setSelectedProposalForDetail(null);
+          onBackFromDetail?.();
+        }}
         onBack={handleBackFromProposalDetail}
         onToggleLike={(pid) => {
           const target = proposalsList.find((p) => p.id === pid) || liveProposal;

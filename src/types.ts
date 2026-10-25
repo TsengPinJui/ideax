@@ -49,7 +49,8 @@ export type AppTab =
   | 'ai_crm'
   | 'membership'
   | 'topup'
-  | 'job_explorer';
+  | 'job_explorer'
+  | 'island_explorer';
 
 export type AboutSection = 
   | 'list'
@@ -962,7 +963,7 @@ export interface Question {
   previewMode?: 'embed' | 'external'; // 作品預覽模式：'embed' 內嵌網頁互動 | 'external' 外部連結開啟
   isComingSoon?: boolean; // 是否為「即將開放」狀態
   experienceThumbsUpCount?: number; // 體驗「讚」人數 (每個 100 分)
-  experienceNeutralCount?: number; // 體驗「普通」人數 (每個 0 分)
+  experienceNeutralCount?: number; // 體驗「普通」人數 (每個 50 分)
   experienceThumbsDownCount?: number; // 體驗「倒讚」人數 (每個 0 分)
   experienceScore?: number; // 平均體驗評分 (0 ~ 100 分)
   experienceRatingsCount?: number; // 體驗評分總人次
@@ -1005,6 +1006,7 @@ export interface Question {
   mindMap?: MindMapData | null; // 心智圖（創新提案、VibeCoding 作品選填）
   isSimulated?: boolean; // 是否為系統模擬貼文（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
+  simulatedProposalLikesReduced?: boolean; // 標記假提案按讚數已縮為十分之一，避免每次載入重複縮放
   tipsHistory?: Array<{
     id: string;
     userId: string;
@@ -1521,6 +1523,7 @@ export interface MindMapData {
 
 export interface PublicMetricsConfig {
   showPublicMetrics?: boolean;     // 統一開關：關閉時首頁不顯示任何公開數據（沒設定過視為開啟）
+  showIslandMap?: boolean;         // 創點島地圖入口：管理員可從後台控制全站顯示
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數
   showTotalBounty: boolean;        // 累計懸賞金額
   showAvgResponseSpeed: boolean;   // 平均回覆速度

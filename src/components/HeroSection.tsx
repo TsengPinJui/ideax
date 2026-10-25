@@ -329,6 +329,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               {/* 中間：首頁創點子播放區 */}
               <div className="flex-1 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto flex flex-col justify-center">
+                <p className="mb-2.5 px-2 text-center text-xs sm:text-sm font-black tracking-tight text-amber-900/90">
+                  沒上榜？別氣餒 ✨ IdeaX 收錄的都是百里挑一的佳作，加油！💪
+                </p>
                 {showcaseSlides.length > 0 ? (
                   <div data-home-showcase-slot={homeShowcaseConfig.modes.join(',')} className="relative w-full">
                     <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />

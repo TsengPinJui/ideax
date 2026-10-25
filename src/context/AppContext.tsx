@@ -77,6 +77,7 @@ import {
   VIRTUAL_PERSONA_USERS,
   SIMULATED_BATCH_ID,
   enrichQuestionWithSimulatedData,
+  reduceSimulatedProposalLikes,
   isSimulatedUser,
   isSimulatedQuestion,
   isSimulatedAnswer,
@@ -434,6 +435,7 @@ interface AppContextType {
   pendingReportsCount: number;
   adminMailBadgeCount: number;
   delistQuestion: (questionId: string, reason: string, feedback?: string, options?: { isDirectDelete?: boolean; alsoDelete?: boolean }) => void;
+  unpublishOwnQuestion: (questionId: string) => boolean;
   batchDelistQuestions: (questionIds: string[], reason: string, feedback?: string) => Promise<number>;
   relistQuestion: (questionId: string) => void;
   deleteQuestionPermanently: (questionId: string) => Promise<void>;
@@ -1547,7 +1549,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const hasRealUserLike = Array.isArray(userLikedQuestions) && userLikedQuestions.includes(q.id);
       const resolvedLikes = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.likes ?? 0);
       const resolvedSeconded = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.secondedCount ?? resolvedLikes);
-      return {
+      return reduceSimulatedProposalLikes({
         ...q,
         likes: resolvedLikes,
         secondedCount: resolvedSeconded,
@@ -1570,7 +1572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
         views: count,
         viewsCount: count,
-      };
+      });
     };
 
     const isValidQ = (q: any): boolean =>
@@ -1931,6 +1933,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Public Metrics Config (Admin customizes which stats to display publicly)
   const defaultPublicMetricsConfig: PublicMetricsConfig = {
+    showIslandMap: true,
     showSolvedCount: true,
     showTotalBounty: true,
     showAvgResponseSpeed: true,
@@ -2249,12 +2252,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isTargetId(q.authorId)) {
           if (q.authorName !== currentUser.name || q.authorAvatar !== currentUser.avatar) {
             changed = true;
-            return {
+            return reduceSimulatedProposalLikes({
               ...q,
               authorName: currentUser.name,
               authorAvatar: currentUser.avatar,
               authorTitle: currentUser.title || q.authorTitle,
-            };
+            });
           }
         }
         return q;
@@ -2847,7 +2850,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   typeof q.viewsCount === 'number' ? q.viewsCount : 0,
                   typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
                 );
-            return {
+            return reduceSimulatedProposalLikes({
               ...q,
               ...(seedQ && !hasUserUpdates
                 ? {
@@ -2894,7 +2897,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               views: highestViews,
               viewsCount: highestViews,
               tertiaryCategory: getEffectiveTertiaryCategory(q),
-            };
+            });
           });
 
         if (expiredIds.length > 0) {
@@ -3209,7 +3212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
                       typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
                     );
-                const finalQ: Question = {
+                const finalQ = reduceSimulatedProposalLikes({
                   ...rawQ,
                   ...(seedQ && !hasUserUpdates
                     ? {
@@ -3247,7 +3250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   views: highestViews,
                   viewsCount: highestViews,
                   tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
-                };
+                });
                 return finalQ;
               });
             const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
@@ -3431,7 +3434,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
               return true;
             })
-            .map((rawQ) => ({
+            .map((rawQ) => reduceSimulatedProposalLikes({
               ...rawQ,
               tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
               tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
@@ -7129,6 +7132,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const unpublishOwnQuestion = (questionId: string): boolean => {
+    const targetQ = questions.find((q) => q.id === questionId);
+    const ownsQuestion = Boolean(
+      targetQ && currentUser?.id && currentUser.id !== 'user-guest' &&
+      (targetQ.authorId === currentUser.id || targetQ.transferredToUserId === currentUser.id)
+    );
+    if (!targetQ || !ownsQuestion) return false;
+    const updatedQ: Question = {
+      ...targetQ,
+      status: 'delisted',
+      delistedReason: '作者自行下架',
+      delistedFeedback: undefined,
+      delistedAt: new Date().toISOString(),
+    };
+    setQuestions((prev) => prev.map((q) => q.id === questionId ? updatedQ : q));
+    syncQuestionToFirestore(updatedQ);
+    return true;
+  };
+
   // Action: Delete question permanently (強制永久刪除，徹底抹除資料庫、提問端、管理端、平台端與接案端紀錄，並自動全額退還提問預扣款，已完成交易不受影響)
   const deleteQuestionPermanently = async (questionId: string): Promise<void> => {
     const targetQ = questions.find((q) => q.id === questionId);
@@ -10554,6 +10576,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pendingReportsCount,
         adminMailBadgeCount,
         delistQuestion,
+        unpublishOwnQuestion,
         batchDelistQuestions,
         relistQuestion,
         deleteQuestionPermanently,
