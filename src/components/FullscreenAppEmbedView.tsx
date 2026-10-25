@@ -29,6 +29,7 @@ import {
 } from '../utils/userDisplay';
 import { useApp } from '../context/AppContext';
 import { shareOrCopyUrl } from '../utils/shareUtils';
+import { getQuestionShareUrl } from '../services/seoService';
 import { AdminDelistModal } from './AdminDelistModal';
 import {
   calculateNewExperienceRating,
@@ -214,15 +215,16 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
   };
 
   const handleShare = async () => {
+    const shareUrl = getQuestionShareUrl(question.id, question.postType);
     const success = await shareOrCopyUrl({
-      title: `${displayAppName ? `【${displayAppName}】` : ''}${cleanTitle} - IdeaX 軟體作品體驗`,
-      text: question.description || cleanTitle,
-      url: window.location.href,
+      title: `${displayAppName ? `【${displayAppName}】` : ''}${cleanTitle} - 線上試玩體驗 | IdeaX`,
+      text: question.description || `推薦你試玩這款作品：《${cleanTitle}》！點擊立即線上體驗：`,
+      url: shareUrl,
     });
     if (success) {
       setIsCopied(true);
       if (showCenterToast) {
-        showCenterToast('連結已複製至剪貼簿！', '可直接貼上分享給朋友體驗', { type: 'success', duration: 2500 });
+        showCenterToast('作品專屬連結已複製！', '可直接貼上分享給朋友體驗', { type: 'success', duration: 2500 });
       }
       setTimeout(() => setIsCopied(false), 2000);
     }

@@ -1,5 +1,6 @@
 import { Question, User, Category, Answer, UserRole } from '../types';
 import { ProposalComment } from '../types/competition';
+import { isGameQuestion } from '../utils/gameClassification';
 import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 import { SEED_THREADS } from './seedThreads';
@@ -992,7 +993,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     createdAt: daysAgo(0, 2),
     deadline: daysLater(60),
     views: 920,
-    likes: 154,
+    likes: 0,
     supportPoints: 162000,
     supporterCount: 74,
     answersCount: 7,
@@ -1615,7 +1616,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     createdAt: daysAgo(0, 1),
     deadline: daysLater(60),
     views: 1280,
-    likes: 215,
+    likes: 0,
     supportPoints: 3600,
     tippersCount: 42,
     answersCount: 9,
@@ -1686,7 +1687,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
       techStack: ['React', 'TypeScript', 'WebSockets', 'AI Agent', 'Tailwind CSS'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
       oneLinePitch: '知識問答、猜詞解謎、AI偽人殺、迷宮戰爭一站暢玩的線上多人遊戲集',
-      likesCount: 215,
+      likesCount: 0,
       tryCount: 980,
       reviewsCount: 12,
       avgScore: 4.96,
@@ -1713,7 +1714,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     createdAt: daysAgo(0, 1),
     deadline: daysLater(60),
     views: 1190,
-    likes: 198,
+    likes: 0,
     supportPoints: 3400,
     tippersCount: 39,
     answersCount: 8,
@@ -1761,7 +1762,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
       techStack: ['React', 'TypeScript', 'Gemini API', 'ChatGPT API', 'WebSockets'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
       oneLinePitch: '找出隱藏在玩家中的 AI！支援雙模型驅動、AI 幕後密謀私聊與人類暗殺投票的線上推理桌遊',
-      likesCount: 198,
+      likesCount: 0,
       tryCount: 890,
       reviewsCount: 11,
       avgScore: 4.97,
@@ -1788,7 +1789,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     createdAt: daysAgo(0, 1),
     deadline: daysLater(60),
     views: 1080,
-    likes: 184,
+    likes: 0,
     supportPoints: 3100,
     tippersCount: 34,
     answersCount: 7,
@@ -1826,7 +1827,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
       techStack: ['React', 'TypeScript', 'HTML5 Canvas', 'WebSockets'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
       oneLinePitch: '支援 2~4 人連線的迷宮與開闊地圖快節奏對戰遊戲',
-      likesCount: 184,
+      likesCount: 0,
       tryCount: 790,
       reviewsCount: 9,
       avgScore: 4.94,
@@ -2658,7 +2659,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     createdAt: daysAgo(4, 9),
     deadline: daysLater(30),
     views: 810,
-    likes: 112,
+    likes: 0,
     answersCount: 10,
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
@@ -2675,7 +2676,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
       techStack: ['Phaser 3', 'React', 'TypeScript', 'Gemini 2.5 Flash'],
       aiToolsUsed: ['Google AI Studio', 'Midjourney', 'Cursor'],
       oneLinePitch: '每個 NPC 都記得你說過的話！用自然語言對話破關的像素風懸疑冒險遊戲',
-      likesCount: 112,
+      likesCount: 0,
       tryCount: 560,
       reviewsCount: 10,
       avgScore: 4.95,
@@ -3886,10 +3887,11 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
       isSimulated: false,
     };
   }
+  const isGame = isGameQuestion(q);
   const simTips = generateSimulatedTipsForQuestion(q);
   const seed = hashSeedStr(q.id);
   const simSameCount = 3 + ((seed * 7) % 36); // 3 ~ 38 人同問，每篇貼文數量皆不同且不為 0
-  const simLikes = 8 + ((seed * 13) % 65);
+  const simLikes = isGame ? 0 : 8 + ((seed * 13) % 65);
   return {
     ...q,
     ...(existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {}),
@@ -3898,13 +3900,14 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
     simulatedBatchId: q.simulatedBatchId || SIMULATED_BATCH_ID,
     views: 0,
     viewsCount: 0,
-    likes: typeof q.likes === 'number' && q.likes > 0 ? q.likes : simLikes,
-    secondedCount:
-      typeof q.secondedCount === 'number' && q.secondedCount > 0
+    likes: isGame ? 0 : (typeof q.likes === 'number' && q.likes > 0 ? q.likes : simLikes),
+    secondedCount: isGame
+      ? 0
+      : (typeof q.secondedCount === 'number' && q.secondedCount > 0
         ? q.secondedCount
         : typeof q.likes === 'number' && q.likes > 0
         ? q.likes
-        : simLikes,
+        : simLikes),
     sameQuestionCount:
       typeof q.sameQuestionCount === 'number' && q.sameQuestionCount > 0
         ? q.sameQuestionCount

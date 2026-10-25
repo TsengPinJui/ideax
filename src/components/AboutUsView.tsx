@@ -617,7 +617,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                     </span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                    點子與人才媒合平台
+                    知識創意的加值平台
                   </h2>
                 </div>
 

@@ -78,6 +78,7 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
+  Globe,
   UserCheck,
   TrendingDown,
   Sparkles,
@@ -3336,44 +3337,175 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Metric 14: 卡片內頁瀏覽次數（明顯高亮設計，管理員專屬查閱） */}
-                  <div className={`p-3.5 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
-                    (publicMetricsConfig.showCardViews ?? true)
-                      ? 'bg-gradient-to-r from-purple-50 via-white to-amber-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
-                      : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
-                  }`}>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-black text-xs text-purple-950 flex items-center gap-1">
-                          <Eye className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          <span>卡片內頁瀏覽次數</span>
-                        </span>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs">
-                          👁️ 管理員專屬查閱
-                        </span>
+                  {/* Metric 14: 卡片內頁瀏覽次數（僅管理員可見 或 全站可見） */}
+                  {(() => {
+                    const isEnabled = publicMetricsConfig.showCardViews ?? true;
+                    const scope = publicMetricsConfig.cardViewsScope ?? 'admin';
+                    const isPublic = isEnabled && scope === 'public';
+                    const isAdminOnly = isEnabled && scope === 'admin';
+
+                    return (
+                      <div
+                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                          isPublic
+                            ? 'bg-gradient-to-r from-emerald-50 via-white to-teal-50/70 border-emerald-500 shadow-sm ring-2 ring-emerald-200/60'
+                            : isEnabled
+                            ? 'bg-gradient-to-r from-purple-50 via-white to-amber-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                            : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`font-black text-xs flex items-center gap-1 ${isPublic ? 'text-emerald-950' : 'text-purple-950'}`}>
+                                <Eye className={`w-3.5 h-3.5 shrink-0 ${isPublic ? 'text-emerald-600' : 'text-purple-600'}`} />
+                                <span>卡片內頁瀏覽次數</span>
+                              </span>
+                              {isPublic ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs flex items-center gap-1">
+                                  <Globe className="w-2.5 h-2.5" />
+                                  <span>全站可見</span>
+                                </span>
+                              ) : isEnabled ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs flex items-center gap-1">
+                                  <Lock className="w-2.5 h-2.5" />
+                                  <span>僅管理員可見</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
+                                  🚫 已關閉顯示
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                              {isPublic
+                                ? '有點進內頁才算瀏覽 · 全站可見，所有訪客與會員皆可在卡片看到瀏覽數'
+                                : isEnabled
+                                ? '有點進內頁才算瀏覽 · 僅管理員可見卡片瀏覽數，一般用戶不可見'
+                                : '有點進內頁才算瀏覽 · 目前已關閉顯示，全站與管理員皆不顯示'}
+                            </p>
+                          </div>
+
+                          {/* 切換開關：在「僅管理員可見」與「全站可見」之間切換 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isEnabled) {
+                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
+                              } else if (scope === 'admin') {
+                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' });
+                              } else {
+                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
+                              }
+                            }}
+                            className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                              isPublic
+                                ? 'bg-emerald-600 ring-2 ring-emerald-300'
+                                : isEnabled
+                                ? 'bg-purple-600 ring-2 ring-purple-300'
+                                : 'bg-stone-300'
+                            }`}
+                            title={
+                              isPublic
+                                ? '目前為「全站可見」，點擊切換為「僅管理員可見」'
+                                : isEnabled
+                                ? '目前為「僅管理員可見」，點擊切換為「全站可見」'
+                                : '點擊開啟卡片瀏覽數顯示'
+                            }
+                          >
+                            <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                              isPublic ? 'translate-x-5.5' : isEnabled ? 'translate-x-0' : 'translate-x-0'
+                            }`} />
+                          </button>
+                        </div>
+
+                        {/* 快速二選一分頁膠囊按鈕：直觀選擇「僅管理員可見」或「全站可見」 */}
+                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
+                          <span className="text-[10px] font-bold text-stone-500 shrink-0">可見範圍：</span>
+                          <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
+                            <button
+                              type="button"
+                              onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' })}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                isAdminOnly
+                                  ? 'bg-purple-700 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                              }`}
+                            >
+                              <Lock className="w-3 h-3" />
+                              <span>僅管理員可見</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' })}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                isPublic
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                              }`}
+                            >
+                              <Globe className="w-3 h-3" />
+                              <span>全站可見</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-stone-600 mt-1 leading-snug">
-                        有點進內頁才算瀏覽 · 僅管理員可見卡片瀏覽數，一般用戶不可見
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextVal = !(publicMetricsConfig.showCardViews ?? true);
-                        updatePublicMetricsConfig({ showCardViews: nextVal });
-                      }}
-                      className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
-                        (publicMetricsConfig.showCardViews ?? true)
-                          ? 'bg-purple-600 ring-2 ring-purple-300'
-                          : 'bg-stone-300'
-                      }`}
-                      title={(publicMetricsConfig.showCardViews ?? true) ? '點擊關閉管理員卡片瀏覽次數顯示' : '點擊開啟管理員卡片瀏覽次數顯示'}
-                    >
-                      <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
-                        (publicMetricsConfig.showCardViews ?? true) ? 'translate-x-5.5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                  </div>
+                    );
+                  })()}
+
+                  {/* Feature 15: 一般用戶智慧上架功能開關 */}
+                  {(() => {
+                    const isSmartOnboardAllowed = publicMetricsConfig.allowUserSmartOnboard !== false;
+
+                    return (
+                      <div
+                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 col-span-1 sm:col-span-2 lg:col-span-3 ${
+                          isSmartOnboardAllowed
+                            ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                            : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`font-black text-xs flex items-center gap-1.5 ${isSmartOnboardAllowed ? 'text-purple-950' : 'text-stone-700'}`}>
+                                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSmartOnboardAllowed ? 'text-purple-600' : 'text-stone-400'}`} />
+                                <span>一般用戶智慧上架功能</span>
+                              </span>
+                              {isSmartOnboardAllowed ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                                  <span>已開放一般用戶使用</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
+                                  🚫 已關閉（僅管理員可用）
+                                </span>
+                              )}
+                              <span className="text-[10px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</span>
+                            </div>
+                            <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                              {isSmartOnboardAllowed
+                                ? '開啟中 · 一般會員可於軟體專區使用「一鍵上架」或於刊登頁貼上網址由 AI 自動抓取名稱、描述、分類與首頁截圖（需登入會員）'
+                                : '已關閉 · 一般用戶不可使用智慧上架與一鍵上架入口（軟體專區一鍵上架入口與發布頁智慧讀取將對一般用戶隱藏，僅管理員可用）'}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => updatePublicMetricsConfig({ allowUserSmartOnboard: !isSmartOnboardAllowed })}
+                            className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                              isSmartOnboardAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
+                            }`}
+                            title={isSmartOnboardAllowed ? '點擊關閉一般用戶智慧上架功能' : '點擊開啟一般用戶智慧上架功能'}
+                          >
+                            <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                              isSmartOnboardAllowed ? 'translate-x-5.5' : 'translate-x-0'
+                            }`} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 )}
               </div>

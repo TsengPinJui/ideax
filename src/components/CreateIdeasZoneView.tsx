@@ -35,7 +35,7 @@ import {
 import { StarSeasonProposal, STAR_SEASON_TRACKS, OFFICIAL_COMPETITION_TRACKS } from '../types/competition';
 import { getInnovationProgressStageMeta } from '../types';
 import { useApp } from '../context/AppContext';
-import { mapQuestionsToStarSeasonProposals } from '../utils/questionUtils';
+import { mapQuestionsToStarSeasonProposals, isCardViewsVisible } from '../utils/questionUtils';
 import {
   fetchProposals,
   likeProposal,
@@ -913,10 +913,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                           <MessageSquare className="w-3 h-3" />
                           {proposal.commentsCount || 0}
                         </span>
-                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                        {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                           <span
                             className="flex items-center gap-0.5 text-stone-500 text-[11px] font-mono"
-                            title="管理員限定：累計點進內頁瀏覽次數"
+                            title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                           >
                             <Eye className="w-3 h-3 text-stone-400" />
                             <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>
@@ -1052,10 +1052,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                           <Coins className="w-3 h-3" />
                           {(proposal.supportPoints || 0).toLocaleString()} 點
                         </span>
-                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                        {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                           <span
                             className="flex items-center gap-0.5 text-stone-500 text-[10px] font-mono"
-                            title="管理員限定：累計點進內頁瀏覽次數"
+                            title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                           >
                             <Eye className="w-3 h-3 text-stone-400" />
                             <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>
@@ -1232,10 +1232,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
                         <span>{proposal.commentsCount || 0}</span>
                       </span>
-                      {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                      {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                         <span
                           className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
-                          title="管理員限定：累計點進內頁瀏覽次數"
+                          title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                         >
                           <Eye className="w-3.5 h-3.5 text-stone-400" />
                           <span>{getEffectiveProposalViews(proposal.id, proposal.viewsCount || 0)}</span>

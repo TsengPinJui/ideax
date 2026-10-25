@@ -60,6 +60,7 @@ import {
 import { ImageCropperModal, CropAspectRatio } from './common/ImageCropperModal';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatforms';
+import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
 import type { PublishedPlatform } from '../types';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
@@ -184,7 +185,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast, allowGuestPosting } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast, allowGuestPosting, openAuthModal, addNotification, publicMetricsConfig } = useApp();
 
   const [showProfileIncompleteModal, setShowProfileIncompleteModal] = useState(false);
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
@@ -192,6 +193,90 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const hasAgreedQuestioner = hasAgreedTerms('questioner');
   const [agreeQuestionerTerms, setAgreeQuestionerTerms] = useState(hasAgreedQuestioner);
   const [termsError, setTermsError] = useState<string | null>(null);
+
+  // ⚡ 網址智慧上架狀態與開關
+  const [isQuickOnboardModalOpen, setIsQuickOnboardModalOpen] = useState(false);
+  const [smartScrapeUrl, setSmartScrapeUrl] = useState('');
+  const [isSmartScraping, setIsSmartScraping] = useState(false);
+  const isAdmin = currentUser?.role === 'admin';
+  const allowUserSmartOnboard = publicMetricsConfig?.allowUserSmartOnboard !== false;
+  const canUseSmartOnboard = isAdmin || allowUserSmartOnboard;
+
+  const handlePerformSmartScrape = async () => {
+    if (currentUser?.id === 'user-guest') {
+      openAuthModal('login');
+      addNotification?.('「智慧上架」為會員專屬功能，請先登入後使用', 'info');
+      return;
+    }
+    const clean = smartScrapeUrl.trim();
+    if (!clean) {
+      alert('請先輸入或貼上作品網址');
+      return;
+    }
+    let targetUrl = clean;
+    if (!/^https?:\/\//i.test(targetUrl)) {
+      targetUrl = 'https://' + targetUrl;
+    }
+    try {
+      new URL(targetUrl);
+    } catch {
+      alert('請輸入有效的網址（包含網域，例如：https://example.com）');
+      return;
+    }
+
+    setIsSmartScraping(true);
+    try {
+      const { getAuthHeaders } = await import('../services/authHeader');
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/ai/scrape-website', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ url: targetUrl }),
+      });
+      const data = await res.json();
+      if (!data.success || !data.data) {
+        throw new Error(data.error || '解析失敗');
+      }
+      const item = data.data;
+      if (item.appName) setAppName(item.appName);
+      if (item.title) setTitle(item.title);
+      if (item.description) setDescription(item.description);
+      if (item.websiteUrl) {
+        setDemoUrl(item.websiteUrl);
+        setExternalLink(item.websiteUrl);
+        setPublishedPlatforms([{ name: 'Web 網頁版', url: item.websiteUrl }]);
+      }
+      if (item.category) {
+        setSubcategory(item.category);
+        setSelectedVibeCategory(item.category);
+        setSelectedVibeCategories(item.categories || [item.category]);
+      }
+      if (item.tertiaryCategory) {
+        setSelectedTertiary(item.tertiaryCategory);
+      }
+      if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
+        setTagsInput(item.tags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' '));
+      }
+      if (item.coverImage) {
+        setCoverImage(item.coverImage);
+      }
+      if (item.techArchitecture) {
+        setTechArchitecture(item.techArchitecture);
+      }
+      if (item.targetGoal) {
+        setTargetGoal(item.targetGoal);
+      }
+      if (item.referencedPainPoint) {
+        setReferencedPainPoint(item.referencedPainPoint);
+      }
+      setPreviewMode('embed');
+      showCenterToast?.('🎉 智慧讀取成功！', `已自動填入《${item.appName || item.title}》的資料，您可自由微調各項內容。`);
+    } catch (err: any) {
+      alert(`智慧讀取失敗：${err?.message || '請檢查網址或稍後再試'}`);
+    } finally {
+      setIsSmartScraping(false);
+    }
+  };
 
   const [postType, setPostType] = useState<PostType>(initialPostType);
   const [title, setTitle] = useState('');
@@ -1511,6 +1596,88 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 <span>⏳ 即將上架</span>
                 <span className="text-[10px] opacity-80 font-normal">（排程預告展示）</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ⚡ 網址智慧上架 (下放到一般用戶，登入專屬，可由後台展示設定關閉) */}
+        {postType === 'vibecoding_app' && canUseSmartOnboard && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 via-indigo-50/50 to-stone-50 border border-purple-300/80 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black shadow-2xs shrink-0">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                    <span>⚡ 網址智慧上架</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                      AI 自動抓取
+                    </span>
+                  </h4>
+                  <p className="text-[10px] text-stone-500 mt-0.5">
+                    貼上網站或作品網址，自動抓取名稱、描述、分類標籤與首頁截圖
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentUser?.id === 'user-guest') {
+                      openAuthModal('login');
+                      addNotification?.('「智慧上架」為會員專屬功能，請先登入後使用', 'info');
+                      return;
+                    }
+                    setIsQuickOnboardModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-purple-300 bg-white hover:bg-purple-50 text-purple-700 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                  title="開啟完整一鍵上架精靈，支援批量上架與深度編輯"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-600" />
+                  <span>開啟一鍵上架精靈 ↗</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 網址輸入與一鍵讀取 */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={smartScrapeUrl}
+                onChange={(e) => setSmartScrapeUrl(e.target.value)}
+                placeholder="貼上作品體驗網址，例如：https://my-app.com"
+                className="flex-1 px-3.5 py-2 rounded-xl border border-stone-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-xs font-medium outline-none bg-white placeholder:text-stone-400"
+              />
+              <button
+                type="button"
+                disabled={isSmartScraping}
+                onClick={handlePerformSmartScrape}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:bg-stone-300 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shrink-0 shadow-2xs"
+              >
+                {isSmartScraping ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>AI 讀取中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>AI 智慧讀取填入</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 小字註明：上架即代表您已經確認取得作者授權刊登作品於本平台 */}
+            <div className="flex items-center justify-between text-[11px] text-stone-500 pt-0.5">
+              <span className="text-[10px] text-stone-500 font-medium">
+                ※ 上架即代表您已經確認取得作者授權刊登作品於本平台
+              </span>
+              <span className="text-[10px] text-purple-700/80 font-medium">
+                填入後可再手動修改所有內容
+              </span>
             </div>
           </div>
         )}
@@ -3034,9 +3201,14 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
 
         {postType === 'vibecoding_app' && (
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>刊登前請再次確認網站與程式資料安全並符合法規。</span>
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>刊登前請再次確認網站與程式資料安全並符合法規。</span>
+            </div>
+            <span className="text-[10px] text-amber-800/80 font-normal">
+              ※ 上架即代表您已經確認取得作者授權刊登作品於本平台
+            </span>
           </div>
         )}
 
@@ -3221,6 +3393,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-1.5 sm:p-4 overflow-y-auto">
       {content}
       <PublishingOverlayModal isSubmitting={isSubmitting} />
+      {/* ⚡ 完整一鍵上架精靈彈窗 (一般用戶/管理員皆可使用) */}
+      {isQuickOnboardModalOpen && (
+        <AdminQuickOnboardAppModal
+          isOpen={isQuickOnboardModalOpen}
+          onClose={() => setIsQuickOnboardModalOpen(false)}
+          isUserMode={!isAdmin}
+          defaultPostType="vibecoding_app"
+          onSuccess={(q) => {
+            setIsQuickOnboardModalOpen(false);
+            onSuccess(q);
+          }}
+        />
+      )}
     </div>
   );
 };

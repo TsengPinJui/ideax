@@ -143,6 +143,7 @@ import { getCompetitionExperts } from '../../services/competitionAdminSync';
 import { getProposalDrafts } from '../../services/draftService';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
+import { isCardViewsVisible } from '../../utils/questionUtils';
 import { resolveClientCompetitionAccount } from '../../utils/competitionAccountUtils';
 import { isGuestUser } from '../../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
@@ -3781,10 +3782,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                   <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                                   <span className="font-mono text-[11px]">{p.commentsCount}</span>
                                 </span>
-                                {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                                {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                                   <span
                                     className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
-                                    title="管理員限定：累計點進內頁瀏覽次數"
+                                    title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                                   >
                                     <Eye className="w-3.5 h-3.5 text-stone-400" />
                                     <span>{(p as any).viewsCount || (p as any).views || 0}</span>
@@ -4062,10 +4063,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                                 <span>{pp.solutionsCount} 個解方</span>
                               </span>
-                              {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                              {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                                 <span
                                   className="flex items-center gap-1 text-stone-500 text-[11px] font-mono"
-                                  title="管理員限定：累計點進內頁瀏覽次數"
+                                  title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                                 >
                                   <Eye className="w-3.5 h-3.5 text-stone-400" />
                                   <span>{pp.views || 0}</span>

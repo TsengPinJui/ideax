@@ -210,3 +210,21 @@ export const mapQuestionsToStarSeasonProposals = (
     .map(questionToStarSeasonProposal);
 };
 
+/**
+ * 判斷卡片內頁瀏覽次數是否對當前使用者可見：
+ * 1. 若 showCardViews 為 false，全站與管理員皆不顯示。
+ * 2. 若 cardViewsScope 為 'public'，所有人（含訪客、會員、管理員）皆可見。
+ * 3. 若 cardViewsScope 為 'admin'（預設），僅具有管理員權限者可見。
+ */
+export const isCardViewsVisible = (
+  config?: import('../types').PublicMetricsConfig | null,
+  isAdmin: boolean = false
+): boolean => {
+  if (!config) return isAdmin;
+  const isEnabled = config.showCardViews ?? true;
+  if (!isEnabled) return false;
+  const scope = config.cardViewsScope ?? 'admin';
+  if (scope === 'public') return true;
+  return isAdmin;
+};
+

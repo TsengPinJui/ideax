@@ -41,7 +41,7 @@ import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, P
 import { isMockQuestionId } from './data/mockData';
 import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
-import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
+import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem, getQuestionShareUrl } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
 import { trackFeature, featureFromPath } from './services/featureUsage';
 import { OPEN_DASHBOARD_TAB_EVENT } from './utils/adminShortcuts';
@@ -529,7 +529,7 @@ function MainContent() {
     scrollToIdeasSearch();
   };
 
-  // 軟體作品試玩體驗視窗（點擊作品卡片直接進入試玩體驗）
+  // 軟體作品試玩體驗視窗（點擊作品卡片直接進入試玩體驗，網址同步至個別個案專屬網址）
   const [fullscreenEmbedApp, setFullscreenEmbedApp] = useState<Question | null>(null);
 
   const handleOpenAppEmbed = (app: Question) => {
@@ -538,6 +538,22 @@ function MainContent() {
     incrementQuestionViews(app.id);
     setUserProfileVersion((v) => v + 1);
     setFullscreenEmbedApp(app);
+    try {
+      if (typeof window !== 'undefined') {
+        const shareUrl = getQuestionShareUrl(app.id, app.postType);
+        window.history.pushState({ fullscreenAppId: app.id }, '', shareUrl);
+      }
+    } catch {}
+  };
+
+  const handleCloseAppEmbed = () => {
+    setFullscreenEmbedApp(null);
+    try {
+      if (typeof window !== 'undefined') {
+        const fallbackPath = specialZone === 'vibecoding' ? '/vibecoding' : '/';
+        window.history.pushState(null, '', fallbackPath);
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -550,6 +566,16 @@ function MainContent() {
     return () => window.removeEventListener('IDEAX_OPEN_APP_EMBED', handleEmbedEvent);
   }, []);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      if (fullscreenEmbedApp) {
+        setFullscreenEmbedApp(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [fullscreenEmbedApp]);
+
   const handleViewAppDescription = (app: Question) => {
     setFullscreenEmbedApp(null);
     recordUserViewedQuestion(currentUser.id, app);
@@ -558,7 +584,8 @@ function MainContent() {
     setActiveTab('question_detail');
     try {
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', `/?question=${encodeURIComponent(app.id)}`);
+        const shareUrl = getQuestionShareUrl(app.id, app.postType);
+        window.history.pushState(null, '', shareUrl);
       }
     } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1338,13 +1365,15 @@ function MainContent() {
         targetQId = null;
       }
 
-      // 2. Check search params: ?questionId=xxx or ?question=xxx or ?id=xxx or ?q=xxx
+      // 2. Check search params: ?questionId=xxx or ?question=xxx or ?app=xxx or ?play=xxx or ?id=xxx or ?q=xxx
       if (!targetQId) {
         const candidateId =
           searchParams.get('questionId') ||
           searchParams.get('questionid') ||
           searchParams.get('question') ||
           searchParams.get('qid') ||
+          searchParams.get('app') ||
+          searchParams.get('play') ||
           searchParams.get('id');
         const qParam = searchParams.get('q');
         if (candidateId) {
@@ -1377,7 +1406,7 @@ function MainContent() {
       if (!targetQId && window.location.hash) {
         const hashStr = window.location.hash.replace(/^#/, '');
         const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
-        targetQId = hashParams.get('questionId') || hashParams.get('question') || hashParams.get('id');
+        targetQId = hashParams.get('questionId') || hashParams.get('question') || hashParams.get('app') || hashParams.get('play') || hashParams.get('id');
 
         if (!targetQId && hashStr.includes('/question/')) {
           targetQId = hashStr.split('/question/')[1].split('/')[0].split('?')[0];
@@ -1391,9 +1420,21 @@ function MainContent() {
       if (targetQId) {
         const found = questions.find((q) => q.id === targetQId);
         if (found) {
-          setSelectedQuestion(found);
-          setActiveTab('question_detail');
-          setIsSubmittingAnswer(false);
+          const isPlayRequested =
+            searchParams.get('play') === '1' ||
+            searchParams.get('play') === 'true' ||
+            searchParams.get('mode') === 'embed' ||
+            searchParams.get('play') === targetQId ||
+            searchParams.has('app');
+          const hasEmbed = Boolean(found.demoUrl || (found as any).vibeCodingData?.demoUrl || (found.publishedPlatforms && found.publishedPlatforms.length > 0));
+
+          if (isPlayRequested && hasEmbed) {
+            handleOpenAppEmbed(found);
+          } else {
+            setSelectedQuestion(found);
+            setActiveTab('question_detail');
+            setIsSubmittingAnswer(false);
+          }
         }
         return;
       }
@@ -3753,7 +3794,7 @@ function MainContent() {
       {fullscreenEmbedApp && (
         <FullscreenAppEmbedView
           question={fullscreenEmbedApp}
-          onClose={() => setFullscreenEmbedApp(null)}
+          onClose={handleCloseAppEmbed}
           onViewDescription={handleViewAppDescription}
         />
       )}

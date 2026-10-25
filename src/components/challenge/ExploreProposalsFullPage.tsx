@@ -73,6 +73,7 @@ import {
 } from '../../services/seoService';
 import { auth } from '../../services/firebase';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
+import { isCardViewsVisible } from '../../utils/questionUtils';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { StarSeasonGuideModal } from './StarSeasonGuideModal';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
@@ -1582,10 +1583,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           <span className="text-[11px] font-mono text-amber-600">{proposal.commentsCount || 0}</span>
                         </button>
 
-                        {currentUser?.role === 'admin' && (publicMetricsConfig?.showCardViews ?? true) && (
+                        {isCardViewsVisible(publicMetricsConfig, currentUser?.role === 'admin') && (
                           <span
                             className="text-stone-500 text-[11px] flex items-center gap-1 font-mono"
-                            title="管理員限定：累計點進內頁瀏覽次數"
+                            title={publicMetricsConfig?.cardViewsScope === 'public' ? '累計點進內頁瀏覽次數' : '管理員限定：累計點進內頁瀏覽次數'}
                           >
                             <Eye className="w-3.5 h-3.5 text-stone-400" />
                             <span>{proposal.viewsCount || (proposal as any).views || 0}</span>

@@ -1538,8 +1538,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       const isFakeOrSeed = Boolean(seedQ || q.isSimulated || isMockQuestionId(q.id, q.authorId) || isSimulatedQuestion(q));
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (isFakeOrSeed ? 0 : (q.views || 0));
+      const isGame = isGameQuestion(q);
+      let userLikedQuestions: string[] = [];
+      try {
+        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_questions`);
+        if (raw) userLikedQuestions = JSON.parse(raw);
+      } catch {}
+      const hasRealUserLike = Array.isArray(userLikedQuestions) && userLikedQuestions.includes(q.id);
+      const resolvedLikes = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.likes ?? 0);
+      const resolvedSeconded = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.secondedCount ?? resolvedLikes);
       return {
         ...q,
+        likes: resolvedLikes,
+        secondedCount: resolvedSeconded,
+        vibeCodingData: q.vibeCodingData
+          ? {
+              ...q.vibeCodingData,
+              ...(isGame && isFakeOrSeed ? { likesCount: resolvedLikes } : {}),
+            }
+          : undefined,
         tertiaryCategory: getEffectiveTertiaryCategory(q),
         publishedPlatforms: Array.isArray(rawQ.publishedPlatforms)
           ? rawQ.publishedPlatforms
@@ -1921,6 +1938,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showHighestBounty: true,
     showTotalViews: false,
     showCardViews: true,
+    cardViewsScope: 'admin',
     showUniqueVisitors: false,
     showOnlineUsers: false,
     showTotalMembers: false,
@@ -1933,6 +1951,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNewMembers7d: false,
     showJobsUsers: false,
     showPublicMetrics: true,
+    allowUserSmartOnboard: true,
   };
 
   const [publicMetricsConfig, setPublicMetricsConfig] = useState<PublicMetricsConfig>(() => {

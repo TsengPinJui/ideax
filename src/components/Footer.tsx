@@ -249,8 +249,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
 
         <div className="pt-4 pb-1 text-[11px] text-stone-500 leading-relaxed border-t border-stone-800/50">
           <p>
-            <span className="text-amber-500/80 font-medium">【侵權主張與管轄宣告】</span>
-            若有未經授權刊登之提案或作品，請權利人具備完整身分證明與侵權對比證據向IdeaX提出主張，平台將於三日內審核，若屬實將儘速下架該內容。若有法律糾紛將以臺灣臺北地方法院為第一審法院。
+            <span className="text-amber-500/80 font-medium">【作品刊登與著作權聲明】</span>
+            IdeaX平台刊登的作品可能由用戶自主刊登，並已於上架前向用戶確認。若有相關著作權糾紛由該刊登用戶負責，若您是著作權擁有者可向官方檢舉，核實後將立即下架該作品以維護您的權益。若有法律糾紛將以臺灣臺北地方法院為第一審法院。
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX</span>
             <span>·</span>
-            <span>點子與人才媒合平台</span>
+            <span>知識創意的加值平台</span>
           </div>
 
           <div className="font-mono text-[10px] text-stone-600 select-none">

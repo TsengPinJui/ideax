@@ -432,7 +432,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 持續上新中~
               </span>
               <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
-                “能上IdeaX的作品都是百里挑一！”
+                “能上IdeaX的作品都是百里挑一！（作品皆經過人工篩查）”
               </span>
             </div>
           )}

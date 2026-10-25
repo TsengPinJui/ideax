@@ -6,6 +6,7 @@ import {
   Search,
   Plus,
   Heart,
+  Sparkles,
   Globe,
   Cpu,
   Gamepad2,
@@ -40,6 +41,7 @@ import {
   PLATFORM_CURATED_AVATAR,
 } from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { findReferencedPainPoint } from '../utils/painPointLinking';
 import { shareOrCopyUrl } from '../utils/shareUtils';
@@ -49,6 +51,7 @@ import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getEffectiveQuestionViews } from '../utils/proposalClicks';
 import { getEffectiveTertiaryCategory, isGameQuestion } from '../utils/gameClassification';
+import { isCardViewsVisible } from '../utils/questionUtils';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -128,7 +131,20 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const handleSelect = onSelectApp || onSelectQuestion || (() => {});
   const handleOpenCreate = onOpenCreateApp || onOpenCreateVibeCoding || (() => {});
   const isAdmin = currentUser?.role === 'admin';
-  const shouldShowViews = isAdmin && (publicMetricsConfig?.showCardViews ?? true);
+  const shouldShowViews = isCardViewsVisible(publicMetricsConfig, isAdmin);
+
+  const [isQuickOnboardOpen, setIsQuickOnboardOpen] = useState(false);
+  const allowUserSmartOnboard = publicMetricsConfig?.allowUserSmartOnboard !== false;
+  const canShowQuickOnboard = isAdmin || allowUserSmartOnboard;
+
+  const handleQuickOnboardClick = () => {
+    if (currentUser?.id === 'user-guest') {
+      openAuthModal('login');
+      addNotification('「一鍵上架」為會員專屬功能，請先登入後使用', 'info');
+      return;
+    }
+    setIsQuickOnboardOpen(true);
+  };
 
   const [showZoneHelp, setShowZoneHelp] = useState(false);
   // 點「體驗」時，先讓觀眾選作者填的上架平台
@@ -140,14 +156,17 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
   const [isGroupedView, setIsGroupedView] = useState<boolean>(true);
-  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
+  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'rating' | 'bookmarks' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
 
-  // 全部分類 和 遊戲時版面預設小卡片 (grid)
+  // 全部分類 和 遊戲時版面預設小卡片 (grid)；切換至遊戲時確保排序為遊戲專屬四種之一
   useEffect(() => {
     if (selectedSubcat === 'all' || selectedSubcat === '遊戲') {
       setViewMode('grid');
+    }
+    if (selectedSubcat === '遊戲') {
+      setSortBy((prev) => (['latest', 'popular', 'rating', 'bookmarks'].includes(prev) ? prev : 'latest'));
     }
   }, [selectedSubcat]);
 
@@ -236,8 +255,57 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     }
 
     list.sort((a, b) => {
+      // 遊戲專區專用排序規則：最新、熱門（按照瀏覽量，但除了管理員不用顯示瀏覽量）、好評率（遊戲體驗後的👍🏻👎🏻評分）、收藏數
+      if (selectedSubcat === '遊戲' || (isGameQuestion(a) && isGameQuestion(b))) {
+        if (sortBy === 'latest') {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === 'popular') {
+          const aViews = getEffectiveQuestionViews(a.id, a.views || 0);
+          const bViews = getEffectiveQuestionViews(b.id, b.views || 0);
+          if (bViews !== aViews) {
+            return bViews - aViews;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === 'rating') {
+          const scoreA = getExperienceScore(a);
+          const scoreB = getExperienceScore(b);
+          const valA = scoreA.score ?? 0;
+          const valB = scoreB.score ?? 0;
+          if (valB !== valA) {
+            return valB - valA;
+          }
+          if (scoreB.totalRatings !== scoreA.totalRatings) {
+            return scoreB.totalRatings - scoreA.totalRatings;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (sortBy === 'bookmarks') {
+          const countA = (isQuestionBookmarked(a.id) ? 1 : 0) + availableUsers.filter((u) => u.id !== currentUser?.id && u.bookmarkedQuestionIds?.includes(a.id)).length;
+          const countB = (isQuestionBookmarked(b.id) ? 1 : 0) + availableUsers.filter((u) => u.id !== currentUser?.id && u.bookmarkedQuestionIds?.includes(b.id)).length;
+          if (countB !== countA) {
+            return countB - countA;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+      }
+
       if (sortBy === 'latest') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'rating') {
+        const scoreA = getExperienceScore(a);
+        const scoreB = getExperienceScore(b);
+        const valA = scoreA.score ?? 0;
+        const valB = scoreB.score ?? 0;
+        if (valB !== valA) return valB - valA;
+        return scoreB.totalRatings - scoreA.totalRatings;
+      }
+      if (sortBy === 'bookmarks') {
+        const countA = (isQuestionBookmarked(a.id) ? 1 : 0) + availableUsers.filter((u) => u.id !== currentUser?.id && u.bookmarkedQuestionIds?.includes(a.id)).length;
+        const countB = (isQuestionBookmarked(b.id) ? 1 : 0) + availableUsers.filter((u) => u.id !== currentUser?.id && u.bookmarkedQuestionIds?.includes(b.id)).length;
+        return countB - countA;
       }
       if (sortBy === 'tipped') {
         return (b.supportPoints || 0) - (a.supportPoints || 0);
@@ -264,7 +332,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     });
 
     return list;
-  }, [activePool, activeTab, selectedSubcat, selectedTertiary, searchQuery, sortBy, answers, questions]);
+  }, [activePool, activeTab, selectedSubcat, selectedTertiary, searchQuery, sortBy, answers, questions, availableUsers, currentUser]);
 
   const totalLikes = useMemo(
     () => activePool.reduce((acc, q) => acc + (q.likes || 0), 0),
@@ -368,6 +436,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     const isGame = isGameQuestion(app) || primaryCategory === '遊戲';
     const isComingSoon = isComingSoonWork(app);
     const expScore = getExperienceScore(app);
+    // 遊戲專屬規定：按照瀏覽量排序，但除了管理員不用顯示瀏覽量
+    const showViewsForCard = isGame ? isAdmin : shouldShowViews;
 
     // 1. 條列式 (List Mode)
     if (viewMode === 'list') {
@@ -452,7 +522,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-            {shouldShowViews && (
+            {showViewsForCard && (
               <span
                 className="flex items-center gap-1 text-[11px] font-mono text-stone-500"
                 title="管理員限定：累計點進內頁瀏覽次數"
@@ -482,19 +552,22 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               >
                 <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
               </button>
-              <button
-                type="button"
-                onClick={(e) => handleToggleLike(e, app)}
-                className={`px-2 py-1 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isLiked
-                    ? 'bg-rose-500 text-white border-rose-500'
-                    : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                }`}
-                title="❤️ Like"
-              >
-                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white' : 'fill-rose-500 text-rose-500'}`} />
-                <span className="font-mono">{app.likes || 0}</span>
-              </button>
+              {/* 遊戲卡片移除 ❤️ 僅留 ⭐ 收藏 */}
+              {!isGame && (
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleLike(e, app)}
+                  className={`px-2 py-1 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                    isLiked
+                      ? 'bg-rose-500 text-white border-rose-500'
+                      : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                  }`}
+                  title="❤️ Like"
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white' : 'fill-rose-500 text-rose-500'}`} />
+                  <span className="font-mono">{app.likes || 0}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -564,19 +637,22 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               >
                 <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
               </button>
-              <button
-                type="button"
-                onClick={(e) => handleToggleLike(e, app)}
-                className={`h-7 px-2 rounded-lg flex items-center justify-center gap-1 text-[11px] font-bold transition-all shadow-md cursor-pointer ${
-                  isLiked
-                    ? 'bg-rose-500 text-white scale-105'
-                    : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white'
-                }`}
-                title="❤️ Like"
-              >
-                <Heart className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                <span className="font-mono">{app.likes || 0}</span>
-              </button>
+              {/* 遊戲卡片移除 ❤️ 僅留 ⭐ 收藏 */}
+              {!isGame && (
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleLike(e, app)}
+                  className={`h-7 px-2 rounded-lg flex items-center justify-center gap-1 text-[11px] font-bold transition-all shadow-md cursor-pointer ${
+                    isLiked
+                      ? 'bg-rose-500 text-white scale-105'
+                      : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white'
+                  }`}
+                  title="❤️ Like"
+                >
+                  <Heart className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                  <span className="font-mono">{app.likes || 0}</span>
+                </button>
+              )}
             </div>
           </ProposalCardMediaBanner>
 
@@ -627,7 +703,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 )}
               </span>
               <div className="flex items-center gap-2 shrink-0">
-                {shouldShowViews && (
+                {showViewsForCard && (
                   <span
                     className="flex items-center gap-1 text-[10px] font-mono text-stone-500"
                     title="管理員限定：累計點進內頁瀏覽次數"
@@ -717,7 +793,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             )}
           </div>
 
-          {/* ⭐ 收藏 + ❤️ Like 按鈕組 (像創點子那樣) */}
+          {/* ⭐ 收藏 + ❤️ Like 按鈕組 (像創點子那樣，遊戲僅保留 ⭐) */}
           <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-20">
             <button
               type="button"
@@ -731,19 +807,22 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             >
               <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
             </button>
-            <button
-              type="button"
-              onClick={(e) => handleToggleLike(e, app)}
-              className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
-                isLiked
-                  ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
-                  : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
-              }`}
-              title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此作品'}
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-              <span className="font-mono">{app.likes || 0}</span>
-            </button>
+            {/* 遊戲卡片移除 ❤️ 僅留 ⭐ 收藏 */}
+            {!isGame && (
+              <button
+                type="button"
+                onClick={(e) => handleToggleLike(e, app)}
+                className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                  isLiked
+                    ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
+                }`}
+                title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此作品'}
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono">{app.likes || 0}</span>
+              </button>
+            )}
           </div>
         </ProposalCardMediaBanner>
 
@@ -834,13 +913,23 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="text-[10px] text-stone-500 font-bold">Like</div>
-              <div className="text-xs font-mono font-black text-rose-600 flex items-center gap-1 justify-end">
-                <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-                <span>{app.likes || 0}</span>
+            {isGame ? (
+              <div className="text-right">
+                <div className="text-[10px] text-stone-500 font-bold">收藏</div>
+                <div className="text-xs font-mono font-black text-amber-600 flex items-center gap-1 justify-end">
+                  <Star className={`w-3 h-3 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-amber-500'}`} />
+                  <span>{isBookmarked ? '已收藏' : '收藏'}</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-right">
+                <div className="text-[10px] text-stone-500 font-bold">Like</div>
+                <div className="text-xs font-mono font-black text-rose-600 flex items-center gap-1 justify-end">
+                  <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                  <span>{app.likes || 0}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom Action Footer */}
@@ -850,7 +939,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <MessageCircle className="w-3.5 h-3.5 text-stone-400" />
                 <span>{discussionsCount}</span>
               </span>
-              {shouldShowViews && (
+              {showViewsForCard && (
                 <span
                   className="flex items-center gap-1 text-[11px] font-mono text-stone-500"
                   title="管理員限定：累計點進內頁瀏覽次數"
@@ -1007,7 +1096,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               </button>
 
               <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
-                “能上IdeaX的作品都是百里挑一！”
+                “能上IdeaX的作品都是百里挑一！（作品皆經過人工篩查）”
               </span>
             </div>
 
@@ -1034,11 +1123,29 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>刊登作品</span>
               </button>
+
+              {/* ⚡ 一鍵上架 (刊登作品右邊入口，需登入，可於後台關閉) */}
+              {canShowQuickOnboard && (
+                <div className="flex flex-col items-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleQuickOnboardClick}
+                    className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-purple-500/30 active:scale-95"
+                    title="貼上網址，AI 自動抓取作品名稱、功能說明與首頁截圖，一鍵快速上架（需登入會員）"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                    <span>一鍵上架</span>
+                  </button>
+                  <span className="text-[10px] text-stone-500 mt-0.5 tracking-tight scale-95 origin-right">
+                    上架即代表您已經確認取得作者授權刊登作品於本平台
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1161,13 +1268,24 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 onChange={(e: any) => setSortBy(e.target.value)}
                 className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-indigo-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer shrink-0"
               >
-                <option value="popular">🔥 熱門推薦</option>
-                <option value="tipped">🪙 點數支持 高到低</option>
-                <option value="liked">❤️ Like 最多</option>
-                <option value="discussions">💬 討論數最多</option>
-                <option value="latest">🕒 最新發布</option>
-                {isAdmin && (
-                  <option value="most_views">👁️ 瀏覽次數</option>
+                {selectedSubcat === '遊戲' ? (
+                  <>
+                    <option value="latest">🕒 最新</option>
+                    <option value="popular">🔥 熱門</option>
+                    <option value="rating">👍 好評率</option>
+                    <option value="bookmarks">⭐ 收藏數</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="popular">🔥 熱門推薦</option>
+                    <option value="tipped">🪙 點數支持 高到低</option>
+                    <option value="liked">❤️ Like 最多</option>
+                    <option value="discussions">💬 討論數最多</option>
+                    <option value="latest">🕒 最新發布</option>
+                    {isAdmin && (
+                      <option value="most_views">👁️ 瀏覽次數</option>
+                    )}
+                  </>
                 )}
               </select>
 
@@ -1419,6 +1537,19 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             </>
           );
         })()
+      )}
+      {/* ⚡ 一鍵智慧上架彈窗 */}
+      {isQuickOnboardOpen && (
+        <AdminQuickOnboardAppModal
+          isOpen={isQuickOnboardOpen}
+          onClose={() => setIsQuickOnboardOpen(false)}
+          isUserMode={!isAdmin}
+          defaultPostType="vibecoding_app"
+          onSuccess={(q) => {
+            showCenterToast('🎉 上架成功！', `已成功上架作品《${q.appName || q.title}》！`);
+            setIsQuickOnboardOpen(false);
+          }}
+        />
       )}
     </div>
   );

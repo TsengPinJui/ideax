@@ -35,10 +35,12 @@ import { PLATFORM_CURATED_NAME, PLATFORM_CURATED_AVATAR } from '../utils/userDis
 import { stripAppNameFromTitle } from '../utils/titleFormat';
 import { getEffectiveTertiaryCategory, GAME_TERTIARY_CATEGORIES } from '../utils/gameClassification';
 
-interface AdminQuickOnboardAppModalProps {
+export interface AdminQuickOnboardAppModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (createdQuestion: Question) => void;
+  isUserMode?: boolean;
+  defaultPostType?: PublishDestination;
 }
 
 export type PublishDestination = 'vibecoding_app' | 'innovation_proposal';
@@ -170,8 +172,13 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   isOpen,
   onClose,
   onSuccess,
+  isUserMode,
+  defaultPostType = 'vibecoding_app',
 }) => {
-  const { questions, createQuestion, showCenterToast, addNotification } = useApp();
+  const { currentUser, openAuthModal, questions, createQuestion, showCenterToast, addNotification } = useApp();
+  const isAdmin = currentUser?.role === 'admin';
+  const effectiveUserMode = isUserMode !== undefined ? isUserMode : !isAdmin;
+  const isGuest = currentUser?.id === 'user-guest';
 
   // 模式：單一網址 vs. 批量網址
   const [inputMode, setInputMode] = useState<'single' | 'batch'>('single');
@@ -201,8 +208,12 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
     return map;
   }, [questions]);
 
-  // 預設刊登專區（默認不勾選，由管理員依需求選取）
-  const [defaultDestinations, setDefaultDestinations] = useState<PublishDestination[]>([]);
+  // 預設刊登專區（一般用戶或預設指定時預先選中軟體作品）
+  const [defaultDestinations, setDefaultDestinations] = useState<PublishDestination[]>(() => {
+    if (defaultPostType) return [defaultPostType];
+    if (effectiveUserMode) return ['vibecoding_app'];
+    return [];
+  });
   // 偏好分類（支援複選，若為空則全由 AI 研判）
   const [preferredCategories, setPreferredCategories] = useState<SoftwareCategory[]>([]);
 
@@ -277,6 +288,44 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   }, [appendParsedUrls, reviewedItems, existingPublishedUrls]);
 
   if (!isOpen) return null;
+
+  if (isGuest) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white mx-auto flex items-center justify-center shadow-md">
+            <Sparkles className="w-6 h-6 text-amber-300" />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-stone-900">需登入會員使用「一鍵智慧上架」</h3>
+            <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+              此功能為會員專屬功能，登入後即可一鍵貼上網址，由 AI 自動抓取作品名稱、描述、分類與首頁截圖！
+            </p>
+          </div>
+          <div className="text-[11px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-50 text-xs font-bold text-stone-700 transition-colors cursor-pointer"
+            >
+              稍後再說
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openAuthModal('login');
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md transition-all cursor-pointer"
+            >
+              立即登入
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const toggleDefaultDestination = (dest: PublishDestination) => {
     setDefaultDestinations((prev) =>
@@ -392,7 +441,9 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       id: `item-${Date.now()}-${idx}`,
       websiteUrl: url,
       status: 'pending',
-      destinations: [...defaultDestinations],
+      destinations: defaultDestinations.length > 0
+        ? [...defaultDestinations]
+        : (defaultPostType ? [defaultPostType] : (effectiveUserMode ? ['vibecoding_app'] : [])),
       selectedForPublish: true,
       appName: '',
       title: '',
@@ -409,8 +460,8 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
       ogImage: null,
       previewMode: 'embed',
       isComingSoon: false,
-      authorName: PLATFORM_CURATED_NAME,
-      authorTitle: '官方審核精選',
+      authorName: effectiveUserMode ? (currentUser?.name || '創作者') : PLATFORM_CURATED_NAME,
+      authorTitle: effectiveUserMode ? (currentUser?.title || '獨立開發者') : '官方審核精選',
     }));
 
     setReviewedItems(initialItems);
@@ -692,8 +743,19 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
           ? item.categories
           : (item.category ? [item.category] : ['網站程式']);
         const primaryCategory = finalCategories[0] || '網站程式';
-        const finalAuthorName = (item.authorName && item.authorName.trim()) || PLATFORM_CURATED_NAME;
-        const finalAuthorTitle = (item.authorTitle && item.authorTitle.trim()) || '官方審核精選';
+        const isSelfPublish = effectiveUserMode || !isAdmin;
+        const finalAuthorName = isSelfPublish
+          ? (currentUser?.name || '創作者')
+          : ((item.authorName && item.authorName.trim()) || PLATFORM_CURATED_NAME);
+        const finalAuthorTitle = isSelfPublish
+          ? (currentUser?.title || '獨立開發者')
+          : ((item.authorTitle && item.authorTitle.trim()) || '官方審核精選');
+        const finalAuthorAvatar = isSelfPublish
+          ? (currentUser?.avatar || '/avatars/default.svg')
+          : PLATFORM_CURATED_AVATAR;
+        const finalAuthorId = isSelfPublish ? (currentUser?.id || 'user-unknown') : 'platform';
+        const finalPublishIdentity = isSelfPublish ? 'user' : 'platform';
+        const finalIsOfficial = isSelfPublish ? false : true;
 
         const finalAppName = item.appName.trim() || item.title.trim();
         const finalTitle = stripAppNameFromTitle(item.title.trim(), finalAppName) || item.title.trim();
@@ -738,12 +800,12 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             previewMode: item.previewMode || 'embed',
             techArchitecture: item.techArchitecture || 'Web 網頁應用程式',
             publishedPlatforms: [{ name: 'Web 網頁版', url: cleanUrl }],
-            publishIdentity: 'platform',
-            isOfficial: true,
-            authorId: 'platform',
+            publishIdentity: finalPublishIdentity,
+            isOfficial: finalIsOfficial,
+            authorId: finalAuthorId,
             authorName: finalAuthorName,
             authorTitle: finalAuthorTitle,
-            authorAvatar: PLATFORM_CURATED_AVATAR,
+            authorAvatar: finalAuthorAvatar,
             bounty: 0,
             level: 'L1',
             status: 'open',
@@ -777,12 +839,12 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             referencedPainPoint: item.referencedPainPoint || '傳統流程繁瑣、缺乏直覺操作介面',
             proposalProgressStage: item.proposalProgressStage || 'prototype',
             publishedPlatforms: [{ name: 'Web 網頁版', url: cleanUrl }],
-            publishIdentity: 'platform',
-            isOfficial: true,
-            authorId: 'platform',
+            publishIdentity: finalPublishIdentity,
+            isOfficial: finalIsOfficial,
+            authorId: finalAuthorId,
             authorName: finalAuthorName,
             authorTitle: finalAuthorTitle,
-            authorAvatar: PLATFORM_CURATED_AVATAR,
+            authorAvatar: finalAuthorAvatar,
             bounty: 0,
             level: 'L1',
             status: 'open',
@@ -833,11 +895,14 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black tracking-tight flex items-center gap-2">
-                <span>快速上架軟體作品與提案</span>
+                <span>{effectiveUserMode ? '一鍵智慧上架軟體作品' : '快速上架軟體作品與提案'}</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-800 text-amber-300 border border-stone-700">
                   AI 智慧抓取
                 </span>
               </h2>
+              <p className="text-[10px] text-stone-400 mt-0.5">
+                貼上網址自動抓取名稱、描述、分類與封面 · <span className="text-amber-300/90 font-medium">上架即代表您已經確認取得作者授權刊登作品於本平台</span>
+              </p>
             </div>
           </div>
 
@@ -1758,6 +1823,9 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="text-[10px] text-stone-500 mr-2 hidden sm:inline">
+              上架即代表您已經確認取得作者授權刊登作品於本平台
+            </span>
             <button
               type="button"
               disabled={isPublishing}
@@ -1815,4 +1883,5 @@ export const AdminQuickOnboardAppModal: React.FC<AdminQuickOnboardAppModalProps>
   );
 };
 
+export const QuickOnboardAppModal = AdminQuickOnboardAppModal;
 export default AdminQuickOnboardAppModal;
