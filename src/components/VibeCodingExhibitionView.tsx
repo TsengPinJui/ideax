@@ -48,6 +48,7 @@ import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExpos
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getEffectiveQuestionViews } from '../utils/proposalClicks';
+import { getEffectiveTertiaryCategory } from '../utils/gameClassification';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -220,7 +221,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     if (selectedSubcat !== 'all') {
       list = list.filter((q) => getQuestionVibeCategory(q) === selectedSubcat);
       if (selectedTertiary !== 'all') {
-        list = list.filter((q) => (q.tertiaryCategory || '') === selectedTertiary);
+        list = list.filter((q) => getEffectiveTertiaryCategory(q) === selectedTertiary);
       }
     }
 
@@ -367,6 +368,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
     const categories = getQuestionVibeCategories(app);
     const primaryCategory = categories[0] || '網站程式';
+    const effectiveTertiary = getEffectiveTertiaryCategory(app);
     const isComingSoon = isComingSoonWork(app);
     const expScore = getExperienceScore(app);
 
@@ -391,7 +393,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               />
               <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-black/75 text-white backdrop-blur-xs flex items-center gap-0.5">
                 <span>{primaryCategory}</span>
-                {app.tertiaryCategory && <span className="text-amber-300">› {app.tertiaryCategory}</span>}
+                {effectiveTertiary && <span className="text-amber-300">› {effectiveTertiary}</span>}
               </span>
               {isComingSoon && (
                 <span className="absolute bottom-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-stone-950 shadow-xs">
@@ -514,7 +516,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10 flex-wrap max-w-[85%]">
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
                 <span>{primaryCategory}</span>
-                {app.tertiaryCategory && <span className="text-amber-300 font-bold">› {app.tertiaryCategory}</span>}
+                {effectiveTertiary && <span className="text-amber-300 font-bold">› {effectiveTertiary}</span>}
               </span>
               {isComingSoon && (
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 border border-amber-600 shadow-xs flex items-center gap-1">
@@ -634,10 +636,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs flex items-center gap-1">
                 <span>軟體 › {primaryCategory}</span>
-                {app.tertiaryCategory && (
+                {effectiveTertiary && (
                   <>
                     <span className="text-stone-400">›</span>
-                    <span className="text-amber-300 font-bold">{app.tertiaryCategory}</span>
+                    <span className="text-amber-300 font-bold">{effectiveTertiary}</span>
                   </>
                 )}
               </span>
@@ -1060,7 +1062,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               {(SOFTWARE_TERTIARY_CATEGORIES[selectedSubcat as SoftwareCategory] || []).map((tCat) => {
                 const isTSelected = selectedTertiary === tCat;
                 const tCount = activePool.filter(
-                  (q) => getQuestionVibeCategory(q) === selectedSubcat && q.tertiaryCategory === tCat
+                  (q) => getQuestionVibeCategory(q) === selectedSubcat && getEffectiveTertiaryCategory(q) === tCat
                 ).length;
                 return (
                   <button

@@ -84,6 +84,7 @@ import {
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { stripAppNameFromTitle, sanitizeQuestionTitle } from '../utils/titleFormat';
+import { getEffectiveTertiaryCategory } from '../utils/gameClassification';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
 import { getFormattedPlatformId, generatePlatformUserId } from '../services/userIdService';
@@ -1539,6 +1540,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (isFakeOrSeed ? 0 : (q.views || 0));
       return {
         ...q,
+        tertiaryCategory: getEffectiveTertiaryCategory(q),
         publishedPlatforms: Array.isArray(rawQ.publishedPlatforms)
           ? rawQ.publishedPlatforms
           : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (rawQ.vibeCodingData?.publishedPlatforms || [])),
@@ -5380,6 +5382,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       category: finalCategory,
       subcategory: finalSubcategory,
       subcategories: newQ.subcategories,
+      tertiaryCategory: newQ.tertiaryCategory || getEffectiveTertiaryCategory({
+        appName: newQ.appName,
+        title: newQ.title,
+        description: newQ.description,
+        tags: finalTags,
+        subcategory: finalSubcategory,
+        subcategories: newQ.subcategories,
+        demoUrl: newQ.demoUrl || newQ.externalLink,
+      }),
       tags: finalTags,
       level: finalLevel,
       bounty: finalBounty,
@@ -5733,7 +5744,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       description: params.description !== undefined ? params.description : currentQ.description,
       subcategory: params.subcategory !== undefined ? params.subcategory : currentQ.subcategory,
       subcategories: params.subcategories !== undefined ? params.subcategories : currentQ.subcategories,
-      tertiaryCategory: params.tertiaryCategory !== undefined ? params.tertiaryCategory : currentQ.tertiaryCategory,
+      tertiaryCategory: params.tertiaryCategory !== undefined
+        ? params.tertiaryCategory
+        : getEffectiveTertiaryCategory({
+            ...currentQ,
+            ...params,
+            appName: params.appName !== undefined ? params.appName : currentQ.appName,
+            title: params.title !== undefined ? params.title : currentQ.title,
+            description: params.description !== undefined ? params.description : currentQ.description,
+            subcategory: params.subcategory !== undefined ? params.subcategory : currentQ.subcategory,
+            tags: params.tags !== undefined ? params.tags : currentQ.tags,
+            demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.demoUrl,
+          }),
       targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,
       referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
       isComingSoon: params.isComingSoon !== undefined ? params.isComingSoon : currentQ.isComingSoon,
