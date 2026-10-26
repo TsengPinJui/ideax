@@ -62,6 +62,7 @@ import {
   ClipboardList,
   Map as MapIcon,
 } from 'lucide-react';
+import { IdeaIslandIcon } from './island/IdeaIslandIcon';
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -1143,7 +1144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="開啟創點島互動地圖"
             aria-label="開啟創點島互動地圖"
           >
-            <MapIcon className="w-4 h-4" />
+            <IdeaIslandIcon size={20} />
             <span className="hidden sm:inline text-[11px] font-black">創點島</span>
           </button>}
 

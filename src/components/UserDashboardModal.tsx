@@ -3,7 +3,7 @@ import { isLocalDevHost } from '../services/accountGuard';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
-import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
+import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser, isMockAnswerId, isMockSolverId, isMockConversationId } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
 import { AdminPointsReceivablesTab } from './AdminPointsReceivablesTab';
@@ -196,6 +196,7 @@ interface UserDashboardModalProps {
   onStartOnboarding?: () => void;
   onNavigateToSitelink?: (item: GoogleSitelinkItem) => void;
   onOpenChat?: () => void;
+  onOpenIsland?: () => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
@@ -210,7 +211,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   onStartOnboarding,
   onNavigateToSitelink,
   onOpenChat,
+  onOpenIsland,
 }) => {
+  const [isAdvancedPermissionsExpanded, setIsAdvancedPermissionsExpanded] = useState<boolean>(false);
   const {
     currentUser,
     setCurrentUser,
@@ -418,22 +421,57 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     }));
   };
 
-  // Compute platform admin metrics (正式營運模式與無金流模式下，全站總交易額與獲利均純淨歸零 0)
-  const adminTotalGMV = isNoPaymentMode || !isDemoMode
-    ? 0
-    : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+  // 徹底替除所有虛假交易與模擬金流，僅採納全站真實個人/會員交易（無真實交易時徹底歸零 0）
+  const realTransactions = useMemo(() => {
+    return (transactions || []).filter((t) => !isMockTransactionId(t.id) && !t.isSimulated);
+  }, [transactions]);
 
-  const adminTotalPlatformFees = isNoPaymentMode || !isDemoMode
+  // Compute platform admin metrics (替除虛假交易與金流，全站總交易額與獲利均純淨歸零 0)
+  const adminTotalGMV = isNoPaymentMode
     ? 0
-    : transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
-  const adminSolvedCount = questions.filter((q) => q.status === 'solved').length;
+    : realTransactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+  const adminTotalPlatformFees = isNoPaymentMode
+    ? 0
+    : realTransactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
+
+  const adminSolvedCount = questions.filter((q) => !q.isSimulated && q.status === 'solved').length;
   const adminOpenCount = questions.filter((q) => q.status === 'open').length;
-  const adminVerifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
 
-  // 註冊用戶總數與付費會員分類數據 (排扣測試帳號之真實註冊用戶)
+  // 註冊用戶總數與付費會員分類數據 (排除測試帳號之真實註冊用戶)
   const adminRealUsers = useMemo(() => {
     return availableUsers.filter((u) => isRealRegisteredUser(u));
   }, [availableUsers]);
+
+  // 真實專家與真實認證專家（徹底排除模擬專家，只算真實註冊與通過審核之專家）
+  const realSolvers = useMemo(() => {
+    return (solvers || []).filter(
+      (s) =>
+        !isMockSolverId(s.id) &&
+        !s.id.startsWith('test-') &&
+        !s.id.startsWith('test_') &&
+        !s.id.startsWith('demo-') &&
+        s.id !== 'user-guest' &&
+        !s.isSimulated
+    );
+  }, [solvers]);
+
+  const adminRealExpertsCount = useMemo(() => {
+    const userExperts = adminRealUsers.filter(
+      (u) => u.role === 'solver' || u.verifiedExpert || u.expertApplicationStatus === 'approved'
+    ).length;
+    return Math.max(realSolvers.length, userExperts);
+  }, [adminRealUsers, realSolvers]);
+
+  const adminRealVerifiedSolversCount = useMemo(() => {
+    const verifiedFromUsers = adminRealUsers.filter(
+      (u) => u.verifiedExpert || u.expertApplicationStatus === 'approved'
+    ).length;
+    const verifiedFromSolvers = realSolvers.filter((s) => s.verified || s.verifiedBadge).length;
+    return Math.max(verifiedFromUsers, verifiedFromSolvers);
+  }, [adminRealUsers, realSolvers]);
+
+  const adminVerifiedSolversCount = adminRealVerifiedSolversCount;
   const adminTotalRegisteredUsersCount = adminRealUsers.length;
   const adminQuestionersCount = adminRealUsers.filter((u) => u.role === 'questioner').length;
   const adminSolversCount = adminRealUsers.filter((u) => u.role === 'solver' || u.role === 'admin').length;
@@ -505,19 +543,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     });
   }, [transactions, currentUser.id, currentUser.name]);
 
-  // 全站市場案件成交數（懸賞解決與客製委託採納結案）
+  // 全站市場案件成交數（只算真實題目）
   const adminCompletedCasesCount = useMemo(() => {
-    return (questions || []).filter((q) => q.status === 'solved' || q.status === 'closed').length;
+    return (questions || []).filter((q) => !q.isSimulated && (q.status === 'solved' || q.status === 'closed')).length;
   }, [questions]);
 
-  // 全站已成交方案總數（問題提案獲採納成案數 + 聊天室自訂提案成案數）
+  // 全站已成交方案總數（只算真實已採納之提案與真實聊天室自訂成案，徹底排除模擬資料）
   const adminTotalDealsCount = useMemo(() => {
-    // 1. 問題下獲採納之提案數
-    const acceptedQuestionProposals = (answers || []).filter((a) => a.isAccepted).length;
+    // 1. 真實問題下獲採納之提案數
+    const realAnswers = (answers || []).filter((a) => !isMockAnswerId(a.id) && !a.isSimulated);
+    const acceptedQuestionProposals = realAnswers.filter((a) => a.isAccepted).length;
     const questionDeals = Math.max(acceptedQuestionProposals, adminCompletedCasesCount);
 
-    // 2. 聊天室私聊自訂提案成案數 (accepted / completed)
-    const chatDeals = (conversations || []).reduce((acc, conv) => {
+    // 2. 真實聊天室私聊自訂提案成案數 (排除模擬對話)
+    const realConversations = (conversations || []).filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo');
+    const chatDeals = realConversations.reduce((acc, conv) => {
       const acceptedOffers = (conv.messages || []).filter(
         (m) => m.offer && (m.offer.status === 'accepted' || m.offer.status === 'completed')
       ).length;
@@ -592,13 +632,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     }
   }, [questions, answers]);
 
-  // 全站真實滿意度（依據方案評分與專家星級真實綜合計算）
+  // 全站真實滿意度（依據方案評分與專家星級真實綜合計算 - 只算真實交付評分）
   const adminSatisfactionStats = useMemo(() => {
     const allRatings: number[] = [];
 
-    // 只算真實的交付評分（模擬資料、專家名錄上的示範星等都不列入）
+    // 只算真實的交付評分（排除所有模擬資料與示範星等）
     (answers || []).forEach((a) => {
-      if (!a.isSimulated && typeof a.rating === 'number' && a.rating > 0) {
+      if (!isMockAnswerId(a.id) && !a.isSimulated && typeof a.rating === 'number' && a.rating > 0) {
         allRatings.push(a.rating);
       }
     });
@@ -606,10 +646,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     if (allRatings.length === 0) {
       return {
         percentage: 0,
-        percentageFormatted: '—',
-        starsFormatted: '—',
-        badge: '尚無評價',
-        desc: '還沒有任何交付評價',
+        percentageFormatted: '0.0',
+        starsFormatted: '0.0',
+        badge: '真實評價 0 筆',
+        desc: '全站尚無真實交付評價',
         empty: true,
       };
     }
@@ -622,10 +662,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       percentageFormatted: percentage.toFixed(1),
       starsFormatted: avgRating.toFixed(1),
       badge: `${avgRating.toFixed(1)} ★ 好評`,
-      desc: `全站 ${allRatings.length} 筆交付評價`,
+      desc: `全站 ${allRatings.length} 筆真實交付評價`,
       empty: false,
     };
-  }, [answers, solvers]);
+  }, [answers]);
 
   // 全站網站造訪量（進入網站的總造訪次數）
   const totalViewsCount = siteVisitsCount || 0;
@@ -2527,14 +2567,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <div className="flex items-baseline justify-between">
                       <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-stone-950 tabular-nums tracking-tight">
-                        {solvers.length} <span className="text-[11px] sm:text-xs font-bold text-stone-500">位</span>
+                        {adminRealExpertsCount} <span className="text-[11px] sm:text-xs font-bold text-stone-500">位</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
                         審核認證 →
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
-                      <span className="truncate">已認證 {adminVerifiedSolversCount} 位</span>
+                      <span className="truncate">已認證 {adminRealVerifiedSolversCount} 位</span>
                     </div>
                   </button>
                 </div>
@@ -2854,7 +2894,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* 首頁創點子播放區（預留）：選擇播放優秀作品／付費推播／自選 */}
+              {/* 首頁輪播&精選榜與首頁熱度榜設定（默認收合） */}
               <AdminHomeShowcaseCard />
               <AdminHotGamesConfigCard />
 
@@ -3342,276 +3382,330 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
               </div>
 
-              {/* 紫色獨立控制專區：卡片瀏覽次數、創點島開關、一般用戶智慧上架 */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/60 border-2 border-purple-300 shadow-xs space-y-3.5">
-                <div className="flex items-center justify-between border-b border-purple-200/80 pb-2.5">
+              {/* 紫色獨立控制專區：卡片瀏覽次數、創點島開關、一般用戶智慧上架（默認收合） */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/60 border-2 border-purple-300 shadow-xs space-y-3.5 transition-all">
+                <div
+                  onClick={() => setIsAdvancedPermissionsExpanded(!isAdvancedPermissionsExpanded)}
+                  className="flex items-center justify-between cursor-pointer select-none border-b border-purple-200/80 pb-2.5"
+                >
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-purple-950">進階權限與功能展示設定</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-purple-950">進階權限與功能展示設定</h4>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                          {isAdvancedPermissionsExpanded ? '點擊收合' : '默認收合 · 點擊展開'}
+                        </span>
+                      </div>
                       <p className="text-[11px] text-purple-900/70 mt-0.5">獨立控制卡片瀏覽數範圍、創點島地圖公開性與一般用戶一鍵智慧上架</p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="p-1 rounded-lg text-purple-700 hover:bg-purple-100/80 transition-colors"
+                    aria-label={isAdvancedPermissionsExpanded ? '收合' : '展開'}
+                  >
+                    <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isAdvancedPermissionsExpanded ? 'rotate-180' : ''}`} />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {/* 1. 卡片內頁瀏覽次數 */}
-                  {(() => {
-                    const isEnabled = publicMetricsConfig.showCardViews ?? true;
-                    const scope = publicMetricsConfig.cardViewsScope ?? 'admin';
-                    const isPublic = isEnabled && scope === 'public';
-                    const isAdminOnly = isEnabled && scope === 'admin';
+                {isAdvancedPermissionsExpanded && (
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      {/* 1. 卡片內頁瀏覽次數 */}
+                      {(() => {
+                        const isEnabled = publicMetricsConfig.showCardViews ?? true;
+                        const scope = publicMetricsConfig.cardViewsScope ?? 'admin';
+                        const isPublic = isEnabled && scope === 'public';
+                        const isAdminOnly = isEnabled && scope === 'admin';
 
-                    return (
-                      <div
-                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
-                          isPublic
-                            ? 'bg-gradient-to-r from-emerald-50 via-white to-teal-50/70 border-emerald-500 shadow-sm ring-2 ring-emerald-200/60'
-                            : isEnabled
-                            ? 'bg-gradient-to-r from-purple-50 via-white to-amber-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
-                            : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`font-black text-xs flex items-center gap-1 ${isPublic ? 'text-emerald-950' : 'text-purple-950'}`}>
-                                <Eye className={`w-3.5 h-3.5 shrink-0 ${isPublic ? 'text-emerald-600' : 'text-purple-600'}`} />
-                                <span>卡片內頁瀏覽次數</span>
-                              </span>
-                              {isPublic ? (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs flex items-center gap-1">
-                                  <Globe className="w-2.5 h-2.5" />
-                                  <span>全站可見</span>
-                                </span>
-                              ) : isEnabled ? (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs flex items-center gap-1">
-                                  <Lock className="w-2.5 h-2.5" />
+                        return (
+                          <div
+                            className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                              isPublic
+                                ? 'bg-gradient-to-r from-emerald-50 via-white to-teal-50/70 border-emerald-500 shadow-sm ring-2 ring-emerald-200/60'
+                                : isEnabled
+                                ? 'bg-gradient-to-r from-purple-50 via-white to-amber-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                                : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`font-black text-xs flex items-center gap-1 ${isPublic ? 'text-emerald-950' : 'text-purple-950'}`}>
+                                    <Eye className={`w-3.5 h-3.5 shrink-0 ${isPublic ? 'text-emerald-600' : 'text-purple-600'}`} />
+                                    <span>卡片內頁瀏覽次數</span>
+                                  </span>
+                                  {isPublic ? (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs flex items-center gap-1">
+                                      <Globe className="w-2.5 h-2.5" />
+                                      <span>全站可見</span>
+                                    </span>
+                                  ) : isEnabled ? (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs flex items-center gap-1">
+                                      <Lock className="w-2.5 h-2.5" />
+                                      <span>僅管理員可見</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
+                                      🚫 已關閉顯示
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                                  {isPublic
+                                    ? '有點進內頁才算瀏覽 · 全站可見，所有訪客與會員皆可在卡片看到瀏覽數'
+                                    : isEnabled
+                                    ? '有點進內頁才算瀏覽 · 僅管理員可見卡片瀏覽數，一般用戶不可見'
+                                    : '有點進內頁才算瀏覽 · 目前已關閉顯示，全站與管理員皆不顯示'}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isEnabled) {
+                                    updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
+                                  } else if (scope === 'admin') {
+                                    updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' });
+                                  } else {
+                                    updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
+                                  }
+                                }}
+                                className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                                  isPublic
+                                    ? 'bg-emerald-600 ring-2 ring-emerald-300'
+                                    : isEnabled
+                                    ? 'bg-purple-600 ring-2 ring-purple-300'
+                                    : 'bg-stone-300'
+                                }`}
+                                title={
+                                  isPublic
+                                    ? '目前為「全站可見」，點擊切換為「僅管理員可見」'
+                                    : isEnabled
+                                    ? '目前為「僅管理員可見」，點擊切換為「全站可見」'
+                                    : '點擊開啟卡片瀏覽數顯示'
+                                }
+                              >
+                                <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                                  isPublic ? 'translate-x-5.5' : isEnabled ? 'translate-x-0' : 'translate-x-0'
+                                }`} />
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
+                              <span className="text-[10px] font-bold text-stone-500 shrink-0">可見範圍：</span>
+                              <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
+                                <button
+                                  type="button"
+                                  onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' })}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                    isAdminOnly
+                                      ? 'bg-purple-700 text-white shadow-2xs'
+                                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                                  }`}
+                                >
+                                  <Lock className="w-3 h-3" />
                                   <span>僅管理員可見</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
-                                  🚫 已關閉顯示
-                                </span>
-                              )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' })}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                    isPublic
+                                      ? 'bg-emerald-600 text-white shadow-2xs'
+                                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                                  }`}
+                                >
+                                  <Globe className="w-3 h-3" />
+                                  <span>全站可見</span>
+                                </button>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-stone-600 mt-1 leading-snug">
-                              {isPublic
-                                ? '有點進內頁才算瀏覽 · 全站可見，所有訪客與會員皆可在卡片看到瀏覽數'
-                                : isEnabled
-                                ? '有點進內頁才算瀏覽 · 僅管理員可見卡片瀏覽數，一般用戶不可見'
-                                : '有點進內頁才算瀏覽 · 目前已關閉顯示，全站與管理員皆不顯示'}
-                            </p>
                           </div>
+                        );
+                      })()}
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!isEnabled) {
-                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
-                              } else if (scope === 'admin') {
-                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' });
-                              } else {
-                                updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' });
-                              }
-                            }}
-                            className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
-                              isPublic
-                                ? 'bg-emerald-600 ring-2 ring-emerald-300'
-                                : isEnabled
-                                ? 'bg-purple-600 ring-2 ring-purple-300'
-                                : 'bg-stone-300'
+                      {/* 2. 創點島開關 (公開 / 隱藏) ＋ 管理員預覽 */}
+                      {(() => {
+                        const isIslandOpen = publicMetricsConfig.showIslandMap !== false;
+
+                        return (
+                          <div
+                            className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                              isIslandOpen
+                                ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                                : 'bg-stone-50/90 border-dashed border-stone-300 opacity-80'
                             }`}
-                            title={
-                              isPublic
-                                ? '目前為「全站可見」，點擊切換為「僅管理員可見」'
-                                : isEnabled
-                                ? '目前為「僅管理員可見」，點擊切換為「全站可見」'
-                                : '點擊開啟卡片瀏覽數顯示'
-                            }
                           >
-                            <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
-                              isPublic ? 'translate-x-5.5' : isEnabled ? 'translate-x-0' : 'translate-x-0'
-                            }`} />
-                          </button>
-                        </div>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`font-black text-xs flex items-center gap-1.5 ${isIslandOpen ? 'text-purple-950' : 'text-stone-700'}`}>
+                                    <Compass className={`w-3.5 h-3.5 shrink-0 ${isIslandOpen ? 'text-purple-600' : 'text-stone-400'}`} />
+                                    <span>創點島開關</span>
+                                  </span>
+                                  {isIslandOpen ? (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                                      <Globe className="w-2.5 h-2.5" />
+                                      <span>公開</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs flex items-center gap-1">
+                                      <EyeOff className="w-2.5 h-2.5" />
+                                      <span>隱藏</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                                  {isIslandOpen
+                                    ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口，所有會員與訪客皆可自由探索'
+                                    : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏，僅管理員由後台可預覽或開啟'}
+                                </p>
+                              </div>
 
-                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
-                          <span className="text-[10px] font-bold text-stone-500 shrink-0">可見範圍：</span>
-                          <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
-                            <button
-                              type="button"
-                              onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'admin' })}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
-                                isAdminOnly
-                                  ? 'bg-purple-700 text-white shadow-2xs'
-                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
-                              }`}
-                            >
-                              <Lock className="w-3 h-3" />
-                              <span>僅管理員可見</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updatePublicMetricsConfig({ showCardViews: true, cardViewsScope: 'public' })}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
-                                isPublic
-                                  ? 'bg-emerald-600 text-white shadow-2xs'
-                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
-                              }`}
-                            >
-                              <Globe className="w-3 h-3" />
-                              <span>全站可見</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={isIslandOpen}
+                                onClick={() => updatePublicMetricsConfig({ showIslandMap: !isIslandOpen })}
+                                className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                                  isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
+                                }`}
+                                title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
+                              >
+                                <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                                  isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'
+                                }`} />
+                              </button>
+                            </div>
 
-                  {/* 2. 創點島開關 (公開 / 隱藏) */}
-                  {(() => {
-                    const isIslandOpen = publicMetricsConfig.showIslandMap !== false;
-
-                    return (
-                      <div
-                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
-                          isIslandOpen
-                            ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
-                            : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`font-black text-xs flex items-center gap-1.5 ${isIslandOpen ? 'text-purple-950' : 'text-stone-700'}`}>
-                                <Compass className={`w-3.5 h-3.5 shrink-0 ${isIslandOpen ? 'text-purple-600' : 'text-stone-400'}`} />
-                                <span>創點島開關</span>
-                              </span>
-                              {isIslandOpen ? (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
-                                  <Globe className="w-2.5 h-2.5" />
+                            <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
+                              <span className="text-[10px] font-bold text-stone-500 shrink-0">目前狀態：</span>
+                              <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
+                                <button
+                                  type="button"
+                                  onClick={() => updatePublicMetricsConfig({ showIslandMap: true })}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                    isIslandOpen
+                                      ? 'bg-purple-700 text-white shadow-2xs'
+                                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                                  }`}
+                                >
+                                  <Globe className="w-3 h-3" />
                                   <span>公開</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs flex items-center gap-1">
-                                  <EyeOff className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updatePublicMetricsConfig({ showIslandMap: false })}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                    !isIslandOpen
+                                      ? 'bg-stone-700 text-white shadow-2xs'
+                                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                                  }`}
+                                >
+                                  <EyeOff className="w-3 h-3" />
                                   <span>隱藏</span>
-                                </span>
-                              )}
+                                </button>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-stone-600 mt-1 leading-snug">
-                              {isIslandOpen
-                                ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口，所有會員與訪客皆可自由探索'
-                                : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏，僅管理員由後台可預覽或開啟'}
-                            </p>
+
+                            {/* 管理員特權預覽 (進入創點島且不影響其他人的顯示設定) */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-purple-200/60 mt-1">
+                              <div className="flex items-center gap-1.5 text-[11px] text-purple-900">
+                                <Shield className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                                <span className="font-bold">管理員預覽：</span>
+                                <span className="text-stone-500 text-[10.5px]">進入創點島且不影響其他人的顯示設定</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (onOpenIsland) {
+                                      onOpenIsland();
+                                      onClose();
+                                    } else {
+                                      window.location.href = '/island';
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-black flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                                  title="以管理員身分直接進入創點島，不論目前是否為隱藏狀態，都不變更前台公開/隱藏設定"
+                                >
+                                  <Compass className="w-3.5 h-3.5" />
+                                  <span>進入創點島預覽</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => window.open('/island', '_blank', 'noopener,noreferrer')}
+                                  className="px-2 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 text-[11px] font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                                  title="在新分頁開啟創點島地圖預覽"
+                                >
+                                  <span>新分頁 ↗</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isIslandOpen}
-                            onClick={() => updatePublicMetricsConfig({ showIslandMap: !isIslandOpen })}
-                            className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
-                              isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
-                            }`}
-                            title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
-                          >
-                            <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
-                              isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'
-                            }`} />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
-                          <span className="text-[10px] font-bold text-stone-500 shrink-0">目前狀態：</span>
-                          <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
-                            <button
-                              type="button"
-                              onClick={() => updatePublicMetricsConfig({ showIslandMap: true })}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
-                                isIslandOpen
-                                  ? 'bg-purple-700 text-white shadow-2xs'
-                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
-                              }`}
-                            >
-                              <Globe className="w-3 h-3" />
-                              <span>公開</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updatePublicMetricsConfig({ showIslandMap: false })}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
-                                !isIslandOpen
-                                  ? 'bg-stone-700 text-white shadow-2xs'
-                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
-                              }`}
-                            >
-                              <EyeOff className="w-3 h-3" />
-                              <span>隱藏</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* 3. 一般用戶智慧上架功能 */}
-                {(() => {
-                  const isSmartOnboardAllowed = publicMetricsConfig.allowUserSmartOnboard !== false;
-
-                  return (
-                    <div
-                      className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
-                        isSmartOnboardAllowed
-                          ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
-                          : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`font-black text-xs flex items-center gap-1.5 ${isSmartOnboardAllowed ? 'text-purple-950' : 'text-stone-700'}`}>
-                              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSmartOnboardAllowed ? 'text-purple-600' : 'text-stone-400'}`} />
-                              <span>一般用戶智慧上架功能</span>
-                            </span>
-                            {isSmartOnboardAllowed ? (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
-                                <span>已開放一般用戶使用</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
-                                🚫 已關閉（僅管理員可用）
-                              </span>
-                            )}
-                            <span className="text-[10px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</span>
-                          </div>
-                          <p className="text-[11px] text-stone-600 mt-1 leading-snug">
-                            {isSmartOnboardAllowed
-                              ? '開放中 · 一般會員可於軟體專區使用「一鍵上架」或於刊登頁貼上網址由 AI 自動抓取名稱、描述、分類與首頁截圖（需登入會員）'
-                              : '已關閉 · 一般用戶不可使用智慧上架與一鍵上架入口（軟體專區一鍵上架入口與發布頁智慧讀取將對一般用戶隱藏，僅管理員可用）'}
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => updatePublicMetricsConfig({ allowUserSmartOnboard: !isSmartOnboardAllowed })}
-                          className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
-                            isSmartOnboardAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
-                          }`}
-                          title={isSmartOnboardAllowed ? '點擊關閉一般用戶智慧上架功能' : '點擊開啟一般用戶智慧上架功能'}
-                        >
-                          <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
-                            isSmartOnboardAllowed ? 'translate-x-5.5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
+                        );
+                      })()}
                     </div>
-                  );
-                })()}
+
+                    {/* 3. 一般用戶智慧上架功能 */}
+                    {(() => {
+                      const isSmartOnboardAllowed = publicMetricsConfig.allowUserSmartOnboard !== false;
+
+                      return (
+                        <div
+                          className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                            isSmartOnboardAllowed
+                              ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                              : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`font-black text-xs flex items-center gap-1.5 ${isSmartOnboardAllowed ? 'text-purple-950' : 'text-stone-700'}`}>
+                                  <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSmartOnboardAllowed ? 'text-purple-600' : 'text-stone-400'}`} />
+                                  <span>一般用戶智慧上架功能</span>
+                                </span>
+                                {isSmartOnboardAllowed ? (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                                    <span>已開放一般用戶使用</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
+                                    🚫 已關閉（僅管理員可用）
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</span>
+                              </div>
+                              <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                                {isSmartOnboardAllowed
+                                  ? '開放中 · 一般會員可於軟體專區使用「一鍵上架」或於刊登頁貼上網址由 AI 自動抓取名稱、描述、分類與首頁截圖（需登入會員）'
+                                  : '已關閉 · 一般用戶不可使用智慧上架與一鍵上架入口（軟體專區一鍵上架入口與發布頁智慧讀取將對一般用戶隱藏，僅管理員可用）'}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => updatePublicMetricsConfig({ allowUserSmartOnboard: !isSmartOnboardAllowed })}
+                              className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                                isSmartOnboardAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
+                              }`}
+                              title={isSmartOnboardAllowed ? '點擊關閉一般用戶智慧上架功能' : '點擊開啟一般用戶智慧上架功能'}
+                            >
+                              <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                                isSmartOnboardAllowed ? 'translate-x-5.5' : 'translate-x-0'
+                              }`} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
 
 

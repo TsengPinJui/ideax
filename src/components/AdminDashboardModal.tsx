@@ -234,13 +234,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     setPendingConfirm(null);
   };
 
-  // Compute platform metrics (正式營運模式 NORM 與無金流模式 FREE 下，累計懸賞金額與全站總交易額均純淨歸零 0)
-  const totalGMV = isNoPaymentMode || !isDemoMode
+  // Compute platform metrics (徹底替除所有虛假交易與模擬金流，歸零並僅採納全站真實個人/會員交易)
+  const realTransactions = (transactions || []).filter((t) => !isMockTransactionId(t.id) && !t.isSimulated);
+  const totalGMV = isNoPaymentMode
     ? 0
-    : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const totalPlatformFees = isNoPaymentMode || !isDemoMode
+    : realTransactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+  const totalPlatformFees = isNoPaymentMode
     ? 0
-    : transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
+    : realTransactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
   const totalBountyPool = isNoPaymentMode || !isDemoMode
     ? 0
     : questions.filter((q) => q.status === 'open').reduce((acc, q) => acc + (q.bounty || 0), 0);

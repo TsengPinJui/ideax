@@ -2223,8 +2223,8 @@ function MainContent() {
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
       <SplashScreen minDurationMs={1400} />
 
-      {/* Navigation (在創星季獨立網站時隱藏舊站導覽列，保持獨立站體驗) */}
-      {activeTab !== 'star_season' && (
+      {/* Navigation (在創星季獨立網站與創點島全螢幕地圖時隱藏導覽列，保持沉浸體驗) */}
+      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && (
         <Navbar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -2311,6 +2311,11 @@ function MainContent() {
             questions={questions}
             onOpenQuestion={handleViewAppDescription}
             onAction={handleIslandAction}
+            onBack={() => {
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('explore');
+            }}
           />
         )}
 
@@ -3576,6 +3581,11 @@ function MainContent() {
             }}
             onNavigateToSitelink={handleNavigateToSitelink}
             onOpenChat={() => setActiveTab('chat')}
+            onOpenIsland={() => {
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('island_explorer');
+            }}
           />
         )}
 
@@ -3877,11 +3887,11 @@ function MainContent() {
       {/* 發布內容後詢問是否開啟通知 */}
       <NotificationOptInPrompt />
 
-      {/* 有新版本時提醒更新（開很久沒重新整理的頁面或手機 APP） */}
-      <NewVersionNotice />
+      {/* 有新版本時提醒更新（開很久沒重新整理的頁面或手機 APP；創點島全螢幕時不遮擋） */}
+      {activeTab !== 'island_explorer' && <NewVersionNotice />}
 
-      {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站不顯示） */}
-      <MascotHost hidden={activeTab === 'star_season'} />
+      {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站與創點島全螢幕地圖不顯示） */}
+      <MascotHost hidden={activeTab === 'star_season' || activeTab === 'island_explorer'} />
 
 
       {/* 軟體作品試玩體驗畫面（含右下角查看作品說明按鍵） */}

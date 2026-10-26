@@ -327,8 +327,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 />
               </div>
 
-              {/* 中間：首頁創點子播放區 */}
-              <div className="flex-1 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto flex flex-col justify-center">
+              {/* 中間：首頁創點子播放區（手機版隱藏，電腦版保留展示） */}
+              <div className="hidden lg:flex flex-1 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto flex-col justify-center">
                 <p className="mb-2.5 px-2 text-center text-xs sm:text-sm font-black tracking-tight text-amber-900/90">
                   沒上榜？別氣餒 ✨ IdeaX 收錄的都是百里挑一的佳作，加油！💪
                 </p>
@@ -363,7 +363,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
 
             {/* 行動裝置 / 平板 (lg:hidden)：Tab 切換瀏覽精選遊戲與熱度榜 */}
-            <div className="lg:hidden w-full max-w-[260px] mx-auto mt-3">
+            <div className="lg:hidden w-full max-w-[260px] mx-auto mt-1 sm:mt-2">
               <div className="flex items-center justify-center p-1 rounded-2xl bg-amber-100/70 max-w-xs mx-auto mb-2 text-xs font-black shadow-2xs">
                 <button
                   type="button"

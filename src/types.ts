@@ -873,6 +873,7 @@ export interface Solver {
   // 解答各等級問題數統計 (L0 ~ L4) 與榮譽
   levelAnswerCounts?: Record<ProblemLevel, number>;
   honorTitle?: string;
+  isSimulated?: boolean;
 }
 
 /**
@@ -1401,6 +1402,7 @@ export interface Transaction {
   status: '成功' | '處理中' | '已完成';
   createdAt: string;
   note?: string;
+  isSimulated?: boolean;
 }
 
 export interface AchievementBadge {

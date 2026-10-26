@@ -20,6 +20,7 @@ import { isRealRegisteredUser } from '../data/mockData';
 import { ShareReferralModal } from './ShareReferralModal';
 import { RedeemReferralCodeModal } from './RedeemReferralCodeModal';
 import { getUserReferralCode, copyPureReferralCode } from '../services/referralService';
+import { IdeaIslandIcon } from './island/IdeaIslandIcon';
 
 interface HomeAnnouncementBannerProps {
   onOpenRegister: () => void;
@@ -83,67 +84,106 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
         <div className="relative bg-amber-50/50 backdrop-blur-sm rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-stone-900 transition-all">
           {/* 頂部功能列：推薦碼靠左，右側保留創點島地圖卡入口 */}
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_270px] gap-2.5 mb-1.5 items-stretch">
-            <div className="min-w-0 flex flex-wrap items-center gap-1.5">
-              <h2 className="text-xs sm:text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5 mr-1">
-                <span className="text-amber-800">推廣送好禮</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-800 text-[10px] font-bold">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-600" />
-                  <span>持續收錄全球各地優秀作品~ (以中文地區為主)</span>
-                </span>
-              </h2>
-              {/* 兌換推薦碼按鍵 */}
-              <button
-                type="button"
-                onClick={() => setIsRedeemModalOpen(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs"
-                title="填寫好友的推薦碼，分享者即享 +100 點獎勵"
-              >
-                <Gift className="w-3.5 h-3.5" />
-                <span>兌換推薦碼</span>
-              </button>
+            <div className="min-w-0 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 justify-between">
+              {/* 頂部標題與按鈕列 */}
+              <div className="flex items-center justify-between gap-1.5 w-full sm:w-auto">
+                <h2 className="text-xs sm:text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
+                  <span className="text-amber-800">推廣送好禮</span>
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-800 text-[10px] font-bold">
+                    <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                    <span>持續收錄全球各地優秀作品~ (以中文地區為主)</span>
+                  </span>
+                </h2>
 
-              {/* 複製推薦碼按鍵 */}
-              <button
-                type="button"
-                onClick={handleOpenShareReferral}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-amber-100/80 active:scale-95 text-amber-800 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
-                title="查看並複製您的專屬推薦碼（純代碼）分享給好友"
-              >
-                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{isCopied ? '已複製純碼' : '分享推薦碼'}</span>
-              </button>
+                {/* 手機版：推薦碼操作鍵 + 關閉按鍵（置於頂部右側，取代原創點島按鈕） */}
+                <div className="flex items-center gap-1 sm:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsRedeemModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-[10.5px] font-black transition-all cursor-pointer shadow-2xs"
+                    title="填寫好友的推薦碼，分享者即享 +100 點獎勵"
+                  >
+                    <Gift className="w-3 h-3" />
+                    <span>兌換推薦碼</span>
+                  </button>
 
-              {/* 關閉按鈕 */}
-              <button
-                type="button"
-                onClick={() => setIsDismissed(true)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-amber-100/60 transition-colors cursor-pointer"
-                title="暫時收合"
-                aria-label="收合公告"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenShareReferral}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-white hover:bg-amber-100/80 active:scale-95 text-amber-800 text-[10.5px] font-bold transition-all cursor-pointer shadow-2xs border border-amber-200/80"
+                    title="查看並複製您的專屬推薦碼（純代碼）分享給好友"
+                  >
+                    {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    <span>{isCopied ? '已複製' : '分享推薦碼'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsDismissed(true)}
+                    className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-amber-100/60 transition-colors cursor-pointer ml-0.5"
+                    title="暫時收合"
+                    aria-label="收合公告"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 電腦版推薦碼操作鍵 */}
+              <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
+                {/* 兌換推薦碼按鍵 */}
+                <button
+                  type="button"
+                  onClick={() => setIsRedeemModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-[11px] font-black transition-all cursor-pointer shadow-2xs"
+                  title="填寫好友的推薦碼，分享者即享 +100 點獎勵"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  <span>兌換推薦碼</span>
+                </button>
+
+                {/* 複製推薦碼按鍵 */}
+                <button
+                  type="button"
+                  onClick={handleOpenShareReferral}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-amber-100/80 active:scale-95 text-amber-800 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                  title="查看並複製您的專屬推薦碼（純代碼）分享給好友"
+                >
+                  {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{isCopied ? '已複製純碼' : '分享推薦碼'}</span>
+                </button>
+
+                {/* 電腦版關閉按鈕 */}
+                <button
+                  type="button"
+                  onClick={() => setIsDismissed(true)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-amber-100/60 transition-colors cursor-pointer"
+                  title="暫時收合"
+                  aria-label="收合公告"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
-            {publicMetricsConfig.showIslandMap !== false && <button
-              type="button"
-              onClick={onOpenIsland}
-              className="group relative flex min-h-[66px] items-center gap-3 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-3 py-2 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm cursor-pointer"
-              aria-label="開啟創點島互動地圖"
-            >
-              <span className="relative grid h-11 w-12 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-white shadow-inner">
-                <span className="absolute left-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-300" />
-                <span className="absolute right-1.5 top-2.5 h-3 w-3 rounded-full bg-amber-300" />
-                <span className="absolute bottom-1.5 left-2.5 h-3 w-3 rounded-full bg-rose-300" />
-                <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-sky-300" />
-                <MapIcon className="relative z-10 h-4 w-4 text-emerald-900 drop-shadow-sm" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島互動地圖</span>
-                <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">俯視五座主題島嶼，點選開始探索</span>
-              </span>
-              <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-700 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </button>}
+            {/* 電腦版右側大卡片（手機版已移到右上角，因此 hidden lg:flex） */}
+            {publicMetricsConfig.showIslandMap !== false && (
+              <button
+                type="button"
+                onClick={onOpenIsland}
+                className="hidden lg:flex group relative min-h-[66px] items-center gap-3 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-3 py-2 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm cursor-pointer"
+                aria-label="開啟創點島互動地圖"
+              >
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-white shadow-2xs p-1">
+                  <IdeaIslandIcon size={34} />
+                </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島互動地圖</span>
+                  <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">俯視五座主題島嶼，點選開始探索</span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-700 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </button>
+            )}
           </div>
 
           {/* 流程步驟橫條（註冊送100點 -> 分享推薦碼+100點/人 -> 發布討論或痛點+100點 -> 刊登作品或創新提案+300點） */}

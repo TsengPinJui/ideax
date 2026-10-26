@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Flame, Eye } from 'lucide-react';
+import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Flame, Eye, ChevronDown } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HOME_SHOWCASE_MAX_CUSTOM, type HomeShowcaseMode, type Question } from '../types';
 import { useShowcaseSlides } from './HomeShowcasePlayer';
@@ -270,6 +270,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   const slides = useShowcaseSlides();
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[]; customIds?: string[]; includeSimulated?: boolean; hideHeroTitles?: boolean }) => {
     setSaving(true);
@@ -285,114 +286,143 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   const chosen = MODES.filter((m) => modes.includes(m.id)).map((m) => (m.id === 'custom' ? `「${m.name}（${(customIds || []).length} 個）」` : `「${m.name}」`)).join('、');
 
   return (
-    <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-3.5 shadow-2xs">
+    <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-3.5 shadow-2xs transition-all">
       <div className="flex items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-xs shrink-0">
+        <div
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2.5 cursor-pointer flex-1 select-none group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
             <MonitorPlay className="w-5 h-5" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h4 className="font-black text-sm sm:text-base text-sky-950 flex items-center gap-2 flex-wrap">
-              <span>首頁創點子播放區</span>
+              <span>首頁輪播&精選榜</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${enabled && slides.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-stone-500 border-stone-200'}`}>
                 {!enabled ? '未啟用' : slides.length ? `播放中・${slides.length} 個` : '沒有可播放的內容'}
               </span>
+              <span className="text-[10px] text-sky-700/70 font-normal">
+                {isExpanded ? '（點擊收合）' : '（點擊展開設定）'}
+              </span>
             </h4>
-            <p className="text-xs text-sky-900/70 mt-0.5">
-              啟用後，首頁最上方的創點子標誌會換成輪播（每 5 秒換一個，滑鼠移上去或手指按住會暫停）。若勾選「管理員自選」，自選作品將最優先依照您排定的順序播放（最多 30 個）；沒有可播放的內容時仍顯示創點子標誌。
+            <p className="text-xs text-sky-900/70 mt-0.5 line-clamp-1">
+              首頁最上方輪播展示與精選推薦內容管理（預設收合）。
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => save({ enabled: !enabled })}
-          disabled={saving}
-          className={`mt-1 sm:mt-0 w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${enabled ? 'bg-sky-500' : 'bg-stone-300'}`}
-          title={enabled ? '點擊關閉播放區' : '點擊啟用播放區'}
-          aria-label="啟用首頁播放區"
-          aria-pressed={enabled}
-        >
-          <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              save({ enabled: !enabled });
+            }}
+            disabled={saving}
+            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${enabled ? 'bg-sky-500' : 'bg-stone-300'}`}
+            title={enabled ? '點擊關閉首頁輪播&精選榜' : '點擊啟用首頁輪播&精選榜'}
+            aria-label="啟用首頁輪播&精選榜"
+            aria-pressed={enabled}
+          >
+            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 rounded-lg text-sky-800 hover:bg-sky-100/70 transition-colors cursor-pointer"
+            aria-label={isExpanded ? '收合首頁輪播&精選榜' : '展開首頁輪播&精選榜'}
+          >
+            <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 transition-opacity ${enabled ? '' : 'opacity-60'}`} role="group" aria-label="播放內容（可複選）">
-        {MODES.map((m) => {
-          const active = modes.includes(m.id);
-          return (
+      {isExpanded && (
+        <div className="space-y-3.5 pt-1 border-t border-sky-100 animate-in fade-in duration-150">
+          <p className="text-xs text-sky-900/80 leading-relaxed">
+            啟用後，首頁最上方的創點子標誌會換成輪播（每 5 秒換一個，滑鼠移上去或手指按住會暫停）。若勾選「管理員自選」，自選作品將最優先依照您排定的順序播放（最多 30 個）；沒有可播放的內容時仍顯示創點子標誌。
+          </p>
+
+          <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 transition-opacity ${enabled ? '' : 'opacity-60'}`} role="group" aria-label="播放內容（可複選）">
+            {MODES.map((m) => {
+              const active = modes.includes(m.id);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  onClick={() => toggleMode(m.id)}
+                  disabled={saving}
+                  className={`text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 disabled:cursor-wait ${
+                    active ? 'bg-white border-sky-400 ring-2 ring-sky-200 shadow-2xs' : 'bg-white/60 border-stone-200 hover:border-sky-300'
+                  }`}
+                >
+                  <span className={`w-5 h-5 mt-1 rounded-md border-2 flex items-center justify-center shrink-0 ${active ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white border-stone-300'}`}>
+                    {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </span>
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-sky-100 text-sky-700' : 'bg-stone-100 text-stone-500'}`}>{m.icon}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-black text-stone-900">{m.name}</span>
+                    <span className="block text-[11px] text-stone-500 mt-0.5 leading-snug">{m.desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 首頁大標題、小標題：可以隱藏，讓播放區更突出 */}
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
+            <span className="min-w-0">
+              <span className="block text-xs font-black text-sky-950">隱藏首頁大標題與小標題</span>
+              <span className="block text-[11px] text-stone-500">「一個問題，找到更多可能。」和「痛點許願 · 創新提案 · 專家懸賞」不顯示（搜尋引擎仍讀得到大標題）。</span>
+            </span>
             <button
-              key={m.id}
               type="button"
-              role="checkbox"
-              aria-checked={active}
-              onClick={() => toggleMode(m.id)}
+              role="switch"
+              aria-checked={Boolean(homeShowcaseConfig.hideHeroTitles)}
               disabled={saving}
-              className={`text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 disabled:cursor-wait ${
-                active ? 'bg-white border-sky-400 ring-2 ring-sky-200 shadow-2xs' : 'bg-white/60 border-stone-200 hover:border-sky-300'
-              }`}
+              onClick={() => save({ hideHeroTitles: !homeShowcaseConfig.hideHeroTitles })}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${homeShowcaseConfig.hideHeroTitles ? 'bg-sky-500' : 'bg-stone-300'}`}
             >
-              <span className={`w-5 h-5 mt-1 rounded-md border-2 flex items-center justify-center shrink-0 ${active ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white border-stone-300'}`}>
-                {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-              </span>
-              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-sky-100 text-sky-700' : 'bg-stone-100 text-stone-500'}`}>{m.icon}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-black text-stone-900">{m.name}</span>
-                <span className="block text-[11px] text-stone-500 mt-0.5 leading-snug">{m.desc}</span>
-              </span>
+              <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${homeShowcaseConfig.hideHeroTitles ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
-          );
-        })}
-      </div>
+          </label>
 
-      {/* 首頁大標題、小標題：可以隱藏，讓播放區更突出 */}
-      <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
-        <span className="min-w-0">
-          <span className="block text-xs font-black text-sky-950">隱藏首頁大標題與小標題</span>
-          <span className="block text-[11px] text-stone-500">「一個問題，找到更多可能。」和「痛點許願 · 創新提案 · 專家懸賞」不顯示（搜尋引擎仍讀得到大標題）。</span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={Boolean(homeShowcaseConfig.hideHeroTitles)}
-          disabled={saving}
-          onClick={() => save({ hideHeroTitles: !homeShowcaseConfig.hideHeroTitles })}
-          className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${homeShowcaseConfig.hideHeroTitles ? 'bg-sky-500' : 'bg-stone-300'}`}
-        >
-          <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${homeShowcaseConfig.hideHeroTitles ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
-      </label>
+          {/* 虛擬卡片：真實作品還不多時先打開，讓播放區有內容 */}
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
+            <span className="min-w-0">
+              <span className="block text-xs font-black text-sky-950">包含虛擬卡片</span>
+              <span className="block text-[11px] text-stone-500">「優秀作品」「付費推播」也播放平台的虛擬（模擬）卡片；真實作品夠多後可以關掉。「管理員自選」一律可以選虛擬卡片。</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={includeSimulated}
+              disabled={saving}
+              onClick={() => save({ includeSimulated: !includeSimulated })}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${includeSimulated ? 'bg-sky-500' : 'bg-stone-300'}`}
+            >
+              <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${includeSimulated ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </label>
 
-      {/* 虛擬卡片：真實作品還不多時先打開，讓播放區有內容 */}
-      <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
-        <span className="min-w-0">
-          <span className="block text-xs font-black text-sky-950">包含虛擬卡片</span>
-          <span className="block text-[11px] text-stone-500">「優秀作品」「付費推播」也播放平台的虛擬（模擬）卡片；真實作品夠多後可以關掉。「管理員自選」一律可以選虛擬卡片。</span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={includeSimulated}
-          disabled={saving}
-          onClick={() => save({ includeSimulated: !includeSimulated })}
-          className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${includeSimulated ? 'bg-sky-500' : 'bg-stone-300'}`}
-        >
-          <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${includeSimulated ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
-      </label>
+          {modes.includes('custom') && (
+            <CustomShowcasePicker
+              ids={customIds || []}
+              disabled={saving}
+              onChange={(next) => save({ customIds: next })}
+            />
+          )}
 
-      {modes.includes('custom') && (
-        <CustomShowcasePicker
-          ids={customIds || []}
-          disabled={saving}
-          onChange={(next) => save({ customIds: next })}
-        />
+          <p className="text-[11px] text-sky-900/70">
+            目前設定：
+            {enabled ? (chosen ? `啟用，播放${chosen}${slides.length ? `，共 ${slides.length} 個` : '，但目前沒有符合的內容（首頁顯示創點子標誌）'}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
+            {saving ? '・儲存中…' : savedAt ? '・已儲存' : ''}
+          </p>
+        </div>
       )}
-
-      <p className="text-[11px] text-sky-900/70">
-        目前設定：
-        {enabled ? (chosen ? `啟用，播放${chosen}${slides.length ? `，共 ${slides.length} 個` : '，但目前沒有符合的內容（首頁顯示創點子標誌）'}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
-        {saving ? '・儲存中…' : savedAt ? '・已儲存' : ''}
-      </p>
     </div>
   );
 };
@@ -402,6 +432,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
   const { questions, homeShowcaseConfig, updateHomeShowcaseConfig } = useApp();
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const mode = homeShowcaseConfig.hotGamesMode || 'custom';
   const ids = homeShowcaseConfig.hotGameIds || [];
   const seeds = getHotRankedGames(questions).map((x) => x.question);
@@ -430,48 +461,87 @@ export const AdminHotGamesConfigCard: React.FC = () => {
   const title = (q: Question) => stripAppNameFromTitle(q.title, q.appName);
 
   return (
-    <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 shadow-2xs">
-      <div className="flex items-start gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0"><Flame className="w-5 h-5" /></div>
-        <div>
-          <h4 className="font-black text-sm sm:text-base text-rose-950">首頁熱度榜設定</h4>
-          <p className="text-xs text-rose-900/70 mt-0.5">選擇手動編排榜單，或依遊戲作品的瀏覽次數自動排序。</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {([
-          { id: 'custom' as const, label: '管理員自選', detail: '自行挑選並調整前 10 名', icon: <Flame className="w-4 h-4" /> },
-          { id: 'views' as const, label: '依瀏覽次數排序', detail: '遊戲作品依瀏覽數由高至低排列', icon: <Eye className="w-4 h-4" /> },
-        ]).map((option) => (
-          <button key={option.id} type="button" disabled={saving} onClick={() => void save({ hotGamesMode: option.id })}
-            className={`text-left p-3 rounded-xl border flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60 ${mode === option.id ? 'bg-white border-rose-400 ring-2 ring-rose-200' : 'bg-white/60 border-stone-200 hover:border-rose-300'}`}>
-            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${mode === option.id ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>{option.icon}</span>
-            <span><span className="block text-xs font-black text-stone-900">{option.label}</span><span className="block text-[11px] text-stone-500">{option.detail}</span></span>
-            {mode === option.id && <Check className="w-4 h-4 text-rose-600 ml-auto" />}
-          </button>
-        ))}
-      </div>
-      {mode === 'custom' && (
-        <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-2.5">
-          <div className="flex justify-between items-center text-xs font-black text-rose-950"><span>自選榜單排序</span><span>{ids.length}/10</span></div>
-          {selected.length > 0 && <div className="space-y-1 max-h-56 overflow-y-auto">
-            {selected.map((q, i) => <div key={q.id} className="flex items-center gap-2 rounded-lg bg-rose-50 px-2 py-1.5">
-              <span className="w-5 text-center text-[11px] font-mono font-black text-rose-700">{i + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{title(q)}</span>
-              <button type="button" disabled={saving || i === 0} onClick={() => move(i, -1)} aria-label="上移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowUp className="w-3.5 h-3.5" /></button>
-              <button type="button" disabled={saving || i === selected.length - 1} onClick={() => move(i, 1)} aria-label="下移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowDown className="w-3.5 h-3.5" /></button>
-              <button type="button" disabled={saving} onClick={() => void save({ hotGameIds: ids.filter((id) => id !== q.id) })} aria-label="移除" className="p-1 text-stone-400 hover:text-red-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
-            </div>)}
-          </div>}
-          <div className="relative"><Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜尋遊戲名稱、作者或標籤" className="w-full pl-8 pr-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-xs outline-none focus:border-rose-400" /></div>
-          <div className="max-h-52 overflow-y-auto divide-y divide-stone-100 border border-stone-100 rounded-lg">
-            {results.map((q) => <button key={q.id} type="button" disabled={saving || ids.length >= 10} onClick={() => void save({ hotGameIds: [...ids, q.id] })} className="w-full px-2.5 py-2 flex items-center gap-2 text-left hover:bg-rose-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
-              <span className="text-rose-600 font-black">＋</span><span className="truncate text-xs font-bold">{title(q)}</span><span className="ml-auto shrink-0 text-[10px] text-stone-400">瀏覽 {q.viewsCount ?? q.views ?? 0}</span>
-            </button>)}
-            {results.length === 0 && <div className="px-3 py-4 text-center text-[11px] text-stone-400">沒有其他符合的遊戲</div>}
+    <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 shadow-2xs transition-all">
+      <div
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-start sm:items-center justify-between gap-3 cursor-pointer select-none group"
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Flame className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-black text-sm sm:text-base text-rose-950 flex items-center gap-2 flex-wrap">
+              <span>首頁熱度榜設定</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-rose-800 border border-rose-200">
+                {mode === 'custom' ? `自選榜單・${ids.length}/10 個` : '依作品瀏覽數排序'}
+              </span>
+              <span className="text-[10px] text-rose-700/70 font-normal">
+                {isExpanded ? '（點擊收合）' : '（點擊展開設定）'}
+              </span>
+            </h4>
+            <p className="text-xs text-rose-900/70 mt-0.5 line-clamp-1">
+              設定首頁熱度榜排序方式與自選順序（預設收合）。
+            </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="p-1 rounded-lg text-rose-800 hover:bg-rose-100/70 transition-colors cursor-pointer shrink-0"
+          aria-label={isExpanded ? '收合首頁熱度榜設定' : '展開首頁熱度榜設定'}
+        >
+          <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="space-y-3 pt-1 border-t border-rose-100 animate-in fade-in duration-150">
+          <p className="text-xs text-rose-900/80 leading-relaxed">
+            選擇手動編排榜單（可自由搜尋並調整前 10 名次序），或依遊戲作品的瀏覽次數即時由高至低自動排序。
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {([
+              { id: 'custom' as const, label: '管理員自選', detail: '自行挑選並調整前 10 名', icon: <Flame className="w-4 h-4" /> },
+              { id: 'views' as const, label: '依瀏覽次數排序', detail: '遊戲作品依瀏覽數由高至低排列', icon: <Eye className="w-4 h-4" /> },
+            ]).map((option) => (
+              <button key={option.id} type="button" disabled={saving} onClick={() => void save({ hotGamesMode: option.id })}
+                className={`text-left p-3 rounded-xl border flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60 ${mode === option.id ? 'bg-white border-rose-400 ring-2 ring-rose-200 shadow-2xs' : 'bg-white/60 border-stone-200 hover:border-rose-300'}`}>
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${mode === option.id ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>{option.icon}</span>
+                <span><span className="block text-xs font-black text-stone-900">{option.label}</span><span className="block text-[11px] text-stone-500">{option.detail}</span></span>
+                {mode === option.id && <Check className="w-4 h-4 text-rose-600 ml-auto" />}
+              </button>
+            ))}
+          </div>
+
+          {mode === 'custom' && (
+            <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-2.5">
+              <div className="flex justify-between items-center text-xs font-black text-rose-950"><span>自選榜單排序</span><span>{ids.length}/10</span></div>
+              {selected.length > 0 && <div className="space-y-1 max-h-56 overflow-y-auto">
+                {selected.map((q, i) => <div key={q.id} className="flex items-center gap-2 rounded-lg bg-rose-50 px-2 py-1.5">
+                  <span className="w-5 text-center text-[11px] font-mono font-black text-rose-700">{i + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{title(q)}</span>
+                  <button type="button" disabled={saving || i === 0} onClick={() => move(i, -1)} aria-label="上移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowUp className="w-3.5 h-3.5" /></button>
+                  <button type="button" disabled={saving || i === selected.length - 1} onClick={() => move(i, 1)} aria-label="下移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowDown className="w-3.5 h-3.5" /></button>
+                  <button type="button" disabled={saving} onClick={() => void save({ hotGameIds: ids.filter((id) => id !== q.id) })} aria-label="移除" className="p-1 text-stone-400 hover:text-red-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                </div>)}
+              </div>}
+              <div className="relative"><Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜尋遊戲名稱、作者或標籤" className="w-full pl-8 pr-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-xs outline-none focus:border-rose-400" /></div>
+              <div className="max-h-52 overflow-y-auto divide-y divide-stone-100 border border-stone-100 rounded-lg">
+                {results.map((q) => <button key={q.id} type="button" disabled={saving || ids.length >= 10} onClick={() => void save({ hotGameIds: [...ids, q.id] })} className="w-full px-2.5 py-2 flex items-center gap-2 text-left hover:bg-rose-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+                  <span className="text-rose-600 font-black">＋</span><span className="truncate text-xs font-bold">{title(q)}</span><span className="ml-auto shrink-0 text-[10px] text-stone-400">瀏覽 {q.viewsCount ?? q.views ?? 0}</span>
+                </button>)}
+                {results.length === 0 && <div className="px-3 py-4 text-center text-[11px] text-stone-400">沒有其他符合的遊戲</div>}
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-rose-900/70">{saving ? '儲存中…' : '設定會同步儲存並套用於首頁熱度榜。'}</p>
+        </div>
       )}
-      <p className="text-[11px] text-rose-900/70">{saving ? '儲存中…' : '設定會同步儲存並套用於首頁熱度榜。'}</p>
     </div>
   );
 };

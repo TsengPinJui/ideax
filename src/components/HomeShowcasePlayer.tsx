@@ -109,7 +109,7 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[] }> = ({ slides }) =>
       className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/80 bg-stone-900 shadow-md"
       role="region"
       aria-roledescription="carousel"
-      aria-label="首頁創點子播放區"
+      aria-label="首頁輪播&精選榜"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}

@@ -1780,20 +1780,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (TEST / DEMO)：加回所有模擬交易紀錄
+    // 徹底替除所有虛假交易與模擬金流，僅保留用戶真實交易紀錄
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}transactions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const customTx = parsed.filter((t: any) => !isMockTransactionId(t.id));
-          return [...MOCK_TRANSACTIONS, ...customTx];
+          return parsed.filter((t: any) => !isMockTransactionId(t.id));
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_TRANSACTIONS;
+    return [];
   });
 
   const [conversations, setConversations] = useState<ChatConversation[]>(() => {
@@ -10251,8 +10250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...MOCK_ANSWERS, ...custom];
       });
       setTransactions((prev) => {
-        const custom = prev.filter((t) => !isMockTransactionId(t.id));
-        return [...MOCK_TRANSACTIONS, ...custom];
+        return prev.filter((t) => !isMockTransactionId(t.id));
       });
       setConversations((prev) => prev.filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo'));
       setAvailableUsers((prev) => {

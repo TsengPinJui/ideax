@@ -44,6 +44,7 @@ interface IslandWorldViewProps {
   questions: Question[];
   onOpenQuestion: (question: Question) => void;
   onAction: (action: IslandAction) => void;
+  onBack?: () => void;
 }
 
 const ISLAND_SHAPES: Record<string, string> = {
@@ -180,44 +181,52 @@ function IslandLandmark({ tint, islandId }: { tint: string; islandId: string }) 
   );
 }
 
-export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onOpenQuestion, onAction }) => {
-  // 3D 俯視視角 (Pitch: 25° ~ 75°，預設 50°) 與 左右旋轉 (Yaw: 0° ~ 360°)
-  // 操作方式完全仿造 puma heart-island：滑鼠左鍵同時控制俯視視角與左右旋轉
-  const [view, setView] = useState({ zoom: 1, pitch: 48, yaw: 0 });
+export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
+  questions,
+  onOpenQuestion,
+  onAction,
+  onBack,
+}) => {
+  // 3D 俯視視角 (Pitch: 25° ~ 75°，預設 48°)、左右旋轉 (Yaw: 0° ~ 360°) 與平移位置 (panX, panY)
+  // 操作方式：滑鼠左鍵按住移動平移地圖，右鍵拖曳旋轉與調整俯視角度
+  const [view, setView] = useState({ zoom: 1, pitch: 48, yaw: 0, panX: 0, panY: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  // 選中層級狀態
-  const [selectedIslandId, setSelectedIslandId] = useState<string | null>(null);
+  // 選中層級狀態（島 -> 區 -> 街 -> 攤）
+  const [selectedIslandId, setSelectedIslandId] = useState<string | null>('home');
   const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
   const [selectedStreetId, setSelectedStreetId] = useState<string | null>(null);
   const [selectedStandId, setSelectedStandId] = useState<string | null>(null);
 
-  // 左側彈窗/抽屜狀態
-  const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
-  const [leftDrawerTab, setLeftDrawerTab] = useState<'atlas' | 'preview' | 'form'>('atlas');
-  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [formSubmitSuccess, setFormSubmitSuccess] = useState<string | null>(null);
+  // 右側「島覽」導覽面板狀態（地圖路徑、介紹、條列式題目瀏覽是在右邊，默認收合，點擊後展開）
+  const [isRightAtlasOpen, setIsRightAtlasOpen] = useState(false);
 
-  // 表單輸入內容 (當使用者在左側填寫彈窗提交時)
+  // 左側彈窗/抽屜狀態（點擊條列卡片在畫面左側跳出詳細內頁，填寫表單與需求也都在左側）
+  const [leftModalMode, setLeftModalMode] = useState<'none' | 'preview' | 'form'>('none');
+  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [formType, setFormType] = useState<'pain_point' | 'career_wish' | 'discussion' | 'proposal'>('pain_point');
   const [formData, setFormData] = useState({
     title: '',
-    category: '',
+    category: '資訊科技',
     description: '',
     tags: '',
   });
+  const [formSubmitSuccess, setFormSubmitSuccess] = useState<string | null>(null);
 
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [searchText, setSearchText] = useState('');
 
   const mapStageRef = useRef<HTMLDivElement>(null);
   const pointerPositions = useRef(new Map<number, { x: number; y: number }>());
   const dragStart = useRef<{
     pointerId: number;
+    button: number;
     x: number;
     y: number;
     pitch: number;
     yaw: number;
+    panX: number;
+    panY: number;
     moved: boolean;
     islandId: string | null;
   } | null>(null);
@@ -252,10 +261,28 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
     return counts;
   }, [questions]);
 
-  const sceneQuestions = useMemo(
-    () => (selectedStand ? questions.filter((q) => matchesIslandContent(q, selectedStand.contentFilter)) : []),
-    [questions, selectedStand],
-  );
+  // 目前攤位或街道或區域下的公開內容
+  const currentStandQuestions = useMemo(() => {
+    if (selectedStand) {
+      return questions.filter((q) => matchesIslandContent(q, selectedStand.contentFilter));
+    }
+    if (selectedStreet) {
+      return questions.filter((q) => selectedStreet.stands.some((st) => matchesIslandContent(q, st.contentFilter)));
+    }
+    if (selectedDistrict) {
+      return questions.filter((q) =>
+        selectedDistrict.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+      );
+    }
+    if (selectedIsland) {
+      return questions.filter((q) =>
+        selectedIsland.districts.some((dist) =>
+          dist.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+        ),
+      );
+    }
+    return questions.slice(0, 15);
+  }, [questions, selectedStand, selectedStreet, selectedDistrict, selectedIsland]);
 
   const searchResults = useMemo(() => {
     const term = searchText.trim().toLocaleLowerCase();
@@ -269,40 +296,30 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
           .toLocaleLowerCase()
           .includes(term),
       )
-      .slice(0, 10);
+      .slice(0, 15);
   }, [questions, searchText]);
 
-  // 相鄰大島之間的環狀連接橋 + 連接到主島的放射木橋
-  // 3. 相鄰的兩座島之間是要能相互連接的
+  // 環狀連接木橋與放射木橋
   const PERIMETER_BRIDGES = [
-    // NW 痛點島 (80, 50) ↔ NE 討論島 (920, 50)
     'M 170 75 C 380 20 620 20 830 75',
-    // NE 討論島 (920, 50) ↔ SE 徵才島 (920, 630)
     'M 920 150 C 975 280 975 400 920 530',
-    // SE 徵才島 (920, 630) ↔ SW 創意島 (80, 630)
     'M 830 605 C 620 660 380 660 170 605',
-    // SW 創意島 (80, 630) ↔ NW 痛點島 (80, 50)
     'M 80 530 C 25 400 25 280 80 150',
   ];
 
   const SPOKE_BRIDGES = [
-    // NW 痛點島 ↔ 主島 (500, 340)
     'M 160 120 C 270 195 345 245 425 285',
-    // NE 討論島 ↔ 主島 (500, 340)
     'M 840 120 C 730 195 655 245 575 285',
-    // SW 創意島 ↔ 主島 (500, 340)
     'M 160 560 C 270 485 345 435 425 395',
-    // SE 徵才島 ↔ 主島 (500, 340)
     'M 840 560 C 730 485 655 435 575 395',
   ];
 
-  // 縮放設定
   const updateZoom = (nextZoom: number) => {
     setView((v) => ({ ...v, zoom: Math.min(2.2, Math.max(0.75, nextZoom)) }));
   };
 
   const resetView = () => {
-    setView({ zoom: 1, pitch: 48, yaw: 0 });
+    setView({ zoom: 1, pitch: 48, yaw: 0, panX: 0, panY: 0 });
   };
 
   // 滑鼠滾輪縮放
@@ -322,7 +339,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
     return () => stage.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // 滑鼠左鍵拖曳控制：水平旋轉 (yaw) + 垂直俯視角度 (pitch)
+  // 滑鼠左鍵按住移動平移地圖，右鍵拖曳旋轉與調整俯視角度
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.button !== 0 && e.button !== 2) || (e.target as Element).closest('.island-ui-interactive')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -332,10 +349,13 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
       const islandId = (e.target as Element).closest<SVGGElement>('.island-map-node')?.dataset.islandId || null;
       dragStart.current = {
         pointerId: e.pointerId,
+        button: e.button,
         x: e.clientX,
         y: e.clientY,
         pitch: view.pitch,
         yaw: view.yaw,
+        panX: view.panX,
+        panY: view.panY,
         moved: false,
         islandId,
       };
@@ -375,12 +395,17 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
     }
     if (!start.moved) return;
 
-    // 滑鼠左鍵拖曳：左右旋轉 (yaw) + 上下俯視視角 (pitch)
-    const nextYaw = (start.yaw + deltaX * 0.42) % 360;
-    // 拖曳向下增加角度（更俯瞰），拖曳向上降低角度（更平視）
-    const nextPitch = Math.max(26, Math.min(74, start.pitch + deltaY * 0.32));
-
-    setView((v) => ({ ...v, yaw: nextYaw, pitch: nextPitch }));
+    if (start.button === 2) {
+      // 右鍵拖曳：左右旋轉與調整俯視角度
+      const nextYaw = (start.yaw + deltaX * 0.42) % 360;
+      const nextPitch = Math.max(26, Math.min(74, start.pitch + deltaY * 0.32));
+      setView((v) => ({ ...v, yaw: nextYaw, pitch: nextPitch }));
+    } else {
+      // 左鍵按住移動：平移地圖
+      const nextPanX = Math.max(-800, Math.min(800, start.panX + deltaX));
+      const nextPanY = Math.max(-600, Math.min(600, start.panY + deltaY));
+      setView((v) => ({ ...v, panX: nextPanX, panY: nextPanY }));
+    }
   };
 
   const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>, allowClick: boolean) => {
@@ -406,6 +431,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
     }
   };
 
+  // 點擊島嶼：展開/更新右側島覽面板
   const handleSelectIsland = (islandId: string) => {
     const target = IDEAX_ISLANDS.find((i) => i.id === islandId);
     if (target) {
@@ -413,22 +439,20 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
       setSelectedDistrictId(null);
       setSelectedStreetId(null);
       setSelectedStandId(null);
-      setLeftDrawerTab('atlas');
-      setIsLeftDrawerOpen(true);
+      setIsRightAtlasOpen(true);
     }
   };
 
-  // 開啟左側作品/貼文預覽
-  // 「若是遊戲、作品或提案、痛點、討論先以彈窗開在左邊瀏覽內頁，需要遊玩或外部連結則以開啟新分頁不要影響地圖這頁」
+  // 點擊卡片：在畫面左側跳出詳細內頁彈窗
+  // 「島覽(地圖路徑、介紹、條列式題目瀏覽是再右邊，點擊會在畫面左側跳出彈窗顯示詳細內頁)」
   const handleOpenItemPreview = (question: Question) => {
     setPreviewQuestion(question);
-    setLeftDrawerTab('preview');
-    setIsLeftDrawerOpen(true);
+    setLeftModalMode('preview');
   };
 
-  // 開啟左側填寫表單彈窗
-  // 「當需要填寫表單或需求時從左邊彈出填寫彈窗」
-  const handleOpenFormDrawer = (type: 'pain_point' | 'career_wish' | 'discussion' | 'proposal') => {
+  // 點擊填寫按鈕：在畫面左側跳出填寫表單彈窗
+  // 「填寫表單、需求也都是在左邊」
+  const handleOpenFormModal = (type: 'pain_point' | 'career_wish' | 'discussion' | 'proposal') => {
     setFormType(type);
     setFormSubmitSuccess(null);
     setFormData({
@@ -437,22 +461,22 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
       description: '',
       tags: '',
     });
-    setLeftDrawerTab('form');
-    setIsLeftDrawerOpen(true);
+    setLeftModalMode('form');
   };
 
-  // 處理表單提交
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
 
-    // 觸發成功回饋，不跳轉地圖
-    setFormSubmitSuccess(`已成功向「${formType === 'pain_point' ? '創點樓掌櫃' : formType === 'career_wish' ? '求職廟廟公' : formType === 'proposal' ? '展覽館策展人' : '日常討論街'}」送出紀錄！`);
+    setFormSubmitSuccess(
+      `已成功向「${
+        formType === 'pain_point' ? '創點樓掌櫃' : formType === 'career_wish' ? '求職廟廟公' : formType === 'proposal' ? '展覽館策展人' : '日常討論街'
+      }」送出紀錄！`,
+    );
     setTimeout(() => {
       setFormSubmitSuccess(null);
     }, 4000);
 
-    // 依據類型呼叫底層動作（如需要）
     if (formType === 'pain_point') onAction('create_pain_point');
     else if (formType === 'career_wish') onAction('jobs');
     else if (formType === 'discussion') onAction('create_discussion');
@@ -472,27 +496,27 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
         onPointerCancel={(e) => handlePointerEnd(e, false)}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* 左上角標題：IdeaX 創點國 \n -島覽- */}
+        {/* 左上角標題：[←] IdeaX 創點國 \n — 島覽 — （1:1 還原設計圖） */}
         <div className="island-map-brand-overlay island-ui-interactive">
-          <div className="flex items-center gap-2">
-            <span className="island-brand-flag">🗺️</span>
-            <div>
-              <h1 className="island-map-main-title">IdeaX 創點國</h1>
-              <p className="island-map-subtitle">-島覽-</p>
-            </div>
-          </div>
           <button
             type="button"
-            onClick={() => setShowGuideModal(true)}
-            className="island-guide-btn"
-            title="開啟島覽說明"
+            onClick={() => {
+              if (onBack) onBack();
+              else window.history.back();
+            }}
+            className="island-back-circle-btn"
+            title="返回前頁"
+            aria-label="返回前頁"
           >
-            <HelpCircle size={14} />
-            <span>島覽說明</span>
+            <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
+          <div className="island-brand-text">
+            <h1 className="island-map-main-title">IdeaX 創點國</h1>
+            <p className="island-map-subtitle">— 島覽 —</p>
+          </div>
         </div>
 
-        {/* 右上角視角控制工具列 */}
+        {/* 頂部置中視角控制工具列（縮放 + 重設視角 + 說明） */}
         <div className="island-map-controls island-ui-interactive" aria-label="地圖操作">
           <div className="island-map-zoom-controls">
             <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖">
@@ -503,6 +527,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
               <Plus size={14} />
             </button>
           </div>
+
+          <div className="island-controls-divider" />
+
           <button
             type="button"
             onClick={resetView}
@@ -512,6 +539,31 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
             <RotateCcw size={14} />
             <span>重設視角</span>
           </button>
+
+          <div className="island-controls-divider" />
+
+          <button
+            type="button"
+            onClick={() => setShowGuideModal(true)}
+            className="island-guide-btn"
+            title="開啟島覽說明"
+          >
+            <HelpCircle size={15} />
+            <span>說明</span>
+          </button>
+        </div>
+
+        {/* 左下角地圖圖例（點島就能逛 · 木橋 5 座島） */}
+        <div className="island-map-legend island-ui-interactive">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#3d5149]">
+            <span className="w-3.5 h-3.5 rounded-sm bg-[#c9dbbf] border border-[#a8be9e]" />
+            <span>點島就能逛</span>
+          </div>
+          <div className="w-[1px] h-3 bg-stone-300" />
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#3d5149]">
+            <span className="w-4 h-1 rounded-full bg-[#ba8b54]" />
+            <span>木橋 5 座島</span>
+          </div>
         </div>
 
         {/* 底部快捷島嶼切換列 */}
@@ -530,11 +582,11 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
           ))}
         </div>
 
-        {/* 3D 傾斜與旋轉平面（仿造 puma heart-island） */}
+        {/* 3D 傾斜、旋轉與平移平面 */}
         <div
           className="island-3d-plane"
           style={{
-            transform: `rotateX(${view.pitch}deg) rotateZ(${view.yaw}deg) scale(${view.zoom})`,
+            transform: `translate(${view.panX}px, ${view.panY}px) rotateX(${view.pitch}deg) rotateZ(${view.yaw}deg) scale(${view.zoom})`,
           }}
         >
           <svg className="island-map-svg" viewBox="0 0 1000 680" role="group" aria-label="IdeaX 創點國五大島嶼">
@@ -553,7 +605,6 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                 <circle cx="130" cy="28" r="2.2" fill="#eff8db" fillOpacity=".4" />
               </pattern>
 
-              {/* 四周大島迷霧漸層（覆蓋邊緣，在 100% 縮放時僅露出一點點） */}
               <radialGradient id="mist-nw" cx="15%" cy="15%" r="70%">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity="0.82" />
                 <stop offset="45%" stopColor="#e2eff1" stopOpacity="0.65" />
@@ -599,9 +650,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
               </g>
             ))}
 
-            {/* 繪製各座島嶼（四周大島位置在外圍角落，100% 視角下僅露出邊緣一點點） */}
+            {/* 繪製各座島嶼（四周大島位置在四角外圍，100% 視角下僅露出邊緣一點點） */}
             {IDEAX_ISLANDS.map((island) => {
-              // 座標轉換：NW (80, 50), NE (920, 50), SW (80, 630), SE (920, 630), Center (500, 340)
               const islandCoords: Record<string, [number, number]> = {
                 home: [500, 340],
                 pain: [80, 50],
@@ -661,14 +711,13 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
               );
             })}
 
-            {/* 四周大島迷霧層（迷霧覆蓋，在100%時露出一點點） */}
+            {/* 四周大島迷霧層（在100%時露出一點點） */}
             <g className="island-fog-layer" aria-hidden="true" pointerEvents="none">
               <circle cx="80" cy="50" r="240" fill="url(#mist-nw)" />
               <circle cx="920" cy="50" r="240" fill="url(#mist-ne)" />
               <circle cx="80" cy="630" r="240" fill="url(#mist-sw)" />
               <circle cx="920" cy="630" r="240" fill="url(#mist-se)" />
 
-              {/* 漂浮的輕柔微霧裝飾 */}
               <path d="M 0 160 Q 250 110 500 170 T 1000 130" fill="none" stroke="#ffffff" strokeWidth="48" strokeLinecap="round" opacity="0.22" />
               <path d="M 0 520 Q 250 560 500 500 T 1000 530" fill="none" stroke="#ffffff" strokeWidth="54" strokeLinecap="round" opacity="0.25" />
             </g>
@@ -678,76 +727,364 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
         {/* 底部操作提示 */}
         <div className="island-map-hint">
           <Compass size={14} />
-          <span>滑鼠左鍵拖曳：左右旋轉 · 上下調整俯視 · 滾輪縮放</span>
+          <span>滑鼠左鍵：按住移動 · 右鍵拖曳：旋轉與調整俯視角 · 滾輪：縮放</span>
         </div>
       </div>
 
-      {/* 左側彈出抽屜（瀏覽內頁、填寫表單或需求、探索區街攤） */}
-      <aside className={`island-left-drawer ${isLeftDrawerOpen ? 'is-open' : ''}`}>
-        {/* 抽屜邊緣展開/收合觸手 */}
+      {/* ============================================================
+          右側島覽面板 (Right-side Atlas Panel)
+          「島覽(地圖路徑、介紹、條列式題目瀏覽是再右邊)」
+          ============================================================ */}
+      <aside className={`island-right-atlas ${isRightAtlasOpen ? 'is-open' : ''}`}>
+        {/* 左緣展開/收合按鈕 */}
         <button
           type="button"
-          onClick={() => setIsLeftDrawerOpen(!isLeftDrawerOpen)}
-          className="island-drawer-edge-toggle"
-          title={isLeftDrawerOpen ? '收合左側欄' : '展開左側欄'}
+          onClick={() => setIsRightAtlasOpen(!isRightAtlasOpen)}
+          className="island-right-atlas-toggle"
+          title={isRightAtlasOpen ? '收合島覽' : '展開島覽'}
         >
-          {isLeftDrawerOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-          <span className="vertical-text">{isLeftDrawerOpen ? '收合' : '島覽'}</span>
+          {isRightAtlasOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          <span className="vertical-text">{isRightAtlasOpen ? '收合島覽' : '島覽'}</span>
         </button>
 
-        <div className="island-drawer-inner">
-          {/* 抽屜頂部分頁導航 */}
-          <div className="island-drawer-tabs">
-            <button
-              type="button"
-              onClick={() => setLeftDrawerTab('atlas')}
-              className={`island-drawer-tab ${leftDrawerTab === 'atlas' ? 'is-active' : ''}`}
-            >
-              <Compass size={15} />
-              <span>島嶼導覽</span>
-            </button>
-            {previewQuestion && (
-              <button
-                type="button"
-                onClick={() => setLeftDrawerTab('preview')}
-                className={`island-drawer-tab ${leftDrawerTab === 'preview' ? 'is-active' : ''}`}
+        <div className="island-right-atlas-inner">
+          {/* 地圖路徑導航條 (Breadcrumbs) */}
+          <div className="island-atlas-header">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-600">
+              <MapPin size={14} className="text-amber-700" />
+              <span
+                onClick={() => {
+                  setSelectedDistrictId(null);
+                  setSelectedStreetId(null);
+                  setSelectedStandId(null);
+                }}
+                className="cursor-pointer hover:text-stone-900"
               >
-                <PanelsTopLeft size={15} />
-                <span>內頁預覽</span>
-              </button>
-            )}
+                {selectedIsland?.name || '創點國'}
+              </span>
+              {selectedDistrict && (
+                <>
+                  <ChevronRight size={12} className="text-stone-400" />
+                  <span
+                    onClick={() => {
+                      setSelectedStreetId(null);
+                      setSelectedStandId(null);
+                    }}
+                    className="cursor-pointer hover:text-stone-900"
+                  >
+                    {selectedDistrict.name}
+                  </span>
+                </>
+              )}
+              {selectedStreet && (
+                <>
+                  <ChevronRight size={12} className="text-stone-400" />
+                  <span
+                    onClick={() => setSelectedStandId(null)}
+                    className="cursor-pointer hover:text-stone-900"
+                  >
+                    {selectedStreet.name}
+                  </span>
+                </>
+              )}
+              {selectedStand && (
+                <>
+                  <ChevronRight size={12} className="text-stone-400" />
+                  <span className="text-emerald-800 font-black">{selectedStand.name}</span>
+                </>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => {
-                if (!formType) setFormType('pain_point');
-                setLeftDrawerTab('form');
-              }}
-              className={`island-drawer-tab ${leftDrawerTab === 'form' ? 'is-active' : ''}`}
-            >
-              <Send size={15} />
-              <span>填寫需求</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsLeftDrawerOpen(false)}
-              className="island-drawer-close"
-              aria-label="關閉側邊欄"
+              onClick={() => setIsRightAtlasOpen(false)}
+              className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+              title="收合"
             >
               <X size={16} />
             </button>
           </div>
 
-          {/* TAB 1: 內頁預覽 (遊戲、作品、提案、痛點、討論先以彈窗開在左邊瀏覽內頁，需要遊玩則開新分頁) */}
-          {leftDrawerTab === 'preview' && previewQuestion && (
+          <div className="island-atlas-scrollable">
+            {/* 搜尋欄位 */}
+            <div className="island-search-container">
+              <Search size={15} className="text-stone-400" />
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="搜尋作品、痛點、討論或主題..."
+              />
+              {searchText && (
+                <button type="button" onClick={() => setSearchText('')}>×</button>
+              )}
+            </div>
+
+            {/* 搜尋結果模式 */}
+            {searchText.trim() ? (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-stone-500">搜尋結果 ({searchResults.length})</h4>
+                <div className="island-cards-list">
+                  {searchResults.map((item) => (
+                    <div
+                      key={item.id}
+                      className="island-item-row"
+                      onClick={() => handleOpenItemPreview(item)}
+                    >
+                      {(item.coverImage || item.cardDisplayImage) && (
+                        <img
+                          src={item.coverImage || item.cardDisplayImage}
+                          alt=""
+                          className="item-thumb"
+                        />
+                      )}
+                      <div className="item-info">
+                        <span className="item-cat">{item.category}</span>
+                        <strong className="item-title">{item.title}</strong>
+                      </div>
+                      <ChevronRight size={15} className="text-stone-400 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 當前島嶼/區域/街道/攤位簡介 */}
+                <div className="island-current-intro-box">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-base font-black text-stone-900 flex items-center gap-1.5">
+                        <span>{selectedStand?.name || selectedStreet?.name || selectedDistrict?.name || selectedIsland?.name}</span>
+                        {selectedIsland?.id === 'home' && !selectedStand && <span className="pill-badge">中央</span>}
+                      </h2>
+                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        {selectedStand?.summary || selectedStreet?.subtitle || selectedDistrict?.subtitle || selectedIsland?.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 快捷填寫與許願按鈕（點擊在左側開啟填寫彈窗） */}
+                  <div className="mt-3 pt-2.5 border-t border-amber-900/10 flex flex-wrap gap-2">
+                    {selectedIsland?.id === 'pain' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFormModal('pain_point')}
+                        className="quick-post-btn"
+                      >
+                        <Flame size={14} className="text-rose-600" />
+                        <span>寫下我的難題（掌櫃阿點）</span>
+                      </button>
+                    )}
+                    {selectedIsland?.id === 'career' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFormModal('career_wish')}
+                        className="quick-post-btn"
+                      >
+                        <BriefcaseBusiness size={14} className="text-amber-700" />
+                        <span>向廟公求職許願</span>
+                      </button>
+                    )}
+                    {selectedIsland?.id === 'discussion' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFormModal('discussion')}
+                        className="quick-post-btn"
+                      >
+                        <Users size={14} className="text-sky-700" />
+                        <span>發起交流話題</span>
+                      </button>
+                    )}
+                    {selectedIsland?.id === 'creative' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFormModal('proposal')}
+                        className="quick-post-btn"
+                      >
+                        <PanelsTopLeft size={14} className="text-emerald-700" />
+                        <span>登錄創新提案</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 層級切換按鈕區（區 / 街 / 攤） */}
+                {selectedIsland && !selectedDistrict && (
+                  <div className="space-y-2 mt-3">
+                    <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">所轄區域</h3>
+                    <div className="island-items-list">
+                      {selectedIsland.districts.map((dist) => (
+                        <button
+                          key={dist.id}
+                          type="button"
+                          onClick={() => setSelectedDistrictId(dist.id)}
+                          className="island-choice-row"
+                        >
+                          <div className="choice-text">
+                            <strong>{dist.name}</strong>
+                            <small>{dist.subtitle}</small>
+                          </div>
+                          <span className="choice-count">{dist.streets.length} 街 <ChevronRight size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedDistrict && !selectedStreet && (
+                  <div className="space-y-2 mt-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">街道清單</h3>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDistrictId(null)}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回上層
+                      </button>
+                    </div>
+                    <div className="island-items-list">
+                      {selectedDistrict.streets.map((street) => (
+                        <button
+                          key={street.id}
+                          type="button"
+                          onClick={() => setSelectedStreetId(street.id)}
+                          className="island-choice-row"
+                        >
+                          <div className="choice-text">
+                            <strong>{street.name}</strong>
+                            <small>{street.subtitle}</small>
+                          </div>
+                          <span className="choice-count">{street.stands.length} 攤 <ChevronRight size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedStreet && !selectedStand && (
+                  <div className="space-y-2 mt-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">攤位場景</h3>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStreetId(null)}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回街道
+                      </button>
+                    </div>
+                    <div className="island-items-list">
+                      {selectedStreet.stands.map((stand) => (
+                        <button
+                          key={stand.id}
+                          type="button"
+                          onClick={() => setSelectedStandId(stand.id)}
+                          className="island-choice-row"
+                        >
+                          <div className="choice-text">
+                            <strong>{stand.name}</strong>
+                            <small>{stand.summary}</small>
+                          </div>
+                          <span className="choice-count">瀏覽 <ChevronRight size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedStand && (
+                  <div className="mt-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStandId(null)}
+                      className="island-back-link mb-2"
+                    >
+                      <ArrowLeft size={13} /> 回街道攤位清單
+                    </button>
+                    <div className="island-stand-action-box">
+                      <p className="prompt-text">{selectedStand.interactionPrompt}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedStand.contentKind === 'jobs') handleOpenFormModal('career_wish');
+                          else if (selectedStand.contentFilter.source === 'pain') handleOpenFormModal('pain_point');
+                          else if (selectedStand.contentFilter.source === 'discussion') handleOpenFormModal('discussion');
+                          else if (selectedStand.contentFilter.source === 'proposal') handleOpenFormModal('proposal');
+                          else onAction(selectedStand.npcProfile.action);
+                        }}
+                        className="stand-action-btn"
+                      >
+                        <span>{selectedStand.npcProfile.actionLabel}</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 條列式題目與作品瀏覽（條列式題目瀏覽是再右邊，點擊會在畫面左側跳出彈窗） */}
+                <div className="mt-4 pt-3 border-t border-stone-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-black text-stone-700 flex items-center gap-1.5">
+                      <ScrollText size={14} className="text-amber-700" />
+                      <span>條列式內容瀏覽</span>
+                    </h4>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-900">
+                      {currentStandQuestions.length} 則公開內容
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 mb-2.5">
+                    點擊任何卡片，將在畫面左側跳出彈窗顯示詳細內頁：
+                  </p>
+
+                  {currentStandQuestions.length > 0 ? (
+                    <div className="island-cards-list">
+                      {currentStandQuestions.map((q) => (
+                        <div
+                          key={q.id}
+                          className="island-item-row"
+                          onClick={() => handleOpenItemPreview(q)}
+                        >
+                          {(q.coverImage || q.cardDisplayImage) && (
+                            <img
+                              src={q.coverImage || q.cardDisplayImage}
+                              alt=""
+                              className="item-thumb"
+                            />
+                          )}
+                          <div className="item-info">
+                            <span className="item-cat">{q.category}</span>
+                            <strong className="item-title">{q.title}</strong>
+                            <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
+                              {q.authorName || 'IdeaX 創作者'} · 瀏覽 {q.viewsCount || q.views || 0}
+                            </span>
+                          </div>
+                          <ChevronRight size={15} className="text-stone-400 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="island-empty-box">
+                      <p>此處暫無內容，您可點擊上方按鈕送出第一則！</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* ============================================================
+          左側彈出彈窗/抽屜 (Left-side Modal / Drawer)
+          「點擊會在畫面左側跳出彈窗顯示詳細內頁，填寫表單、需求也都是在左邊」
+          ============================================================ */}
+      <aside className={`island-left-drawer ${leftModalMode !== 'none' ? 'is-open' : ''}`}>
+        <div className="island-left-drawer-inner">
+          {/* 詳細內頁預覽彈窗 (點擊右側卡片時彈出) */}
+          {leftModalMode === 'preview' && previewQuestion && (
             <div className="island-preview-pane">
               <div className="island-pane-header">
-                <button
-                  type="button"
-                  onClick={() => setLeftDrawerTab('atlas')}
-                  className="island-back-link"
-                >
-                  <ArrowLeft size={14} /> 回到導覽
-                </button>
                 <span className="island-preview-badge">
                   {previewQuestion.postType === 'pain_point'
                     ? '痛點需求'
@@ -759,9 +1096,16 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                     ? '遊戲作品'
                     : '作品展示'}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setLeftModalMode('none')}
+                  className="island-drawer-close"
+                  aria-label="關閉左側彈窗"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              {/* 封面圖片 */}
               {(previewQuestion.coverImage || previewQuestion.cardDisplayImage) && (
                 <div className="island-preview-media">
                   <img
@@ -796,7 +1140,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                   <p>{previewQuestion.description}</p>
                 </div>
 
-                {/* 關鍵動作按鈕：需要遊玩或外部連結則以「開啟新分頁」不要影響地圖這頁 */}
+                {/* 關鍵按鈕：需要遊玩遊戲或外部連結則以「開啟新分頁」不要影響地圖這頁 */}
                 <div className="island-preview-actions">
                   {(previewQuestion.demoUrl || previewQuestion.externalLink || previewQuestion.exclusiveChallengeUrl || isGameQuestion(previewQuestion) || previewQuestion.postType === 'vibecoding_app') ? (
                     <button
@@ -812,7 +1156,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                       className="island-action-primary-btn"
                     >
                       <Gamepad2 size={16} />
-                      <span>在新分頁開啟遊玩 / 體驗 ↗</span>
+                      <span>在新分頁開啟遊戲體驗 / 作品連結 ↗</span>
                     </button>
                   ) : null}
 
@@ -823,7 +1167,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                     }}
                     className="island-action-secondary-btn"
                   >
-                    <span>在平台中開啟完整貼文與互動 ↗</span>
+                    <span>在平台中開啟完整貼文與深度交流 ↗</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
@@ -831,51 +1175,58 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
             </div>
           )}
 
-          {/* TAB 2: 左側填寫表單/需求彈窗 (創點樓掌櫃阿點難題、求職廟廟公許願、日常交流、提案) */}
-          {leftDrawerTab === 'form' && (
+          {/* 填寫表單與需求彈窗 (在畫面左側彈出) */}
+          {leftModalMode === 'form' && (
             <div className="island-form-pane">
               <div className="island-pane-header">
-                <h3>
+                <h3 className="font-black text-sm text-stone-900">
                   {formType === 'pain_point' && '🔥 創點樓 · 寫下你的難題'}
                   {formType === 'career_wish' && '🧧 求職廟 · 向廟公許願求職'}
                   {formType === 'discussion' && '💬 日常討論街 · 發起交流話題'}
                   {formType === 'proposal' && '💡 展覽館 · 登錄創新提案'}
                 </h3>
+                <button
+                  type="button"
+                  onClick={() => setLeftModalMode('none')}
+                  className="island-drawer-close"
+                  aria-label="關閉左側彈窗"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              {/* 類型快速切換按鈕 */}
+              {/* 類型切換選單 */}
               <div className="island-form-type-selector">
                 <button
                   type="button"
                   className={formType === 'pain_point' ? 'active' : ''}
-                  onClick={() => handleOpenFormDrawer('pain_point')}
+                  onClick={() => handleOpenFormModal('pain_point')}
                 >
                   痛點難題
                 </button>
                 <button
                   type="button"
                   className={formType === 'career_wish' ? 'active' : ''}
-                  onClick={() => handleOpenFormDrawer('career_wish')}
+                  onClick={() => handleOpenFormModal('career_wish')}
                 >
                   求職廟許願
                 </button>
                 <button
                   type="button"
                   className={formType === 'discussion' ? 'active' : ''}
-                  onClick={() => handleOpenFormDrawer('discussion')}
+                  onClick={() => handleOpenFormModal('discussion')}
                 >
                   討論交流
                 </button>
                 <button
                   type="button"
                   className={formType === 'proposal' ? 'active' : ''}
-                  onClick={() => handleOpenFormDrawer('proposal')}
+                  onClick={() => handleOpenFormModal('proposal')}
                 >
                   創新提案
                 </button>
               </div>
 
-              {/* 掌櫃 / 廟公 引言 */}
               <div className="island-form-prompt-box">
                 <Sparkles size={16} className="text-amber-600 shrink-0 mt-0.5" />
                 <p>
@@ -895,7 +1246,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
                     type="button"
                     onClick={() => {
                       setFormSubmitSuccess(null);
-                      setFormData({ title: '', category: '', description: '', tags: '' });
+                      setFormData({ title: '', category: '資訊科技', description: '', tags: '' });
                     }}
                     className="island-btn-pill mt-3"
                   >
@@ -973,355 +1324,104 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({ questions, onO
               )}
             </div>
           )}
-
-          {/* TAB 3: 島嶼導覽（區、街、攤階層與攤位場景內容） */}
-          {leftDrawerTab === 'atlas' && (
-            <div className="island-atlas-content">
-              {/* 搜尋列 */}
-              <div className="island-search-container">
-                <Search size={15} className="text-stone-400" />
-                <input
-                  type="text"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="搜尋作品、痛點、討論或主題..."
-                />
-                {searchText && (
-                  <button type="button" onClick={() => setSearchText('')}>×</button>
-                )}
-              </div>
-
-              {searchText.trim() ? (
-                <div className="island-search-results-list">
-                  <h4 className="text-xs font-bold text-stone-500 mb-2">搜尋結果 ({searchResults.length})</h4>
-                  {searchResults.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleOpenItemPreview(item)}
-                      className="island-search-card"
-                    >
-                      <span className="search-card-category">{item.category}</span>
-                      <strong className="search-card-title">{item.title}</strong>
-                      <ChevronRight size={14} className="text-stone-400 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              ) : selectedStand ? (
-                /* 單一攤位/場景檢視 */
-                <div className="island-stand-detail">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStandId(null)}
-                    className="island-back-link"
-                  >
-                    <ArrowLeft size={14} /> 回到街道清單
-                  </button>
-                  <h3 className="island-stand-title">{selectedStand.name}</h3>
-                  <p className="island-stand-desc">{selectedStand.summary}</p>
-
-                  {/* 場景互動快捷動作按鈕 */}
-                  <div className="island-stand-action-box">
-                    <p className="prompt-text">{selectedStand.interactionPrompt}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedStand.contentKind === 'jobs') handleOpenFormDrawer('career_wish');
-                        else if (selectedStand.contentFilter.source === 'pain') handleOpenFormDrawer('pain_point');
-                        else if (selectedStand.contentFilter.source === 'discussion') handleOpenFormDrawer('discussion');
-                        else if (selectedStand.contentFilter.source === 'proposal') handleOpenFormDrawer('proposal');
-                        else onAction(selectedStand.npcProfile.action);
-                      }}
-                      className="stand-action-btn"
-                    >
-                      <span>{selectedStand.npcProfile.actionLabel}</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-
-                  {/* 攤位下的卡片清單 */}
-                  <div className="island-stand-cards-container">
-                    <h4 className="cards-header">
-                      <span>公開內容</span>
-                      <span className="count-badge">{sceneQuestions.length} 則</span>
-                    </h4>
-
-                    {sceneQuestions.length > 0 ? (
-                      <div className="island-cards-list">
-                        {sceneQuestions.slice(0, 10).map((q) => (
-                          <div
-                            key={q.id}
-                            className="island-item-row"
-                            onClick={() => handleOpenItemPreview(q)}
-                          >
-                            {(q.coverImage || q.cardDisplayImage) && (
-                              <img
-                                src={q.coverImage || q.cardDisplayImage}
-                                alt=""
-                                className="item-thumb"
-                              />
-                            )}
-                            <div className="item-info">
-                              <span className="item-cat">{q.category}</span>
-                              <strong className="item-title">{q.title}</strong>
-                            </div>
-                            <button
-                              type="button"
-                              className="item-preview-btn"
-                              title="在左側瀏覽內頁"
-                            >
-                              <ChevronRight size={15} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="island-empty-box">
-                        <p>此處暫無公開內容，可點擊上方按鈕填寫第一則！</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : selectedStreet ? (
-                /* 街道下的攤位清單 */
-                <div className="island-street-detail">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStreetId(null)}
-                    className="island-back-link"
-                  >
-                    <ArrowLeft size={14} /> 回到區域
-                  </button>
-                  <h3 className="island-level-title">{selectedStreet.name}</h3>
-                  <p className="island-level-desc">{selectedStreet.subtitle}</p>
-
-                  <div className="island-items-list">
-                    {selectedStreet.stands.map((item) => {
-                      const count = questions.filter((q) => matchesIslandContent(q, item.contentFilter)).length;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedStandId(item.id)}
-                          className="island-choice-row"
-                        >
-                          <div className="choice-text">
-                            <strong>{item.name}</strong>
-                            <small>{item.summary}</small>
-                          </div>
-                          <span className="choice-count">{count > 0 ? `${count} 則` : '探索'} <ChevronRight size={14} /></span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : selectedDistrict ? (
-                /* 區域下的街道清單 */
-                <div className="island-district-detail">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDistrictId(null)}
-                    className="island-back-link"
-                  >
-                    <ArrowLeft size={14} /> 回到島嶼
-                  </button>
-                  <h3 className="island-level-title">{selectedDistrict.name}</h3>
-                  <p className="island-level-desc">{selectedDistrict.subtitle}</p>
-
-                  <div className="island-items-list">
-                    {selectedDistrict.streets.map((street) => (
-                      <button
-                        key={street.id}
-                        type="button"
-                        onClick={() => setSelectedStreetId(street.id)}
-                        className="island-choice-row"
-                      >
-                        <div className="choice-text">
-                          <strong>{street.name}</strong>
-                          <small>{street.subtitle}</small>
-                        </div>
-                        <span className="choice-count">{street.stands.length} 攤 <ChevronRight size={14} /></span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : selectedIsland ? (
-                /* 島嶼下的區域清單 (區、街、攤) */
-                <div className="island-hierarchy-detail">
-                  <div className="island-detail-hero">
-                    <span className="hero-icon">{selectedIsland.icon}</span>
-                    <div>
-                      <h3 className="hero-name">{selectedIsland.name}</h3>
-                      <p className="hero-sub">{selectedIsland.subtitle}</p>
-                    </div>
-                  </div>
-
-                  {/* 快捷填寫按鈕 */}
-                  <div className="island-quick-post-row">
-                    {selectedIsland.id === 'pain' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormDrawer('pain_point')}
-                        className="quick-post-btn"
-                      >
-                        <Flame size={14} />
-                        <span>寫下我的難題</span>
-                      </button>
-                    )}
-                    {selectedIsland.id === 'career' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormDrawer('career_wish')}
-                        className="quick-post-btn"
-                      >
-                        <BriefcaseBusiness size={14} />
-                        <span>向廟公許願找工作</span>
-                      </button>
-                    )}
-                    {selectedIsland.id === 'discussion' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormDrawer('discussion')}
-                        className="quick-post-btn"
-                      >
-                        <Users size={14} />
-                        <span>發起交流話題</span>
-                      </button>
-                    )}
-                    {selectedIsland.id === 'creative' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormDrawer('proposal')}
-                        className="quick-post-btn"
-                      >
-                        <PanelsTopLeft size={14} />
-                        <span>登錄創新提案</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <h4 className="text-xs font-bold text-stone-500 mb-2">所轄區域</h4>
-                  <div className="island-items-list">
-                    {selectedIsland.districts.map((dist) => (
-                      <button
-                        key={dist.id}
-                        type="button"
-                        onClick={() => setSelectedDistrictId(dist.id)}
-                        className="island-choice-row"
-                      >
-                        <div className="choice-text">
-                          <strong>{dist.name}</strong>
-                          <small>{dist.subtitle}</small>
-                        </div>
-                        <span className="choice-count">{dist.streets.length} 街 <ChevronRight size={14} /></span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* 未選島嶼時的歡迎清單 */
-                <div className="island-home-directory">
-                  <p className="text-xs text-stone-600 mb-3 leading-relaxed">
-                    歡迎來到 IdeaX 創點國！請點擊地圖上的島嶼或由下方選擇開始探索：
-                  </p>
-                  <div className="island-items-list">
-                    {IDEAX_ISLANDS.map((island) => (
-                      <button
-                        key={island.id}
-                        type="button"
-                        onClick={() => handleSelectIsland(island.id)}
-                        className="island-choice-row"
-                      >
-                        <span className="choice-icon">{island.icon}</span>
-                        <div className="choice-text">
-                          <strong>{island.name}</strong>
-                          <small>{island.subtitle}</small>
-                        </div>
-                        <span className="choice-count">{island.districts.length} 區 <ChevronRight size={14} /></span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </aside>
 
-      {/* 說明彈窗 (全螢幕地圖 + 說明彈窗的方式) */}
+      {/* 說明彈窗 (1:1 還原用戶設計圖) */}
       {showGuideModal && (
         <div className="island-guide-modal-overlay" onClick={() => setShowGuideModal(false)}>
           <div className="island-guide-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="guide-modal-header">
+            {/* 頂部：標題小字與圓形關閉按鈕 */}
+            <div className="guide-modal-top-row">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🗺️</span>
-                <div>
-                  <h3 className="text-base font-black text-stone-900">IdeaX 創點國 · 島覽說明</h3>
-                  <p className="text-xs text-stone-500">全站地圖化沉浸式探索指南</p>
+                <div className="w-5 h-5 rounded-full border border-[#9b835e] flex items-center justify-center text-[#9b835e]">
+                  <Compass size={13} />
                 </div>
+                <span className="text-[12px] font-bold text-[#9b835e] tracking-[0.22em] uppercase">
+                  IDEA X • 島覽
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowGuideModal(false)}
-                className="guide-modal-close"
+                className="guide-modal-circle-close"
+                aria-label="關閉說明"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="guide-modal-body space-y-4">
-              <div className="guide-section">
-                <h4 className="guide-subtitle">🎮 3D 地圖操作方式</h4>
-                <ul className="guide-list text-xs text-stone-600 space-y-1.5">
-                  <li><strong>左鍵滑動：</strong>同時調整俯視視角（上下仰俯）與左右旋轉（360° 全景轉向）。</li>
-                  <li><strong>滑鼠滾輪 / 捏合：</strong>放大或縮小地圖視界。</li>
-                  <li><strong>點選島嶼：</strong>從左邊展開專屬抽屜，直接瀏覽各區、各街、各攤位。</li>
-                </ul>
-              </div>
+            {/* 大標題 */}
+            <h2 className="guide-main-title">在海上逛逛</h2>
 
-              <div className="guide-section">
-                <h4 className="guide-subtitle">🏛️ 五大島嶼特色與架構</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
-                    <span className="font-bold text-amber-900">🏛️ 主島</span>
-                    <p className="text-stone-600 text-[11px] mt-0.5">中央廣場、最新全站資訊看板，以及「貿易街」（暫未開放）。</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
-                    <span className="font-bold text-emerald-900">💡 創意島</span>
-                    <p className="text-stone-600 text-[11px] mt-0.5">區、街、攤階層體系，涵蓋展覽館與電玩城各大遊戲主題攤。</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200">
-                    <span className="font-bold text-rose-900">🔥 痛點島</span>
-                    <p className="text-stone-600 text-[11px] mt-0.5">創點樓掌櫃阿點聆聽登記真實難題，可直接從左邊彈出填寫。</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-sky-50/70 border border-sky-200">
-                    <span className="font-bold text-sky-900">💬 討論島</span>
-                    <p className="text-stone-600 text-[11px] mt-0.5">日常討論街（各攤）、技術交流（工作坊各桌）、圖書館（研討室）。</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 sm:col-span-2">
-                    <span className="font-bold text-purple-900">🧧 徵才島</span>
-                    <p className="text-stone-600 text-[11px] mt-0.5">求職廟廟公聆聽需求並紀錄用來在匯職缺精準找工作；翰林院設有資訊科技庫、商業經營庫、生醫療材庫、創意設計庫、法律智財庫五大庫專家智庫。</p>
-                  </div>
+            {/* 副標說明 */}
+            <p className="guide-main-desc">
+              點選島嶼進入探索。按住左鍵可平移地圖；按住右鍵拖曳可左右旋轉並調整俯視角度。
+            </p>
+
+            {/* 3 卡並排操作指示 */}
+            <div className="guide-mouse-grid">
+              {/* 1. 左鍵按住移動 */}
+              <div className="guide-mouse-card">
+                <div className="guide-mouse-icon-wrap">
+                  <svg width="26" height="36" viewBox="0 0 26 36" fill="none">
+                    <rect x="2" y="2" width="22" height="32" rx="11" stroke="#5b6e67" strokeWidth="1.8" fill="white" />
+                    <path d="M2 13 H13 V2 C6.925 2 2 6.925 2 13Z" fill="#9b835e" />
+                    <line x1="13" y1="2" x2="13" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                    <line x1="2" y1="15" x2="24" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                  </svg>
                 </div>
+                <strong className="guide-card-title">左鍵按住</strong>
+                <span className="guide-card-sub">按住移動、平移地圖</span>
               </div>
 
-              <div className="guide-section">
-                <h4 className="guide-subtitle">🌐 左側彈窗與新分頁遊玩機制</h4>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  點選任何作品、提案、痛點或討論時，會先以彈窗開啟在左側瀏覽內頁。若欲遊玩遊戲或開啟外部連結，系統將在新分頁開啟，不中斷您的地圖島覽！
-                </p>
+              {/* 2. 右鍵拖曳 */}
+              <div className="guide-mouse-card">
+                <div className="guide-mouse-icon-wrap">
+                  <svg width="26" height="36" viewBox="0 0 26 36" fill="none">
+                    <rect x="2" y="2" width="22" height="32" rx="11" stroke="#5b6e67" strokeWidth="1.8" fill="white" />
+                    <path d="M13 2 V13 H24 C24 6.925 19.075 2 13 2Z" fill="#9b835e" />
+                    <line x1="13" y1="2" x2="13" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                    <line x1="2" y1="15" x2="24" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                  </svg>
+                </div>
+                <strong className="guide-card-title">右鍵拖曳</strong>
+                <span className="guide-card-sub">左右旋轉、調整俯視角</span>
+              </div>
+
+              {/* 3. 滑鼠滾輪 */}
+              <div className="guide-mouse-card">
+                <div className="guide-mouse-icon-wrap">
+                  <svg width="26" height="36" viewBox="0 0 26 36" fill="none">
+                    <rect x="2" y="2" width="22" height="32" rx="11" stroke="#5b6e67" strokeWidth="1.8" fill="white" />
+                    <line x1="13" y1="2" x2="13" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                    <line x1="2" y1="15" x2="24" y2="15" stroke="#5b6e67" strokeWidth="1.5" />
+                    <rect x="10.5" y="6" width="5" height="12" rx="2.5" stroke="#9b835e" strokeWidth="1.2" fill="#faf6ee" />
+                    <path d="M13 9.5 V14.5 M11.5 11 L13 9.5 L14.5 11 M11.5 13 L13 14.5 L14.5 13" stroke="#9b835e" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <strong className="guide-card-title">滑鼠滾輪</strong>
+                <span className="guide-card-sub">縮放遠近</span>
               </div>
             </div>
 
-            <div className="guide-modal-footer">
-              <button
-                type="button"
-                onClick={() => setShowGuideModal(false)}
-                className="guide-modal-confirm-btn"
-              >
-                我知道了，開始探索
-              </button>
+            {/* 觸控操作提示框 */}
+            <div className="guide-touch-box">
+              <h4 className="guide-touch-title">觸控操作</h4>
+              <p className="guide-touch-desc">
+                單指拖曳平移地圖，雙指捏合縮放與旋轉；頂部工具列可重設視角。
+              </p>
             </div>
+
+            {/* 開始探索按鈕 */}
+            <button
+              type="button"
+              onClick={() => setShowGuideModal(false)}
+              className="guide-start-btn"
+            >
+              <span>開始探索</span>
+              <ArrowRight size={17} />
+            </button>
           </div>
         </div>
       )}
