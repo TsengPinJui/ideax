@@ -1,14 +1,41 @@
-/* IdeaX 創點國 3D 全螢幕島覽視圖樣式 */
+/* IdeaX 創點國 3D 全螢幕島覽視圖樣式 (支援 +8 時區 8 大時辰晴雨場景、全景畫卷與 Three.js 3D 建模) */
 
 .island-world-fullscreen-container {
+  --island-calligraphy-font: "BiauKai", "DFKai-SB", "標楷體", "Kaiti TC", "STKaiti", "KaiTi", "LXGW WenKai TC", "Noto Serif TC", serif;
   position: relative;
   width: 100vw;
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 50%, #87c5cc 0%, #5f9fa7 100%);
+  background: radial-gradient(circle at 50% 45%, #8ec7cd 0%, #52949d 100%);
   user-select: none;
-  font-family: inherit;
+  font-family: var(--island-calligraphy-font);
+  transition: background 0.8s ease;
+}
+
+/* 依 +8 時區與晴雨變換外圍海天背景色 */
+.island-world-fullscreen-container.phase-morning {
+  background: radial-gradient(circle at 50% 40%, #dce6e5 0%, #9ab4b5 60%, #78989a 100%);
+}
+
+.island-world-fullscreen-container.phase-noon {
+  background: radial-gradient(circle at 50% 40%, #8fd0d6 0%, #4ea0ac 65%, #357c88 100%);
+}
+
+.island-world-fullscreen-container.phase-dusk {
+  background: linear-gradient(180deg, #e8996b 0%, #bc6d68 42%, #59556e 100%);
+}
+
+.island-world-fullscreen-container.phase-night {
+  background: radial-gradient(circle at 60% 25%, #263e66 0%, #14243d 60%, #0c1729 100%);
+}
+
+.island-world-fullscreen-container.weather-rain.phase-morning {
+  background: radial-gradient(circle at 50% 40%, #c6d4d6 0%, #829ca1 65%, #607b80 100%);
+}
+
+.island-world-fullscreen-container.weather-rain.phase-noon {
+  background: radial-gradient(circle at 50% 40%, #8eaeb5 0%, #587f8a 65%, #3d5f69 100%);
 }
 
 /* 3D 舞臺與視角變換 */
@@ -16,7 +43,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  perspective: 1100px;
+  perspective: 1200px;
   perspective-origin: 50% 50%;
   display: flex;
   align-items: center;
@@ -31,8 +58,8 @@
 }
 
 .island-3d-plane {
-  width: min(100%, 1400px);
-  height: min(100%, 950px);
+  width: min(96vw, 1380px);
+  height: min(86dvh, 920px);
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
   display: flex;
@@ -46,22 +73,503 @@
   transition: none;
 }
 
-.island-map-svg {
+/* ============================================================
+   全景畫卷立體卡片與 8 大時辰晴雨動態視覺層
+   ============================================================ */
+.island-panorama-card {
+  position: relative;
   width: 100%;
-  height: 100%;
-  display: block;
-  filter: drop-shadow(0 20px 30px rgba(22, 51, 53, 0.35));
+  aspect-ratio: 3 / 2;
+  max-height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow:
+    0 32px 70px rgba(12, 32, 36, 0.45),
+    0 0 0 6px rgba(255, 255, 255, 0.22);
+  background: #4b8f96;
+  transform-style: preserve-3d;
 }
 
-/* 左上角標題：[←] IdeaX 創點國 \n — 島覽 — （1:1 還原設計圖） */
-.island-map-brand-overlay {
+.island-panorama-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  transition: filter 0.75s ease;
+}
+
+/* 四時辰與雨天基底濾鏡調色 */
+.island-panorama-img.phase-morning.weather-clear {
+  filter: saturate(0.88) contrast(0.94) brightness(1.05) sepia(0.06);
+}
+
+.island-panorama-img.phase-morning.weather-rain {
+  filter: saturate(0.75) contrast(0.92) brightness(0.95) hue-rotate(-6deg);
+}
+
+.island-panorama-img.phase-noon.weather-clear {
+  filter: saturate(1.12) contrast(1.04) brightness(1.04);
+}
+
+.island-panorama-img.phase-noon.weather-rain {
+  filter: saturate(0.82) contrast(0.96) brightness(0.9) hue-rotate(-8deg);
+}
+
+.island-panorama-img.phase-dusk.weather-clear {
+  filter: saturate(1.18) contrast(1.05) brightness(0.92) sepia(0.28) hue-rotate(-14deg);
+}
+
+.island-panorama-img.phase-dusk.weather-rain {
+  filter: saturate(1.1) contrast(1.06) brightness(0.84) sepia(0.24) hue-rotate(-12deg);
+}
+
+.island-panorama-img.phase-night.weather-clear {
+  filter: saturate(0.85) contrast(1.14) brightness(0.54) hue-rotate(185deg);
+}
+
+.island-panorama-img.phase-night.weather-rain {
+  filter: saturate(0.8) contrast(1.16) brightness(0.48) hue-rotate(188deg);
+}
+
+/* 天空與時辰氛圍覆蓋層 */
+.island-atmos-sky-overlay {
   position: absolute;
-  top: 20px;
-  left: 24px;
-  z-index: 25;
-  display: flex;
+  inset: 0;
+  pointer-events: none;
+  transition: background 0.75s ease, opacity 0.75s ease;
+  z-index: 2;
+}
+
+.island-atmos-sky-overlay.phase-morning {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 252, 245, 0.52) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(232, 240, 238, 0.42) 0%, rgba(215, 228, 225, 0.12) 45%, rgba(236, 242, 239, 0.36) 100%);
+}
+
+.island-atmos-sky-overlay.phase-noon.weather-clear {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 253, 235, 0.22) 0%, transparent 55%);
+}
+
+.island-atmos-sky-overlay.phase-noon.weather-rain {
+  background: linear-gradient(180deg, rgba(92, 122, 138, 0.38) 0%, rgba(76, 106, 120, 0.18) 100%);
+}
+
+.island-atmos-sky-overlay.phase-dusk {
+  background:
+    radial-gradient(circle at 56% 10%, rgba(255, 216, 125, 0.65) 0%, rgba(255, 134, 74, 0.38) 32%, transparent 68%),
+    linear-gradient(180deg, rgba(255, 148, 82, 0.36) 0%, rgba(186, 85, 92, 0.22) 55%, rgba(72, 46, 74, 0.32) 100%);
+  mix-blend-mode: hard-light;
+}
+
+.island-atmos-sky-overlay.phase-night {
+  background:
+    radial-gradient(circle at 68% 10%, rgba(162, 200, 255, 0.28) 0%, transparent 45%),
+    linear-gradient(180deg, rgba(14, 28, 56, 0.55) 0%, rgba(20, 42, 78, 0.38) 55%, rgba(12, 26, 48, 0.62) 100%);
+}
+
+/* 傍晚夕陽金球 */
+.island-dusk-sun-orb {
+  position: absolute;
+  top: 4%;
+  left: 55%;
+  width: 64px;
+  height: 64px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe0 0%, #ffd166 45%, rgba(255, 123, 54, 0) 75%);
+  box-shadow: 0 0 60px 24px rgba(255, 168, 76, 0.65);
+}
+
+/* 夜晚滿月與繁星 */
+.island-night-moon-orb {
+  position: absolute;
+  top: 4.5%;
+  left: 69%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fff6d6 65%, #e2d4a8 100%);
+  box-shadow:
+    0 0 32px 10px rgba(255, 248, 214, 0.55),
+    0 0 80px 28px rgba(130, 180, 255, 0.35);
+}
+
+.moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(186, 174, 145, 0.35);
+}
+.moon-crater.c1 { width: 10px; height: 10px; top: 12px; left: 14px; }
+.moon-crater.c2 { width: 7px; height: 7px; top: 26px; left: 26px; }
+.moon-crater.c3 { width: 6px; height: 6px; top: 14px; left: 30px; }
+
+.island-night-stars {
+  position: absolute;
+  inset: 0 0 65% 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 24% 8%, #ffe9b3, transparent),
+    radial-gradient(1.6px 1.6px at 38% 14%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 48% 6%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 61% 12%, #ffe9b3, transparent),
+    radial-gradient(1.4px 1.4px at 78% 16%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 88% 9%, #fff, transparent);
+  opacity: 0.85;
+  animation: stars-twinkle 4s ease-in-out infinite alternate;
+}
+
+@keyframes stars-twinkle {
+  0% { opacity: 0.55; }
+  100% { opacity: 0.95; }
+}
+
+/* 清晨・霧濛濛 與 雨霧：多層次流動山嵐雲霧（參考第三張清晨圖） */
+.island-morning-mist-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  z-index: 3;
+}
+
+.island-morning-mist-layer.is-visible {
+  opacity: 0.65;
+}
+
+.island-morning-mist-layer.is-dense-morning {
+  opacity: 0.95;
+}
+
+.mist-bank {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(22px);
+  background: radial-gradient(ellipse at center, rgba(248, 252, 250, 0.86) 0%, rgba(232, 242, 240, 0.45) 52%, transparent 78%);
+}
+
+.mist-bank.bank-top {
+  top: -6%;
+  left: -5%;
+  width: 110%;
+  height: 32%;
+  animation: mist-drift-right 14s ease-in-out infinite alternate;
+}
+
+.mist-bank.bank-mid-left {
+  top: 22%;
+  left: -8%;
+  width: 56%;
+  height: 26%;
+  animation: mist-drift-left 11s ease-in-out infinite alternate;
+}
+
+.mist-bank.bank-mid-right {
+  top: 20%;
+  right: -8%;
+  width: 54%;
+  height: 26%;
+  animation: mist-drift-right 13s ease-in-out infinite alternate;
+}
+
+.mist-bank.bank-valley-center {
+  top: 16%;
+  left: 28%;
+  width: 44%;
+  height: 24%;
+  opacity: 0.72;
+  animation: mist-drift-left 9s ease-in-out infinite alternate;
+}
+
+.mist-bank.bank-bottom {
+  bottom: -8%;
+  left: -5%;
+  width: 110%;
+  height: 30%;
+  animation: mist-drift-right 15s ease-in-out infinite alternate;
+}
+
+@keyframes mist-drift-right {
+  0% { transform: translateX(-2.5%) scale(1); }
+  100% { transform: translateX(2.5%) scale(1.04); }
+}
+
+@keyframes mist-drift-left {
+  0% { transform: translateX(2.5%) scale(1.02); }
+  100% { transform: translateX(-2.5%) scale(0.98); }
+}
+
+/* 建築窗戶、紅燈籠與中央大燈泡的溫暖發光層 */
+.island-warm-lights-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.75s ease;
+  mix-blend-mode: screen;
+}
+
+.island-warm-lights-layer.phase-morning.weather-rain,
+.island-warm-lights-layer.phase-noon.weather-rain {
+  opacity: 0.42;
+}
+
+.island-warm-lights-layer.phase-dusk {
+  opacity: 0.82;
+}
+
+.island-warm-lights-layer.phase-night {
+  opacity: 1;
+}
+
+.warm-light-spot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: lantern-pulse 3.2s ease-in-out infinite alternate;
+}
+
+.warm-light-spot.color-gold {
+  background: radial-gradient(circle, rgba(255, 232, 158, 0.95) 0%, rgba(255, 168, 52, 0.62) 38%, rgba(255, 120, 20, 0) 72%);
+}
+
+.warm-light-spot.color-lantern {
+  background: radial-gradient(circle, rgba(255, 210, 140, 0.95) 0%, rgba(255, 94, 36, 0.68) 42%, rgba(255, 50, 10, 0) 74%);
+}
+
+.warm-light-spot.color-bulb {
+  background: radial-gradient(circle, rgba(255, 250, 190, 1) 0%, rgba(255, 196, 46, 0.75) 42%, rgba(255, 140, 0, 0) 75%);
+}
+
+/* 雨夕與雨夜：地面與河道濕潤倒影拉長效果 */
+.island-warm-lights-layer.weather-rain .warm-light-spot {
+  transform: translate(-50%, -42%) scaleY(1.38);
+}
+
+@keyframes lantern-pulse {
+  0% { filter: brightness(0.92); }
+  100% { filter: brightness(1.12); }
+}
+
+/* 雨天斜風細雨與河道漣漪層 */
+.island-rain-weather-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.rain-streaks-layer {
+  position: absolute;
+  inset: -20%;
+  background-image: repeating-linear-gradient(
+    105deg,
+    transparent 0px,
+    transparent 18px,
+    rgba(225, 242, 255, 0.34) 18px,
+    rgba(225, 242, 255, 0.34) 19.5px
+  );
+  background-size: 100% 100%;
+  animation: rain-fall 0.55s linear infinite;
+}
+
+.rain-streaks-layer.layer-2 {
+  opacity: 0.6;
+  background-image: repeating-linear-gradient(
+    105deg,
+    transparent 0px,
+    transparent 29px,
+    rgba(240, 248, 255, 0.25) 29px,
+    rgba(240, 248, 255, 0.25) 30px
+  );
+  animation-duration: 0.75s;
+}
+
+@keyframes rain-fall {
+  0% { transform: translate3d(12px, -36px, 0); }
+  100% { transform: translate3d(-12px, 36px, 0); }
+}
+
+.rain-water-ripples {
+  position: absolute;
+  inset: 0;
+}
+
+.water-ripple {
+  position: absolute;
+  width: 36px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(230, 248, 255, 0.75);
+  transform: translate(-50%, -50%) scale(0.2);
+  opacity: 0;
+  animation: ripple-expand 2.4s ease-out infinite;
+}
+
+.water-ripple.r1 { left: 32%; top: 46%; animation-delay: 0s; }
+.water-ripple.r2 { left: 62%; top: 44%; animation-delay: 0.5s; }
+.water-ripple.r3 { left: 42%; top: 68%; animation-delay: 0.9s; }
+.water-ripple.r4 { left: 64%; top: 66%; animation-delay: 1.3s; }
+.water-ripple.r5 { left: 48%; top: 28%; animation-delay: 1.7s; }
+.water-ripple.r6 { left: 24%; top: 42%; animation-delay: 2.1s; }
+
+@keyframes ripple-expand {
+  0% { transform: translate(-50%, -50%) scale(0.25); opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+/* 五大島嶼透明點擊熱區 */
+.island-hotspots-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+
+.island-building-hotspot {
+  position: absolute;
+  border-radius: 28px;
+  cursor: pointer;
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.island-building-hotspot:hover {
+  background: rgba(255, 248, 210, 0.08);
+  box-shadow: 0 0 0 2px rgba(255, 232, 148, 0.55);
+}
+
+.island-building-hotspot.is-selected {
+  box-shadow: 0 0 0 3px rgba(255, 224, 116, 0.82), 0 0 28px rgba(255, 210, 80, 0.35);
+}
+
+.hotspot-pain { left: 14%; top: 10%; width: 27%; height: 28%; }
+.hotspot-discussion { left: 60%; top: 14%; width: 32%; height: 28%; }
+.hotspot-home { left: 36%; top: 34%; width: 28%; height: 34%; }
+.hotspot-creative { left: 6%; top: 48%; width: 19%; height: 24%; }
+.hotspot-arcade { left: 19%; top: 61%; width: 15%; height: 18%; }
+.hotspot-career { left: 69%; top: 49%; width: 25%; height: 29%; }
+
+/* ============================================================
+   Three.js WebGL 容器與 3D 浮動招牌標籤
+   ============================================================ */
+.island-webgl-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.island-webgl-canvas-mount {
+  width: 100%;
+  height: 100%;
+}
+
+.island-3d-labels-layer,
+.island-panorama-badges-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.island-3d-callout-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #fbf7ec;
+  border: 1.5px solid #dfd3b8;
+  border-radius: 12px;
+  padding: 6px 14px;
+  box-shadow: 0 6px 18px rgba(24, 38, 36, 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+  text-align: center;
+  white-space: nowrap;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.island-3d-callout-badge.is-panorama-badge {
+  transform: translate(-50%, -50%);
+}
+
+.island-3d-callout-badge:hover,
+.island-3d-callout-badge.is-selected {
+  background: #fffdf5;
+  border-color: #d9a738;
+  box-shadow: 0 8px 22px rgba(217, 167, 56, 0.38);
+}
+
+.island-3d-callout-badge.is-secondary {
+  padding: 4px 11px;
+  border-radius: 10px;
+}
+
+.callout-badge-title-row {
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 5px;
+}
+
+.callout-badge-title {
+  font-family: var(--island-calligraphy-font);
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #1c2826;
+  letter-spacing: 0.08em;
+}
+
+.island-3d-callout-badge.is-secondary .callout-badge-title {
+  font-size: 14px;
+}
+
+.callout-badge-count {
+  font-family: var(--island-calligraphy-font);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #f3e2b8;
+  color: #7c5215;
+}
+
+.callout-badge-subtitle {
+  font-family: var(--island-calligraphy-font);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #465752;
+  margin-top: 1px;
+  letter-spacing: 0.06em;
+}
+
+.callout-badge-pointer {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 1.5px solid #dfd3b8;
+  border-bottom: 1.5px solid #dfd3b8;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.island-3d-callout-badge:hover .callout-badge-pointer,
+.island-3d-callout-badge.is-selected .callout-badge-pointer {
+  border-color: #d9a738;
+}
+
+/* ============================================================
+   左上角返回按鈕 & 頂部中間「IdeaX 創點國 — 島覽 —」& 右上角純文字時辰
+   ============================================================ */
+.island-top-left-back {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 28;
   pointer-events: auto;
 }
 
@@ -87,67 +595,269 @@
   box-shadow: 0 6px 18px rgba(18, 48, 46, 0.22);
 }
 
-.island-brand-text {
+/* 頂部中間：放置 IdeaX 創點國 — 島覽 — */
+.island-top-center-brand {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 26;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.island-brand-text-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .island-map-main-title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 900;
-  color: #203535;
-  letter-spacing: 0.03em;
+  font-family: var(--island-calligraphy-font);
+  font-size: 25px;
+  font-weight: 700;
+  color: #192c2c;
+  letter-spacing: 0.08em;
   line-height: 1.15;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.95), 0 0 10px rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95), 0 0 14px rgba(255, 255, 255, 0.8);
+}
+
+.phase-night .island-map-main-title,
+.phase-dusk .island-map-main-title {
+  color: #fffdf7;
+  text-shadow: 0 2px 8px rgba(10, 20, 38, 0.85);
+}
+
+.island-subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .island-map-subtitle {
-  margin: 2px 0 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: #527574;
-  letter-spacing: 0.28em;
+  margin: 0;
+  font-family: var(--island-calligraphy-font);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #3f5f5e;
+  letter-spacing: 0.26em;
   line-height: 1.1;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.92);
 }
 
-/* 頂部置中視角控制工具列（縮放 + 重設視角 + 說明） */
-.island-map-controls {
+.phase-night .island-map-subtitle,
+.phase-dusk .island-map-subtitle {
+  color: #e9e4d8;
+  text-shadow: 0 1px 4px rgba(10, 20, 38, 0.85);
+}
+
+/* 右上角：時辰顯示（純文字不用背框，z-index: 20 可被右側島覽面板 z-index: 35 遮蓋） */
+.island-top-right-shichen {
   position: absolute;
   top: 16px;
+  right: 22px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+
+.island-shichen-pure-text-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 2px 4px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  cursor: pointer;
+  font-family: var(--island-calligraphy-font);
+  color: #1c2f2f;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.95), 0 0 12px rgba(255, 255, 255, 0.78);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.island-shichen-pure-text-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.phase-night .island-shichen-pure-text-btn,
+.phase-dusk .island-shichen-pure-text-btn {
+  color: #fffaf0;
+  text-shadow: 0 2px 8px rgba(10, 20, 38, 0.9);
+}
+
+.shichen-main-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.shichen-calligraphy-title {
+  font-family: var(--island-calligraphy-font);
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+}
+
+.shichen-sub-row {
+  font-family: var(--island-calligraphy-font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.84;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+/* +8 時區 8 大場景彈出面板 */
+.island-atmosphere-dropdown {
+  margin-top: 8px;
+  width: min(92vw, 350px);
+  background: rgba(252, 250, 245, 0.97);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(218, 205, 180, 0.85);
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-shadow: 0 16px 40px rgba(15, 34, 34, 0.28);
+  font-family: var(--island-calligraphy-font);
+}
+
+.island-atmosphere-dropdown.is-right-aligned {
+  align-self: flex-end;
+}
+
+.atmos-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.atmos-auto-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f0ede4;
+  border: 1px solid #dcd5c5;
+  color: #544836;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.atmos-auto-pill.active {
+  background: #39574f;
+  border-color: #39574f;
+  color: #fff;
+}
+
+.atmos-section-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #786b56;
+  margin-bottom: 5px;
+}
+
+.atmos-scene-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.atmos-scene-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e5dfd1;
+  color: #2e3b36;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.atmos-scene-btn small {
+  font-size: 9.5px;
+  color: #7c8983;
+}
+
+.atmos-scene-btn:hover {
+  background: #fff9eb;
+  border-color: #d6b665;
+}
+
+.atmos-scene-btn.active {
+  background: #39574f;
+  border-color: #39574f;
+  color: #ffffff;
+}
+
+.atmos-scene-btn.active small {
+  color: #d5e6df;
+}
+
+/* ============================================================
+   底部置中視角控制工具列（縮放 + 重設視角 + 單指俯角切換 + 說明）
+   ============================================================ */
+.island-map-controls {
+  position: absolute;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 25;
+  z-index: 28;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 252, 0.94);
+  background: rgba(255, 255, 252, 0.95);
   backdrop-filter: blur(14px);
-  padding: 5px 10px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 24px rgba(27, 59, 58, 0.16);
+  padding: 6px 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(20, 48, 46, 0.22);
+  max-width: 95vw;
+  white-space: nowrap;
 }
 
 .island-map-zoom-controls {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .island-controls-divider {
   width: 1px;
   height: 16px;
   background: rgba(0, 0, 0, 0.12);
-  margin: 0 3px;
+  margin: 0 2px;
+  flex-shrink: 0;
 }
 
 .island-map-zoom-controls button,
 .island-reset-btn {
-  height: 28px;
-  padding: 0 8px;
+  height: 30px;
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,9 +866,11 @@
   border-radius: 10px;
   background: #fff;
   color: #43544d;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.16s ease;
 }
 
@@ -170,26 +882,29 @@
 }
 
 .island-map-zoom-controls output {
-  min-width: 36px;
+  min-width: 38px;
   text-align: center;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
   color: #55665f;
+  white-space: nowrap;
 }
 
 .island-guide-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  font-size: 11px;
+  height: 30px;
+  padding: 0 11px;
+  font-size: 11.5px;
   font-weight: 800;
   color: #5c431d;
   background: #faedd0;
   border: 1px solid #e2c99a;
   border-radius: 10px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.18s ease;
 }
 
@@ -198,193 +913,8 @@
   transform: translateY(-1px);
 }
 
-/* 左下角地圖圖例 */
-.island-map-legend {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 25;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 14px;
-  background: rgba(255, 255, 252, 0.9);
-  backdrop-filter: blur(10px);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 16px rgba(22, 51, 48, 0.12);
-}
-
-/* 底部操作提示 */
-.island-map-hint {
-  position: absolute;
-  bottom: 16px;
-  left: 20px;
-  z-index: 20;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #274747;
-  background: rgba(255, 255, 252, 0.78);
-  backdrop-filter: blur(8px);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  pointer-events: none;
-}
-
-/* 底部快捷島嶼清單 */
-.island-bottom-pill-bar {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 25;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 252, 0.92);
-  backdrop-filter: blur(12px);
-  padding: 6px 12px;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 28px rgba(27, 59, 58, 0.2);
-  max-width: 90vw;
-  overflow-x: auto;
-}
-
-.island-bottom-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border-radius: 16px;
-  background: #f4f6ee;
-  border: 1px solid #e1e5d3;
-  color: #3b4e47;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.18s ease;
-}
-
-.island-bottom-pill:hover {
-  background: #fff8e4;
-  border-color: #d6ba6d;
-  color: #7b5921;
-}
-
-.island-bottom-pill.active {
-  background: #39574f;
-  border-color: #39574f;
-  color: #fff;
-  box-shadow: 0 4px 10px rgba(45, 75, 68, 0.35);
-}
-
-.island-bottom-pill .pill-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  background: #e3bc64;
-  color: #4b360f;
-  border-radius: 8px;
-  font-weight: 900;
-}
-
-/* 地圖節點與標籤 */
-.island-map-node {
-  cursor: pointer;
-  outline: none;
-}
-
-.island-map-node > g:first-of-type {
-  filter: drop-shadow(0 12px 10px rgba(18, 51, 53, 0.28));
-  transition: filter 0.2s ease, transform 0.2s ease;
-}
-
-.island-map-node:hover > g:first-of-type,
-.island-map-node.is-selected > g:first-of-type {
-  filter: drop-shadow(0 18px 14px rgba(18, 51, 53, 0.45));
-}
-
-.island-map-label rect {
-  fill: rgba(255, 255, 250, 0.98);
-  stroke: rgba(108, 91, 63, 0.18);
-  stroke-width: 1.5;
-  filter: drop-shadow(0 6px 8px rgba(28, 48, 44, 0.25));
-  transition: fill 0.2s ease, stroke 0.2s ease;
-}
-
-.island-map-label text {
-  dominant-baseline: auto;
-  pointer-events: none;
-}
-
-.island-label-icon {
-  font-size: 17px;
-}
-
-.island-label-name {
-  fill: #2a3731;
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.island-label-count {
-  fill: #9a6d36;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.island-label-badge {
-  fill: #b33939;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.island-map-node:hover .island-map-label rect,
-.island-map-node.is-selected .island-map-label rect {
-  fill: #fff9e6;
-  stroke: #dcae44;
-  stroke-width: 2.5;
-}
-
-.island-map-ring {
-  fill: none;
-  stroke: #ffe694;
-  stroke-width: 3;
-  stroke-dasharray: 6 10;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-
-.island-map-node.is-selected .island-map-ring {
-  opacity: 0.85;
-  animation: island-ring-pulse 2.5s infinite linear;
-}
-
-@keyframes island-ring-pulse {
-  0% { transform: scale(1); stroke-opacity: 0.9; }
-  50% { transform: scale(1.03); stroke-opacity: 0.4; }
-  100% { transform: scale(1); stroke-opacity: 0.9; }
-}
-
-/* 迷霧層輕柔呼吸動畫 */
-.island-fog-layer {
-  animation: island-fog-breathe 8s ease-in-out infinite alternate;
-}
-
-@keyframes island-fog-breathe {
-  0% { opacity: 0.9; }
-  100% { opacity: 1; }
-}
-
 /* ============================================================
    左側彈出抽屜 (Left Slide-out Drawer)
-   「當需要填寫表單或需求時從左邊彈出填寫彈窗，若是遊戲、作品或提案、痛點、討論先以彈窗開在左邊瀏覽內頁」
    ============================================================ */
 .island-left-drawer {
   position: absolute;
@@ -407,85 +937,12 @@
   transform: translateX(0);
 }
 
-/* 抽屜右側凸出的展開/收合觸手 */
-.island-drawer-edge-toggle {
-  position: absolute;
-  top: 92px;
-  right: -36px;
-  width: 36px;
-  height: 96px;
-  background: rgba(255, 255, 252, 0.96);
-  border: 1px solid rgba(82, 107, 98, 0.18);
-  border-left: none;
-  border-radius: 0 16px 16px 0;
-  box-shadow: 6px 4px 16px rgba(18, 41, 38, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  cursor: pointer;
-  color: #39544c;
-  font-size: 11px;
-  font-weight: 900;
-  transition: all 0.18s ease;
-}
-
-.island-drawer-edge-toggle:hover {
-  background: #fff8e4;
-  color: #7b5921;
-}
-
-.island-drawer-edge-toggle .vertical-text {
-  writing-mode: vertical-rl;
-  letter-spacing: 0.15em;
-}
-
-.island-drawer-inner {
+.island-left-drawer-inner {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* 抽屜頂部導航分頁 */
-.island-drawer-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-  background: rgba(246, 248, 240, 0.85);
-}
-
-.island-drawer-tab {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 12px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #5c6e66;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-
-.island-drawer-tab:hover {
-  color: #2b3a35;
-  background: rgba(255, 255, 255, 0.7);
-}
-
-.island-drawer-tab.is-active {
-  background: #fff;
-  border-color: #dce0d0;
-  color: #2b3a35;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .island-drawer-close {
@@ -508,7 +965,6 @@
   color: #b91c1c;
 }
 
-/* 導覽內頁、預覽與表單內容滾動容器 */
 .island-preview-pane,
 .island-form-pane,
 .island-atlas-content {
@@ -517,7 +973,6 @@
   padding: 16px;
 }
 
-/* 頂部返回與標籤 */
 .island-pane-header {
   display: flex;
   align-items: center;
@@ -555,7 +1010,6 @@
   border: 1px solid #c7d2fe;
 }
 
-/* 預覽內頁視覺與文字 */
 .island-preview-media {
   width: 100%;
   height: 180px;
@@ -646,7 +1100,6 @@
   margin-bottom: 18px;
 }
 
-/* 預覽操作按鈕（開新分頁遊玩與平台互動） */
 .island-preview-actions {
   display: flex;
   flex-direction: column;
@@ -887,11 +1340,6 @@
   transform: translateY(-1px);
 }
 
-.island-choice-row .choice-icon {
-  font-size: 20px;
-  margin-right: 10px;
-}
-
 .island-choice-row .choice-text {
   flex: 1;
   min-width: 0;
@@ -924,41 +1372,6 @@
   margin-left: 8px;
 }
 
-/* 島嶼詳細主視覺 */
-.island-detail-hero {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f4f6ec;
-  border-radius: 14px;
-  border: 1px solid #e0e5d4;
-  margin-bottom: 12px;
-}
-
-.island-detail-hero .hero-icon {
-  font-size: 30px;
-}
-
-.island-detail-hero .hero-name {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 900;
-  color: #24352f;
-}
-
-.island-detail-hero .hero-sub {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: #63756e;
-}
-
-.island-quick-post-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
 .quick-post-btn {
   flex: 1;
   display: inline-flex;
@@ -978,25 +1391,6 @@
 
 .quick-post-btn:hover {
   background: #f7e6c0;
-}
-
-/* 攤位卡片清單 */
-.island-stand-detail .island-stand-title,
-.island-street-detail .island-level-title,
-.island-district-detail .island-level-title {
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 900;
-  color: #24352f;
-}
-
-.island-stand-detail .island-stand-desc,
-.island-street-detail .island-level-desc,
-.island-district-detail .island-level-desc {
-  margin: 0 0 12px;
-  font-size: 11.5px;
-  color: #657770;
-  line-height: 1.45;
 }
 
 .island-stand-action-box {
@@ -1030,25 +1424,6 @@
   cursor: pointer;
 }
 
-.island-stand-cards-container .cards-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 850;
-  color: #3b4e47;
-}
-
-.island-stand-cards-container .count-badge {
-  font-size: 10px;
-  font-weight: 900;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: #eef2e6;
-  color: #556c62;
-}
-
 .island-cards-list {
   display: flex;
   flex-direction: column;
@@ -1077,7 +1452,7 @@
   height: 44px;
   border-radius: 8px;
   object-fit: cover;
-  shrink: 0;
+  flex-shrink: 0;
 }
 
 .island-item-row .item-info {
@@ -1102,13 +1477,6 @@
   text-overflow: ellipsis;
 }
 
-.island-item-row .item-preview-btn {
-  background: transparent;
-  border: none;
-  color: #8f9f97;
-  cursor: pointer;
-}
-
 .island-empty-box {
   padding: 24px 12px;
   text-align: center;
@@ -1121,7 +1489,6 @@
 
 /* ============================================================
    右側島覽面板 (Right-side Atlas Panel)
-   「島覽(地圖路徑、介紹、條列式題目瀏覽是再右邊)」
    ============================================================ */
 .island-right-atlas {
   position: absolute;
@@ -1224,7 +1591,7 @@
 }
 
 /* ============================================================
-   說明彈窗 (Guide Modal - 1:1 還原設計圖，柔和淡雅配色)
+   說明彈窗 (Guide Modal - 柔和淡雅配色)
    ============================================================ */
 .island-guide-modal-overlay {
   position: fixed;
@@ -1251,9 +1618,9 @@
   border-radius: 28px;
   box-shadow: 0 24px 60px rgba(18, 38, 35, 0.18), 0 4px 16px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(224, 214, 198, 0.45);
-  padding: 32px 36px 28px;
+  padding: 32px 32px 26px;
   color: #2e3b36;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Serif TC", serif;
+  font-family: var(--island-calligraphy-font);
 }
 
 .guide-modal-top-row {
@@ -1285,11 +1652,11 @@
 
 .guide-main-title {
   margin: 0 0 10px;
-  font-size: 28px;
-  font-weight: 900;
+  font-size: 27px;
+  font-weight: 700;
   color: #283732;
-  font-family: "Noto Serif TC", "Songti SC", Georgia, serif;
-  letter-spacing: 0.02em;
+  font-family: var(--island-calligraphy-font);
+  letter-spacing: 0.06em;
   line-height: 1.25;
 }
 
@@ -1303,7 +1670,7 @@
 .guide-mouse-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 18px;
 }
 
@@ -1311,7 +1678,7 @@
   background: #ffffff;
   border: 1px solid #eee8dc;
   border-radius: 18px;
-  padding: 20px 10px 16px;
+  padding: 18px 8px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1320,25 +1687,25 @@
 }
 
 .guide-mouse-icon-wrap {
-  height: 46px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
-.guide-card-title {
+.guide-mouse-title {
   display: block;
-  font-size: 14px;
-  font-weight: 850;
+  font-size: 13.5px;
+  font-weight: 700;
   color: #283732;
   margin-bottom: 4px;
 }
 
-.guide-card-sub {
+.guide-mouse-sub {
   display: block;
   font-size: 11.5px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: #75847e;
 }
 
@@ -1347,31 +1714,33 @@
   border: 1px solid #e7dfd1;
   border-radius: 16px;
   padding: 13px 18px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .guide-touch-title {
   margin: 0 0 3px;
-  font-size: 12.5px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
   color: #7f6848;
 }
 
 .guide-touch-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.55;
   color: #5b6963;
 }
 
-.guide-start-btn {
+.guide-start-btn-full {
   width: 100%;
   height: 50px;
   border-radius: 16px;
   background: #5e503f;
   color: #ffffff;
-  font-size: 15px;
-  font-weight: 900;
+  font-family: var(--island-calligraphy-font);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   border: none;
   cursor: pointer;
   display: flex;
@@ -1382,8 +1751,89 @@
   transition: all 0.18s ease;
 }
 
-.guide-start-btn:hover {
+.guide-start-btn-full:hover {
   background: #504334;
   transform: translateY(-1px);
 }
 
+/* 手機版響應式微調：將「— 島覽 —」移到「IdeaX 創點國」右邊同一排 */
+@media (max-width: 640px) {
+  .island-top-left-back {
+    top: 12px;
+    left: 12px;
+  }
+
+  .island-back-circle-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .island-top-center-brand {
+    top: 16px;
+    left: 58px;
+    transform: none;
+    align-items: flex-start;
+  }
+
+  .island-brand-text-center {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .island-subtitle-row {
+    margin-top: 0;
+  }
+
+  .island-map-main-title {
+    font-size: 18px;
+  }
+
+  .island-map-subtitle {
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
+  }
+
+  .island-top-right-shichen {
+    top: 13px;
+    right: 12px;
+  }
+
+  .shichen-calligraphy-title {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+  }
+
+  .shichen-sub-row {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .island-3d-callout-badge {
+    padding: 4px 9px;
+    border-radius: 9px;
+  }
+
+  .callout-badge-title {
+    font-size: 13px;
+  }
+
+  .callout-badge-subtitle {
+    font-size: 9.5px;
+  }
+
+  .island-map-controls {
+    bottom: 14px;
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .island-map-zoom-controls button,
+  .island-reset-btn,
+  .island-guide-btn {
+    height: 28px;
+    padding: 0 7px;
+    font-size: 11.5px;
+    font-family: var(--island-calligraphy-font);
+  }
+}

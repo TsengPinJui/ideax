@@ -180,10 +180,10 @@ const createIsland = (
 const gamesDistrict: DistrictSeed = {
   id: 'creative-arcade',
   name: '電玩城',
-  subtitle: '依遊戲分類逛街，進入不同主題場景',
+  subtitle: '直接點選遊戲名稱，進入各款遊戲作品體驗',
   streets: gameScenes.map((game) => ({
     id: `game-street-${game.category}`,
-    name: `${game.category}街`,
+    name: game.category,
     subtitle: game.summary,
     stands: [stand(`game-${game.category}`, `${game.category}遊戲攤`, 'game', game.template, game.palette, game.emoji, 'game_table', game.summary, game.npc, { tertiaryCategory: game.category, navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })],
   })),
@@ -200,26 +200,28 @@ const rawIslands: IdeaXIsland[] = [
     ] },
   ]),
   createIsland('creative', '創意島', '創意島', '展覽館與電玩城，發現軟體作品、遊戲和提案。', '💡', { x: 8, y: 92, size: 'large', land: '#b8cf9b', edge: '#6f9666' }, [
-    { id: 'creative-exhibition', name: '展覽館', subtitle: '作品、AI 工具與創新提案展區', streets: [
-      { id: 'creative-ai-street', name: 'AI 工具街', subtitle: '探索 AI 應用與工具作品', stands: [stand('creative-ai-tools', 'AI 工具展櫃', 'app', 'future-lab', 'gallery', ['🤖', '🧪', '✨'], 'exhibits', '在未來實驗室展示 AI 工具與應用作品。', npc('小艾', '實驗室研究員', '想找 AI 工具或看看創作者的新作品嗎？', 'vibecoding_feed', '查看 AI 工具'), { category: 'AI工具', navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
-      { id: 'creative-software-street', name: '軟體應用街', subtitle: '網站程式與實用工具作品', stands: [stand('creative-software', '軟體作品展櫃', 'app', 'software-gallery', 'gallery', ['🖥️', '🧰', '🌐'], 'exhibits', '以展品卡片呈現已發布的軟體網站作品。', npc('程程', '展覽館員', '點選展品即可查看 IdeaX 上的作品介紹。', 'vibecoding_feed', '逛軟體展覽館'), { navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
-      { id: 'creative-proposal-street', name: '創新提案街', subtitle: '想法、進度與合作提案', stands: [stand('creative-proposals', '創新提案展板', 'proposal', 'proposal-gallery', 'gallery', ['📋', '💡', '🤝'], 'exhibits', '查看 IdeaX 使用者公開的創新提案與合作構想。', npc('提提', '提案策展人', '一起看看正在發展中的創新點子。', 'ideas_feed', '瀏覽創新提案'), { navigationTarget: { tab: 'explore', specialZone: 'create_ideas' } })] },
+    { id: 'creative-exhibition', name: '展覽館', subtitle: '作品、AI 工具與創新提案攤位展區', streets: [
+      { id: 'creative-ai-booth', name: 'AI 工具攤', subtitle: '探索 AI 應用與工具作品', stands: [stand('creative-ai-tools', 'AI 工具攤', 'app', 'future-lab', 'gallery', ['🤖', '🧪', '✨'], 'exhibits', '在展覽館攤位展示 AI 工具與應用作品。', npc('小艾', '展覽館攤主', '想找 AI 工具或看看創作者的新作品嗎？', 'vibecoding_feed', '查看 AI 工具'), { category: 'AI工具', navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
+      { id: 'creative-software-booth', name: '軟體應用攤', subtitle: '網站程式與實用工具作品', stands: [stand('creative-software', '軟體應用攤', 'app', 'software-gallery', 'gallery', ['🖥️', '🧰', '🌐'], 'exhibits', '以攤位展品呈現已發布的軟體網站作品。', npc('程程', '展覽館攤主', '點選攤位展品即可查看 IdeaX 上的作品介紹。', 'vibecoding_feed', '逛軟體應用攤'), { navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
+      { id: 'creative-proposal-booth', name: '創新提案攤', subtitle: '想法、進度與合作提案', stands: [stand('creative-proposals', '創新提案攤', 'proposal', 'proposal-gallery', 'gallery', ['📋', '💡', '🤝'], 'exhibits', '查看 IdeaX 使用者公開的創新提案與合作構想。', npc('提提', '提案策展人', '一起看看正在發展中的創新點子。', 'ideas_feed', '瀏覽創新提案'), { navigationTarget: { tab: 'explore', specialZone: 'create_ideas' } })] },
     ] },
     gamesDistrict,
   ]),
-  createIsland('pain', '痛點島', '痛點島', '從真實問題出發，探索痛點、需求與懸賞。', '🔥', { x: 8, y: 8, size: 'large', land: '#dfb98c', edge: '#b37b57' }, [
-    { id: 'pain-innovation-tower', name: '創點樓', subtitle: '走進老酒樓，說說你遇到的難題', streets: [{ id: 'pain-point-street', name: '問題卷軸街', subtitle: '看看酒樓公告牆上的真實需求', stands: [stand('pain-point-board', '創點樓大堂', 'pain', 'innovation-tower', 'problem', ['🧾', '🪵', '💬'], 'scrolls', '老式酒樓裡的長桌與公告牆，收錄使用者發布的真實痛點。', npc('掌櫃阿點', '創點樓掌櫃', '客官，先看看樓裡的公告；若你也有難題，我替你記下來。', 'create_pain_point', '寫下我的難題'), { sceneMood: '古代傳統酒樓', navigationTarget: { tab: 'explore', specialZone: 'pain_points' }, interactionPrompt: '翻看公告牆上的真實需求，或請創點樓掌櫃協助發布你的難題。' })] }] },
-    { id: 'pain-needs-board', name: '需求公告區', subtitle: '依生活情境和分類尋找需求', streets: [{ id: 'pain-needs-street', name: '需求分類街', subtitle: '查看各領域提出的問題', stands: [stand('pain-needs', '需求分類公告牆', 'pain', 'needs-board', 'problem', ['📌', '🗒️', '🔖'], 'scrolls', '依 IdeaX 現有公開痛點貼文呈現需求內容。', npc('掌櫃阿點', '創點樓掌櫃', '客官請點選一張卷軸查看完整痛點與回覆。', 'pain_feed', '瀏覽痛點') , { navigationTarget: { tab: 'explore', specialZone: 'pain_points' } })] }] },
+  createIsland('pain', '痛點島', '創點樓', '走進創點樓，於懸賞牆分門別類查看痛點，或於佈告桌撰寫並刊登痛點。', '🔥', { x: 8, y: 8, size: 'large', land: '#dfb98c', edge: '#b37b57' }, [
+    { id: 'pain-innovation-tower', name: '創點樓', subtitle: '樓內設有懸賞牆（分門別類瀏覽與刊登）與佈告桌（撰寫痛點表單並刊登）', streets: [
+      { id: 'pain-bounty-wall-street', name: '懸賞牆', subtitle: '分門別類瀏覽各領域痛點，亦可刊登痛點', stands: [stand('pain-bounty-wall', '懸賞牆', 'pain', 'innovation-tower', 'problem', ['🧾', '📌', '🔥'], 'scrolls', '分門別類收錄各領域真實痛點與懸賞，並可直接刊登痛點。', npc('掌櫃阿點', '創點樓掌櫃', '客官，懸賞牆上已按類別分門別類張貼各方痛點；若您也有痛點難題，隨時可刊登於牆上！', 'create_pain_point', '刊登痛點'), { sceneMood: '創點樓懸賞牆', navigationTarget: { tab: 'explore', specialZone: 'pain_points' }, interactionPrompt: '依分類檢視懸賞牆上的痛點需求，或點擊下方按鈕刊登您的痛點。' })] },
+      { id: 'pain-posting-desk-street', name: '佈告桌', subtitle: '撰寫痛點（填寫表單）並刊登至懸賞牆', stands: [stand('pain-posting-desk', '佈告桌', 'pain', 'needs-board', 'problem', ['🖋️', '📜', '🪵'], 'scrolls', '在佈告桌前填寫痛點表單，撰寫完畢即可直接刊登至懸賞牆。', npc('掌櫃阿點', '創點樓掌櫃', '客官請於佈告桌前坐下，填妥痛點表單後即可直接刊登張貼至懸賞牆！', 'create_pain_point', '撰寫並刊登痛點'), { sceneMood: '創點樓佈告桌', navigationTarget: { tab: 'explore', specialZone: 'pain_points' }, interactionPrompt: '請於佈告桌填寫痛點標題、分類與詳細描述並刊登。' })] },
+    ] },
   ]),
-  createIsland('discussion', '討論島', '討論島', '走進日常討論街、技術工作坊與知識圖書館。', '💬', { x: 92, y: 8, size: 'large', land: '#e2cc99', edge: '#b59161' }, [
+  createIsland('discussion', '討論島', '討論島', '走進日常討論街、技術工作坊與知識藏書閣。', '💬', { x: 92, y: 8, size: 'large', land: '#e2cc99', edge: '#b59161' }, [
     { id: 'discussion-daily-district', name: '日常討論街', subtitle: '生活話題交流，每個討論卡片為一攤', streets: [
       { id: 'discussion-daily-street', name: '交流攤位街', subtitle: '生活、職場與休閒話題', stands: [stand('discussion-daily', '日常交流各攤', 'discussion', 'discussion-market', 'market', ['☕', '📰', '💬'], 'cards', '生活市集，每個討論卡片即為一個交流攤位。', npc('小聊', '市集攤主', '來逛逛各個交流攤位，看看大家都在聊什麼。', 'discussion_feed', '逛討論市集'), { category: '日常疑難', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
     ] },
     { id: 'discussion-tech-district', name: '技術交流', subtitle: '創客工作坊，每個卡片以桌為單位', streets: [
       { id: 'discussion-tech-street', name: '工作坊交流桌', subtitle: '程式、架構與技術切磋', stands: [stand('discussion-tech', '技術交流工作坊（各桌）', 'discussion', 'maker-market', 'market', ['⚙️', '💻', '🛠️'], 'cards', '創客工作坊，每個討論卡片以交流桌為單位開桌探討。', npc('阿工', '工作坊桌主', '技術交流工作坊已備好各桌，挑一桌坐下切磋。', 'discussion_feed', '查看技術交流桌'), { category: '專業問題', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
     ] },
-    { id: 'discussion-academic-district', name: '圖書館', subtitle: '學術探討，每個卡片以研討室為單位', streets: [
-      { id: 'discussion-academic-street', name: '學術研討室', subtitle: '學術研究與深度理論探討', stands: [stand('discussion-academic', '學術研討室（各室）', 'discussion', 'knowledge-library', 'market', ['📚', '🔬', '🧠'], 'cards', '圖書館研討區，每個卡片以獨立研討室為單位探討學術論點。', npc('知知', '圖書館長', '研討室內正在進行學術探討，歡迎進入研讀。', 'discussion_feed', '進入學術研討室'), { category: '學術探討', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
+    { id: 'discussion-academic-district', name: '藏書閣', subtitle: '學術探討，每個卡片以研討室為單位', streets: [
+      { id: 'discussion-academic-street', name: '學術研討室', subtitle: '學術研究與深度理論探討', stands: [stand('discussion-academic', '學術研討室（各室）', 'discussion', 'knowledge-library', 'market', ['📚', '🔬', '🧠'], 'cards', '藏書閣研討區，每個卡片以獨立研討室為單位探討學術論點。', npc('知知', '藏書閣長', '研討室內正在進行學術探討，歡迎進入研讀。', 'discussion_feed', '進入學術研討室'), { category: '學術探討', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
     ] },
   ]),
   createIsland('career', '徵才島', '徵才島', '進求職廟向廟公許願，或入翰林院查閱專家各庫。', '🧧', { x: 92, y: 92, size: 'large', land: '#d6a68d', edge: '#a86d57' }, [

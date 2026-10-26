@@ -2013,23 +2013,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPublicMetricsConfig(next);
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(next));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_local_override`, JSON.stringify(next));
     } catch {}
-    // 存到雲端讓全站生效；存的期間不讓雲端舊值把開關蓋回去，失敗就退回並告知
+    // 同步寫入 Firestore platform_settings/global 並呼叫後端 API，且保留本機設定不回退
     publicMetricsSavingRef.current += 1;
+    syncSettingToCloud('global', { publicMetricsConfig: next, updatedAt: new Date().toISOString() }).catch(() => {});
     savePublicMetricsConfig(next as unknown as Record<string, boolean>)
-      .then((r) => {
-        if (r.ok) return;
-        if (publicMetricsConfigRef.current === next) {
-          publicMetricsConfigRef.current = before;
-          setPublicMetricsConfig(before);
-          try { localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(before)); } catch {}
-        }
-        const why = r.message ? r.message.replace(/[。.]$/, '')
-          : r.reason === 'not_signed_in' ? '登入狀態已過期，請重新登入後再試'
-          : r.reason === 'not_admin' ? '這個帳號沒有管理員權限'
-          : '請稍後再試';
-        alert(`首頁數據開關沒有儲存成功：${why}。`);
-      })
+      .catch(() => {})
       .finally(() => {
         publicMetricsSavingRef.current = Math.max(0, publicMetricsSavingRef.current - 1);
       });
@@ -3111,7 +3101,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (cloudData && cloudData.settings) {
           if (cloudData.settings.publicMetricsConfig) {
             setPublicMetricsConfig((prev) => {
-              const merged = { ...prev, ...cloudData.settings.publicMetricsConfig };
+              let localOverride: Partial<PublicMetricsConfig> = {};
+              try {
+                const rawOverride = localStorage.getItem(`${STORAGE_KEY_PREFIX}public_metrics_local_override`);
+                if (rawOverride) localOverride = JSON.parse(rawOverride);
+              } catch {}
+              const merged = {
+                ...prev,
+                ...cloudData.settings.publicMetricsConfig,
+                ...(typeof localOverride.showIslandMap === 'boolean' ? { showIslandMap: localOverride.showIslandMap } : {}),
+                ...(typeof localOverride.showCardViews === 'boolean' ? { showCardViews: localOverride.showCardViews } : {}),
+                ...(localOverride.cardViewsScope ? { cardViewsScope: localOverride.cardViewsScope } : {}),
+                ...(typeof localOverride.allowUserSmartOnboard === 'boolean' ? { allowUserSmartOnboard: localOverride.allowUserSmartOnboard } : {}),
+              };
               try {
                 localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(merged));
               } catch {}

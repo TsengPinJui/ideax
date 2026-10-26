@@ -1128,25 +1128,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* 創點島地圖入口：所有傳統頁面都能從右上角進入探索模式 */}
-          {publicMetricsConfig.showIslandMap !== false && <button
-            type="button"
-            onClick={() => {
-              setActiveTab('island_explorer');
-              setSelectedQuestion(null);
-              setSelectedSolver(null);
-            }}
-            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
-              activeTab === 'island_explorer'
-                ? 'bg-emerald-100 text-emerald-950 border-emerald-300 shadow-inner'
-                : 'bg-emerald-50/80 text-emerald-900 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-            }`}
-            title="開啟創點島互動地圖"
-            aria-label="開啟創點島互動地圖"
-          >
-            <IdeaIslandIcon size={20} />
-            <span className="hidden sm:inline text-[11px] font-black">創點島</span>
-          </button>}
+          {/* 創點島地圖入口：所有傳統頁面都能從右上角進入探索模式（取消背框、放大圖示） */}
+          {publicMetricsConfig.showIslandMap !== false && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('island_explorer');
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+              }}
+              className={`flex items-center gap-1.5 p-1 transition-transform hover:scale-105 active:scale-95 cursor-pointer shrink-0 ${
+                activeTab === 'island_explorer'
+                  ? 'text-emerald-950'
+                  : 'text-emerald-900 hover:text-emerald-950'
+              }`}
+              title="開啟創點島互動地圖"
+              aria-label="開啟創點島互動地圖"
+            >
+              <IdeaIslandIcon size={28} />
+              <span className="hidden sm:inline text-xs font-black">創點島</span>
+            </button>
+          )}
 
           {/* 我的案件 (電腦版顯示，無冗餘外框) */}
           <button

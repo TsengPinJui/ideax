@@ -802,6 +802,8 @@ export interface User {
   expertApplicationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   expertCertStatus?: 'none' | 'pending' | 'approved' | 'verified' | 'rejected' | 'unverified';
   expertCertData?: any;
+  expertRevoked?: boolean; // 管理員或本人已移除專家資格
+  adminApprovedExpert?: boolean; // 管理員明確核准之專家資格
   lastExpertAppliedAt?: string; // ISO 日期
   expertApplicationRejectReason?: string;
   expertApplicationData?: {
@@ -863,6 +865,8 @@ export interface Solver {
   verifiedBadge: boolean;
   verified?: boolean;
   verifiedExpert?: boolean;
+  expertRevoked?: boolean;
+  adminApprovedExpert?: boolean;
   featuredCase: {
     title: string;
     description?: string;
@@ -877,11 +881,12 @@ export interface Solver {
 }
 
 /**
- * 認證專家判定標準：通過平台認證，或 採納方案 ≥ 50
+ * 認證專家判定標準：通過平台認證，或 採納方案 ≥ 50（若已移除專家資格則一律為 false）
  */
 export const isCertifiedExpert = (solver?: {
   verifiedBadge?: boolean | string;
   verifiedExpert?: boolean;
+  expertRevoked?: boolean;
   answerCount?: number;
   acceptedRate?: number;
   acceptedSolutionsCount?: number;
@@ -889,6 +894,7 @@ export const isCertifiedExpert = (solver?: {
   tier?: string;
 } | null): boolean => {
   if (!solver) return false;
+  if (solver.expertRevoked || solver.verifiedExpert === false) return false;
   // 1. 通過平台專業認證 (實名審查/特邀專家/認證專家)
   if (solver.verifiedBadge || solver.verifiedExpert) return true;
   if (solver.tier === '認證專家' || solver.tier === '特邀顧問') return true;

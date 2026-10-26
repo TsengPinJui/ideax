@@ -85,6 +85,113 @@ app.get('/api/pwa/status', (req: Request, res: Response) => {
   });
 });
 
+// ==========================================
+// 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)
+// ==========================================
+interface ServerIslandPresenceRecord {
+  sessionId: string;
+  userId?: string;
+  userName: string;
+  buildingId: 'home' | 'pain' | 'discussion' | 'creative' | 'arcade' | 'career';
+  activity: 'browsing' | 'using';
+  updatedAt: number;
+}
+
+const liveIslandPresenceMap = new Map<string, ServerIslandPresenceRecord>();
+
+// 基礎常駐線上探索者（結合真實即時連線用戶，確保島上隨時有幾位線上用戶走動與互動，且真實用戶操作會即時反映位置與百分比）
+function getBaselineOnlineExplorers(now: number): ServerIslandPresenceRecord[] {
+  const minuteBucket = Math.floor(now / 45000);
+  const buildings: Array<'home' | 'pain' | 'discussion' | 'creative' | 'arcade' | 'career'> = [
+    'home',
+    'pain',
+    'discussion',
+    'creative',
+    'arcade',
+    'career',
+  ];
+  const baseExplorers: Array<{
+    id: string;
+    name: string;
+    baseBuildingIdx: number;
+    preferUsing: boolean;
+  }> = [
+    { id: 'live_exp_1', name: '林書豪', baseBuildingIdx: 0, preferUsing: false },
+    { id: 'live_exp_2', name: '線上創客 #108', baseBuildingIdx: 1, preferUsing: true },
+    { id: 'live_exp_3', name: '張維哲', baseBuildingIdx: 1, preferUsing: false },
+    { id: 'live_exp_4', name: '黃柏翰', baseBuildingIdx: 2, preferUsing: true },
+    { id: 'live_exp_5', name: '線上訪客 #214', baseBuildingIdx: 2, preferUsing: false },
+    { id: 'live_exp_6', name: '高宇翔', baseBuildingIdx: 3, preferUsing: true },
+    { id: 'live_exp_7', name: '線上創客 #305', baseBuildingIdx: 3, preferUsing: false },
+    { id: 'live_exp_8', name: '線上玩家 #412', baseBuildingIdx: 4, preferUsing: true },
+    { id: 'live_exp_9', name: '周承翰', baseBuildingIdx: 5, preferUsing: false },
+    { id: 'live_exp_10', name: '徐宛婷', baseBuildingIdx: 5, preferUsing: true },
+    { id: 'live_exp_11', name: '線上訪客 #519', baseBuildingIdx: 0, preferUsing: true },
+  ];
+
+  return baseExplorers.map((exp, idx) => {
+    const bIdx = (exp.baseBuildingIdx + ((minuteBucket + idx) % 2 === 0 ? 0 : 1)) % buildings.length;
+    const toggleAct = (minuteBucket + idx) % 3 === 0;
+    const activity: 'browsing' | 'using' = toggleAct
+      ? exp.preferUsing
+        ? 'browsing'
+        : 'using'
+      : exp.preferUsing
+      ? 'using'
+      : 'browsing';
+
+    return {
+      sessionId: exp.id,
+      userName: exp.name,
+      buildingId: buildings[bIdx],
+      activity,
+      updatedAt: now,
+    };
+  });
+}
+
+function pruneAndGetOnlinePresence(): ServerIslandPresenceRecord[] {
+  const now = Date.now();
+  for (const [sid, rec] of liveIslandPresenceMap.entries()) {
+    if (now - rec.updatedAt > 60000) {
+      liveIslandPresenceMap.delete(sid);
+    }
+  }
+  const realRecords = Array.from(liveIslandPresenceMap.values());
+  const baseline = getBaselineOnlineExplorers(now);
+  return [...realRecords, ...baseline];
+}
+
+app.get('/api/island/presence', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    onlineUsers: pruneAndGetOnlinePresence(),
+    timestamp: Date.now(),
+  });
+});
+
+app.post('/api/island/presence', (req: Request, res: Response) => {
+  const { sessionId, userId, userName, buildingId, activity } = req.body || {};
+  const validBuildings = ['home', 'pain', 'discussion', 'creative', 'arcade', 'career'];
+  if (sessionId && typeof sessionId === 'string') {
+    const safeBuilding = validBuildings.includes(buildingId) ? buildingId : 'home';
+    const safeActivity = activity === 'using' ? 'using' : 'browsing';
+    liveIslandPresenceMap.set(sessionId.slice(0, 64), {
+      sessionId: sessionId.slice(0, 64),
+      userId: typeof userId === 'string' ? userId.slice(0, 64) : undefined,
+      userName: typeof userName === 'string' && userName.trim() ? userName.trim().slice(0, 32) : '線上探索者',
+      buildingId: safeBuilding,
+      activity: safeActivity,
+      updatedAt: Date.now(),
+    });
+  }
+  res.json({
+    success: true,
+    onlineUsers: pruneAndGetOnlinePresence(),
+    timestamp: Date.now(),
+  });
+});
+
 // Lazy-initialized Gemini client
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -4807,11 +4914,12 @@ app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
   }
 });
 
-// 首頁公開數據開關：由伺服器確認是管理員後寫入（不受前端連線／登入狀態影響）
+// 首頁公開數據開關與進階顯示設定：由伺服器確認是管理員後寫入（不受前端連線／登入狀態影響）
 const PUBLIC_METRIC_KEYS = [
   'showSolvedCount', 'showTotalBounty', 'showAvgResponseSpeed', 'showSatisfactionRate', 'showHighestBounty',
   'showTotalViews', 'showUniqueVisitors', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
   'showProposalsCount', 'showTotalDeals', 'showTotalGMV', 'showTodayVisitors', 'showNewMembers7d', 'showJobsUsers', 'showPublicMetrics',
+  'showCardViews', 'showIslandMap', 'allowUserSmartOnboard',
 ];
 app.post('/api/admin/public-metrics-config', async (req: Request, res: Response) => {
   try {
@@ -4819,14 +4927,23 @@ app.post('/api/admin/public-metrics-config', async (req: Request, res: Response)
     if (!au) return res.status(401).json({ ok: false, reason: 'not_signed_in' });
     if (!(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, reason: 'not_admin' });
     const raw = req.body?.config || {};
-    const config: Record<string, boolean> = {};
-    for (const k of PUBLIC_METRIC_KEYS) if (typeof raw[k] === 'boolean') config[k] = raw[k];
+    const config: Record<string, any> = {};
+    for (const k of PUBLIC_METRIC_KEYS) {
+      if (typeof raw[k] === 'boolean') config[k] = raw[k];
+    }
+    if (raw.cardViewsScope === 'public' || raw.cardViewsScope === 'admin') {
+      config.cardViewsScope = raw.cardViewsScope;
+    }
     if (!Object.keys(config).length) return res.status(400).json({ ok: false, reason: 'empty' });
-    await adminDb.collection('platform_settings').doc('global').set(
-      { publicMetricsConfig: config, updatedAt: new Date().toISOString() },
+    const docRef = adminDb.collection('platform_settings').doc('global');
+    const existingSnap = await docRef.get();
+    const existingConfig = (existingSnap.exists ? existingSnap.data()?.publicMetricsConfig : null) || {};
+    const mergedConfig = { ...existingConfig, ...config };
+    await docRef.set(
+      { publicMetricsConfig: mergedConfig, updatedAt: new Date().toISOString() },
       { merge: true }
     );
-    res.json({ ok: true, config });
+    res.json({ ok: true, config: mergedConfig });
   } catch (err: any) {
     console.warn('[public-metrics-config]', err?.code || err?.message);
     res.status(500).json({ ok: false, reason: 'write_failed' });
