@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 1. 首頁 (Home) -->
+  <url>
+    <loc>https://www.ideax.tw/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 2. 創星季官方專區 (Challenge / Competition) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 3. 探索問題 (Explore Market) -->
+  <url>
+    <loc>https://www.ideax.tw/explore</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 4. 創點子/痛點集 (Painpoints Pool) -->
+  <url>
+    <loc>https://www.ideax.tw/painpoints</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 5. 發布懸賞 (Create Question) -->
+  <url>
+    <loc>https://www.ideax.tw/create</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 6. 找專家智庫 (Solvers Directory) -->
+  <url>
+    <loc>https://www.ideax.tw/solvers</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 7. 創星季：提案總覽 (Proposals) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge/proposals</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 8. 創星季：我要參賽 (Join) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge/join</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 9. 創星季：活動辦法與規章 (Rules) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge/rules</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 10. 創星季：專家/評審申請 (Expert) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge/expert</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>
