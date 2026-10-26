@@ -1077,7 +1077,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             </div>
           </div>
 
-          {/* 第二列：說明按鈕 (左) + 百里挑一標語 + 刊登作品按鈕 (置右) */}
+          {/* 第二列：說明按鈕 (左) + 平台嚴選標語 + 刊登作品按鈕 (置右) */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <button
@@ -1096,7 +1096,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               </button>
 
               <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
-                “能上IdeaX的作品都是百里挑一！（作品皆經過人工篩查）”
+                <span>【平台嚴選】</span><strong>皆經過人工篩查，可安心遊玩</strong>
               </span>
             </div>
 

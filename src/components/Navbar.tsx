@@ -521,7 +521,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* 左上燈泡圖片左側側邊欄入口 */}
           {activeTab === 'island_explorer' ? (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center shrink-0">
               <button
                 type="button"
                 onClick={onReturnFromIsland || (() => setActiveTab('explore'))}
@@ -531,7 +531,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <ArrowLeft className="w-5 h-5 text-stone-600 group-hover:text-stone-950 transition-colors" />
               </button>
-              <span className="text-sm sm:text-base font-semibold tracking-wide text-stone-700 whitespace-nowrap">IdeaX 地圖</span>
             </div>
           ) : (
             <button

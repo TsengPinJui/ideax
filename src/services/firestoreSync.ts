@@ -1865,7 +1865,7 @@ export async function savePublicMetricsConfig(config: Record<string, boolean>): 
 }
 
 /** 儲存首頁創點子播放區設定：由伺服器確認管理員後寫入 */
-export async function saveHomeShowcaseConfig(config: { enabled: boolean; modes: string[]; customIds: string[]; includeSimulated?: boolean; hideHeroTitles?: boolean }): Promise<{ ok: boolean; message?: string }> {
+export async function saveHomeShowcaseConfig(config: { enabled: boolean; modes: string[]; customIds: string[]; includeSimulated?: boolean; hideHeroTitles?: boolean; hotGamesMode?: 'custom' | 'views'; hotGameIds?: string[] }): Promise<{ ok: boolean; message?: string }> {
   try {
     const headers = await getAuthHeaders();
     if (!headers.Authorization) return { ok: false, message: '登入狀態已過期，請重新登入後再試' };

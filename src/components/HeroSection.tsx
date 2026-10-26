@@ -358,7 +358,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               {/* 右邊：熱度榜（收窄版面，留約一半寬度） */}
               <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
-                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
+                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} mode={homeShowcaseConfig.hotGamesMode} customIds={homeShowcaseConfig.hotGameIds} />
               </div>
             </div>
 
@@ -398,7 +398,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   onSelectGame={handleGameClick}
                 />
               ) : (
-                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} />
+                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} mode={homeShowcaseConfig.hotGamesMode} customIds={homeShowcaseConfig.hotGameIds} />
               )}
             </div>
           </div>
@@ -432,10 +432,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold flex-wrap">
               <span>痛點許願 · 創新提案 · 專家懸賞</span>
               <span className="inline-flex items-center gap-0.5 text-xs sm:text-sm font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
-                持續上新中~
+                持續收錄全球各地優秀作品~ (以中文地區為主)
               </span>
               <span className="text-xs sm:text-sm font-black text-amber-800 tracking-tight">
-                “能上IdeaX的作品都是百里挑一！（作品皆經過人工篩查）”
+                <span>【平台嚴選】</span><strong>皆經過人工篩查，可安心遊玩</strong>
               </span>
             </div>
           )}

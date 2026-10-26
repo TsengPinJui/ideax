@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown } from 'lucide-react';
+import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Flame, Eye } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HOME_SHOWCASE_MAX_CUSTOM, type HomeShowcaseMode, type Question } from '../types';
 import { useShowcaseSlides } from './HomeShowcasePlayer';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
+import { getHotRankedGames } from '../data/hotGamesData';
 
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創點子提案',
@@ -391,6 +392,85 @@ export const AdminHomeShowcaseCard: React.FC = () => {
         {enabled ? (chosen ? `啟用，播放${chosen}${slides.length ? `，共 ${slides.length} 個` : '，但目前沒有符合的內容（首頁顯示創點子標誌）'}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
         {saving ? '・儲存中…' : savedAt ? '・已儲存' : ''}
       </p>
+    </div>
+  );
+};
+
+/** 首頁熱度榜：管理員可指定榜單順序，或改用作品瀏覽次數即時排序。 */
+export const AdminHotGamesConfigCard: React.FC = () => {
+  const { questions, homeShowcaseConfig, updateHomeShowcaseConfig } = useApp();
+  const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState('');
+  const mode = homeShowcaseConfig.hotGamesMode || 'custom';
+  const ids = homeShowcaseConfig.hotGameIds || [];
+  const seeds = getHotRankedGames(questions).map((x) => x.question);
+  const isGame = (x: Question) => {
+    const text = `${x.title || ''} ${x.description || ''}`;
+    return x.status !== 'delisted' && x.status !== 'closed' && (x.category === '遊戲' || x.subcategory === '遊戲' || x.subcategories?.includes('遊戲') || x.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
+  };
+  const byId = new Map<string, Question>();
+  [...questions.filter(isGame), ...seeds].forEach((q) => { if (!byId.has(q.id)) byId.set(q.id, q); });
+  const pool = [...byId.values()].filter((q) => !q.isSimulated && !q.simulatedBatchId);
+  const selected = ids.map((id) => byId.get(id)).filter((q): q is Question => Boolean(q));
+  const results = pool.filter((q) => !ids.includes(q.id) && (!query.trim() || `${q.title} ${q.authorName || ''} ${(q.tags || []).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())));
+
+  const save = async (patch: { hotGamesMode?: 'custom' | 'views'; hotGameIds?: string[] }) => {
+    setSaving(true);
+    await updateHomeShowcaseConfig(patch);
+    setSaving(false);
+  };
+  const move = (index: number, delta: -1 | 1) => {
+    const next = [...ids];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    void save({ hotGameIds: next });
+  };
+  const title = (q: Question) => stripAppNameFromTitle(q.title, q.appName);
+
+  return (
+    <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 shadow-2xs">
+      <div className="flex items-start gap-2.5">
+        <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0"><Flame className="w-5 h-5" /></div>
+        <div>
+          <h4 className="font-black text-sm sm:text-base text-rose-950">首頁熱度榜設定</h4>
+          <p className="text-xs text-rose-900/70 mt-0.5">選擇手動編排榜單，或依遊戲作品的瀏覽次數自動排序。</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {([
+          { id: 'custom' as const, label: '管理員自選', detail: '自行挑選並調整前 10 名', icon: <Flame className="w-4 h-4" /> },
+          { id: 'views' as const, label: '依瀏覽次數排序', detail: '遊戲作品依瀏覽數由高至低排列', icon: <Eye className="w-4 h-4" /> },
+        ]).map((option) => (
+          <button key={option.id} type="button" disabled={saving} onClick={() => void save({ hotGamesMode: option.id })}
+            className={`text-left p-3 rounded-xl border flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-60 ${mode === option.id ? 'bg-white border-rose-400 ring-2 ring-rose-200' : 'bg-white/60 border-stone-200 hover:border-rose-300'}`}>
+            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${mode === option.id ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>{option.icon}</span>
+            <span><span className="block text-xs font-black text-stone-900">{option.label}</span><span className="block text-[11px] text-stone-500">{option.detail}</span></span>
+            {mode === option.id && <Check className="w-4 h-4 text-rose-600 ml-auto" />}
+          </button>
+        ))}
+      </div>
+      {mode === 'custom' && (
+        <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-2.5">
+          <div className="flex justify-between items-center text-xs font-black text-rose-950"><span>自選榜單排序</span><span>{ids.length}/10</span></div>
+          {selected.length > 0 && <div className="space-y-1 max-h-56 overflow-y-auto">
+            {selected.map((q, i) => <div key={q.id} className="flex items-center gap-2 rounded-lg bg-rose-50 px-2 py-1.5">
+              <span className="w-5 text-center text-[11px] font-mono font-black text-rose-700">{i + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{title(q)}</span>
+              <button type="button" disabled={saving || i === 0} onClick={() => move(i, -1)} aria-label="上移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowUp className="w-3.5 h-3.5" /></button>
+              <button type="button" disabled={saving || i === selected.length - 1} onClick={() => move(i, 1)} aria-label="下移" className="p-1 text-rose-700 disabled:opacity-30 cursor-pointer"><ArrowDown className="w-3.5 h-3.5" /></button>
+              <button type="button" disabled={saving} onClick={() => void save({ hotGameIds: ids.filter((id) => id !== q.id) })} aria-label="移除" className="p-1 text-stone-400 hover:text-red-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+            </div>)}
+          </div>}
+          <div className="relative"><Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜尋遊戲名稱、作者或標籤" className="w-full pl-8 pr-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-xs outline-none focus:border-rose-400" /></div>
+          <div className="max-h-52 overflow-y-auto divide-y divide-stone-100 border border-stone-100 rounded-lg">
+            {results.map((q) => <button key={q.id} type="button" disabled={saving || ids.length >= 10} onClick={() => void save({ hotGameIds: [...ids, q.id] })} className="w-full px-2.5 py-2 flex items-center gap-2 text-left hover:bg-rose-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+              <span className="text-rose-600 font-black">＋</span><span className="truncate text-xs font-bold">{title(q)}</span><span className="ml-auto shrink-0 text-[10px] text-stone-400">瀏覽 {q.viewsCount ?? q.views ?? 0}</span>
+            </button>)}
+            {results.length === 0 && <div className="px-3 py-4 text-center text-[11px] text-stone-400">沒有其他符合的遊戲</div>}
+          </div>
+        </div>
+      )}
+      <p className="text-[11px] text-rose-900/70">{saving ? '儲存中…' : '設定會同步儲存並套用於首頁熱度榜。'}</p>
     </div>
   );
 };

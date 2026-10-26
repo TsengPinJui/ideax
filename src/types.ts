@@ -1504,6 +1504,10 @@ export interface HomeShowcaseConfig {
   includeSimulated?: boolean;
   /** 隱藏首頁的大標題「一個問題，找到更多可能。」與小標題（只是視覺上隱藏，搜尋引擎仍讀得到） */
   hideHeroTitles?: boolean;
+  /** 首頁熱度榜排序方式：管理員自選順序，或依遊戲作品瀏覽次數排序 */
+  hotGamesMode?: 'custom' | 'views';
+  /** 熱度榜管理員自選遊戲 ID，依排序順序顯示，最多 10 個 */
+  hotGameIds?: string[];
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];

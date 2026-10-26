@@ -102,8 +102,10 @@ export const FeaturedGamesBoard: React.FC<{
 export const HotGamesRankingBoard: React.FC<{
   questions: Question[];
   onSelectGame: (game: Question) => void;
-}> = ({ questions, onSelectGame }) => {
-  const hotList = getHotRankedGames(questions);
+  mode?: 'custom' | 'views';
+  customIds?: string[];
+}> = ({ questions, onSelectGame, mode = 'custom', customIds = [] }) => {
+  const hotList = getHotRankedGames(questions, mode, customIds);
 
   return (
     <div className="w-full h-full flex flex-col rounded-2xl bg-white/90 backdrop-blur-md border border-amber-200/80 shadow-xs p-2 sm:p-2.5 transition-all hover:shadow-sm overflow-hidden">

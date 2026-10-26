@@ -151,7 +151,7 @@ import {
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
 import { DuohuiPeek } from './agents/DuohuiPeek';
-import { AdminHomeShowcaseCard } from './AdminHomeShowcaseCard';
+import { AdminHomeShowcaseCard, AdminHotGamesConfigCard } from './AdminHomeShowcaseCard';
 import { AdminSettingsSearch } from './AdminSettingsSearch';
 import { DEMO_ACCOUNTS } from '../services/accountGuard';
 import { AiCrmView } from './AiCrmView';
@@ -2856,6 +2856,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               {/* 首頁創點子播放區（預留）：選擇播放優秀作品／付費推播／自選 */}
               <AdminHomeShowcaseCard />
+              <AdminHotGamesConfigCard />
 
               {/* 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據，可收合) */}
               <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3.5 shadow-2xs">

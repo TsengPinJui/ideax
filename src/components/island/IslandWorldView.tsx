@@ -314,6 +314,7 @@ function ArchipelagoMap({
       onPointerCancel={handlePointerCancel}
       onContextMenu={(event) => event.preventDefault()}
     >
+      <h1 className="island-map-title">IdeaX 地圖</h1>
       <div className="island-map-controls" aria-label="地圖操作">
         <div className="island-map-zoom-controls" aria-label="縮放地圖">
           <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖"><Minus size={15} /></button>

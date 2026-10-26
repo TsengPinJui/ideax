@@ -252,17 +252,37 @@ export function createHotGameQuestion(def: HotGameDef): Question {
 /**
  * 取得熱度榜前 10 名的完整 Question 物件清單
  */
-export function getHotRankedGames(allQuestions?: Question[]): { question: Question; heat: string; rank: number }[] {
+export function getHotRankedGames(allQuestions?: Question[], mode: 'custom' | 'views' = 'custom', customIds: string[] = []): { question: Question; heat: string; rank: number }[] {
   const qMap = new Map((allQuestions || []).map((q) => [q.id, q]));
-  return HOT_GAMES_DEFS.map((def) => {
+  const defaults = HOT_GAMES_DEFS.map((def) => {
     const existing = qMap.get(def.id);
     const q = existing ? { ...existing, demoUrl: existing.demoUrl || def.demoUrl, previewMode: 'embed' as const } : createHotGameQuestion(def);
-    return {
-      question: q,
-      heat: def.heatDisplay,
-      rank: def.rank,
-    };
+    return { question: q, heat: def.heatDisplay };
   });
+  const isGame = (q: Question) => {
+    const text = `${q.title || ''} ${q.description || ''}`;
+    return q.status !== 'delisted' && q.status !== 'closed' && (q.category === '遊戲' || q.subcategory === '遊戲' || q.subcategories?.includes('遊戲') || q.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
+  };
+  let ranked: Array<{ question: Question; heat: string }>;
+  if (mode === 'views') {
+    const viewCount = (question: Question) => Number(question.viewsCount ?? question.views ?? 0);
+    ranked = [...(allQuestions || [])].filter(isGame).sort((a, b) => viewCount(b) - viewCount(a)).slice(0, 10)
+      .map((question) => ({ question: { ...question, demoUrl: question.demoUrl || (question as any).vibeCodingData?.demoUrl || question.externalLink || '', previewMode: 'embed' as const }, heat: String(viewCount(question)) }));
+  } else {
+    ranked = customIds.map((id) => {
+      const question = qMap.get(id) || defaults.find((item) => item.question.id === id)?.question;
+      return question && isGame(question) ? { question, heat: String(question.viewsCount ?? question.views ?? 0) } : null;
+    }).filter((item): item is { question: Question; heat: string } => Boolean(item));
+  }
+  const seen = new Set(ranked.map((item) => item.question.id));
+  for (const item of defaults) {
+    if (ranked.length >= 10) break;
+    if (!seen.has(item.question.id)) {
+      seen.add(item.question.id);
+      ranked.push(item);
+    }
+  }
+  return ranked.slice(0, 10).map((item, index) => ({ ...item, rank: index + 1 }));
 }
 
 /**

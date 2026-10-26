@@ -1066,7 +1066,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         </div>
 
 
-        {/* 其他顯示：創點島入口、瀏覽數可見範圍與智慧上架 */}
+        {/* 其他顯示：創點島入口、瀏覽數可見範圍與一般用戶一鍵上架入口 */}
         <section className="p-5 rounded-2xl bg-purple-50/50 border border-purple-200 space-y-3">
           <button
             type="button"
@@ -1076,7 +1076,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           >
             <span>
               <span className="block font-extrabold text-sm sm:text-base text-purple-950">其他顯示</span>
-              <span className="block text-xs text-purple-900/70 mt-0.5">創點島入口、卡片瀏覽數可見範圍與智慧上架</span>
+              <span className="block text-xs text-purple-900/70 mt-0.5">創點島入口、卡片瀏覽數可見範圍與一般用戶一鍵上架</span>
             </span>
             <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-purple-800">
               {isOtherDisplayExpanded ? '收合' : '展開'}
@@ -1147,14 +1147,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 return (
                   <div className={`p-4 rounded-xl border-2 flex items-center justify-between gap-3 lg:col-span-2 ${isAllowed ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-400' : 'bg-white border-stone-200 opacity-70'}`}>
                     <div>
-                      <div className="font-extrabold text-xs text-purple-950">一般用戶智慧上架功能</div>
-                      <p className="text-[11px] text-stone-600 mt-1">{isAllowed ? '開放登入會員一鍵上架或貼上網址，由 AI 讀取作品資訊；刊登前須確認已取得作者授權。' : '已關閉，一般用戶不可使用智慧上架。'}</p>
+                      <div className="font-extrabold text-xs text-purple-950">一般用戶一鍵上架入口</div>
+                      <p className="text-[11px] text-stone-600 mt-1">{isAllowed ? '開放登入會員使用一鍵上架與網址讀取；刊登前須確認已取得作者授權。' : '入口已對一般用戶隱藏，管理員仍可使用。'}</p>
                     </div>
                     <button
                       type="button"
                       role="switch"
                       aria-checked={isAllowed}
-                      aria-label="一般用戶智慧上架功能"
+                      aria-label="顯示一般用戶一鍵上架入口"
+                      title={isAllowed ? '隱藏一般用戶的一鍵上架入口' : '重新顯示一般用戶的一鍵上架入口'}
                       onClick={() => setLocalPublicMetrics((prev) => ({ ...prev, allowUserSmartOnboard: !isAllowed }))}
                       className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${isAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'}`}
                     >

@@ -41,6 +41,21 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#206',
+    version: 'v3.9.0',
+    releaseDate: '2026.10.26',
+    releaseTime: '08:33',
+    author: 'IdeaX 創點子核心',
+    summary: '首頁熱度榜支援後台自選與瀏覽數排序；全螢幕體驗失敗時直達作品網站；創點島地圖標題移入地圖區；首頁嚴選宣傳文案更新',
+    changes: [
+      '首頁熱度榜管理：管理員可搜尋遊戲、編排前 10 名順序，或切換為依作品已記錄的瀏覽數排序。',
+      '全螢幕遊戲體驗：內嵌載入遭阻擋、逾時或發生錯誤時，自動在目前分頁開啟作品網站。',
+      '創點島地圖：將「IdeaX 地圖」標題移至地圖左上角，釋出頂部導覽列空間。',
+      '首頁作品宣傳：文案更新為「持續收錄全球各地優秀作品～（以中文地區為主）」。',
+      '平台版本推進至 v3.9.0 (#206)。',
+    ],
+  },
+  {
     seqNumber: '#205',
     version: 'v3.8.9',
     releaseDate: '2026.10.26',

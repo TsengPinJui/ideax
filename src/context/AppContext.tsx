@@ -148,7 +148,8 @@ function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
   const list: unknown[] = Array.isArray(raw?.modes) ? raw.modes : raw?.mode ? [raw.mode] : ['excellent'];
   const modes = HOME_SHOWCASE_MODES.filter((m) => list.includes(m));
   const customIds = Array.isArray(raw?.customIds) ? raw.customIds.filter((x: unknown) => typeof x === 'string' && x).slice(0, 30) : [];
-  return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, hideHeroTitles: raw?.hideHeroTitles === true, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
+  const hotGameIds = Array.isArray(raw?.hotGameIds) ? raw.hotGameIds.map((x: unknown) => String(x || '').trim()).filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i).slice(0, 10) : [];
+  return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, hideHeroTitles: raw?.hideHeroTitles === true, hotGamesMode: raw?.hotGamesMode === 'views' ? 'views' : 'custom', hotGameIds, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
 }
 import { getStoredTickets } from '../services/customerSupportService';
 import { claimFirstPostBonus } from '../services/signupBonusService';
@@ -1986,7 +1987,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     homeShowcaseSavingRef.current += 1;
     try {
-      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated, hideHeroTitles: next.hideHeroTitles });
+      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated, hideHeroTitles: next.hideHeroTitles, hotGamesMode: next.hotGamesMode, hotGameIds: next.hotGameIds });
       if (!r.ok) {
         setHomeShowcaseConfig(before);
         try {

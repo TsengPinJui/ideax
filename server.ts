@@ -4927,7 +4927,11 @@ app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) 
       .map((x: unknown) => String(x || '').trim())
       .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
       .slice(0, 30);
-    const config = { enabled: raw.enabled === true, modes, customIds, includeSimulated: raw.includeSimulated !== false, hideHeroTitles: raw.hideHeroTitles === true, updatedAt: new Date().toISOString() };
+    const hotGameIds = (Array.isArray(raw.hotGameIds) ? raw.hotGameIds : [])
+      .map((x: unknown) => String(x || '').trim())
+      .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
+      .slice(0, 10);
+    const config = { enabled: raw.enabled === true, modes, customIds, includeSimulated: raw.includeSimulated !== false, hideHeroTitles: raw.hideHeroTitles === true, hotGamesMode: raw.hotGamesMode === 'views' ? 'views' : 'custom', hotGameIds, updatedAt: new Date().toISOString() };
     await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err: any) {

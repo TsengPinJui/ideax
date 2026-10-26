@@ -88,7 +88,7 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
                 <span className="text-amber-800">推廣送好禮</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-800 text-[10px] font-bold">
                   <Sparkles className="w-2.5 h-2.5 text-amber-600" />
-                  <span>持續上新中~</span>
+                  <span>持續收錄全球各地優秀作品~ (以中文地區為主)</span>
                 </span>
               </h2>
               {/* 兌換推薦碼按鍵 */}
