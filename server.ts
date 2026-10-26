@@ -88,66 +88,62 @@ app.get('/api/pwa/status', (req: Request, res: Response) => {
 // ==========================================
 // 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)
 // ==========================================
+// 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)
+// ==========================================
+type IslandBuildingId =
+  | 'pain-innovation-tower'
+  | 'discussion-library'
+  | 'discussion-workshop'
+  | 'discussion-street'
+  | 'home-plaza'
+  | 'home-trade-street'
+  | 'creative-exhibition'
+  | 'creative-arcade'
+  | 'career-academy'
+  | 'career-temple';
+
 interface ServerIslandPresenceRecord {
   sessionId: string;
   userId?: string;
-  userName: string;
-  buildingId: 'home' | 'pain' | 'discussion' | 'creative' | 'arcade' | 'career';
+  userName?: string;
+  displayName?: string;
+  buildingId: IslandBuildingId;
   activity: 'browsing' | 'using';
   updatedAt: number;
 }
 
+const ALL_ISLAND_BUILDING_IDS: IslandBuildingId[] = [
+  'home-plaza',
+  'home-trade-street',
+  'pain-innovation-tower',
+  'discussion-library',
+  'discussion-workshop',
+  'discussion-street',
+  'creative-exhibition',
+  'creative-arcade',
+  'career-academy',
+  'career-temple',
+];
+
 const liveIslandPresenceMap = new Map<string, ServerIslandPresenceRecord>();
 
-// 基礎常駐線上探索者（結合真實即時連線用戶，確保島上隨時有幾位線上用戶走動與互動，且真實用戶操作會即時反映位置與百分比）
-function getBaselineOnlineExplorers(now: number): ServerIslandPresenceRecord[] {
-  const minuteBucket = Math.floor(now / 45000);
-  const buildings: Array<'home' | 'pain' | 'discussion' | 'creative' | 'arcade' | 'career'> = [
-    'home',
-    'pain',
-    'discussion',
-    'creative',
-    'arcade',
-    'career',
-  ];
-  const baseExplorers: Array<{
-    id: string;
-    name: string;
-    baseBuildingIdx: number;
-    preferUsing: boolean;
-  }> = [
-    { id: 'live_exp_1', name: '林書豪', baseBuildingIdx: 0, preferUsing: false },
-    { id: 'live_exp_2', name: '線上創客 #108', baseBuildingIdx: 1, preferUsing: true },
-    { id: 'live_exp_3', name: '張維哲', baseBuildingIdx: 1, preferUsing: false },
-    { id: 'live_exp_4', name: '黃柏翰', baseBuildingIdx: 2, preferUsing: true },
-    { id: 'live_exp_5', name: '線上訪客 #214', baseBuildingIdx: 2, preferUsing: false },
-    { id: 'live_exp_6', name: '高宇翔', baseBuildingIdx: 3, preferUsing: true },
-    { id: 'live_exp_7', name: '線上創客 #305', baseBuildingIdx: 3, preferUsing: false },
-    { id: 'live_exp_8', name: '線上玩家 #412', baseBuildingIdx: 4, preferUsing: true },
-    { id: 'live_exp_9', name: '周承翰', baseBuildingIdx: 5, preferUsing: false },
-    { id: 'live_exp_10', name: '徐宛婷', baseBuildingIdx: 5, preferUsing: true },
-    { id: 'live_exp_11', name: '線上訪客 #519', baseBuildingIdx: 0, preferUsing: true },
-  ];
-
-  return baseExplorers.map((exp, idx) => {
-    const bIdx = (exp.baseBuildingIdx + ((minuteBucket + idx) % 2 === 0 ? 0 : 1)) % buildings.length;
-    const toggleAct = (minuteBucket + idx) % 3 === 0;
-    const activity: 'browsing' | 'using' = toggleAct
-      ? exp.preferUsing
-        ? 'browsing'
-        : 'using'
-      : exp.preferUsing
-      ? 'using'
-      : 'browsing';
-
-    return {
-      sessionId: exp.id,
-      userName: exp.name,
-      buildingId: buildings[bIdx],
-      activity,
-      updatedAt: now,
-    };
-  });
+function normalizeToBuildingId(raw: any): IslandBuildingId {
+  if (ALL_ISLAND_BUILDING_IDS.includes(raw)) return raw;
+  switch (raw) {
+    case 'pain':
+      return 'pain-innovation-tower';
+    case 'discussion':
+      return 'discussion-street';
+    case 'creative':
+      return 'creative-exhibition';
+    case 'arcade':
+      return 'creative-arcade';
+    case 'career':
+      return 'career-temple';
+    case 'home':
+    default:
+      return 'home-plaza';
+  }
 }
 
 function pruneAndGetOnlinePresence(): ServerIslandPresenceRecord[] {
@@ -157,37 +153,49 @@ function pruneAndGetOnlinePresence(): ServerIslandPresenceRecord[] {
       liveIslandPresenceMap.delete(sid);
     }
   }
-  const realRecords = Array.from(liveIslandPresenceMap.values());
-  const baseline = getBaselineOnlineExplorers(now);
-  return [...realRecords, ...baseline];
+  return Array.from(liveIslandPresenceMap.values());
 }
 
 app.get('/api/island/presence', (_req: Request, res: Response) => {
+  const list = pruneAndGetOnlinePresence();
   res.json({
     success: true,
-    onlineUsers: pruneAndGetOnlinePresence(),
+    users: list,
+    onlineUsers: list,
     timestamp: Date.now(),
   });
 });
 
 app.post('/api/island/presence', (req: Request, res: Response) => {
-  const { sessionId, userId, userName, buildingId, activity } = req.body || {};
-  const validBuildings = ['home', 'pain', 'discussion', 'creative', 'arcade', 'career'];
-  if (sessionId && typeof sessionId === 'string') {
-    const safeBuilding = validBuildings.includes(buildingId) ? buildingId : 'home';
+  const { sessionId, userId, userName, displayName, buildingId, activity } = req.body || {};
+  const effectiveSessionId =
+    (typeof sessionId === 'string' && sessionId.trim()) ||
+    (typeof userId === 'string' && userId.trim()) ||
+    '';
+  if (effectiveSessionId) {
+    const safeBuilding = normalizeToBuildingId(buildingId);
     const safeActivity = activity === 'using' ? 'using' : 'browsing';
-    liveIslandPresenceMap.set(sessionId.slice(0, 64), {
-      sessionId: sessionId.slice(0, 64),
-      userId: typeof userId === 'string' ? userId.slice(0, 64) : undefined,
-      userName: typeof userName === 'string' && userName.trim() ? userName.trim().slice(0, 32) : '線上探索者',
+    const effectiveName =
+      (typeof displayName === 'string' && displayName.trim()) ||
+      (typeof userName === 'string' && userName.trim()) ||
+      '線上探索者';
+    const cleanSid = effectiveSessionId.slice(0, 64);
+
+    liveIslandPresenceMap.set(cleanSid, {
+      sessionId: cleanSid,
+      userId: typeof userId === 'string' ? userId.slice(0, 64) : cleanSid,
+      userName: effectiveName.slice(0, 32),
+      displayName: effectiveName.slice(0, 32),
       buildingId: safeBuilding,
       activity: safeActivity,
       updatedAt: Date.now(),
     });
   }
+  const list = pruneAndGetOnlinePresence();
   res.json({
     success: true,
-    onlineUsers: pruneAndGetOnlinePresence(),
+    users: list,
+    onlineUsers: list,
     timestamp: Date.now(),
   });
 });

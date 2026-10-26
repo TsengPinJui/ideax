@@ -3707,8 +3707,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 )}
               </div>
-            </>
-
 
               {/* 特殊環境開關 (共用相對開關 + 權限範圍) */}
               <div id="environment-controls-section" className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">

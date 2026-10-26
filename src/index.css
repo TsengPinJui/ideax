@@ -486,3 +486,80 @@ body {
   display: inline-block;
   will-change: transform;
 }
+
+/* ============================================================== */
+/* 古雅立軸上下徐徐展開動畫 (Ancient Scroll Vertical Unroll Animation) */
+/* ============================================================== */
+@keyframes scroll-vertical-unroll {
+  0% {
+    transform: scaleY(0.03);
+    opacity: 0.2;
+    filter: blur(3px);
+  }
+  35% {
+    opacity: 0.9;
+    filter: blur(0px);
+  }
+  82% {
+    transform: scaleY(1.018);
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+@keyframes scroll-top-roller-slide {
+  0% {
+    transform: translateY(46vh) scaleX(0.88);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0) scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-bottom-roller-slide {
+  0% {
+    transform: translateY(-46vh) scaleX(0.88);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0) scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-content-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-scroll-vertical-unroll {
+  animation: scroll-vertical-unroll 0.46s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.animate-scroll-content-reveal {
+  animation: scroll-content-reveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+.animate-scroll-top-roller {
+  animation: scroll-top-roller-slide 0.46s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scroll-bottom-roller {
+  animation: scroll-bottom-roller-slide 0.46s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

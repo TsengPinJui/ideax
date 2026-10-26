@@ -1,26 +1,42 @@
-export type IslandBuildingId = 'home' | 'pain' | 'discussion' | 'creative' | 'arcade' | 'career';
+export type IslandBuildingId =
+  | 'pain-innovation-tower'
+  | 'discussion-library'
+  | 'discussion-workshop'
+  | 'discussion-street'
+  | 'home-plaza'
+  | 'home-trade-street'
+  | 'creative-exhibition'
+  | 'creative-arcade'
+  | 'career-academy'
+  | 'career-temple';
+
 export type IslandActivityType = 'browsing' | 'using';
 
-export interface OnlineUserPresence {
-  sessionId: string;
-  userId?: string;
-  userName: string;
+export interface IslandOnlineUserRecord {
+  userId: string;
+  sessionId?: string;
+  displayName?: string;
+  userName?: string;
   buildingId: IslandBuildingId;
   activity: IslandActivityType;
   updatedAt: number;
   isCurrentSession?: boolean;
 }
 
+export type OnlineUserPresence = IslandOnlineUserRecord;
+
 export interface IslandAvatarAllocation {
   id: string;
+  userId: string;
+  displayName: string;
+  label: string;
   buildingId: IslandBuildingId;
   activity: IslandActivityType;
-  label: string;
   isCurrentUser: boolean;
   slotIndex: number;
 }
 
-export interface BuildingOccupancyStat {
+export interface IslandBuildingStats {
   buildingId: IslandBuildingId;
   browsingCount: number;
   usingCount: number;
@@ -30,20 +46,26 @@ export interface BuildingOccupancyStat {
   allocatedUsingAvatars: number;
 }
 
+export type BuildingOccupancyStat = IslandBuildingStats;
+
 export const ALL_BUILDING_IDS: IslandBuildingId[] = [
-  'home',
-  'pain',
-  'discussion',
-  'creative',
-  'arcade',
-  'career',
+  'pain-innovation-tower',
+  'discussion-library',
+  'discussion-workshop',
+  'discussion-street',
+  'home-plaza',
+  'home-trade-street',
+  'creative-exhibition',
+  'creative-arcade',
+  'career-academy',
+  'career-temple',
 ];
 
 const SESSION_STORAGE_KEY = 'ideax_island_presence_session_id';
-const LOCAL_PRESENCE_MAP_KEY = 'ideax_island_presence_local_map_v1';
+const LOCAL_PRESENCE_MAP_KEY = 'ideax_island_presence_local_map_v2';
 const BROADCAST_CHANNEL_NAME = 'ideax_island_presence_channel';
 
-export function getOrCreatePresenceSessionId(): string {
+export function getOrCreateIslandSessionId(): string {
   if (typeof window === 'undefined') return 'ssr-session';
   try {
     let existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -57,80 +79,150 @@ export function getOrCreatePresenceSessionId(): string {
   }
 }
 
+export const getOrCreatePresenceSessionId = getOrCreateIslandSessionId;
+
+export function resolveIslandBuildingFromSelection(
+  islandId: string | null,
+  districtId: string | null,
+  standId?: string | null,
+): IslandBuildingId {
+  if (districtId) {
+    switch (districtId) {
+      case 'pain-innovation-tower':
+        return 'pain-innovation-tower';
+      case 'discussion-academic-district':
+      case 'discussion-library':
+        return 'discussion-library';
+      case 'discussion-tech-district':
+      case 'discussion-workshop':
+        return 'discussion-workshop';
+      case 'discussion-daily-district':
+      case 'discussion-street':
+        return 'discussion-street';
+      case 'main-trade':
+      case 'home-trade-street':
+        return 'home-trade-street';
+      case 'main-plaza':
+      case 'home-plaza':
+        return 'home-plaza';
+      case 'creative-arcade':
+        return 'creative-arcade';
+      case 'creative-exhibition':
+        return 'creative-exhibition';
+      case 'career-hanlin-district':
+      case 'career-academy':
+        return 'career-academy';
+      case 'career-temple-district':
+      case 'career-temple':
+        return 'career-temple';
+      default:
+        break;
+    }
+  }
+  if (standId && standId.startsWith('game-')) {
+    return 'creative-arcade';
+  }
+  switch (islandId) {
+    case 'pain':
+      return 'pain-innovation-tower';
+    case 'discussion':
+      return 'discussion-street';
+    case 'creative':
+      return 'creative-exhibition';
+    case 'career':
+      return 'career-temple';
+    case 'home':
+    default:
+      return 'home-plaza';
+  }
+}
+
+function createEmptyStatsMap(): Record<IslandBuildingId, IslandBuildingStats> {
+  const map = {} as Record<IslandBuildingId, IslandBuildingStats>;
+  for (const bId of ALL_BUILDING_IDS) {
+    map[bId] = {
+      buildingId: bId,
+      browsingCount: 0,
+      usingCount: 0,
+      totalCount: 0,
+      percentage: 0,
+      allocatedBrowsingAvatars: 0,
+      allocatedUsingAvatars: 0,
+    };
+  }
+  return map;
+}
+
+export const BASELINE_ONLINE_EXPLORERS: IslandOnlineUserRecord[] = [
+  { userId: 'sim_01', sessionId: 'sim_01', displayName: '林書豪', buildingId: 'home-plaza', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_02', sessionId: 'sim_02', displayName: '陳思穎', buildingId: 'home-plaza', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_03', sessionId: 'sim_03', displayName: '張維哲', buildingId: 'pain-innovation-tower', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_04', sessionId: 'sim_04', displayName: '線上創客 #108', buildingId: 'pain-innovation-tower', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_05', sessionId: 'sim_05', displayName: '黃柏翰', buildingId: 'pain-innovation-tower', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_06', sessionId: 'sim_06', displayName: '高宇翔', buildingId: 'discussion-library', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_07', sessionId: 'sim_07', displayName: '劉又嘉', buildingId: 'discussion-library', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_08', sessionId: 'sim_08', displayName: '線上讀者 #215', buildingId: 'discussion-workshop', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_09', sessionId: 'sim_09', displayName: '何佳穎', buildingId: 'discussion-workshop', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_10', sessionId: 'sim_10', displayName: '線上茶客 #302', buildingId: 'discussion-street', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_11', sessionId: 'sim_11', displayName: '周承翰', buildingId: 'discussion-street', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_12', sessionId: 'sim_12', displayName: '線上策展人 #401', buildingId: 'creative-exhibition', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_13', sessionId: 'sim_13', displayName: '曾子晴', buildingId: 'creative-exhibition', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_14', sessionId: 'sim_14', displayName: '線上玩家 #412', buildingId: 'creative-arcade', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_15', sessionId: 'sim_15', displayName: '彭敬恩', buildingId: 'creative-arcade', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_16', sessionId: 'sim_16', displayName: '線上求職者 #501', buildingId: 'career-temple', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_17', sessionId: 'sim_17', displayName: '徐宛婷', buildingId: 'career-temple', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_18', sessionId: 'sim_18', displayName: '線上智庫學者 #518', buildingId: 'career-academy', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_19', sessionId: 'sim_19', displayName: '方偉倫', buildingId: 'career-academy', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_20', sessionId: 'sim_20', displayName: '線上客官 #602', buildingId: 'home-trade-street', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_21', sessionId: 'sim_21', displayName: '王品萱', buildingId: 'home-trade-street', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_22', sessionId: 'sim_22', displayName: '線上訪客 #711', buildingId: 'pain-innovation-tower', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_23', sessionId: 'sim_23', displayName: '楊士德', buildingId: 'creative-exhibition', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_24', sessionId: 'sim_24', displayName: '許美玲', buildingId: 'career-academy', activity: 'using', updatedAt: Date.now() },
+];
+
 /**
  * 根據全體線上真人位置清單，計算：
  * 1. 每棟建築物的（瀏覽 + 使用中）佔全體線上人數的百分比 (%)
- * 2. 最多 25 個小人的配置清單（若線上 <= 25 人則 1:1 對應每個真人；若 > 25 人則依比例分配最多 25 個小人）
+ * 2. 最多 50 個小人的配置清單（若線上 <= 50 人則 1:1 對應每個真人；若 > 50 人則依比例分配最多 50 個小人）
  */
 export function computeIslandPresenceAllocation(
-  rawOnlineUsers: OnlineUserPresence[],
-  maxAvatars = 25,
+  rawOnlineUsers: IslandOnlineUserRecord[],
+  maxAvatars = 50,
 ): {
   totalOnline: number;
-  buildingStats: Record<IslandBuildingId, BuildingOccupancyStat>;
+  buildingStats: Record<IslandBuildingId, IslandBuildingStats>;
   avatars: IslandAvatarAllocation[];
 } {
-  const totalOnline = rawOnlineUsers.length;
+  const mySessionId = getOrCreateIslandSessionId();
+  const realUsersMap = new Map<string, IslandOnlineUserRecord>();
+  rawOnlineUsers.forEach((u) => {
+    const k = u.sessionId || u.userId || 'anonymous';
+    if (k.startsWith('sim_') || k.startsWith('exp_')) return;
+    realUsersMap.set(k, u);
+  });
 
-  const statsMap: Record<IslandBuildingId, BuildingOccupancyStat> = {
-    home: {
-      buildingId: 'home',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-    pain: {
-      buildingId: 'pain',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-    discussion: {
-      buildingId: 'discussion',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-    creative: {
-      buildingId: 'creative',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-    arcade: {
-      buildingId: 'arcade',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-    career: {
-      buildingId: 'career',
-      browsingCount: 0,
-      usingCount: 0,
-      totalCount: 0,
-      percentage: 0,
-      allocatedBrowsingAvatars: 0,
-      allocatedUsingAvatars: 0,
-    },
-  };
+  const combinedList: IslandOnlineUserRecord[] = Array.from(realUsersMap.values());
 
-  for (const u of rawOnlineUsers) {
-    const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home';
+  const normalizedUsers: IslandOnlineUserRecord[] =
+    combinedList.length > 0
+      ? combinedList
+      : [
+          {
+            userId: mySessionId,
+            sessionId: mySessionId,
+            displayName: '我（線上）',
+            buildingId: 'home-plaza',
+            activity: 'browsing',
+            updatedAt: Date.now(),
+            isCurrentSession: true,
+          },
+        ];
+
+  const totalOnline = normalizedUsers.length;
+  const statsMap = createEmptyStatsMap();
+
+  for (const u of normalizedUsers) {
+    const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home-plaza';
     if (u.activity === 'using') {
       statsMap[bId].usingCount += 1;
     } else {
@@ -164,8 +256,8 @@ export function computeIslandPresenceAllocation(
   // 若線上人數 <= maxAvatars (25)，每個小人 1:1 代表一位線上真人
   if (totalOnline <= maxAvatars) {
     const slotCounters: Record<string, number> = {};
-    const avatars: IslandAvatarAllocation[] = rawOnlineUsers.map((u, i) => {
-      const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home';
+    const avatars: IslandAvatarAllocation[] = normalizedUsers.map((u, i) => {
+      const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home-plaza';
       const key = `${bId}_${u.activity}`;
       const slotIdx = slotCounters[key] || 0;
       slotCounters[key] = slotIdx + 1;
@@ -176,12 +268,16 @@ export function computeIslandPresenceAllocation(
         statsMap[bId].allocatedBrowsingAvatars += 1;
       }
 
+      const id = u.userId || u.sessionId || `avatar-${i}`;
+      const name = u.displayName || u.userName || '線上訪客';
       return {
-        id: u.sessionId || `avatar-${i}`,
+        id,
+        userId: id,
+        displayName: name,
+        label: name,
         buildingId: bId,
         activity: u.activity,
-        label: u.userName || '線上訪客',
-        isCurrentUser: Boolean(u.isCurrentSession),
+        isCurrentUser: Boolean(u.isCurrentSession || id === mySessionId),
         slotIndex: slotIdx,
       };
     });
@@ -195,7 +291,7 @@ export function computeIslandPresenceAllocation(
     activity: IslandActivityType;
     count: number;
     hasCurrentUser: boolean;
-    sampleUsers: OnlineUserPresence[];
+    sampleUsers: IslandOnlineUserRecord[];
     allocated: number;
     remainder: number;
   };
@@ -203,8 +299,10 @@ export function computeIslandPresenceAllocation(
   const buckets: Bucket[] = [];
   for (const bId of ALL_BUILDING_IDS) {
     for (const act of ['browsing', 'using'] as IslandActivityType[]) {
-      const matching = rawOnlineUsers.filter(
-        (u) => (ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home') === bId && u.activity === act,
+      const matching = normalizedUsers.filter(
+        (u) =>
+          (ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home-plaza') === bId &&
+          u.activity === act,
       );
       const count = matching.length;
       const exact = (count / totalOnline) * maxAvatars;
@@ -213,7 +311,7 @@ export function computeIslandPresenceAllocation(
         buildingId: bId,
         activity: act,
         count,
-        hasCurrentUser: matching.some((m) => m.isCurrentSession),
+        hasCurrentUser: matching.some((m) => m.isCurrentSession || m.userId === mySessionId),
         sampleUsers: matching,
         allocated,
         remainder: exact - allocated,
@@ -221,7 +319,6 @@ export function computeIslandPresenceAllocation(
     }
   }
 
-  // 確保當前用戶所在的群組至少有 1 個小人代表自己
   for (const b of buckets) {
     if (b.hasCurrentUser && b.allocated === 0) {
       b.allocated = 1;
@@ -257,11 +354,15 @@ export function computeIslandPresenceAllocation(
     }
     for (let i = 0; i < b.allocated; i++) {
       const sample = b.sampleUsers[i];
+      const id = sample?.userId || sample?.sessionId || `prop_${b.buildingId}_${b.activity}_${i}`;
+      const name = sample?.displayName || sample?.userName || '線上用戶';
       avatars.push({
-        id: sample?.sessionId || `prop_${b.buildingId}_${b.activity}_${i}`,
+        id,
+        userId: id,
+        displayName: name,
+        label: name,
         buildingId: b.buildingId,
         activity: b.activity,
-        label: sample?.userName || '線上用戶',
         isCurrentUser: i === 0 && b.hasCurrentUser,
         slotIndex: i,
       });
@@ -272,21 +373,21 @@ export function computeIslandPresenceAllocation(
 }
 
 /**
- * 將本機跨分頁的即時位置寫入 localStorage 並廣播
+ * 將本機跨分頁的即時位置寫入 localStorage 並廣播，回傳最新列表
  */
-export function publishLocalPresence(presence: OnlineUserPresence): void {
-  if (typeof window === 'undefined') return;
+export function publishLocalPresence(presence: IslandOnlineUserRecord): IslandOnlineUserRecord[] {
+  const keyId = presence.userId || presence.sessionId || getOrCreateIslandSessionId();
+  if (typeof window === 'undefined') return [presence];
   try {
     const raw = localStorage.getItem(LOCAL_PRESENCE_MAP_KEY);
-    const map: Record<string, OnlineUserPresence> = raw ? JSON.parse(raw) : {};
+    const map: Record<string, IslandOnlineUserRecord> = raw ? JSON.parse(raw) : {};
     const now = Date.now();
-    // 清理超過 45 秒未更新的分頁
     for (const k of Object.keys(map)) {
       if (now - (map[k]?.updatedAt || 0) > 45000) {
         delete map[k];
       }
     }
-    map[presence.sessionId] = { ...presence, updatedAt: now };
+    map[keyId] = { ...presence, userId: keyId, sessionId: keyId, updatedAt: now };
     localStorage.setItem(LOCAL_PRESENCE_MAP_KEY, JSON.stringify(map));
   } catch {
     // ignore storage errors
@@ -301,20 +402,24 @@ export function publishLocalPresence(presence: OnlineUserPresence): void {
   } catch {
     // ignore
   }
+
+  return readLocalPresenceList(keyId);
 }
 
-export function readLocalPresenceList(currentSessionId: string): OnlineUserPresence[] {
+export function readLocalPresenceList(currentSessionId?: string): IslandOnlineUserRecord[] {
+  const activeId = currentSessionId || getOrCreateIslandSessionId();
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(LOCAL_PRESENCE_MAP_KEY);
     if (!raw) return [];
-    const map: Record<string, OnlineUserPresence> = JSON.parse(raw);
+    const map: Record<string, IslandOnlineUserRecord> = JSON.parse(raw);
     const now = Date.now();
     return Object.values(map)
       .filter((p) => p && now - (p.updatedAt || 0) <= 45000)
       .map((p) => ({
         ...p,
-        isCurrentSession: p.sessionId === currentSessionId,
+        userId: p.userId || p.sessionId || activeId,
+        isCurrentSession: (p.userId || p.sessionId) === activeId,
       }));
   } catch {
     return [];

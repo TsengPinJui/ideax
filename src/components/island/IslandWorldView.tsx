@@ -29,12 +29,19 @@ import {
   X,
 } from 'lucide-react';
 import {
+  HANLIN_EXPERT_ROSTER,
+  HanlinExpertProfile,
+  IDEAX_AGENTS,
+  IslandAgentProfile,
   IslandAction,
   IDEAX_ISLANDS,
   matchesIslandContent,
 } from '../../data/islandWorld';
 import { Question } from '../../types';
+import { useApp } from '../../context/AppContext';
 import { getEffectiveTertiaryCategory, isGameQuestion } from '../../utils/gameClassification';
+import { isCardViewsVisible } from '../../utils/questionUtils';
+import { getEffectiveQuestionViews } from '../../utils/proposalClicks';
 import {
   getDisplayShichen,
   getSceneTitle,
@@ -57,6 +64,14 @@ import {
   resolveIslandBuildingFromSelection,
   subscribeLocalPresenceChanges,
 } from '../../utils/islandPresence';
+import {
+  SUPPORTED_CITIES,
+  getStoredUserCityId,
+  setStoredUserCityId,
+  getCityConfig,
+  fetchCityWeather,
+  CityWeatherAndTime,
+} from '../../data/cityData';
 import './IslandWorldView.css';
 
 interface IslandWorldViewProps {
@@ -72,11 +87,35 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   onAction,
   onBack,
 }) => {
+  const { currentUser, publicMetricsConfig, solvers, setSelectedSolver } = useApp();
+  const isAdmin = currentUser?.role === 'admin';
+  const canShowQuestionViews = (q: Question) =>
+    isGameQuestion(q) ? isAdmin : isCardViewsVisible(publicMetricsConfig, isAdmin);
+
   // 3D 俯視視角 (Pitch: 18° ~ 74°，預設 42°)、左右旋轉 (Yaw) 與平移位置 (panX, panY)
   const [view, setView] = useState({ zoom: 1, pitch: 42, yaw: 0, panX: 0, panY: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  // +8 時區 (Asia/Taipei) 時間與天氣場景狀態（支援自動依 +8 時間變換 + 手動預覽 8 大場景）
+  // 當前城市地區設定：台北、台中、高雄、香港、吉隆坡、新加坡（地圖時間與天氣依照當地調整，並記錄供後台統計）
+  const [selectedCityId, setSelectedCityId] = useState<string>(() => getStoredUserCityId());
+  const [cityWeatherInfo, setCityWeatherInfo] = useState<CityWeatherAndTime | null>(null);
+  const [showCityMenu, setShowCityMenu] = useState(false);
+
+  const currentCity = useMemo(() => getCityConfig(selectedCityId), [selectedCityId]);
+
+  useEffect(() => {
+    let active = true;
+    fetchCityWeather(currentCity).then((data) => {
+      if (active) {
+        setCityWeatherInfo(data);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentCity]);
+
+  // +8 時區 (Asia/Taipei) 時間與天氣場景狀態（支援自動依所選城市時間與天氣變換 + 手動預覽 8 大場景）
   const [utc8Now, setUtc8Now] = useState(() => getUtc8TimeInfo());
   const [timeMode, setTimeMode] = useState<TimeOfDayMode>('auto');
   const [weatherMode, setWeatherMode] = useState<WeatherMode>('auto');
@@ -89,8 +128,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  const activeTimePhase: TimeOfDayPhase = timeMode === 'auto' ? utc8Now.phase : timeMode;
-  const activeWeather: WeatherType = weatherMode === 'auto' ? 'clear' : weatherMode;
+  const activeTimePhase: TimeOfDayPhase =
+    timeMode === 'auto'
+      ? (cityWeatherInfo?.phase || utc8Now.phase)
+      : timeMode;
+  const activeWeather: WeatherType =
+    weatherMode === 'auto'
+      ? (cityWeatherInfo?.weather || 'clear')
+      : weatherMode;
   const activeSceneTitle = getSceneTitle(activeTimePhase, activeWeather);
   const shichenDisplay = getDisplayShichen(timeMode, utc8Now);
 
@@ -104,9 +149,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const [isRightAtlasOpen, setIsRightAtlasOpen] = useState(false);
 
   // 左側彈窗/抽屜狀態（點擊條列卡片在畫面左側跳出詳細內頁，填寫表單與需求也都在左側）
-  const [leftModalMode, setLeftModalMode] = useState<'none' | 'preview' | 'form'>('none');
+  const [leftModalMode, setLeftModalMode] = useState<'none' | 'preview' | 'expert' | 'agent' | 'form'>('none');
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
-  const [formType, setFormType] = useState<'pain_point' | 'career_wish' | 'discussion' | 'proposal'>('pain_point');
+  const [previewExpert, setPreviewExpert] = useState<HanlinExpertProfile | null>(null);
+  const [previewAgent, setPreviewAgent] = useState<IslandAgentProfile | null>(null);
+  const [viewingIdCard, setViewingIdCard] = useState<{ src: string; alt: string; name: string } | null>(null);
+  const [formType, setFormType] = useState<
+    'pain_point' | 'career_wish' | 'headhunter_match' | 'discussion' | 'proposal' | 'game'
+  >('pain_point');
   const [formData, setFormData] = useState({
     title: '',
     category: '資訊科技',
@@ -116,6 +166,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const [formSubmitSuccess, setFormSubmitSuccess] = useState<string | null>(null);
   const [bountyWallCategory, setBountyWallCategory] = useState<string>('全部');
   const [localPublishedQuestions, setLocalPublishedQuestions] = useState<Question[]>([]);
+  const [randomPickedGames, setRandomPickedGames] = useState<Question[] | null>(null);
 
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -143,10 +194,12 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     const syncPresence = async () => {
       const myRecord: IslandOnlineUserRecord = {
         userId: sessionId,
+        sessionId,
         displayName: '線上訪客',
         buildingId: currentBuildingId,
         activity: currentActivityType,
         updatedAt: Date.now(),
+        isCurrentSession: true,
       };
       const localList = publishLocalPresence(myRecord);
 
@@ -158,8 +211,17 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         });
         if (res.ok) {
           const data = await res.json();
-          if (mounted && Array.isArray(data?.users) && data.users.length > 0) {
-            setOnlinePresenceUsers(data.users);
+          const list = Array.isArray(data?.users)
+            ? data.users
+            : Array.isArray(data?.onlineUsers)
+            ? data.onlineUsers
+            : null;
+          if (mounted && list && list.length > 0) {
+            const mergedMap = new Map<string, IslandOnlineUserRecord>();
+            localList.forEach((u) => mergedMap.set(u.sessionId || u.userId, u));
+            list.forEach((u: IslandOnlineUserRecord) => mergedMap.set(u.sessionId || u.userId, u));
+            mergedMap.set(sessionId, myRecord);
+            setOnlinePresenceUsers(Array.from(mergedMap.values()));
             return;
           }
         }
@@ -178,8 +240,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         setOnlinePresenceUsers((prev) => {
           const local = readLocalPresenceList();
           const map = new Map<string, IslandOnlineUserRecord>();
-          prev.forEach((u) => map.set(u.userId, u));
-          local.forEach((u) => map.set(u.userId, u));
+          prev.forEach((u) => map.set(u.sessionId || u.userId, u));
+          local.forEach((u) => map.set(u.sessionId || u.userId, u));
           return Array.from(map.values());
         });
       }
@@ -193,7 +255,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   }, [currentBuildingId, currentActivityType]);
 
   const presenceSummary = useMemo(
-    () => computeIslandPresenceAllocation(onlinePresenceUsers, 25),
+    () => computeIslandPresenceAllocation(onlinePresenceUsers, 50),
     [onlinePresenceUsers],
   );
 
@@ -226,6 +288,64 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const selectedStreet = selectedDistrict?.streets.find((street) => street.id === selectedStreetId) || null;
   const selectedStand = selectedStreet?.stands.find((item) => item.id === selectedStandId) || null;
 
+  // 整合平台真實認證專家 (solvers) 與翰林院各智庫專家名冊（人名 + 職稱/頭銜）
+  const hanlinExperts = useMemo<HanlinExpertProfile[]>(() => {
+    const map = new Map<string, HanlinExpertProfile>();
+    for (const item of HANLIN_EXPERT_ROSTER) {
+      map.set(item.name.trim(), item);
+    }
+    for (const solver of solvers || []) {
+      if (!solver?.name || map.has(solver.name.trim())) continue;
+      const text = `${solver.title || ''} ${solver.domain || ''} ${solver.subdomain || ''} ${(solver.skills || []).join(' ')}`;
+      let thinkTankId = 'hanlin-tech-street';
+      let thinkTankName = '資訊科技庫';
+      if (/獵頭|獵才|職涯|媒合|招募|HR|人資/i.test(text)) {
+        thinkTankId = 'hanlin-headhunter-street';
+        thinkTankName = '人才獵頭/媒合專家';
+      } else if (/生醫|醫療|臨床|藥|生技|健康/i.test(text)) {
+        thinkTankId = 'hanlin-biomed-street';
+        thinkTankName = '生醫療材庫';
+      } else if (/法律|專利|智財|法務|股權|投資條款/i.test(text)) {
+        thinkTankId = 'hanlin-legal-street';
+        thinkTankName = '法律智財庫';
+      } else if (/設計|文創|UI|UX|視覺|品牌識別|工業/i.test(text)) {
+        thinkTankId = 'hanlin-design-street';
+        thinkTankName = '創意設計庫';
+      } else if (/商業|行銷|管理|顧問|策略|營運|財務|SaaS/i.test(text) && !/工程師|架構師|AI/i.test(text)) {
+        thinkTankId = 'hanlin-biz-street';
+        thinkTankName = '商業經營庫';
+      }
+      map.set(solver.name.trim(), {
+        id: `expert-solver-${solver.id}`,
+        thinkTankId,
+        thinkTankName,
+        name: solver.name,
+        title: solver.title || '認證領域專家',
+        avatar:
+          solver.avatar ||
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        bio: solver.bio || '平台專業認證專家，提供深度領域諮詢與方案診斷。',
+        skills: solver.skills || [],
+        featuredCaseTitle: solver.featuredCase?.title,
+        featuredCaseOutcome: solver.featuredCase?.outcome,
+        solverId: solver.id,
+      });
+    }
+    return Array.from(map.values());
+  }, [solvers]);
+
+  const currentHanlinExperts = useMemo(() => {
+    if (selectedDistrict?.id === 'career-headhunter-district') {
+      return hanlinExperts.filter((exp) => exp.thinkTankId === 'hanlin-headhunter-street');
+    }
+    if (selectedDistrict?.id !== 'career-hanlin-district') return [];
+    if (selectedStreet) {
+      return hanlinExperts.filter((exp) => exp.thinkTankId === selectedStreet.id);
+    }
+    // 翰林院五大智庫全名冊（與獨立獵頭分開）
+    return hanlinExperts.filter((exp) => exp.thinkTankId !== 'hanlin-headhunter-street');
+  }, [hanlinExperts, selectedDistrict, selectedStreet]);
+
   const mergedQuestions = useMemo(
     () => [...localPublishedQuestions, ...questions],
     [localPublishedQuestions, questions],
@@ -256,13 +376,35 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     return counts;
   }, [mergedQuestions]);
 
+  const sortByViewsDesc = (list: Question[]) =>
+    [...list].sort(
+      (a, b) =>
+        getEffectiveQuestionViews(b.id, b.viewsCount || b.views || 0) -
+        getEffectiveQuestionViews(a.id, a.viewsCount || a.views || 0),
+    );
+
   const arcadeGameQuestions = useMemo(
-    () => mergedQuestions.filter((q) => matchesIslandContent(q, { source: 'game' })),
+    () =>
+      sortByViewsDesc(
+        mergedQuestions.filter((q) => matchesIslandContent(q, { source: 'game' })),
+      ),
     [mergedQuestions],
   );
 
+  const handleDrawRandomGames = () => {
+    const pool = [...arcadeGameQuestions];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    setRandomPickedGames(pool.slice(0, 3));
+  };
+
   const allPainQuestions = useMemo(
-    () => mergedQuestions.filter((q) => matchesIslandContent(q, { source: 'pain' })),
+    () =>
+      sortByViewsDesc(
+        mergedQuestions.filter((q) => matchesIslandContent(q, { source: 'pain' })),
+      ),
     [mergedQuestions],
   );
 
@@ -287,49 +429,69 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       );
     };
 
+    const dedupeQuestions = (list: Question[]) => {
+      const seen = new Set<string>();
+      return sortByViewsDesc(
+        list.filter((q) => {
+          if (seen.has(q.id)) return false;
+          seen.add(q.id);
+          return true;
+        }),
+      );
+    };
+
     if (selectedStand) {
-      const baseList = mergedQuestions.filter((q) => matchesIslandContent(q, selectedStand.contentFilter));
+      const baseList = dedupeQuestions(
+        mergedQuestions.filter((q) => matchesIslandContent(q, selectedStand.contentFilter)),
+      );
       if (selectedStand.id === 'pain-bounty-wall' || selectedIsland?.id === 'pain') {
         return filterByBountyCategory(baseList);
       }
       return baseList;
     }
     if (selectedStreet) {
-      const list = mergedQuestions.filter((q) =>
-        selectedStreet.stands.some((st) => matchesIslandContent(q, st.contentFilter)),
+      const list = dedupeQuestions(
+        mergedQuestions.filter((q) =>
+          selectedStreet.stands.some((st) => matchesIslandContent(q, st.contentFilter)),
+        ),
       );
       return selectedIsland?.id === 'pain' ? filterByBountyCategory(list) : list;
     }
     if (selectedDistrict) {
-      const list = mergedQuestions.filter((q) =>
-        selectedDistrict.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+      const list = dedupeQuestions(
+        mergedQuestions.filter((q) =>
+          selectedDistrict.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+        ),
       );
       return selectedIsland?.id === 'pain' ? filterByBountyCategory(list) : list;
     }
     if (selectedIsland) {
-      const list = mergedQuestions.filter((q) =>
-        selectedIsland.districts.some((dist) =>
-          dist.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+      const list = dedupeQuestions(
+        mergedQuestions.filter((q) =>
+          selectedIsland.districts.some((dist) =>
+            dist.streets.some((str) => str.stands.some((st) => matchesIslandContent(q, st.contentFilter))),
+          ),
         ),
       );
       return selectedIsland.id === 'pain' ? filterByBountyCategory(list) : list;
     }
-    return mergedQuestions.slice(0, 15);
+    return dedupeQuestions(mergedQuestions).slice(0, 15);
   }, [mergedQuestions, selectedStand, selectedStreet, selectedDistrict, selectedIsland, bountyWallCategory]);
 
   const searchResults = useMemo(() => {
     const term = searchText.trim().toLocaleLowerCase();
     if (!term) return [];
-    return mergedQuestions
-      .filter((q) => q.status !== 'delisted')
-      .filter((q) =>
-        [q.title, q.appName, q.description, q.category, q.subcategory, q.tertiaryCategory, ...(q.tags || [])]
-          .filter(Boolean)
-          .join(' ')
-          .toLocaleLowerCase()
-          .includes(term),
-      )
-      .slice(0, 15);
+    return sortByViewsDesc(
+      mergedQuestions
+        .filter((q) => q.status !== 'delisted')
+        .filter((q) =>
+          [q.title, q.appName, q.description, q.category, q.subcategory, q.tertiaryCategory, ...(q.tags || [])]
+            .filter(Boolean)
+            .join(' ')
+            .toLocaleLowerCase()
+            .includes(term),
+        ),
+    ).slice(0, 15);
   }, [mergedQuestions, searchText]);
 
   const updateZoom = (nextZoom: number) => {
@@ -361,6 +523,80 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     };
     stage.addEventListener('wheel', handleWheel, { passive: false });
     return () => stage.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // 電腦版鍵盤 WASD 與上下左右方向鍵平滑移動地圖
+  useEffect(() => {
+    const pressedKeys = new Set<string>();
+    let rafId: number | null = null;
+
+    const isEditableElement = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName.toLowerCase();
+      return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+    };
+
+    const stepLoop = () => {
+      let dx = 0;
+      let dy = 0;
+      const speed = 10;
+
+      if (pressedKeys.has('w') || pressedKeys.has('arrowup')) dy += speed;
+      if (pressedKeys.has('s') || pressedKeys.has('arrowdown')) dy -= speed;
+      if (pressedKeys.has('a') || pressedKeys.has('arrowleft')) dx += speed;
+      if (pressedKeys.has('d') || pressedKeys.has('arrowright')) dx -= speed;
+
+      if (dx !== 0 || dy !== 0) {
+        setView((v) => ({
+          ...v,
+          panX: Math.max(-850, Math.min(850, v.panX + dx)),
+          panY: Math.max(-650, Math.min(650, v.panY + dy)),
+        }));
+        rafId = requestAnimationFrame(stepLoop);
+      } else {
+        rafId = null;
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditableElement(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (
+        key === 'w' ||
+        key === 'a' ||
+        key === 's' ||
+        key === 'd' ||
+        key === 'arrowup' ||
+        key === 'arrowdown' ||
+        key === 'arrowleft' ||
+        key === 'arrowright'
+      ) {
+        e.preventDefault();
+        pressedKeys.add(key);
+        if (rafId === null) {
+          rafId = requestAnimationFrame(stepLoop);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      pressedKeys.delete(key);
+    };
+
+    const handleBlur = () => {
+      pressedKeys.clear();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // 支援電腦版（左鍵平移、右鍵俯視角/旋轉）與手機版（單指一律拖曳+俯角、雙指轉向與縮放）
@@ -508,15 +744,26 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   };
 
   // 點擊島嶼或特定建築：展開/更新右側島覽面板
-  const handleSelectIsland = (islandId: string, districtId?: string) => {
+  const handleSelectIsland = (islandId: string, districtId?: string, streetId?: string) => {
     const target = IDEAX_ISLANDS.find((i) => i.id === islandId);
     if (target) {
+      const normalizedDistrictMap: Record<string, string> = {
+        'home-plaza': 'main-plaza',
+        'home-trade-street': 'main-trade',
+        'discussion-street': 'discussion-daily-district',
+        'discussion-workshop': 'discussion-tech-district',
+        'discussion-library': 'discussion-academic-district',
+        'career-temple': 'career-temple-district',
+        'career-academy': 'career-hanlin-district',
+        'career-headhunter': 'career-headhunter-district',
+      };
+      const mappedDistrictId = districtId ? normalizedDistrictMap[districtId] || districtId : undefined;
       setSelectedIslandId(target.id);
       // 痛點島就一個「創點樓」，點擊痛點島直接進入創點樓
       const effectiveDistrictId =
-        districtId || (target.id === 'pain' ? 'pain-innovation-tower' : null);
+        mappedDistrictId || (target.id === 'pain' ? 'pain-innovation-tower' : null);
       setSelectedDistrictId(effectiveDistrictId);
-      setSelectedStreetId(null);
+      setSelectedStreetId(streetId || null);
       setSelectedStandId(null);
       setIsRightAtlasOpen(true);
     }
@@ -549,9 +796,21 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     setLeftModalMode('preview');
   };
 
+  // 點擊翰林院智庫專家：在畫面左側跳出專家檔案彈窗
+  const handleOpenExpertPreview = (expert: HanlinExpertProfile) => {
+    setPreviewExpert(expert);
+    setLeftModalMode('expert');
+  };
+
+  // 點擊創點國守護 Agent：在畫面左側跳出 Agent 檔案彈窗
+  const handleOpenAgentPreview = (agent: IslandAgentProfile) => {
+    setPreviewAgent(agent);
+    setLeftModalMode('agent');
+  };
+
   // 點擊填寫按鈕：在畫面左側跳出填寫表單彈窗
   const handleOpenFormModal = (
-    type: 'pain_point' | 'career_wish' | 'discussion' | 'proposal',
+    type: 'pain_point' | 'career_wish' | 'headhunter_match' | 'discussion' | 'proposal' | 'game',
     defaultCategory?: string,
   ) => {
     setFormType(type);
@@ -563,9 +822,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           ? defaultCategory
           : type === 'pain_point'
           ? '資訊科技'
-          : type === 'career_wish'
+          : type === 'career_wish' || type === 'headhunter_match'
           ? '資訊科技'
-          : type === 'proposal'
+          : type === 'proposal' || type === 'game'
           ? '創意設計'
           : '日常生活',
       description: '',
@@ -616,7 +875,11 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         ? `已成功將痛點「${formData.title.trim()}」刊登至創點樓懸賞牆（${formData.category}）！`
         : `已成功向「${
             formType === 'career_wish'
-              ? '求職廟廟公'
+              ? '求職廟 · 搜搜'
+              : formType === 'headhunter_match'
+              ? '人才獵頭/媒合專家'
+              : formType === 'game'
+              ? '電玩城'
               : formType === 'proposal'
               ? '展覽館策展人'
               : '日常討論街'
@@ -814,6 +1077,70 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           </button>
         </div>
 
+        {/* 右下角城市與當地天氣設定按鈕及彈窗選單 */}
+        <div className="island-bottom-right-city island-ui-interactive" aria-label="城市與天氣設定">
+          <button
+            type="button"
+            onClick={() => setShowCityMenu((prev) => !prev)}
+            className="island-city-btn"
+            title="設定城市：地圖時間與天氣將依當地即時調整"
+          >
+            <MapPin size={15} className="city-pin-icon shrink-0 text-amber-700" />
+            <span className="city-btn-name font-bold text-stone-900">{currentCity.name}</span>
+            {cityWeatherInfo && (
+              <span className="city-btn-weather text-[11px] font-semibold text-stone-600 bg-amber-100/80 px-1.5 py-0.5 rounded-md">
+                {cityWeatherInfo.temp}°C · {cityWeatherInfo.weatherDesc}
+              </span>
+            )}
+          </button>
+
+          {showCityMenu && (
+            <div className="island-city-dropdown" onClick={(e) => e.stopPropagation()}>
+              <div className="city-dropdown-header">
+                <div>
+                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                    <MapPin size={13} className="text-amber-700" />
+                    <span>城市與當地天候</span>
+                  </div>
+                  <div className="text-[10px] text-stone-500">地圖時間與天氣將依當地自動連動調整</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCityMenu(false)}
+                  className="city-dropdown-close text-stone-400 hover:text-stone-700 p-1"
+                  aria-label="關閉選單"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="city-dropdown-grid">
+                {SUPPORTED_CITIES.map((c) => {
+                  const isSelected = selectedCityId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCityId(c.id);
+                        setStoredUserCityId(c.id);
+                        setShowCityMenu(false);
+                      }}
+                      className={`city-select-card ${isSelected ? 'active' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-bold text-stone-900 text-xs">{c.name}</span>
+                        <span className="text-[10px] text-stone-500 font-medium">{c.country}</span>
+                      </div>
+                      <div className="text-[10px] text-stone-500 line-clamp-1">{c.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ============================================================
             主舞台內容：Three.js 3D 立體建模（支援 +8 時區 8 大時辰與天氣動態場景）
             ============================================================ */}
@@ -846,8 +1173,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
         <div className="island-right-atlas-inner">
           <div className="island-atlas-header">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-600">
-              <MapPin size={14} className="text-amber-700" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-600 flex-wrap">
+              <MapPin size={14} className="text-amber-700 shrink-0" />
               <span
                 onClick={() => {
                   setSelectedDistrictId(null);
@@ -872,20 +1199,18 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   </span>
                 </>
               )}
-              {selectedStreet &&
-                selectedDistrict?.id !== 'creative-exhibition' &&
-                selectedDistrict?.id !== 'pain-innovation-tower' && (
-                  <>
-                    <ChevronRight size={12} className="text-stone-400" />
-                    <span
-                      onClick={() => setSelectedStandId(null)}
-                      className="cursor-pointer hover:text-stone-900"
-                    >
-                      {selectedStreet.name}
-                    </span>
-                  </>
-                )}
-              {selectedStand && (
+              {selectedStreet && selectedDistrict?.id !== 'pain-innovation-tower' && (
+                <>
+                  <ChevronRight size={12} className="text-stone-400" />
+                  <span
+                    onClick={() => setSelectedStandId(null)}
+                    className="cursor-pointer hover:text-stone-900"
+                  >
+                    {selectedStreet.name}
+                  </span>
+                </>
+              )}
+              {selectedStand && selectedDistrict?.id !== 'career-hanlin-district' && (
                 <>
                   <ChevronRight size={12} className="text-stone-400" />
                   <span className="text-emerald-800 font-black">{selectedStand.name}</span>
@@ -896,7 +1221,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             <button
               type="button"
               onClick={() => setIsRightAtlasOpen(false)}
-              className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+              className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 shrink-0"
               title="收合"
             >
               <X size={16} />
@@ -939,6 +1264,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                       <div className="item-info">
                         <span className="item-cat">{item.category}</span>
                         <strong className="item-title">{item.title}</strong>
+                        <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
+                          {item.authorName || 'IdeaX 創作者'}
+                        </span>
                       </div>
                       <ChevronRight size={15} className="text-stone-400 shrink-0" />
                     </div>
@@ -948,141 +1276,168 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             ) : (
               <>
                 <div className="island-current-intro-box">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-base font-black text-stone-900 flex items-center gap-1.5">
-                        <span>
-                          {selectedStand?.name ||
-                            selectedStreet?.name ||
-                            selectedDistrict?.name ||
-                            selectedIsland?.name}
-                        </span>
-                        {selectedIsland?.id === 'home' && !selectedStand && (
-                          <span className="pill-badge">中央</span>
-                        )}
-                      </h2>
-                      <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                        {selectedStand?.summary ||
-                          selectedStreet?.subtitle ||
-                          selectedDistrict?.subtitle ||
-                          selectedIsland?.subtitle}
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base font-black text-stone-900 flex items-center gap-1.5">
+                      <span>
+                        {selectedStand?.name ||
+                          selectedStreet?.name ||
+                          selectedDistrict?.name ||
+                          selectedIsland?.name}
+                      </span>
+                    </h2>
                   </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-amber-900/10 flex flex-wrap gap-2">
-                    {selectedIsland?.id === 'pain' && (
-                      <>
+                  {(selectedIsland?.id === 'pain' ||
+                    selectedIsland?.id === 'career' ||
+                    selectedIsland?.id === 'discussion' ||
+                    selectedIsland?.id === 'creative') && (
+                    <div className="mt-2.5 pt-2.5 border-t border-amber-900/10 flex flex-wrap gap-2">
+                      {selectedIsland?.id === 'pain' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDistrictId('pain-innovation-tower');
+                              setSelectedStreetId('pain-bounty-wall-street');
+                              setSelectedStandId('pain-bounty-wall');
+                            }}
+                            className={`quick-post-btn ${
+                              selectedStandId !== 'pain-posting-desk'
+                                ? 'ring-2 ring-amber-700/40 bg-amber-100/90'
+                                : ''
+                            }`}
+                          >
+                            <ScrollText size={14} className="text-amber-700" />
+                            <span>懸賞牆</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDistrictId('pain-innovation-tower');
+                              setSelectedStreetId('pain-posting-desk-street');
+                              setSelectedStandId('pain-posting-desk');
+                              setFormType('pain_point');
+                              setFormSubmitSuccess(null);
+                            }}
+                            className={`quick-post-btn ${
+                              selectedStandId === 'pain-posting-desk'
+                                ? 'ring-2 ring-rose-600/40 bg-amber-100/90'
+                                : ''
+                            }`}
+                          >
+                            <Flame size={14} className="text-rose-600" />
+                            <span>佈告桌（刊登痛點）</span>
+                          </button>
+                        </>
+                      )}
+                      {selectedIsland?.id === 'career' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFormModal('career_wish')}
+                            className="quick-post-btn"
+                          >
+                            <BriefcaseBusiness size={14} className="text-amber-700" />
+                            <span>求籤許願</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDistrictId('career-headhunter-district');
+                              setSelectedStreetId(null);
+                              setSelectedStandId(null);
+                            }}
+                            className={`quick-post-btn ${
+                              selectedDistrictId === 'career-headhunter-district'
+                                ? 'ring-2 ring-amber-700/40 bg-amber-100/90'
+                                : ''
+                            }`}
+                          >
+                            <Users size={14} className="text-emerald-700" />
+                            <span>人才獵頭/媒合專家</span>
+                          </button>
+                        </>
+                      )}
+                      {selectedIsland?.id === 'discussion' && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedDistrictId('pain-innovation-tower');
-                            setSelectedStreetId('pain-bounty-wall-street');
-                            setSelectedStandId('pain-bounty-wall');
-                          }}
-                          className={`quick-post-btn ${
-                            selectedStandId !== 'pain-posting-desk'
-                              ? 'ring-2 ring-amber-700/40 bg-amber-100/90'
-                              : ''
-                          }`}
+                          onClick={() => handleOpenFormModal('discussion')}
+                          className="quick-post-btn"
                         >
-                          <ScrollText size={14} className="text-amber-700" />
-                          <span>懸賞牆（全部痛點分門別類）</span>
+                          <Users size={14} className="text-sky-700" />
+                          <span>發起話題</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDistrictId('pain-innovation-tower');
-                            setSelectedStreetId('pain-posting-desk-street');
-                            setSelectedStandId('pain-posting-desk');
-                            setFormType('pain_point');
-                            setFormSubmitSuccess(null);
-                          }}
-                          className={`quick-post-btn ${
-                            selectedStandId === 'pain-posting-desk'
-                              ? 'ring-2 ring-rose-600/40 bg-amber-100/90'
-                              : ''
-                          }`}
-                        >
-                          <Flame size={14} className="text-rose-600" />
-                          <span>佈告桌（撰寫並刊登痛點）</span>
-                        </button>
-                      </>
-                    )}
-                    {selectedIsland?.id === 'career' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormModal('career_wish')}
-                        className="quick-post-btn"
-                      >
-                        <BriefcaseBusiness size={14} className="text-amber-700" />
-                        <span>向廟公求職許願</span>
-                      </button>
-                    )}
-                    {selectedIsland?.id === 'discussion' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormModal('discussion')}
-                        className="quick-post-btn"
-                      >
-                        <Users size={14} className="text-sky-700" />
-                        <span>發起交流話題</span>
-                      </button>
-                    )}
-                    {selectedIsland?.id === 'creative' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenFormModal('proposal')}
-                        className="quick-post-btn"
-                      >
-                        <PanelsTopLeft size={14} className="text-emerald-700" />
-                        <span>登錄創新提案</span>
-                      </button>
-                    )}
-                  </div>
+                      )}
+                      {selectedIsland?.id === 'creative' && (
+                        selectedDistrict?.id === 'creative-arcade' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenFormModal('game')}
+                              className="quick-post-btn"
+                            >
+                              <Gamepad2 size={14} className="text-amber-700" />
+                              <span>上架遊戲</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDrawRandomGames}
+                              className="quick-post-btn"
+                            >
+                              <Sparkles size={14} className="text-violet-700" />
+                              <span>隨機抽 3 款</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFormModal('proposal')}
+                            className="quick-post-btn"
+                          >
+                            <PanelsTopLeft size={14} className="text-emerald-700" />
+                            <span>登錄提案</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
 
+                {/* 島嶼所轄區域（主島、創意島、討論島、徵才島） */}
                 {selectedIsland && selectedIsland.id !== 'pain' && !selectedDistrict && (
                   <div className="space-y-2 mt-3">
-                    <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">所轄區域</h3>
                     <div className="island-items-list">
-                      {selectedIsland.districts.map((dist) => {
-                        const standCount = dist.streets.reduce((sum, s) => sum + s.stands.length, 0);
-                        const badgeLabel =
-                          dist.id === 'creative-exhibition'
-                            ? `${standCount} 攤`
-                            : dist.id === 'creative-arcade'
-                            ? `${arcadeGameQuestions.length} 款遊戲`
-                            : dist.id === 'pain-innovation-tower'
-                            ? '懸賞牆 · 佈告桌'
-                            : `${dist.streets.length} 街`;
-                        return (
-                          <button
-                            key={dist.id}
-                            type="button"
-                            onClick={() => setSelectedDistrictId(dist.id)}
-                            className="island-choice-row"
-                          >
-                            <div className="choice-text">
-                              <strong>{dist.name}</strong>
-                              <small>{dist.subtitle}</small>
-                            </div>
-                            <span className="choice-count">
-                              {badgeLabel} <ChevronRight size={14} />
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {selectedIsland.districts.map((dist) => (
+                        <button
+                          key={dist.id}
+                          type="button"
+                          onClick={() => {
+                            if (dist.id === 'main-trade') return;
+                            setSelectedDistrictId(dist.id);
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
+                          className={`island-choice-row ${dist.id === 'main-trade' ? 'cursor-default opacity-85 hover:border-amber-900/15' : ''}`}
+                        >
+                          <div className="choice-text">
+                            <strong>{dist.name}</strong>
+                          </div>
+                          <span className="choice-count">
+                            {dist.id === 'main-trade' ? '開發中' : <>進入 <ChevronRight size={14} /></>}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
 
+                {/* 創意島 > 展覽館：第一層「展場清單」 */}
                 {selectedDistrict &&
                   selectedDistrict.id === 'creative-exhibition' &&
+                  !selectedStreet &&
                   !selectedStand && (
                     <div className="space-y-2 mt-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">攤位清單</h3>
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => {
@@ -1096,85 +1451,462 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                         </button>
                       </div>
                       <div className="island-items-list">
-                        {selectedDistrict.streets
-                          .flatMap((street) => street.stands)
-                          .map((stand) => (
-                            <button
-                              key={stand.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedStreetId(stand.parentStreetId);
-                                setSelectedStandId(stand.id);
-                              }}
-                              className="island-choice-row"
-                            >
-                              <div className="choice-text">
-                                <strong>{stand.name}</strong>
-                                <small>{stand.summary}</small>
-                              </div>
-                              <span className="choice-count">
-                                瀏覽攤位 <ChevronRight size={14} />
-                              </span>
-                            </button>
-                          ))}
+                        {selectedDistrict.streets.map((hall) => (
+                          <button
+                            key={hall.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedStreetId(hall.id);
+                              setSelectedStandId(null);
+                            }}
+                            className="island-choice-row"
+                          >
+                            <div className="choice-text">
+                              <strong>{hall.name}</strong>
+                            </div>
+                            <span className="choice-count">
+                              進入 <ChevronRight size={14} />
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
 
+                {/* 創意島 > 展覽館 > 某展場：第二層「展位清單（細分類）」 */}
                 {selectedDistrict &&
-                  selectedDistrict.id === 'creative-arcade' &&
-                  !selectedStreet &&
+                  selectedDistrict.id === 'creative-exhibition' &&
+                  selectedStreet &&
                   !selectedStand && (
                     <div className="space-y-2 mt-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">
-                          遊戲清單（{arcadeGameQuestions.length} 款）
-                        </h3>
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
-                          onClick={() => setSelectedDistrictId(null)}
+                          onClick={() => {
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
                           className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
                         >
                           <ArrowLeft size={12} /> 回上層
                         </button>
                       </div>
-                      {arcadeGameQuestions.length > 0 ? (
-                        <div className="island-items-list">
-                          {arcadeGameQuestions.map((game) => (
+                      <div className="island-items-list">
+                        {selectedStreet.stands.map((subStand) => {
+                          const standCaseCount = mergedQuestions.filter((q) =>
+                            matchesIslandContent(q, subStand.contentFilter),
+                          ).length;
+                          return (
                             <button
-                              key={game.id}
+                              key={subStand.id}
                               type="button"
-                              onClick={() => handleOpenItemPreview(game)}
+                              onClick={() => setSelectedStandId(subStand.id)}
                               className="island-choice-row"
                             >
                               <div className="choice-text">
-                                <strong>{game.appName || game.title}</strong>
-                                <small>
-                                  {getEffectiveTertiaryCategory(game) || game.subcategory || game.category}
-                                </small>
+                                <strong>{subStand.name}</strong>
                               </div>
                               <span className="choice-count">
-                                進入遊戲 <ChevronRight size={14} />
+                                {standCaseCount} 個攤位 <ChevronRight size={14} />
                               </span>
                             </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="island-empty-box">
-                          <p>目前電玩城暫無公開遊戲作品</p>
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
+                {/* 創意島 > 電玩城：隨機抽 3 款結果 */}
+                {selectedDistrict &&
+                  selectedDistrict.id === 'creative-arcade' &&
+                  randomPickedGames && (
+                    <div className="space-y-2 mt-3 p-3 rounded-2xl bg-amber-50/80 border border-amber-900/15">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-950">🎲 隨機抽出 3 款遊戲</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleDrawRandomGames}
+                            className="text-[11px] font-bold text-violet-800 hover:underline"
+                          >
+                            再抽一次
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRandomPickedGames(null)}
+                            className="text-[11px] font-bold text-stone-500 hover:text-stone-800"
+                          >
+                            關閉
+                          </button>
+                        </div>
+                      </div>
+                      <div className="island-items-list">
+                        {randomPickedGames.map((game) => (
+                          <button
+                            key={game.id}
+                            type="button"
+                            onClick={() => handleOpenItemPreview(game)}
+                            className="island-choice-row"
+                          >
+                            <div className="choice-text">
+                              <strong>{game.appName || game.title}</strong>
+                            </div>
+                            <span className="choice-count">
+                              進入 <ChevronRight size={14} />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* 創意島 > 電玩城：依不同種類遊戲分展區 */}
+                {selectedDistrict &&
+                  selectedDistrict.id === 'creative-arcade' &&
+                  !selectedStreet &&
+                  !selectedStand && (
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRandomPickedGames(null);
+                            setSelectedDistrictId(null);
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
+                          className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                        >
+                          <ArrowLeft size={12} /> 回上層
+                        </button>
+                      </div>
+                      <div className="island-items-list">
+                        {selectedDistrict.streets.map((street) => {
+                          const rawCat = street.name.replace('展區', '');
+                          const zoneGames = arcadeGameQuestions.filter((g) => {
+                            const tertiary = getEffectiveTertiaryCategory(g);
+                            const sub = g.subcategory || '';
+                            const title = g.title || '';
+                            return (
+                              tertiary === rawCat ||
+                              sub.includes(rawCat) ||
+                              title.includes(rawCat)
+                            );
+                          });
+                          return (
+                            <button
+                              key={street.id}
+                              type="button"
+                              onClick={() => {
+                                setRandomPickedGames(null);
+                                setSelectedStreetId(street.id);
+                                setSelectedStandId(null);
+                              }}
+                              className="island-choice-row"
+                            >
+                              <div className="choice-text">
+                                <strong>{street.name}</strong>
+                              </div>
+                              <span className="choice-count">
+                                {zoneGames.length} 款 <ChevronRight size={14} />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                {/* 創意島 > 電玩城 > 特定展區：該種類遊戲作品清單 */}
+                {selectedDistrict &&
+                  selectedDistrict.id === 'creative-arcade' &&
+                  selectedStreet && (
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
+                          className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                        >
+                          <ArrowLeft size={12} /> 回上層
+                        </button>
+                      </div>
+                      {(() => {
+                        const rawCat = selectedStreet.name.replace('展區', '');
+                        const zoneGames = arcadeGameQuestions.filter((g) => {
+                          const tertiary = getEffectiveTertiaryCategory(g);
+                          const sub = g.subcategory || '';
+                          const title = g.title || '';
+                          return (
+                            tertiary === rawCat ||
+                            sub.includes(rawCat) ||
+                            title.includes(rawCat)
+                          );
+                        });
+                        const displayGames = zoneGames.length > 0 ? zoneGames : arcadeGameQuestions.slice(0, 4);
+                        return (
+                          <div className="island-items-list">
+                            {displayGames.map((game) => (
+                              <button
+                                key={game.id}
+                                type="button"
+                                onClick={() => handleOpenItemPreview(game)}
+                                className="island-choice-row"
+                              >
+                                <div className="choice-text">
+                                  <strong>{game.appName || game.title}</strong>
+                                </div>
+                                <span className="choice-count">
+                                  進入 <ChevronRight size={14} />
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                {/* 徵才島 > 翰林院：五大專業智庫 */}
+                {selectedDistrict &&
+                  selectedDistrict.id === 'career-hanlin-district' &&
+                  !selectedStreet && (
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDistrictId(null);
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
+                          className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                        >
+                          <ArrowLeft size={12} /> 回上層
+                        </button>
+                      </div>
+
+                      <div className="island-items-list">
+                        {selectedDistrict.streets.map((thinkTank) => {
+                          const expertCount = hanlinExperts.filter(
+                            (exp) => exp.thinkTankId === thinkTank.id,
+                          ).length;
+                          return (
+                            <button
+                              key={thinkTank.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedStreetId(thinkTank.id);
+                                setSelectedStandId(null);
+                              }}
+                              className="island-choice-row"
+                            >
+                              <div className="choice-text">
+                                <strong>{thinkTank.name}</strong>
+                              </div>
+                              <span className="choice-count">
+                                {expertCount} 位專家 <ChevronRight size={14} />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                {/* 徵才島 > 翰林院 > 特定智庫專家名冊 */}
+                {selectedDistrict &&
+                  selectedDistrict.id === 'career-hanlin-district' &&
+                  selectedStreet && (
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStreetId(null);
+                            setSelectedStandId(null);
+                          }}
+                          className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                        >
+                          <ArrowLeft size={12} /> 回上層
+                        </button>
+                      </div>
+
+                      <div className="island-items-list">
+                        {currentHanlinExperts.map((expert) => (
+                          <button
+                            key={expert.id}
+                            type="button"
+                            onClick={() => handleOpenExpertPreview(expert)}
+                            className="island-choice-row"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={expert.avatar}
+                                alt={expert.name}
+                                className="w-9 h-9 rounded-full object-cover border border-amber-900/20 shrink-0"
+                              />
+                              <div className="choice-text min-w-0">
+                                <strong>{expert.name}</strong>
+                                <small className="truncate">{expert.title}</small>
+                              </div>
+                            </div>
+                            <span className="choice-count shrink-0">
+                              查看 <ChevronRight size={14} />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* 徵才島 > 人才獵頭 / 媒合專家 */}
+                {selectedDistrict && selectedDistrict.id === 'career-headhunter-district' && (
+                  <div className="space-y-3 mt-3">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDistrictId(null);
+                          setSelectedStreetId(null);
+                          setSelectedStandId(null);
+                        }}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回上層
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-900/15 space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white border border-amber-900/20 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs p-0.5">
+                          <img
+                            src="/agents/baimiao.webp"
+                            alt="白喵"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="text-xs text-stone-700">
+                          <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                            <span>白喵</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-amber-200/80 rounded text-amber-900">
+                              市場顧問 Agent
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFormModal('headhunter_match')}
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                      >
+                        <span>委託人才獵頭 / 媒合專家</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    <div className="island-items-list">
+                      {currentHanlinExperts.map((expert) => (
+                        <button
+                          key={expert.id}
+                          type="button"
+                          onClick={() => handleOpenExpertPreview(expert)}
+                          className="island-choice-row"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={expert.avatar}
+                              alt={expert.name}
+                              className="w-9 h-9 rounded-full object-cover border border-amber-900/20 shrink-0"
+                            />
+                            <div className="choice-text min-w-0">
+                              <strong>{expert.name}</strong>
+                              <small className="truncate">{expert.title}</small>
+                            </div>
+                          </div>
+                          <span className="choice-count shrink-0">
+                            查看 <ChevronRight size={14} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 徵才島 > 求職廟：求籤（填需求 匯職缺） */}
+                {selectedDistrict && selectedDistrict.id === 'career-temple-district' && (
+                  <div className="space-y-3 mt-3">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDistrictId(null);
+                          setSelectedStreetId(null);
+                          setSelectedStandId(null);
+                        }}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回上層
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-900/15 space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white border border-amber-900/20 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs p-0.5">
+                          <img
+                            src="/agents/sousou.webp"
+                            alt="搜搜"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="text-xs text-stone-700">
+                          <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                            <span>搜搜</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-amber-200/80 rounded text-amber-900">
+                              探索者 Agent
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFormModal('career_wish')}
+                          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                        >
+                          <span>🧧 求籤（填需求）</span>
+                          <ArrowRight size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAction('jobs')}
+                          className="w-full py-2 px-3 rounded-xl bg-white hover:bg-stone-50 border border-amber-900/20 text-amber-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all"
+                        >
+                          <BriefcaseBusiness size={13} className="text-amber-700" />
+                          <span>匯職缺</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 其他區域（主島、討論島）的街道清單 */}
                 {selectedDistrict &&
                   selectedDistrict.id !== 'creative-exhibition' &&
                   selectedDistrict.id !== 'creative-arcade' &&
                   selectedDistrict.id !== 'pain-innovation-tower' &&
+                  selectedDistrict.id !== 'career-hanlin-district' &&
+                  selectedDistrict.id !== 'career-temple-district' &&
+                  selectedDistrict.id !== 'career-headhunter-district' &&
                   !selectedStreet && (
                     <div className="space-y-2 mt-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">街道清單</h3>
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => setSelectedDistrictId(null)}
@@ -1193,10 +1925,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                           >
                             <div className="choice-text">
                               <strong>{street.name}</strong>
-                              <small>{street.subtitle}</small>
                             </div>
                             <span className="choice-count">
-                              {street.stands.length} 攤 <ChevronRight size={14} />
+                              進入 <ChevronRight size={14} />
                             </span>
                           </button>
                         ))}
@@ -1204,19 +1935,164 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                     </div>
                   )}
 
+                {/* 主島 > 中央廣場 > 島覽地圖：新手導覽教學、平台介紹、運作說明、條款聲明（新分頁開啟） */}
+                {selectedDistrict?.id === 'main-plaza' && selectedStreet?.id === 'main-quick-street' && (
+                  <div className="space-y-2.5 mt-3">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStreetId(null)}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回上層
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <a
+                        href="/?onboarding=true"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/60 hover:from-amber-100 hover:to-orange-100/80 border border-amber-900/15 hover:border-amber-900/35 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs block"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-amber-900/15 flex items-center justify-center shrink-0 text-amber-800 shadow-2xs">
+                            <Compass className="w-4 h-4 text-amber-700" />
+                          </div>
+                          <strong className="text-xs font-black text-stone-900">
+                            1. 新手導覽教學
+                          </strong>
+                        </div>
+                        <span className="shrink-0 text-[11px] font-bold text-amber-900 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg border border-amber-900/15 group-hover:bg-amber-700 group-hover:text-white transition-all">
+                          新分頁進入 ↗
+                        </span>
+                      </a>
+
+                      <a
+                        href="/about?section=intro"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50/60 hover:from-sky-100 hover:to-blue-100/80 border border-sky-900/15 hover:border-sky-900/35 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs block"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-sky-900/15 flex items-center justify-center shrink-0 text-sky-800 shadow-2xs">
+                            <Sparkles className="w-4 h-4 text-sky-700" />
+                          </div>
+                          <strong className="text-xs font-black text-stone-900">
+                            2. 平台介紹
+                          </strong>
+                        </div>
+                        <span className="shrink-0 text-[11px] font-bold text-sky-900 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg border border-sky-900/15 group-hover:bg-sky-700 group-hover:text-white transition-all">
+                          新分頁進入 ↗
+                        </span>
+                      </a>
+
+                      <a
+                        href="/about?section=tiers"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50/60 hover:from-emerald-100 hover:to-teal-100/80 border border-emerald-900/15 hover:border-emerald-900/35 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs block"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-emerald-900/15 flex items-center justify-center shrink-0 text-emerald-800 shadow-2xs">
+                            <PanelsTopLeft className="w-4 h-4 text-emerald-700" />
+                          </div>
+                          <strong className="text-xs font-black text-stone-900">
+                            3. 運作說明
+                          </strong>
+                        </div>
+                        <span className="shrink-0 text-[11px] font-bold text-emerald-900 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg border border-emerald-900/15 group-hover:bg-emerald-700 group-hover:text-white transition-all">
+                          新分頁進入 ↗
+                        </span>
+                      </a>
+
+                      <a
+                        href="/about?section=terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-left p-3 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50/60 hover:from-purple-100 hover:to-indigo-100/80 border border-purple-900/15 hover:border-purple-900/35 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs block"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-purple-900/15 flex items-center justify-center shrink-0 text-purple-800 shadow-2xs">
+                            <ScrollText className="w-4 h-4 text-purple-700" />
+                          </div>
+                          <strong className="text-xs font-black text-stone-900">
+                            4. 條款聲明
+                          </strong>
+                        </div>
+                        <span className="shrink-0 text-[11px] font-bold text-purple-900 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg border border-purple-900/15 group-hover:bg-purple-700 group-hover:text-white transition-all">
+                          新分頁進入 ↗
+                        </span>
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* 主島 > 中央廣場 > 角色介紹：六大 Agent 名冊 */}
+                {selectedDistrict?.id === 'main-plaza' && selectedStreet?.id === 'main-agents-street' && (
+                  <div className="space-y-2.5 mt-3">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStreetId(null)}
+                        className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                      >
+                        <ArrowLeft size={12} /> 回上層
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {IDEAX_AGENTS.map((agent) => (
+                        <button
+                          key={agent.id}
+                          type="button"
+                          onClick={() => handleOpenAgentPreview(agent)}
+                          className="w-full text-left p-2.5 rounded-2xl bg-amber-50/40 hover:bg-amber-100/60 border border-amber-900/15 hover:border-amber-900/30 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-2xs"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-amber-900/15 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs p-0.5">
+                              <img
+                                src={agent.img}
+                                alt={agent.name}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <strong className="text-xs font-black text-stone-900">
+                                {agent.name}
+                              </strong>
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-950 border border-amber-300">
+                                {agent.title}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="shrink-0 text-xs font-bold text-amber-900 flex items-center gap-1">
+                            看檔案 <ChevronRight size={14} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {selectedStreet &&
+                  selectedStreet.id !== 'main-agents-street' &&
+                  selectedStreet.id !== 'main-quick-street' &&
+                  selectedStreet.id !== 'main-latest-street' &&
                   selectedDistrict?.id !== 'creative-exhibition' &&
+                  selectedDistrict?.id !== 'creative-arcade' &&
                   selectedDistrict?.id !== 'pain-innovation-tower' &&
+                  selectedDistrict?.id !== 'career-hanlin-district' &&
+                  selectedDistrict?.id !== 'career-headhunter-district' &&
+                  selectedDistrict?.id !== 'career-temple-district' &&
                   !selectedStand && (
                     <div className="space-y-2 mt-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-stone-500 uppercase tracking-wider">攤位場景</h3>
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => setSelectedStreetId(null)}
                           className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
                         >
-                          <ArrowLeft size={12} /> 回街道
+                          <ArrowLeft size={12} /> 回上層
                         </button>
                       </div>
                       <div className="island-items-list">
@@ -1229,10 +2105,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                           >
                             <div className="choice-text">
                               <strong>{stand.name}</strong>
-                              <small>{stand.summary}</small>
                             </div>
                             <span className="choice-count">
-                              瀏覽 <ChevronRight size={14} />
+                              進入 <ChevronRight size={14} />
                             </span>
                           </button>
                         ))}
@@ -1244,9 +2119,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   <div className="mt-2.5 mb-3 space-y-2">
                     <div className="island-stand-action-box">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-black text-amber-950">
-                          懸賞牆（全部痛點分門別類）
-                        </span>
+                        <span className="text-xs font-black text-amber-950">懸賞牆</span>
                         <span className="text-[11px] text-stone-500">
                           共 {currentStandQuestions.length} 則
                         </span>
@@ -1295,12 +2168,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                     </button>
 
                     <div className="island-stand-action-box">
-                      <h4 className="text-xs font-black text-amber-950 mb-1">
-                        🖋️ 佈告桌 · 撰寫痛點並刊登
+                      <h4 className="text-xs font-black text-amber-950 mb-2">
+                        🖋️ 佈告桌 · 刊登痛點
                       </h4>
-                      <p className="text-[11px] text-stone-600 mb-2.5">
-                        填寫以下痛點表單，送出後將直接張貼刊登至創點樓「懸賞牆」對應分類：
-                      </p>
 
                       {formSubmitSuccess && (
                         <div className="mb-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex flex-col gap-1.5">
@@ -1316,7 +2186,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                             }}
                             className="self-start text-[11px] font-black text-amber-800 hover:underline flex items-center gap-1"
                           >
-                            <span>前往懸賞牆查看已刊登痛點</span>
+                            <span>查看已刊登痛點</span>
                             <ArrowRight size={12} />
                           </button>
                         </div>
@@ -1334,14 +2204,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                           <input
                             type="text"
                             required
-                            placeholder="例如：傳統餐飲店每日食材盤點耗時且易出錯..."
+                            placeholder="請輸入痛點標題..."
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                           />
                         </div>
 
                         <div className="island-field-group">
-                          <label>懸賞牆分類</label>
+                          <label>分類</label>
                           <select
                             value={formData.category}
                             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -1356,11 +2226,11 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                         </div>
 
                         <div className="island-field-group">
-                          <label>詳細痛點描述</label>
+                          <label>詳細描述</label>
                           <textarea
                             rows={3}
                             required
-                            placeholder="請詳細描述您遇到的痛點情境、目前困擾與期望解決方式..."
+                            placeholder="請描述痛點情境與期望解決方式..."
                             value={formData.description}
                             onChange={(e) =>
                               setFormData({ ...formData, description: e.target.value })
@@ -1369,7 +2239,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                         </div>
 
                         <div className="island-field-group">
-                          <label>關鍵標籤（選填，以逗點分隔）</label>
+                          <label>關鍵標籤（選填）</label>
                           <input
                             type="text"
                             placeholder="例如：自動化, 盤點, AI"
@@ -1380,7 +2250,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
                         <button type="submit" className="island-form-submit-btn">
                           <Send size={14} />
-                          <span>刊登痛點至懸賞牆</span>
+                          <span>刊登痛點</span>
                         </button>
                       </form>
                     </div>
@@ -1389,92 +2259,71 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
                 {selectedStand &&
                   selectedStand.id !== 'pain-bounty-wall' &&
-                  selectedStand.id !== 'pain-posting-desk' && (
+                  selectedStand.id !== 'pain-posting-desk' &&
+                  selectedDistrict?.id !== 'career-hanlin-district' && (
                     <div className="mt-2 mb-3">
                       <button
                         type="button"
                         onClick={() => {
                           setSelectedStandId(null);
-                          if (selectedDistrict?.id === 'creative-exhibition') {
-                            setSelectedStreetId(null);
-                          }
                         }}
                         className="island-back-link mb-2"
                       >
-                        <ArrowLeft size={13} />{' '}
-                        {selectedDistrict?.id === 'creative-exhibition'
-                          ? '回展覽館攤位清單'
-                          : '回街道攤位清單'}
+                        <ArrowLeft size={13} /> 回上層
                       </button>
-                      <div className="island-stand-action-box">
-                        <p className="prompt-text">{selectedStand.interactionPrompt}</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (selectedStand.contentKind === 'jobs') handleOpenFormModal('career_wish');
-                            else if (selectedStand.contentFilter.source === 'pain')
-                              handleOpenFormModal('pain_point');
-                            else if (selectedStand.contentFilter.source === 'discussion')
-                              handleOpenFormModal('discussion');
-                            else if (selectedStand.contentFilter.source === 'proposal')
-                              handleOpenFormModal('proposal');
-                            else onAction(selectedStand.npcProfile.action);
-                          }}
-                          className="stand-action-btn"
-                        >
-                          <span>{selectedStand.npcProfile.actionLabel}</span>
-                          <ArrowRight size={14} />
-                        </button>
-                      </div>
                     </div>
                   )}
 
-                <div className="mt-4 pt-3 border-t border-stone-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-black text-stone-700 flex items-center gap-1.5">
-                      <ScrollText size={14} className="text-amber-700" />
-                      <span>條列式內容瀏覽</span>
-                    </h4>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-900">
-                      {currentStandQuestions.length} 則公開內容
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-stone-500 mb-2.5">
-                    點擊任何卡片，將在畫面左側跳出彈窗顯示詳細內頁：
-                  </p>
-
-                  {currentStandQuestions.length > 0 ? (
-                    <div className="island-cards-list">
-                      {currentStandQuestions.map((q) => (
-                        <div
-                          key={q.id}
-                          className="island-item-row"
-                          onClick={() => handleOpenItemPreview(q)}
-                        >
-                          {(q.coverImage || q.cardDisplayImage) && (
-                            <img
-                              src={q.coverImage || q.cardDisplayImage}
-                              alt=""
-                              className="item-thumb"
-                            />
-                          )}
-                          <div className="item-info">
-                            <span className="item-cat">{q.category}</span>
-                            <strong className="item-title">{q.title}</strong>
-                            <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
-                              {q.authorName || 'IdeaX 創作者'} · 瀏覽 {q.viewsCount || q.views || 0}
-                            </span>
-                          </div>
-                          <ChevronRight size={15} className="text-stone-400 shrink-0" />
+                {/* 條列式內容（僅在進入具體看板/攤位/懸賞牆時顯示，不在選單階層顯示） */}
+                {(selectedIsland?.id === 'pain' ||
+                  selectedStreet?.id === 'main-latest-street' ||
+                  Boolean(selectedStand)) &&
+                  selectedStand?.id !== 'pain-posting-desk' &&
+                  selectedIsland?.id !== 'career' &&
+                  selectedDistrict?.id !== 'creative-arcade' && (
+                    <div className="mt-3 pt-3 border-t border-stone-200">
+                      {selectedStreet?.id === 'main-latest-street' && !selectedStand && (
+                        <div className="flex items-center justify-end mb-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStreetId(null)}
+                            className="text-[11px] font-bold text-amber-800 hover:underline flex items-center gap-1"
+                          >
+                            <ArrowLeft size={12} /> 回上層
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="island-empty-box">
-                      <p>此處暫無內容，您可點擊上方按鈕送出第一則！</p>
+                      )}
+
+                      {currentStandQuestions.length > 0 ? (
+                        <div className="island-cards-list">
+                          {currentStandQuestions.map((q) => (
+                            <div
+                              key={q.id}
+                              className="island-item-row"
+                              onClick={() => handleOpenItemPreview(q)}
+                            >
+                              {(q.coverImage || q.cardDisplayImage) && (
+                                <img
+                                  src={q.coverImage || q.cardDisplayImage}
+                                  alt=""
+                                  className="item-thumb"
+                                />
+                              )}
+                              <div className="item-info">
+                                <span className="item-cat">{q.subcategory || q.category}</span>
+                                <strong className="item-title">{q.appName || q.title}</strong>
+                              </div>
+                              <ChevronRight size={15} className="text-stone-400 shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="island-empty-box">
+                          <p>暫無內容</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
               </>
             )}
           </div>
@@ -1493,12 +2342,12 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   {previewQuestion.postType === 'pain_point'
                     ? '痛點需求'
                     : previewQuestion.postType === 'innovation_proposal'
-                    ? '創新提案'
+                    ? '創新提案攤位'
                     : previewQuestion.postType === 'chat_discussion'
                     ? '交流討論'
                     : isGameQuestion(previewQuestion)
                     ? '遊戲作品'
-                    : '作品展示'}
+                    : '作品攤位'}
                 </span>
                 <button
                   type="button"
@@ -1543,7 +2392,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   />
                   <div>
                     <span className="author-name">{previewQuestion.authorName || 'IdeaX 使用者'}</span>
-                    <span className="author-date">{previewQuestion.createdAt || '近期發布'}</span>
+                    <span className="author-date">
+                      {previewQuestion.createdAt || '近期發布'}
+                    </span>
                   </div>
                 </div>
 
@@ -1589,14 +2440,188 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             </div>
           )}
 
+          {leftModalMode === 'expert' && previewExpert && (
+            <div className="island-preview-pane">
+              <div className="island-pane-header">
+                <span className="island-preview-badge">翰林院 · {previewExpert.thinkTankName}</span>
+                <button
+                  type="button"
+                  onClick={() => setLeftModalMode('none')}
+                  className="island-drawer-close"
+                  aria-label="關閉左側彈窗"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="island-preview-body">
+                <div className="flex items-center gap-3 mb-3">
+                  <img
+                    src={previewExpert.avatar}
+                    alt={previewExpert.name}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-amber-700/30 shrink-0"
+                  />
+                  <div>
+                    <h2 className="text-lg font-black text-stone-900">{previewExpert.name}</h2>
+                    <p className="text-xs font-bold text-amber-900 mt-0.5">{previewExpert.title}</p>
+                  </div>
+                </div>
+
+                <div className="island-preview-meta mb-3">
+                  {previewExpert.skills.map((skill) => (
+                    <span key={skill} className="sub-tag">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="island-preview-desc">
+                  <p>{previewExpert.bio}</p>
+                  {previewExpert.featuredCaseTitle && (
+                    <div className="mt-3 p-3 rounded-xl bg-amber-50/80 border border-amber-900/15">
+                      <div className="text-xs font-black text-amber-950 mb-1">
+                        代表實戰案例：{previewExpert.featuredCaseTitle}
+                      </div>
+                      {previewExpert.featuredCaseOutcome && (
+                        <div className="text-xs text-stone-700">{previewExpert.featuredCaseOutcome}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="island-preview-actions">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFormModal('headhunter_match')}
+                    className="island-action-primary-btn"
+                  >
+                    <Users size={16} />
+                    <span>向此專家 / 智庫發起獵才與專案媒合委託</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (previewExpert.solverId) {
+                        const matched = (solvers || []).find((s) => s.id === previewExpert.solverId);
+                        if (matched) setSelectedSolver(matched);
+                      }
+                      onAction('experts');
+                    }}
+                    className="island-action-secondary-btn"
+                  >
+                    <span>前往平台專家智庫查看完整檔案 ↗</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {leftModalMode === 'agent' && previewAgent && (
+            <div className="island-preview-pane">
+              <div className="island-pane-header">
+                <span className="island-preview-badge">創點國守護者 · {previewAgent.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setLeftModalMode('none')}
+                  className="island-drawer-close"
+                  aria-label="關閉左側彈窗"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="island-preview-body">
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100/60 border border-amber-900/20 overflow-hidden flex items-center justify-center shrink-0 p-1">
+                    <img
+                      src={previewAgent.img}
+                      alt={previewAgent.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-stone-900">{previewAgent.name}</h2>
+                    <p className="text-xs font-bold text-amber-900 mt-0.5">{previewAgent.title}</p>
+                    {previewAgent.tagline && (
+                      <span className="text-[11px] font-black text-violet-700 block mt-0.5">
+                        {previewAgent.tagline}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="island-preview-desc mb-3">
+                  <p className="text-xs text-stone-700 leading-relaxed">{previewAgent.intro}</p>
+                </div>
+
+                <div className="mb-3.5">
+                  <h4 className="text-xs font-black text-stone-800 mb-1.5 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-amber-600" /> 職責與守護任務
+                  </h4>
+                  <ul className="space-y-1 text-xs text-stone-700">
+                    {previewAgent.duties.map((duty, dIdx) => (
+                      <li key={dIdx} className="flex items-start gap-1.5">
+                        <span className="text-amber-500 font-bold">•</span>
+                        <span>{duty}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mb-3.5">
+                  <h4 className="text-xs font-black text-stone-800 mb-1.5 flex items-center gap-1.5">
+                    <MapPin size={13} className="text-stone-500" /> 出沒地點
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewAgent.spots.map((spot, sIdx) => (
+                      <span
+                        key={sIdx}
+                        className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-100/80 text-amber-950 border border-amber-300 font-bold"
+                      >
+                        {spot}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {previewAgent.idCard && (
+                  <div className="mt-3 p-3 rounded-2xl bg-amber-50/80 border border-amber-900/15">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black text-amber-950 flex items-center gap-1">
+                        <ScrollText size={13} className="text-amber-700" /> 創點國虛擬身分證
+                      </span>
+                      <span className="text-[10px] text-stone-500 font-bold text-amber-800">點擊看大圖</span>
+                    </div>
+                    <img
+                      src={previewAgent.idCard.thumb}
+                      alt={`${previewAgent.name}身分證`}
+                      onClick={() =>
+                        setViewingIdCard({
+                          src: previewAgent.idCard!.full,
+                          alt: `${previewAgent.name}的創點國身分證`,
+                          name: `創點國身分證-${previewAgent.name}`,
+                        })
+                      }
+                      className="w-full rounded-xl border border-amber-900/20 shadow-xs cursor-zoom-in hover:scale-[1.01] transition-transform"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {leftModalMode === 'form' && (
             <div className="island-form-pane">
               <div className="island-pane-header">
                 <h3 className="font-black text-sm text-stone-900">
                   {formType === 'pain_point' && '🔥 創點樓 · 寫下你的難題'}
-                  {formType === 'career_wish' && '🧧 求職廟 · 向廟公許願求職'}
+                  {formType === 'career_wish' && '🧧 求職廟 · 求籤許願'}
+                  {formType === 'headhunter_match' && '🤝 徵才島 · 人才獵頭 / 媒合專家委託'}
                   {formType === 'discussion' && '💬 日常討論街 · 發起交流話題'}
                   {formType === 'proposal' && '💡 展覽館 · 登錄創新提案'}
+                  {formType === 'game' && '🎮 電玩城 · 上架遊戲'}
                 </h3>
                 <button
                   type="button"
@@ -1621,7 +2646,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   className={formType === 'career_wish' ? 'active' : ''}
                   onClick={() => handleOpenFormModal('career_wish')}
                 >
-                  求職廟許願
+                  求職許願
+                </button>
+                <button
+                  type="button"
+                  className={formType === 'headhunter_match' ? 'active' : ''}
+                  onClick={() => handleOpenFormModal('headhunter_match')}
+                >
+                  獵頭/媒合
                 </button>
                 <button
                   type="button"
@@ -1637,18 +2669,24 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 >
                   創新提案
                 </button>
+                <button
+                  type="button"
+                  className={formType === 'game' ? 'active' : ''}
+                  onClick={() => handleOpenFormModal('game')}
+                >
+                  上架遊戲
+                </button>
               </div>
 
               <div className="island-form-prompt-box">
                 <Sparkles size={16} className="text-amber-600 shrink-0 mt-0.5" />
                 <p>
-                  {formType === 'pain_point' &&
-                    '客官請講！創點樓掌櫃阿點替您備好筆墨卷軸，說說您切身遇到的問題與需求。'}
-                  {formType === 'career_wish' &&
-                    '信士請進！求職廟廟公將聆聽您的求職需求並紀錄，用來在匯職缺為您精準比對工作。'}
+                  {formType === 'pain_point' && '寫下您切身遇到的問題與需求。'}
+                  {formType === 'career_wish' && '填寫求職條件，搜搜將為你在全網匯職缺比對最新機會。'}
+                  {formType === 'headhunter_match' && '填寫目標職位或專家條件，由白喵與獵頭團隊為您精準對接。'}
                   {formType === 'discussion' && '開一桌新話題！邀請全島朋友坐下一同切磋探討。'}
-                  {formType === 'proposal' &&
-                    '登錄創新作品與點子！在展覽館展示給島民與潛在合作夥伴。'}
+                  {formType === 'proposal' && '登錄創新作品與點子，展示給島民與合作夥伴。'}
+                  {formType === 'game' && '填寫遊戲名稱與作品資訊，上架至電玩城展區。'}
                 </p>
               </div>
 
@@ -1671,15 +2709,27 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               ) : (
                 <form onSubmit={handleFormSubmit} className="island-form-body">
                   <div className="island-field-group">
-                    <label>{formType === 'career_wish' ? '期望職稱 / 目標職位' : '主題標題'}</label>
+                    <label>
+                      {formType === 'career_wish'
+                        ? '期望職稱 / 目標職位'
+                        : formType === 'headhunter_match'
+                        ? '欲獵尋人才職稱 / 欲媒合專家領域'
+                        : formType === 'game'
+                        ? '遊戲名稱'
+                        : '主題標題'}
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder={
                         formType === 'career_wish'
                           ? '例如：資深前端工程師、AI 產品經理...'
+                          : formType === 'headhunter_match'
+                          ? '例如：尋訪 AI 架構師、媒合生醫法規取證顧問...'
                           : formType === 'pain_point'
                           ? '例如：找尋能自動整理多平台財務報表的工具...'
+                          : formType === 'game'
+                          ? '請輸入遊戲作品名稱...'
                           : '請輸入標題名稱...'
                       }
                       value={formData.title}
@@ -1697,6 +2747,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                       <option value="商業經營">商業經營</option>
                       <option value="生醫療材">生醫療材</option>
                       <option value="創意設計">創意設計</option>
+                      <option value="法律智財">法律智財</option>
                       <option value="日常生活">日常生活</option>
                       <option value="學術探討">學術探討</option>
                     </select>
@@ -1704,14 +2755,20 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
                   <div className="island-field-group">
                     <label>
-                      {formType === 'career_wish' ? '個人專長技能與工作期望條件' : '詳細需求描述'}
+                      {formType === 'career_wish'
+                        ? '個人專長技能與工作期望條件'
+                        : formType === 'headhunter_match'
+                        ? '獵才條件 / 專案專家媒合需求說明'
+                        : '詳細需求描述'}
                     </label>
                     <textarea
                       rows={4}
                       required
                       placeholder={
                         formType === 'career_wish'
-                          ? '請描述您的技能專長、期望地區、薪資條件或特殊需求，廟公將為您紀錄並精準比對...'
+                          ? '請描述技能專長、期望地區或薪資條件...'
+                          : formType === 'headhunter_match'
+                          ? '請描述人才資歷、合作模式或專家條件...'
                           : '請詳細描述您遇到的難題與期望解法...'
                       }
                       value={formData.description}

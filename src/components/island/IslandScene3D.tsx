@@ -149,6 +149,7 @@ export interface IslandLabelOverlay {
   id: string;
   islandId: string;
   districtId?: string;
+  streetId?: string;
   buildingId?: IslandBuildingId;
   title: string;
   subtitle?: string;
@@ -156,6 +157,8 @@ export interface IslandLabelOverlay {
   imgPos: [number, number]; // percentage [x%, y%] on the 2nd/3rd map panorama
   isSecondary?: boolean;
   kind: 'island' | 'building';
+  isStaticOnly?: boolean;
+  tier?: 1 | 2 | 3;
 }
 
 interface IslandScene3DProps {
@@ -166,11 +169,11 @@ interface IslandScene3DProps {
   contentCounts: Record<string, number>;
   avatars?: IslandAvatarAllocation[];
   buildingStats?: Record<IslandBuildingId, IslandBuildingStats>;
-  onSelectIsland: (islandId: string, districtId?: string) => void;
+  onSelectIsland: (islandId: string, districtId?: string, streetId?: string) => void;
   onFocusIsland?: (islandId: string) => void;
 }
 
-// 島名標籤（75% 及以下遠景俯瞰時只顯示島名，點擊島名自動聚焦到 100% 並顯示建築物名）
+// 一級地名：島名標籤（< 75% 遠景俯瞰時顯示；點擊島名自動聚焦到 100% 並顯示建築物與分展區）
 export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
   {
     id: 'island-label-pain',
@@ -180,6 +183,7 @@ export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [-32, 15.6, -24.5],
     imgPos: [27.5, 11.2],
     kind: 'island',
+    tier: 1,
   },
   {
     id: 'island-label-discussion',
@@ -188,6 +192,7 @@ export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [32, 13.8, -24.5],
     imgPos: [77.1, 18.8],
     kind: 'island',
+    tier: 1,
   },
   {
     id: 'island-label-home',
@@ -196,6 +201,7 @@ export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [0, 14.5, -1.0],
     imgPos: [50.4, 37.8],
     kind: 'island',
+    tier: 1,
   },
   {
     id: 'island-label-creative',
@@ -205,6 +211,7 @@ export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [-32, 12.6, 24.0],
     imgPos: [14.9, 50.6],
     kind: 'island',
+    tier: 1,
   },
   {
     id: 'island-label-career',
@@ -213,11 +220,74 @@ export const ISLAND_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [32, 13.8, 24.0],
     imgPos: [88.3, 53.0],
     kind: 'island',
+    tier: 1,
   },
 ];
 
-// 建築物名稱標籤（與島名分開，聚焦至 100% 或 >75% 時顯示各建築物名稱與即時在線人數佔比 %）
+// 二級地名與三級地名標籤：
+// 二級地名：75% 以上（包含）且 < 100% 時只顯示二級（各島主要建築/核心分區）
+// 三級地名：100% 以上（包含）才能顯示三級（各展位、看板、電玩展區與獨立媒合處）
 export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
+  // 1. 主島（中央廣場、貿易街）
+  {
+    id: 'bldg-home-plaza',
+    islandId: 'home',
+    districtId: 'main-plaza',
+    buildingId: 'home-plaza',
+    title: '中央廣場',
+    worldPos: [0, 12.2, -1.2],
+    imgPos: [50.4, 37.8],
+    kind: 'building',
+    tier: 2,
+  },
+  {
+    id: 'bldg-home-explore',
+    islandId: 'home',
+    districtId: 'main-plaza',
+    title: '探索看板',
+    worldPos: [-4.6, 8.4, -2.8],
+    imgPos: [46.5, 36.2],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-home-map',
+    islandId: 'home',
+    districtId: 'main-plaza',
+    title: '島覽地圖',
+    worldPos: [4.6, 8.4, -2.8],
+    imgPos: [54.5, 36.2],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-home-agents',
+    islandId: 'home',
+    districtId: 'main-plaza',
+    title: '角色介紹',
+    worldPos: [0, 8.8, 3.8],
+    imgPos: [50.4, 42.5],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-home-trade',
+    islandId: 'home',
+    districtId: 'main-trade',
+    buildingId: 'home-trade-street',
+    title: '貿易街(開發中)',
+    worldPos: [6.8, 7.5, 4.8],
+    imgPos: [56.8, 43.5],
+    kind: 'building',
+    isSecondary: true,
+    isStaticOnly: true,
+    tier: 2,
+  },
+
+  // 2. 痛點島（創點樓）
   {
     id: 'bldg-pain-tower',
     islandId: 'pain',
@@ -227,60 +297,32 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [-32.5, 13.8, -24.8],
     imgPos: [27.5, 11.2],
     kind: 'building',
+    tier: 2,
   },
   {
-    id: 'bldg-discussion-library',
-    islandId: 'discussion',
-    districtId: 'discussion-library',
-    buildingId: 'discussion-library',
-    title: '藏書閣',
-    worldPos: [28.2, 11.6, -26.5],
-    imgPos: [73.0, 16.5],
-    kind: 'building',
-  },
-  {
-    id: 'bldg-discussion-workshop',
-    islandId: 'discussion',
-    districtId: 'discussion-workshop',
-    buildingId: 'discussion-workshop',
-    title: '工作坊',
-    worldPos: [36.2, 10.0, -25.0],
-    imgPos: [81.0, 18.8],
+    id: 'bldg-pain-bounty',
+    islandId: 'pain',
+    districtId: 'pain-innovation-tower',
+    title: '懸賞牆',
+    worldPos: [-35.5, 9.2, -26.0],
+    imgPos: [24.5, 10.0],
     kind: 'building',
     isSecondary: true,
+    tier: 3,
   },
   {
-    id: 'bldg-discussion-street',
-    islandId: 'discussion',
-    districtId: 'discussion-street',
-    buildingId: 'discussion-street',
-    title: '日常討論街',
-    worldPos: [32.0, 7.8, -18.2],
-    imgPos: [77.1, 24.0],
+    id: 'bldg-pain-posting',
+    islandId: 'pain',
+    districtId: 'pain-innovation-tower',
+    title: '佈告桌',
+    worldPos: [-29.5, 8.8, -23.5],
+    imgPos: [30.5, 12.5],
     kind: 'building',
     isSecondary: true,
+    tier: 3,
   },
-  {
-    id: 'bldg-home-plaza',
-    islandId: 'home',
-    districtId: 'home-plaza',
-    buildingId: 'home-plaza',
-    title: '中央廣場',
-    worldPos: [0, 12.2, -1.2],
-    imgPos: [50.4, 37.8],
-    kind: 'building',
-  },
-  {
-    id: 'bldg-home-trade',
-    islandId: 'home',
-    districtId: 'home-trade-street',
-    buildingId: 'home-trade-street',
-    title: '貿易街',
-    worldPos: [5.2, 7.5, 3.2],
-    imgPos: [55.0, 42.0],
-    kind: 'building',
-    isSecondary: true,
-  },
+
+  // 3. 創意島（展覽館、電玩城）
   {
     id: 'bldg-creative-exhibition',
     islandId: 'creative',
@@ -290,6 +332,40 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [-35.8, 10.4, 21.5],
     imgPos: [14.9, 50.6],
     kind: 'building',
+    tier: 2,
+  },
+  {
+    id: 'bldg-creative-ai-booth',
+    islandId: 'creative',
+    districtId: 'creative-exhibition',
+    title: 'AI工具展場',
+    worldPos: [-38.8, 7.8, 18.5],
+    imgPos: [12.0, 48.0],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-creative-software-booth',
+    islandId: 'creative',
+    districtId: 'creative-exhibition',
+    title: '軟體應用展場',
+    worldPos: [-36.2, 7.6, 25.2],
+    imgPos: [15.2, 54.0],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-creative-proposal-booth',
+    islandId: 'creative',
+    districtId: 'creative-exhibition',
+    title: '創新提案展場',
+    worldPos: [-32.5, 7.6, 18.0],
+    imgPos: [18.5, 47.5],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
   },
   {
     id: 'bldg-creative-arcade',
@@ -300,28 +376,139 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     worldPos: [-27.2, 8.2, 28.2],
     imgPos: [26.4, 64.2],
     kind: 'building',
-    isSecondary: true,
+    tier: 2,
   },
+  // 電玩城下轄不同種類遊戲分展區（三級地名，100% 顯示）
+  {
+    id: 'bldg-arcade-casual',
+    islandId: 'creative',
+    districtId: 'creative-arcade',
+    streetId: 'game-street-休閒派對',
+    title: '休閒派對展區',
+    worldPos: [-24.2, 7.8, 29.5],
+    imgPos: [28.0, 65.5],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-arcade-puzzle',
+    islandId: 'creative',
+    districtId: 'creative-arcade',
+    streetId: 'game-street-策略益智',
+    title: '策略益智展區',
+    worldPos: [-27.5, 7.8, 32.2],
+    imgPos: [25.5, 68.0],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-arcade-arena',
+    islandId: 'creative',
+    districtId: 'creative-arcade',
+    streetId: 'game-street-競技對戰',
+    title: '競技對戰展區',
+    worldPos: [-30.2, 7.8, 28.5],
+    imgPos: [23.0, 64.0],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-arcade-adventure',
+    islandId: 'creative',
+    districtId: 'creative-arcade',
+    streetId: 'game-street-解謎劇情',
+    title: '冒險解謎展區',
+    worldPos: [-28.5, 7.8, 25.0],
+    imgPos: [25.0, 61.5],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+  {
+    id: 'bldg-arcade-sim',
+    islandId: 'creative',
+    districtId: 'creative-arcade',
+    streetId: 'game-street-模擬體驗',
+    title: '模擬體驗展區',
+    worldPos: [-24.5, 7.8, 25.8],
+    imgPos: [28.5, 62.5],
+    kind: 'building',
+    isSecondary: true,
+    tier: 3,
+  },
+
+  // 4. 討論島（藏書閣、工作坊、茶藝街）
+  {
+    id: 'bldg-discussion-library',
+    islandId: 'discussion',
+    districtId: 'discussion-academic-district',
+    buildingId: 'discussion-library',
+    title: '藏書閣',
+    worldPos: [28.2, 11.6, -26.5],
+    imgPos: [73.0, 16.5],
+    kind: 'building',
+    tier: 2,
+  },
+  {
+    id: 'bldg-discussion-workshop',
+    islandId: 'discussion',
+    districtId: 'discussion-tech-district',
+    buildingId: 'discussion-workshop',
+    title: '工作坊',
+    worldPos: [36.2, 10.0, -25.0],
+    imgPos: [81.0, 18.8],
+    kind: 'building',
+    tier: 2,
+  },
+  {
+    id: 'bldg-discussion-street',
+    islandId: 'discussion',
+    districtId: 'discussion-daily-district',
+    buildingId: 'discussion-street',
+    title: '茶藝街',
+    worldPos: [32.0, 7.8, -18.2],
+    imgPos: [77.1, 24.0],
+    kind: 'building',
+    tier: 2,
+  },
+
+  // 5. 徵才島（翰林院、求職廟、人才獵頭/媒合專家）
   {
     id: 'bldg-career-academy',
     islandId: 'career',
-    districtId: 'career-academy',
+    districtId: 'career-hanlin-district',
     buildingId: 'career-academy',
     title: '翰林院',
     worldPos: [28.4, 10.6, 22.8],
     imgPos: [84.0, 51.0],
     kind: 'building',
+    tier: 2,
   },
   {
     id: 'bldg-career-temple',
     islandId: 'career',
-    districtId: 'career-temple',
+    districtId: 'career-temple-district',
     buildingId: 'career-temple',
     title: '求職廟',
     worldPos: [35.8, 11.4, 24.2],
     imgPos: [91.0, 54.5],
     kind: 'building',
+    tier: 2,
+  },
+  {
+    id: 'bldg-career-headhunter',
+    islandId: 'career',
+    districtId: 'career-headhunter-district',
+    streetId: 'hanlin-headhunter-street',
+    title: '人才獵頭/媒合專家',
+    worldPos: [25.0, 7.6, 26.2],
+    imgPos: [80.5, 54.5],
+    kind: 'building',
     isSecondary: true,
+    tier: 3,
   },
 ];
 
@@ -685,6 +872,24 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       stallBlue: new THREE.MeshStandardMaterial({ color: 0x3d85c6, roughness: 0.6 }),
       stallRed: new THREE.MeshStandardMaterial({ color: 0xd9534f, roughness: 0.6 }),
       stallGold: new THREE.MeshStandardMaterial({ color: 0xf0ad4e, roughness: 0.6 }),
+      dirtPathMat: new THREE.MeshStandardMaterial({ color: 0x93764d, roughness: 0.95 }),
+      riceShootMat: new THREE.MeshStandardMaterial({ color: 0x48a832, roughness: 0.8, flatShading: true }),
+      paddyWaterMat: new THREE.MeshStandardMaterial({ color: 0x3d949b, roughness: 0.18, metalness: 0.22 }),
+      mountainMidMat: new THREE.MeshStandardMaterial({ color: 0x395b4c, roughness: 0.92, flatShading: true }),
+      mountainFarMat: new THREE.MeshStandardMaterial({ color: 0x496372, roughness: 0.95, transparent: true, opacity: 0.65, flatShading: true }),
+      mountainInfiniteMat: new THREE.MeshStandardMaterial({ color: 0x6e8494, roughness: 1.0, transparent: true, opacity: 0.35, flatShading: true }),
+      caveRockMat: new THREE.MeshStandardMaterial({ color: 0x24282e, roughness: 0.95, flatShading: true }),
+      caveWaterMat: new THREE.MeshStandardMaterial({ color: 0x1f7a8c, roughness: 0.12, metalness: 0.35, emissive: 0x0a3340, emissiveIntensity: 0.35 }),
+      oxBrownMat: new THREE.MeshStandardMaterial({ color: 0xb5783f, roughness: 0.82 }),
+      oxHornMat: new THREE.MeshStandardMaterial({ color: 0x3d352e, roughness: 0.6 }),
+      farmerRobeBlue: new THREE.MeshStandardMaterial({ color: 0x3b6278, roughness: 0.85 }),
+      bambooStrawMat: new THREE.MeshStandardMaterial({ color: 0xd4b26f, roughness: 0.88 }),
+      egretFeatherMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 }),
+      egretBeakMat: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }),
+      sheepWoolMat: new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.95 }),
+      pigSkinMat: new THREE.MeshStandardMaterial({ color: 0xf8b4be, roughness: 0.68 }),
+      chickenFeatherMat: new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.75 }),
+      roosterCombMat: new THREE.MeshStandardMaterial({ color: 0xd92b2b, roughness: 0.6 }),
     };
 
     const worldGroup = new THREE.Group();
@@ -879,8 +1084,36 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     // =========================================================
-    // HELPER BUILDERS (Trees, Pavilions, Lanterns, Island Base)
+    // HELPER BUILDERS (Trees, Pavilions, Lanterns, Organic Island Base)
     // =========================================================
+    const createOrganicShape = (
+      radiusX: number,
+      radiusZ: number,
+      seed: number,
+      elongateSouth = 0,
+    ) => {
+      const pts: THREE.Vector2[] = [];
+      const segments = 32;
+      for (let i = 0; i < segments; i++) {
+        const a = (i / segments) * Math.PI * 2;
+        const wave =
+          1 +
+          0.045 * Math.sin(a * 3 + seed) +
+          0.032 * Math.cos(a * 5 - seed * 1.7) +
+          0.02 * Math.sin(a * 2 + seed * 0.8);
+        const rx = radiusX * wave;
+        let rz = radiusZ * wave;
+        if (elongateSouth > 0 && Math.sin(a) > 0) {
+          rz += elongateSouth * Math.pow(Math.sin(a), 1.6);
+        }
+        pts.push(new THREE.Vector2(Math.cos(a) * rx, Math.sin(a) * rz));
+      }
+      const shape = new THREE.Shape();
+      shape.moveTo(pts[0].x, pts[0].y);
+      shape.splineThru([...pts.slice(1), pts[0]]);
+      return shape;
+    };
+
     const createIslandBase = (
       islandId: string,
       x: number,
@@ -893,44 +1126,59 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       group.position.set(x, 0, z);
       group.userData = { islandId };
 
-      const shallowGeo = new THREE.CylinderGeometry(radiusX * 1.14, radiusX * 1.22, 0.3, 24);
-      const shallowMat = new THREE.MeshBasicMaterial({ color: 0x7fd4d2, transparent: true, opacity: 0.35 });
-      const shallow = new THREE.Mesh(shallowGeo, shallowMat);
-      shallow.position.y = -0.45;
-      shallow.scale.set(1, 1, radiusZ / radiusX);
-      group.add(shallow);
+      const seed =
+        islandId === 'home'
+          ? 1.2
+          : islandId === 'pain'
+          ? 2.5
+          : islandId === 'discussion'
+          ? 3.8
+          : islandId === 'creative'
+          ? 5.1
+          : 6.4;
+      const elongateSouth = islandId === 'home' ? 2.4 : 0;
 
-      const cliffBottom = new THREE.Mesh(
-        new THREE.CylinderGeometry(radiusX * 0.98, radiusX * 0.86, height * 0.65, 16),
-        mats.cliffDark,
-      );
-      cliffBottom.position.y = height * 0.22;
-      cliffBottom.scale.set(1, 1, radiusZ / radiusX);
-      group.add(cliffBottom);
+      // 單一有機不規則島嶼岸線（向下深扎至河床 y = -2.1，絕不懸浮或堆疊圓盤）
+      const baseShape = createOrganicShape(radiusX * 0.98, radiusZ * 0.98, seed, elongateSouth);
+      const rockExtrude = new THREE.ExtrudeGeometry(baseShape, {
+        depth: height + 1.4,
+        bevelEnabled: true,
+        bevelSegments: 4,
+        steps: 1,
+        bevelSize: 0.78,
+        bevelThickness: 0.35,
+        curveSegments: 24,
+      });
+      rockExtrude.rotateX(Math.PI / 2);
+      const rockMesh = new THREE.Mesh(rockExtrude, mats.cliffRock);
+      rockMesh.position.y = height - 0.35;
+      group.add(rockMesh);
 
-      const cliffUpper = new THREE.Mesh(
-        new THREE.CylinderGeometry(radiusX, radiusX * 0.96, height * 0.55, 16),
-        mats.cliffRock,
-      );
-      cliffUpper.position.y = height * 0.68;
-      cliffUpper.scale.set(1, 1, radiusZ / radiusX);
-      group.add(cliffUpper);
-
-      const grassCap = new THREE.Mesh(
-        new THREE.CylinderGeometry(radiusX * 0.99, radiusX * 1.01, 0.65, 20),
-        mats.grassTop,
-      );
-      grassCap.position.y = height;
-      grassCap.scale.set(1, 1, radiusZ / radiusX);
+      const grassShape = createOrganicShape(radiusX * 0.97, radiusZ * 0.97, seed, elongateSouth);
+      const grassExtrude = new THREE.ExtrudeGeometry(grassShape, {
+        depth: 0.16,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.38,
+        bevelThickness: 0.16,
+        curveSegments: 24,
+      });
+      grassExtrude.rotateX(Math.PI / 2);
+      const grassCap = new THREE.Mesh(grassExtrude, mats.grassTop);
+      grassCap.position.y = height + 0.16;
       group.add(grassCap);
 
-      for (let i = 0; i < 10; i++) {
-        const angle = (i / 10) * Math.PI * 2 + 0.3;
-        const rx = Math.cos(angle) * radiusX * 0.95;
-        const rz = Math.sin(angle) * radiusZ * 0.95;
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1 + (i % 3) * 0.35, 0), mats.cliffRock);
-        rock.position.set(rx, height * 0.45, rz);
-        rock.scale.set(1.2, 1.4, 1.1);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + seed * 0.4;
+        const rx = Math.cos(angle) * radiusX * 0.98;
+        const rz = Math.sin(angle) * radiusZ * 0.98;
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.95 + (i % 3) * 0.3, 0),
+          mats.cliffRock,
+        );
+        rock.position.set(rx, height * 0.28, rz);
+        rock.scale.set(1.2, 1.1, 1.1);
         group.add(rock);
       }
 
@@ -965,15 +1213,18 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     const swayingWillowFronds: Array<{ group: THREE.Group; phase: number }> = [];
+    const swayingTrees: Array<{ group: THREE.Group; phase: number; amp: number }> = [];
+    const swayingRiceShoots: Array<{ mesh: THREE.Mesh; baseX: number; baseZ: number; phase: number }> = [];
 
-    // 桃花樹（隱世桃源粉嫩桃花林）
-    const createSakuraTree = (scale = 1) => {
+    // 桃花樹（隱世桃源粉嫩桃花林，微風中隨風輕擺）
+    const createSakuraTree = (scale = 1, canSway = true) => {
       const tree = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.28, 1.65, 7), mats.woodDark);
       trunk.position.y = 0.82;
       trunk.rotation.z = 0.06;
       tree.add(trunk);
 
+      const crownGroup = new THREE.Group();
       const blobs: Array<[number, number, number, number]> = [
         [0, 1.95, 0, 1.08],
         [-0.68, 1.68, 0.36, 0.82],
@@ -987,8 +1238,18 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         );
         crown.position.set(bx, by, bz);
         crown.scale.set(1.18, 0.86, 1.18);
-        tree.add(crown);
+        crownGroup.add(crown);
       });
+      tree.add(crownGroup);
+
+      if (canSway) {
+        swayingTrees.push({
+          group: crownGroup,
+          phase: Math.random() * Math.PI * 2,
+          amp: 0.045,
+        });
+      }
+
       tree.scale.setScalar(scale);
       enableShadows(tree);
       return tree;
@@ -1347,21 +1608,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 2. CENTRAL ISLAND (主島)
     // =========================================================
-    const homeBase = createIslandBase('home', 0, 0, 12.2, 11.2, 3.2);
+    const homeBase = createIslandBase('home', 0, 0, 15.6, 14.6, 3.2);
     const homeY = homeBase.topY;
 
-    for (let step = 0; step < 3; step++) {
-      const r = 6.2 - step * 1.35;
-      const disk = new THREE.Mesh(
-        new THREE.CylinderGeometry(r, r + 0.25, 0.36, 24),
-        step % 2 === 0 ? mats.stonePlaza : mats.stoneStep,
-      );
-      disk.position.y = homeY + step * 0.34;
-      homeBase.group.add(disk);
-    }
+    // 中央青石八角廣場台基（單層平整青石台，避免圓盤堆疊感）
+    const centralPlaza = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.8, 5.1, 0.28, 8),
+      mats.stonePlaza,
+    );
+    centralPlaza.position.y = homeY + 0.14;
+    homeBase.group.add(centralPlaza);
 
     const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.75, 1.15, 8), mats.stoneStep);
-    pedestal.position.y = homeY + 1.35;
+    pedestal.position.y = homeY + 0.85;
     homeBase.group.add(pedestal);
 
     // 主島中央「經典立體燈泡雕像」（360° 旋轉、玻璃球罩 + 收腰燈頸 + 內部發光鎢絲與燈芯 + 愛迪生金屬螺紋底座）
@@ -1585,7 +1844,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
     // 江南青石水榭碼頭與飛簷接官亭
     const pierGroup = new THREE.Group();
-    pierGroup.position.set(0, 0.4, 13.5);
+    pierGroup.position.set(0, 0.4, 16.4);
     homeBase.group.add(pierGroup);
 
     const pierDeck = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.36, 6.8), mats.stonePlaza);
@@ -1611,9 +1870,9 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       });
     }
 
-    // 停泊於主島水榭碼頭畔的江南雕花畫舫（取代原本的西式三角帆船）
+    // 停泊於主島水榭碼頭畔的江南雕花畫舫
     const sailboat = new THREE.Group();
-    sailboat.position.set(3.8, -0.18, 14.8);
+    sailboat.position.set(3.8, -0.18, 17.6);
     sailboat.rotation.y = -0.38;
     homeBase.group.add(sailboat);
 
@@ -1637,14 +1896,14 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     boatLantern.position.set(0, 0.95, 1.95);
     sailboat.add(boatLantern);
 
-    // 主島平地樹木：江南垂柳 + 桃花樹（「桃紅柳綠」隱世桃源）
+    // 主島平地樹木：江南垂柳 + 桃花樹（全數穩立於主島草坪內）
     [
       [-9.2, -1.2, 1.12],
       [9.2, -1.0, 1.08],
       [-4.6, -8.2, 0.98],
       [4.6, -8.2, 1.02],
-      [-7.8, 6.8, 1.05],
-      [7.8, 6.8, 1.05],
+      [-7.4, 6.4, 1.05],
+      [7.4, 6.4, 1.05],
     ].forEach(([tx, tz, sc], idx) => {
       const t = idx % 2 === 0 ? createWillowTree(sc) : createSakuraTree(sc);
       t.position.set(tx, homeY, tz);
@@ -1654,7 +1913,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 3. TOP-LEFT ISLAND (痛點島 · 創點樓)
     // =========================================================
-    const painBase = createIslandBase('pain', -32, -24, 11.8, 10.5, 3.8);
+    const painBase = createIslandBase('pain', -32, -24, 15.2, 13.6, 3.8);
     const painY = painBase.topY;
 
     const towerGroup = new THREE.Group();
@@ -1733,7 +1992,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 4. TOP-RIGHT ISLAND (討論島 · 江南白牆黛瓦藏書閣與水榭工作坊)
     // =========================================================
-    const discBase = createIslandBase('discussion', 32, -24, 12.2, 10.8, 3.6);
+    const discBase = createIslandBase('discussion', 32, -24, 15.4, 13.8, 3.6);
     const discY = discBase.topY;
 
     const libGroup = new THREE.Group();
@@ -1812,7 +2071,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     discBase.group.add(discRockBamboo);
 
     const discWheel = createWaterwheel();
-    discWheel.position.set(-9.8, 1.8, -5.2);
+    discWheel.position.set(-13.8, 1.5, -5.2);
     discWheel.rotation.y = Math.PI / 4;
     discBase.group.add(discWheel);
 
@@ -1831,7 +2090,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 5. BOTTOM-LEFT ISLAND (創意島 · 展覽館 + 電玩城)
     // =========================================================
-    const creativeBase = createIslandBase('creative', -32, 24, 12.6, 11.2, 3.2);
+    const creativeBase = createIslandBase('creative', -32, 24, 15.4, 13.8, 3.2);
     const creativeY = creativeBase.topY;
 
     const exhibGroup = new THREE.Group();
@@ -1920,7 +2179,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     creativeBase.group.add(creativeRockBamboo);
 
     const creativeWheel = createWaterwheel();
-    creativeWheel.position.set(9.5, 1.5, 5.8);
+    creativeWheel.position.set(13.6, 1.4, 5.8);
     creativeWheel.rotation.y = -Math.PI / 5;
     creativeBase.group.add(creativeWheel);
 
@@ -1939,7 +2198,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 6. BOTTOM-RIGHT ISLAND (徵才島 · 翰林院 · 求職廟)
     // =========================================================
-    const careerBase = createIslandBase('career', 32, 24, 12.6, 11.2, 3.4);
+    const careerBase = createIslandBase('career', 32, 24, 15.4, 13.8, 3.4);
     const careerY = careerBase.topY;
 
     const hanlinGroup = new THREE.Group();
@@ -2031,14 +2290,92 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     // =========================================================
-    // 7. 江南青石拱橋 (TRADITIONAL JIANGNAN STONE ARCHED BRIDGES)
+    // 7. 江南青石拱橋與橋上垂釣客 NPC (TRADITIONAL JIANGNAN STONE ARCHED BRIDGES & ANGLERS)
     // =========================================================
+    const animatedAnglers: Array<{ rodGroup: THREE.Group; phase: number }> = [];
+    const anglerRobeMats = [
+      new THREE.MeshStandardMaterial({ color: 0x365b6d, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x4b6b53, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x6b5344, roughness: 0.8 }),
+    ];
+    const anglerSkinMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd, roughness: 0.65 });
+    const fishingLineMat = new THREE.MeshBasicMaterial({
+      color: 0xe2e8f0,
+      transparent: true,
+      opacity: 0.75,
+    });
+
+    // 橋上垂釣客 NPC（頭戴斗笠或髮髻，手握修長竹魚竿倚欄垂釣，屬於場景 NPC，頭上無倒三角）
+    const createBridgeAnglerNPC = (sideDir: 1 | -1, robeIdx: number, phase: number) => {
+      const angler = new THREE.Group();
+      // 面向橋外水面 (+X 或 -X)
+      angler.rotation.y = sideDir > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+      const legs = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.09, 0.1, 0.42, 6),
+        mats.woodDark,
+      );
+      legs.position.y = 0.21;
+      angler.add(legs);
+
+      const torso = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.2, 0.56, 8),
+        anglerRobeMats[robeIdx % anglerRobeMats.length],
+      );
+      torso.position.y = 0.62;
+      angler.add(torso);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8), anglerSkinMat);
+      head.position.set(0, 1.0, 0.02);
+      angler.add(head);
+
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.16, 10), mats.bambooStrawMat);
+      hat.position.set(0, 1.12, 0.02);
+      hat.rotation.x = 0.12;
+      angler.add(hat);
+
+      // 竹魚竿與垂入水面的釣線、紅白浮標
+      const rodGroup = new THREE.Group();
+      rodGroup.position.set(0.08, 0.72, 0.18);
+
+      const rodPole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.028, 2.65, 6),
+        mats.bambooStrawMat,
+      );
+      rodPole.rotation.x = Math.PI / 2.8;
+      rodPole.position.set(0, 0.42, 1.18);
+      rodGroup.add(rodPole);
+
+      // 釣線（自竿尖垂直落向橋下水面）
+      const lineLen = 4.5;
+      const fishingLine = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.005, lineLen, 4),
+        fishingLineMat,
+      );
+      fishingLine.position.set(0, 0.85 - lineLen * 0.5, 2.38);
+      rodGroup.add(fishingLine);
+
+      // 水面紅白釣魚浮標
+      const bobber = new THREE.Mesh(
+        new THREE.SphereGeometry(0.065, 6, 6),
+        mats.stallRed,
+      );
+      bobber.position.set(0, 0.85 - lineLen, 2.38);
+      bobber.scale.set(1, 1.4, 1);
+      rodGroup.add(bobber);
+
+      angler.add(rodGroup);
+      animatedAnglers.push({ rodGroup, phase });
+      return angler;
+    };
+
     // 全部橋樑皆採用中式江南青石單孔拱橋（含圓弧石拱券、兩端青石橋台、階梯石板橋面、雕花青石欄板與蓮花望柱）
     const createArchedBridge = (
       x1: number,
       z1: number,
       x2: number,
       z2: number,
+      bridgeIdx = 0,
     ) => {
       const bridge = new THREE.Group();
       const midX = (x1 + x2) / 2;
@@ -2056,14 +2393,49 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       const bridgeWidth = 2.95;
       const archRise = 2.45;
 
-      // 兩端青石橋台墩座（深入水面銜接島岸）
+      // 兩端青石橋台墩座（深入水面與島基，零縫隙銜接島岸石板路）
       [-0.47, 0.47].forEach((endT) => {
         const abutment = new THREE.Mesh(
-          new THREE.BoxGeometry(bridgeWidth * 1.16, 2.8, segLen * 1.85),
+          new THREE.BoxGeometry(bridgeWidth * 1.18, 3.2, segLen * 2.2),
           mats.stoneGrey,
         );
         abutment.position.set(0, -1.25, endT * len);
         bridge.add(abutment);
+      });
+
+      // 兩端實體石階引道踏步與深厚基座（嚴禁斷橋：向外延伸並深入島嶼石板走道，絕無懸空隙縫）
+      [-1, 1].forEach((dir) => {
+        const rampSteps = 4;
+        const rampStepLen = segLen * 0.72;
+        for (let s = 0; s < rampSteps; s++) {
+          const dist = len * 0.5 + (s + 0.5) * rampStepLen;
+          const stepY = archRise * 0.05 - s * 0.22;
+          const rampStep = new THREE.Mesh(
+            new THREE.BoxGeometry(bridgeWidth * 1.08, 0.36, rampStepLen * 1.08),
+            s % 2 === 0 ? mats.stonePlaza : mats.stoneStep,
+          );
+          rampStep.position.set(0, stepY, dir * dist);
+          bridge.add(rampStep);
+        }
+
+        // 深厚穩固基石墩座（直接向下扎根至島基與水底，深達 y = -2.8）
+        const foundation = new THREE.Mesh(
+          new THREE.BoxGeometry(bridgeWidth * 1.35, 4.6, segLen * 3.2),
+          mats.stoneGrey,
+        );
+        foundation.position.set(0, -1.8, dir * (len * 0.5 + segLen * 1.2));
+        bridge.add(foundation);
+
+        // 引道兩側抱鼓石與青石望柱
+        [-bridgeWidth * 0.48, bridgeWidth * 0.48].forEach((rx) => {
+          const drumStone = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.24, 0.28, 0.76, 12),
+            mats.stonePlaza,
+          );
+          drumStone.rotation.z = Math.PI / 2;
+          drumStone.position.set(rx, 0.32, dir * (len * 0.5 + segLen * 1.6));
+          bridge.add(drumStone);
+        });
       });
 
       for (let i = 0; i < segments; i++) {
@@ -2130,18 +2502,35 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         });
       }
 
+      // 在每座青石拱橋的橋欄旁配置 1~2 位悠然垂釣的江南釣客 NPC（頭上無倒三角）
+      const anglerSlots: Array<{ tPos: number; side: 1 | -1 }> =
+        bridgeIdx % 2 === 0
+          ? [
+              { tPos: -0.14, side: 1 },
+              { tPos: 0.18, side: -1 },
+            ]
+          : [{ tPos: 0.08, side: 1 }];
+
+      anglerSlots.forEach((slot, sIdx) => {
+        const aY = Math.cos(slot.tPos * Math.PI) * archRise + 0.24;
+        const anglerNPC = createBridgeAnglerNPC(
+          slot.side,
+          bridgeIdx + sIdx,
+          bridgeIdx * 1.7 + sIdx * 2.3,
+        );
+        anglerNPC.position.set(slot.side * (bridgeWidth * 0.32), aY, slot.tPos * len);
+        bridge.add(anglerNPC);
+      });
+
       enableShadows(bridge);
       worldGroup.add(bridge);
     };
 
-    // 四座連結主島與外島的江南青石拱橋 + 兩座南岸古石橋
-    createArchedBridge(-22.5, -16.8, -8.8, -6.6);
-    createArchedBridge(22.5, -16.8, 8.8, -6.6);
-    createArchedBridge(-22.5, 16.8, -8.8, 6.6);
-    createArchedBridge(22.5, 16.8, 8.8, 6.6);
-
-    createArchedBridge(-23.5, 34.5, -15.5, 38.5);
-    createArchedBridge(23.5, 34.5, 15.5, 38.5);
+    // 四座連結主島與外島的江南青石拱橋（含橋上垂釣客 NPC）
+    createArchedBridge(-22.5, -16.8, -8.8, -6.6, 0);
+    createArchedBridge(22.5, -16.8, 8.8, -6.6, 1);
+    createArchedBridge(-22.5, 16.8, -8.8, 6.6, 2);
+    createArchedBridge(22.5, 16.8, 8.8, 6.6, 3);
 
     // 點綴於江南青石拱橋畔與島嶼淺灣的碧水荷花池與蓮花河燈
     [
@@ -2160,27 +2549,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     // =========================================================
-    // 8. SURROUNDING MOUNTAINS, WATERFALLS, JIANGNAN BOATS & DISTANT MIST SEA
+    // 8. JIANGNAN BASIN, 32 CLOSED MOUNTAINS, GROTTO WATERFALL, MIRROR LAKE & FARMLAND VITALITY
     // =========================================================
-    // 大山退至遠方外環（與五座島嶼拉開寬闊的碧水航道距離）
-    const mountainRing: Array<[number, number, number, number]> = [
-      [-74, -56, 15, 30],
-      [-46, -66, 17, 34],
-      [-14, -64, 16, 32],
-      [14, -66, 17, 33],
-      [48, -64, 16, 31],
-      [76, -50, 15, 28],
-      [-82, -10, 15, 27],
-      [82, -8, 15, 27],
-      [-78, 24, 14.5, 26],
-      [78, 24, 14.5, 26],
-      [-72, 46, 14, 25],
-      [72, 46, 14, 25],
-      [-42, 60, 14, 24],
-      [42, 60, 14, 24],
-      [-4, 58, 13.5, 22],
-    ];
-
     const waterfallDrops: THREE.Mesh[] = [];
     const mountainPeakClouds: Array<{
       group: THREE.Group;
@@ -2188,135 +2558,855 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       phase: number;
       speed: number;
     }> = [];
+    const animatedWaterwheels: THREE.Group[] = [];
+    const animatedEgrets: Array<{ leftWing: THREE.Group; rightWing: THREE.Group; phase: number }> = [];
+    const animatedFarmers: Array<{ torso: THREE.Group; phase: number }> = [];
+    const animatedOxHeads: THREE.Group[] = [];
+    const animatedChickens: Array<{ head: THREE.Group; phase: number }> = [];
 
-    mountainRing.forEach(([mx, mz, mr, mh], idx) => {
+    // 8.1 江南盆地自然有機沙洲與陸地（向下深扎至水底河床 y = -2.0，絕不懸浮或堆疊圓盤；各島嶼之間留有清澈小水道分開，南北中央水道直通山邊洞口）
+    const createOrganicLandmass = (
+      cx: number,
+      cz: number,
+      rx: number,
+      rz: number,
+      seed: number,
+      rotY = 0,
+      topHeight = 0.65,
+    ) => {
+      const landGrp = new THREE.Group();
+      landGrp.position.set(cx, 0, cz);
+      landGrp.rotation.y = rotY;
+
+      const rockShape = createOrganicShape(rx, rz, seed);
+      const rockGeo = new THREE.ExtrudeGeometry(rockShape, {
+        depth: topHeight + 1.45,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.68,
+        bevelThickness: 0.28,
+        curveSegments: 24,
+      });
+      rockGeo.rotateX(Math.PI / 2);
+      const rockBase = new THREE.Mesh(rockGeo, mats.cliffRock);
+      rockBase.position.y = topHeight - 0.28;
+      landGrp.add(rockBase);
+
+      const grassShape = createOrganicShape(rx * 0.97, rz * 0.97, seed);
+      const grassGeo = new THREE.ExtrudeGeometry(grassShape, {
+        depth: 0.12,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.36,
+        bevelThickness: 0.12,
+        curveSegments: 24,
+      });
+      grassGeo.rotateX(Math.PI / 2);
+      const grassTop = new THREE.Mesh(grassGeo, mats.grassTop);
+      grassTop.position.y = topHeight + 0.12;
+      landGrp.add(grassTop);
+
+      const landSurfaceY = topHeight + 0.24;
+      [
+        [-rx * 0.36, -rz * 0.28, 1.06],
+        [rx * 0.36, rz * 0.28, 1.1],
+      ].forEach(([tx, tz, sc], tIdx) => {
+        const tree = tIdx % 2 === 0 ? createWillowTree(sc) : createSakuraTree(sc);
+        tree.position.set(tx, landSurfaceY, tz);
+        landGrp.add(tree);
+      });
+
+      enableShadows(landGrp);
+      worldGroup.add(landGrp);
+      return landSurfaceY;
+    };
+
+    const organicLandmasses: Array<{
+      cx: number;
+      cz: number;
+      rx: number;
+      rz: number;
+      seed: number;
+      rotY?: number;
+      topHeight?: number;
+    }> = [
+      // 1. 北岸左右兩座大型有機農田島（與痛點島、討論島之間留有小水道分開；中央留出寬闊水道直通北山洞口 [0, -50.5]）
+      { cx: -25.0, cz: -45.0, rx: 13.8, rz: 5.8, seed: 1.4, rotY: 0.05, topHeight: 0.62 },
+      { cx: 25.0, cz: -45.0, rx: 13.8, rz: 5.8, seed: 2.8, rotY: -0.05, topHeight: 0.62 },
+
+      // 2. 西岸中央大型有機農田島（位於痛點島與創意島之間，上下皆有小水道與兩島分開）
+      { cx: -35.0, cz: 0.0, rx: 14.8, rz: 7.4, seed: 4.1, rotY: 0.0, topHeight: 0.65 },
+
+      // 3. 東岸中央大型有機農田茶園島（位於討論島與徵才島之間，上下皆有小水道與兩島分開）
+      { cx: 35.0, cz: 0.0, rx: 14.8, rz: 7.4, seed: 5.5, rotY: 0.0, topHeight: 0.65 },
+
+      // 4. 南岸左右兩座大型有機農田島（位於創意島與徵才島南側，與兩島之間留有小水道分開；中央留出水道直通南山洞口 [0, 52.5]）
+      { cx: -25.0, cz: 45.0, rx: 13.8, rz: 5.8, seed: 6.9, rotY: -0.05, topHeight: 0.62 },
+      { cx: 25.0, cz: 45.0, rx: 13.8, rz: 5.8, seed: 8.3, rotY: 0.05, topHeight: 0.62 },
+
+      // 5. 西外岸與東外岸山麓桃林沙洲（與內圈四島以運河小水道分開）
+      { cx: -55.5, cz: -24.0, rx: 6.2, rz: 11.5, seed: 9.7, rotY: -0.05, topHeight: 0.58 },
+      { cx: -55.5, cz: 24.0, rx: 6.2, rz: 11.5, seed: 11.1, rotY: 0.05, topHeight: 0.58 },
+      { cx: 55.5, cz: -24.0, rx: 6.2, rz: 11.5, seed: 12.4, rotY: 0.05, topHeight: 0.58 },
+      { cx: 55.5, cz: 24.0, rx: 6.2, rz: 11.5, seed: 13.8, rotY: -0.05, topHeight: 0.58 },
+    ];
+
+    organicLandmasses.forEach((lm) => {
+      createOrganicLandmass(lm.cx, lm.cz, lm.rx, lm.rz, lm.seed, lm.rotY || 0, lm.topHeight || 0.62);
+    });
+
+    // 8.3 北水道與南水道荷花叢點綴（保持中央航道暢通無阻，直通山邊大溶洞口）
+    createLotusPatch(-7.5, -42, 6);
+    createLotusPatch(7.5, -42, 6);
+    createLotusPatch(-8.2, -35, 5);
+    createLotusPatch(8.2, -35, 5);
+    createLotusPatch(-7.8, 42, 5);
+    createLotusPatch(7.8, 42, 5);
+
+    // 8.4 第一層：32座無縫閉合疊嶂環形山脈（正北 i=24 與正南 i=8 山峰微向後退讓，完整露出山腳下高聳壯觀的水道洞口）
+    const closedRingCount = 32;
+    for (let i = 0; i < closedRingCount; i++) {
+      const angle = (i / closedRingCount) * Math.PI * 2;
+      const isCaveMouthPeak = i === 24 || i === 8;
+      const radiusBase = (isCaveMouthPeak ? 74.5 : 69) + Math.sin(i * 1.6) * 3.5;
+      const mx = Math.cos(angle) * (radiusBase * 1.08);
+      const mz = Math.sin(angle) * (radiusBase * 0.94);
+      const mr = isCaveMouthPeak ? 13.5 : 15.8 + (i % 4) * 1.1;
+      const mh = 26 + (i % 5) * 2.8;
+
       const peakGrp = new THREE.Group();
       peakGrp.position.set(mx, -0.5, mz);
 
       const mainPeak = new THREE.Mesh(
         new THREE.ConeGeometry(mr, mh, 7),
-        idx % 2 === 0 ? mats.mountainGreen : mats.mountainRock,
+        i % 2 === 0 ? mats.mountainGreen : mats.mountainRock,
       );
       mainPeak.position.y = mh * 0.48;
-      mainPeak.rotation.y = idx * 0.7;
+      mainPeak.rotation.y = i * 0.65;
       peakGrp.add(mainPeak);
 
       const subPeak = new THREE.Mesh(
-        new THREE.ConeGeometry(mr * 0.68, mh * 0.72, 6),
-        mats.mountainGreen,
+        new THREE.ConeGeometry(mr * 0.72, mh * 0.74, 6),
+        i % 2 === 0 ? mats.mountainRock : mats.mountainGreen,
       );
-      subPeak.position.set(mr * 0.45, mh * 0.34, mr * 0.25);
+      subPeak.position.set(mr * 0.42, mh * 0.35, mr * 0.28);
       peakGrp.add(subPeak);
 
-      // 大山上全部種植蒼翠古松／迎客松（山上用松樹，分布於山麓、山腰、山脊與副峰）
+      // 山上蒼翠古松
       const inwardAngle = Math.atan2(-mz, -mx);
-      const pinePlacements: Array<[number, number, number, number]> = [
-        [Math.cos(inwardAngle) * mr * 0.65, mh * 0.14, Math.sin(inwardAngle) * mr * 0.65, 1.55],
-        [Math.cos(inwardAngle + 0.55) * mr * 0.52, mh * 0.28, Math.sin(inwardAngle + 0.55) * mr * 0.52, 1.4],
-        [Math.cos(inwardAngle - 0.5) * mr * 0.44, mh * 0.42, Math.sin(inwardAngle - 0.5) * mr * 0.44, 1.25],
-        [mr * 0.38, mh * 0.48, mr * 0.22, 1.3],
-        [Math.cos(inwardAngle + 0.15) * mr * 0.32, mh * 0.58, Math.sin(inwardAngle + 0.15) * mr * 0.32, 1.15],
-      ];
-      pinePlacements.forEach(([px, py, pz, pScale]) => {
+      [
+        [Math.cos(inwardAngle) * mr * 0.62, mh * 0.16, Math.sin(inwardAngle) * mr * 0.62, 1.5],
+        [Math.cos(inwardAngle + 0.5) * mr * 0.5, mh * 0.3, Math.sin(inwardAngle + 0.5) * mr * 0.5, 1.35],
+        [mr * 0.36, mh * 0.46, mr * 0.22, 1.25],
+      ].forEach(([px, py, pz, pScale]) => {
         const mountainPine = createPineTree(pScale);
         mountainPine.position.set(px, py, pz);
         peakGrp.add(mountainPine);
       });
 
-      // 在主要大山的山壁加上飛瀑（從山腰傾瀉而下並帶有水花迷霧）
-      if (idx % 2 === 0 && mh >= 24) {
-        const wfMountainGrp = new THREE.Group();
-        const faceDist = mr * 0.54;
-        wfMountainGrp.position.set(
-          Math.cos(inwardAngle) * faceDist,
-          mh * 0.27,
-          Math.sin(inwardAngle) * faceDist,
-        );
-        wfMountainGrp.rotation.y = -inwardAngle + Math.PI / 2;
-
-        const wfHeight = mh * 0.52;
-        const upperStream = new THREE.Mesh(
-          new THREE.BoxGeometry(2.6, wfHeight, 0.65),
-          mats.waterFoam,
-        );
-        upperStream.rotation.x = 0.34;
-        wfMountainGrp.add(upperStream);
-
-        const ledgeRock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.45, 0),
-          mats.mountainRock,
-        );
-        ledgeRock.position.set(0, -wfHeight * 0.12, 0.45);
-        wfMountainGrp.add(ledgeRock);
-
-        for (let p = 0; p < 5; p++) {
-          const splash = new THREE.Mesh(new THREE.IcosahedronGeometry(0.82, 0), mats.cloudWhite);
-          splash.position.set((p - 2) * 0.62, -wfHeight * 0.46 + (p % 2) * 0.35, 1.9);
-          wfMountainGrp.add(splash);
-          waterfallDrops.push(splash);
-        }
-
-        peakGrp.add(wfMountainGrp);
-      }
-
-      // 雲繞山頭：在每座大山的山頭與上山腰（mh * 0.62 ~ mh * 0.84）環繞蓬鬆層疊的雲霧帶
+      // 雲繞山頭：在每座大山的山頭環繞蓬鬆雲帶
       const peakCloudCollar = new THREE.Group();
       const collarBaseY = mh * 0.68;
       peakCloudCollar.position.set(0, collarBaseY, 0);
 
-      const collarClusterCount = 5;
+      const collarClusterCount = 4;
       for (let c = 0; c < collarClusterCount; c++) {
-        const cAngle = (c / collarClusterCount) * Math.PI * 2 + idx * 0.45;
-        const cRadius = mr * (0.44 + (c % 2) * 0.08);
+        const cAngle = (c / collarClusterCount) * Math.PI * 2 + i * 0.4;
+        const cRadius = mr * (0.42 + (c % 2) * 0.08);
         const cx = Math.cos(cAngle) * cRadius;
         const cz = Math.sin(cAngle) * cRadius;
-        const cy = ((c % 3) - 1) * (mh * 0.055);
 
-        const cloudCluster = new THREE.Group();
-        cloudCluster.position.set(cx, cy, cz);
-        cloudCluster.rotation.y = -cAngle + Math.PI / 2;
-
-        const puffSpecs: Array<[number, number, number, number]> = [
-          [0, 0, 0, mr * 0.22],
-          [-mr * 0.16, -0.25, 0.35, mr * 0.17],
-          [mr * 0.16, -0.18, -0.3, mr * 0.18],
-          [0.2, mr * 0.08, 0.25, mr * 0.14],
-        ];
-        puffSpecs.forEach(([px, py, pz, pr]) => {
-          const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(pr, 1), mats.cloudWhite);
-          puff.position.set(px, py, pz);
-          puff.scale.set(1.45, 0.62, 1.15);
-          cloudCluster.add(puff);
-        });
-
-        peakCloudCollar.add(cloudCluster);
+        const cloudPuff = new THREE.Mesh(new THREE.IcosahedronGeometry(mr * 0.18, 1), mats.cloudWhite);
+        cloudPuff.position.set(cx, ((c % 2) - 0.5) * 0.8, cz);
+        cloudPuff.scale.set(1.4, 0.62, 1.15);
+        peakCloudCollar.add(cloudPuff);
       }
-
-      // 副峰山頭也包圍一簇輕柔雲朵
-      const subPeakCloud = new THREE.Group();
-      subPeakCloud.position.set(mr * 0.45, -mh * 0.16, mr * 0.25);
-      [
-        [0, 0, 0, mr * 0.18],
-        [-mr * 0.13, -0.15, 0.25, mr * 0.14],
-        [mr * 0.13, 0.1, -0.2, mr * 0.14],
-      ].forEach(([px, py, pz, pr]) => {
-        const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(pr, 1), mats.cloudWhite);
-        puff.position.set(px, py, pz);
-        puff.scale.set(1.4, 0.58, 1.15);
-        subPeakCloud.add(puff);
-      });
-      peakCloudCollar.add(subPeakCloud);
-
       peakGrp.add(peakCloudCollar);
       mountainPeakClouds.push({
         group: peakCloudCollar,
         baseY: collarBaseY,
-        phase: idx * 0.85,
-        speed: (idx % 2 === 0 ? 1 : -1) * (0.045 + (idx % 3) * 0.01),
+        phase: i * 0.85,
+        speed: (i % 2 === 0 ? 1 : -1) * 0.045,
       });
 
       enableShadows(peakGrp);
       worldGroup.add(peakGrp);
+    }
+
+    // 8.5 階梯式四重山巒天際線系統（Layer 2: 中景 28 座，Layer 3: 遠景 24 座，Layer 4: 極遠天際 20 座）
+    // 第二層：中景層疊山巒（28座，r≈108，深黛青墨色）
+    for (let i = 0; i < 28; i++) {
+      const ang = (i / 28) * Math.PI * 2 + 0.11;
+      const r = 108 + ((i * 3) % 7) * 2.2;
+      const cx = Math.cos(ang) * (r * 1.1);
+      const cz = Math.sin(ang) * (r * 0.95);
+      const mr = 20 + (i % 3) * 2.5;
+      const mh = 38 + (i % 4) * 3.5;
+
+      const midPeak = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 7), mats.mountainMidMat);
+      midPeak.position.set(cx, mh * 0.48 - 0.5, cz);
+      midPeak.rotation.y = i * 0.5;
+      worldGroup.add(midPeak);
+    }
+
+    // 第三層：遠景水墨遠山（24座，r≈158，淡青灰薄霧色）
+    for (let i = 0; i < 24; i++) {
+      const ang = (i / 24) * Math.PI * 2 + 0.22;
+      const r = 158 + (i % 5) * 3.0;
+      const cx = Math.cos(ang) * (r * 1.12);
+      const cz = Math.sin(ang) * (r * 0.96);
+      const mr = 28 + (i % 3) * 3.5;
+      const mh = 52 + (i % 4) * 4.5;
+
+      const farPeak = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 6), mats.mountainFarMat);
+      farPeak.position.set(cx, mh * 0.48 - 0.5, cz);
+      farPeak.rotation.y = i * 0.7;
+      worldGroup.add(farPeak);
+    }
+
+    // 第四層：極遠天際線連綿墨影（20座，r≈225，淡雅天際水墨）
+    for (let i = 0; i < 20; i++) {
+      const ang = (i / 20) * Math.PI * 2 + 0.33;
+      const r = 225 + (i % 4) * 4.0;
+      const cx = Math.cos(ang) * (r * 1.14);
+      const cz = Math.sin(ang) * (r * 0.98);
+      const mr = 38 + (i % 3) * 4.5;
+      const mh = 68 + (i % 4) * 6.0;
+
+      const skyPeak = new THREE.Mesh(new THREE.ConeGeometry(mr, mh, 6), mats.mountainInfiniteMat);
+      skyPeak.position.set(cx, mh * 0.48 - 0.5, cz);
+      skyPeak.rotation.y = i * 0.9;
+      worldGroup.add(skyPeak);
+    }
+
+    // 8.6 江南水鄉農田生活煙火氣：山邊大型水溶石洞口（連接水道）、水稻梯田、運轉水車、水道兩岸桃樹、悠閒黃牛、辛勤農夫、白鷺鷥與生機家畜
+    // A. 醒目高聳的山邊水溶石洞口（設於北山腳下 [0, 0, -50.5] 與南山腳下 [0, 0, 52.5]，連接南北中央水道，烏篷船可直接駛入洞中）
+    const createMountainWaterGrotto = (gx: number, gy: number, gz: number, rotY = 0) => {
+      const waterGrottoGroup = new THREE.Group();
+      waterGrottoGroup.position.set(gx, gy, gz);
+      waterGrottoGroup.rotation.y = rotY;
+
+      // 1. 深邃幽暗溶洞內膛（半圓拱頂深洞隧道 + 純黑深淵背板，置於山腳最前方絕不被山體遮擋）
+      const caveDeepMat = new THREE.MeshBasicMaterial({
+        color: 0x03080c,
+        side: THREE.DoubleSide,
+      });
+      const caveTunnelVault = new THREE.Mesh(
+        new THREE.CylinderGeometry(7.2, 7.6, 11.5, 24, 1, false, 0, Math.PI),
+        caveDeepMat,
+      );
+      caveTunnelVault.rotation.z = Math.PI / 2;
+      caveTunnelVault.rotation.y = Math.PI / 2;
+      caveTunnelVault.position.set(0, 0.8, -2.5);
+      waterGrottoGroup.add(caveTunnelVault);
+
+      const caveBackdrop = new THREE.Mesh(
+        new THREE.CircleGeometry(7.4, 24, 0, Math.PI),
+        caveDeepMat,
+      );
+      caveBackdrop.position.set(0, 0.8, -1.2);
+      waterGrottoGroup.add(caveBackdrop);
+
+      // 2. 高聳外凸的雙層天然青石岩拱門（高約 10.5m、寬約 17m，與後方翠綠山體形成強烈明暗對比）
+      const outerCliffArch = new THREE.Mesh(
+        new THREE.TorusGeometry(7.8, 2.35, 8, 24, Math.PI),
+        mats.stonePlaza,
+      );
+      outerCliffArch.position.set(0, 1.2, 1.4);
+      waterGrottoGroup.add(outerCliffArch);
+
+      const innerDarkArch = new THREE.Mesh(
+        new THREE.TorusGeometry(6.9, 1.75, 7, 20, Math.PI),
+        mats.caveRockMat,
+      );
+      innerDarkArch.position.set(0, 1.0, 0.2);
+      waterGrottoGroup.add(innerDarkArch);
+
+      // 3. 洞口左右兩側巍峨嶙峋的峭壁巨岩柱（向下扎根至水底）
+      [-8.2, 8.2].forEach((cx, cIdx) => {
+        for (let h = 0; h < 5; h++) {
+          const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(2.8 - h * 0.18, 1),
+            h % 2 === cIdx ? mats.stonePlaza : mats.caveRockMat,
+          );
+          rock.position.set(
+            cx + (h % 2 === 0 ? 0.45 : -0.45),
+            h * 2.1 - 0.2,
+            1.6 - h * 0.25,
+          );
+          rock.scale.set(1.35, 1.25, 1.45);
+          waterGrottoGroup.add(rock);
+        }
+      });
+
+      // 4. 洞內延伸至洞外水道的翡翠微光水面（與河道無縫銜接）
+      const cavePool = new THREE.Mesh(
+        new THREE.CylinderGeometry(7.2, 7.2, 0.24, 24),
+        mats.caveWaterMat,
+      );
+      cavePool.position.set(0, -0.66, 0.8);
+      cavePool.scale.set(0.95, 1.0, 1.55);
+      waterGrottoGroup.add(cavePool);
+
+      // 5. 洞頂垂掛的大型鐘乳石群（在幽暗洞口背景前清晰可見）
+      [
+        [-3.8, 6.2, 1.2, 2.2],
+        [-1.8, 7.1, 1.4, 2.7],
+        [0.0, 7.4, 1.5, 3.0],
+        [1.9, 7.0, 1.4, 2.5],
+        [3.8, 6.1, 1.2, 2.1],
+      ].forEach(([sx, sy, sz, sh], sIdx) => {
+        const stalactite = new THREE.Mesh(
+          new THREE.ConeGeometry(0.42, sh, 6),
+          sIdx % 2 === 0 ? mats.stonePlaza : mats.caveRockMat,
+        );
+        stalactite.rotation.x = Math.PI;
+        stalactite.position.set(sx, sy, sz);
+        waterGrottoGroup.add(stalactite);
+      });
+
+      // 6. 洞口峭壁側方飛流直下的山澗小瀑布與水花泡泡
+      const waterfallStream = new THREE.Mesh(
+        new THREE.BoxGeometry(1.65, 9.5, 0.45),
+        mats.waterFoam,
+      );
+      waterfallStream.position.set(-7.6, 4.6, 2.8);
+      waterfallStream.rotation.z = -0.12;
+      waterGrottoGroup.add(waterfallStream);
+
+      for (let f = 0; f < 5; f++) {
+        const foam = new THREE.Mesh(
+          new THREE.SphereGeometry(0.55 + (f % 2) * 0.2, 8, 8),
+          mats.waterFoam,
+        );
+        foam.position.set(-7.2 + (f - 2) * 0.55, -0.35, 3.2 + (f % 2) * 0.35);
+        waterGrottoGroup.add(foam);
+        waterfallDrops.push(foam);
+      }
+
+      // 7. 洞口水道兩側「江南青石引航燈柱」與洞拱懸掛紅燈籠（引導水道船隻進洞）
+      [-6.2, 6.2].forEach((lx) => {
+        // 水道入口青石引航燈塔（直接立於水底河床）
+        const beaconPost = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.38, 3.2, 6),
+          mats.stonePlaza,
+        );
+        beaconPost.position.set(lx, 0.6, 4.2);
+        waterGrottoGroup.add(beaconPost);
+
+        const beaconCap = new THREE.Mesh(
+          new THREE.ConeGeometry(0.68, 0.45, 6),
+          mats.roofSlate,
+        );
+        beaconCap.position.set(lx, 2.65, 4.2);
+        waterGrottoGroup.add(beaconCap);
+
+        const beaconGlow = new THREE.Mesh(
+          new THREE.SphereGeometry(0.28, 10, 10),
+          mats.lanternGlow,
+        );
+        beaconGlow.position.set(lx, 2.25, 4.2);
+        waterGrottoGroup.add(beaconGlow);
+
+        // 洞口石拱下方懸掛的暖光燈籠
+        const archLantern = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.32, 0.68, 8),
+          mats.lanternGlow,
+        );
+        archLantern.position.set(lx * 0.72, 4.6, 2.2);
+        waterGrottoGroup.add(archLantern);
+      });
+
+      const caveLight = new THREE.PointLight(0xffb347, 2.4, 24, 1.4);
+      caveLight.position.set(0, 3.8, 3.2);
+      waterGrottoGroup.add(caveLight);
+
+      worldGroup.add(waterGrottoGroup);
+    };
+
+    createMountainWaterGrotto(0, 0.2, -50.5, 0);        // 北山水道洞口（正對中央北水道）
+    createMountainWaterGrotto(0, 0.2, 52.5, Math.PI);   // 南山水道洞口（正對中央南水道）
+
+    // B. 水稻梯田（全數精準鋪設於有機農田島草坪表面，絕不懸浮於水面）
+    const createPaddyCluster = (
+      centerX: number,
+      centerY: number,
+      centerZ: number,
+      width: number,
+      depth: number,
+      tierCount = 3,
+      rotY = 0,
+    ) => {
+      const pGroup = new THREE.Group();
+      pGroup.position.set(centerX, centerY, centerZ);
+      pGroup.rotation.y = rotY;
+
+      const tierDepth = depth / tierCount;
+
+      for (let t = 0; t < tierCount; t++) {
+        const tierZ = (t - (tierCount - 1) * 0.5) * tierDepth;
+        const tierHeight = t * 0.12;
+
+        // 土埂（底部緊貼陸地草坪表面）
+        const dike = new THREE.Mesh(
+          new THREE.BoxGeometry(width, 0.24, tierDepth * 0.95),
+          mats.dirtPathMat,
+        );
+        dike.position.set(0, tierHeight + 0.08, tierZ);
+        pGroup.add(dike);
+
+        // 倒映天光水面
+        const water = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.92, 0.1, tierDepth * 0.78),
+          mats.paddyWaterMat,
+        );
+        water.position.set(0, tierHeight + 0.17, tierZ);
+        pGroup.add(water);
+
+        // 整齊的青蔥水稻秧苗（並加入微風稻浪群組）
+        const shootSpacingX = 1.35;
+        const shootSpacingZ = 0.95;
+        const xCount = Math.floor((width * 0.84) / shootSpacingX);
+        const zCount = Math.floor((tierDepth * 0.65) / shootSpacingZ);
+
+        for (let ix = -xCount / 2; ix <= xCount / 2; ix++) {
+          for (let iz = -zCount / 2; iz <= zCount / 2; iz++) {
+            const shoot = new THREE.Mesh(
+              new THREE.ConeGeometry(0.22, 0.62, 4),
+              mats.riceShootMat,
+            );
+            const shootX = ix * shootSpacingX + ((ix * 2) % 0.25);
+            const shootZ = tierZ + iz * shootSpacingZ + ((iz * 2) % 0.2);
+            shoot.position.set(shootX, tierHeight + 0.44, shootZ);
+            shoot.rotation.y = (ix + iz) * 0.8;
+            pGroup.add(shoot);
+
+            const worldX = centerX + Math.cos(rotY) * shootX - Math.sin(rotY) * shootZ;
+            const worldZ = centerZ + Math.sin(rotY) * shootX + Math.cos(rotY) * shootZ;
+            swayingRiceShoots.push({
+              mesh: shoot,
+              baseX: worldX,
+              baseZ: worldZ,
+              phase: (ix * 0.7 + iz * 0.5) + t * 0.4,
+            });
+          }
+        }
+      }
+
+      enableShadows(pGroup);
+      worldGroup.add(pGroup);
+    };
+
+    // 精準配置於六座大型有機農田島上的水稻梯田（100% 位於陸地範圍內）
+    createPaddyCluster(-34.5, 0.89, 0.0, 14.0, 6.8, 3, 0.0);    // 西岸中央農田島梯田
+    createPaddyCluster(31.0, 0.89, 0.0, 11.0, 6.6, 3, 0.0);     // 東岸中央農田島梯田
+    createPaddyCluster(-23.5, 0.86, -45.0, 12.5, 5.4, 2, 0.05); // 西北農田島梯田
+    createPaddyCluster(23.5, 0.86, -45.0, 12.5, 5.4, 2, -0.05); // 東北農田島梯田
+    createPaddyCluster(-23.0, 0.86, 45.0, 12.5, 5.4, 2, -0.05); // 西南農田島梯田
+    createPaddyCluster(23.0, 0.86, 45.0, 12.5, 5.4, 2, 0.05);  // 東南農田島梯田
+
+    // C. 3 座大型江南木構運轉水車（青石支架向下扎根至河床，緊貼農田島岸邊提水灌溉）
+    const createWaterWheelMesh = (posX: number, posY: number, posZ: number, rotY = 0) => {
+      const wBase = new THREE.Group();
+      wBase.position.set(posX, posY, posZ);
+      wBase.rotation.y = rotY;
+
+      // 青石支架（向下深扎至河床）
+      const pier1 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.8, 0.55), mats.stonePlaza);
+      pier1.position.set(-1.0, 0.9, 0);
+      const pier2 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.8, 0.55), mats.stonePlaza);
+      pier2.position.set(1.0, 0.9, 0);
+      wBase.add(pier1, pier2);
+
+      // 木架引水槽
+      const flume = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.28, 4.4), mats.woodDark);
+      flume.position.set(0, 2.7, -1.6);
+      wBase.add(flume);
+
+      // 旋轉主輪（12根輪輻 + 12面提水木刮板）
+      const rWheel = new THREE.Group();
+      rWheel.position.set(0, 1.9, 0);
+
+      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 2.2, 8), mats.woodWarm);
+      axle.rotation.z = Math.PI / 2;
+      rWheel.add(axle);
+
+      const rim1 = new THREE.Mesh(new THREE.TorusGeometry(1.85, 0.08, 6, 24), mats.woodWarm);
+      rim1.position.x = -0.55;
+      rim1.rotation.y = Math.PI / 2;
+      const rim2 = new THREE.Mesh(new THREE.TorusGeometry(1.85, 0.08, 6, 24), mats.woodWarm);
+      rim2.position.x = 0.55;
+      rim2.rotation.y = Math.PI / 2;
+      rWheel.add(rim1, rim2);
+
+      for (let s = 0; s < 12; s++) {
+        const sAng = (s / 12) * Math.PI * 2;
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3.6, 0.08), mats.woodWarm);
+        spoke.rotation.x = sAng;
+        rWheel.add(spoke);
+
+        const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.22, 0.38), mats.woodDark);
+        paddle.position.set(0, Math.cos(sAng) * 1.85, Math.sin(sAng) * 1.85);
+        paddle.rotation.x = sAng;
+        rWheel.add(paddle);
+      }
+
+      wBase.add(rWheel);
+      animatedWaterwheels.push(rWheel);
+      enableShadows(wBase);
+      worldGroup.add(wBase);
+    };
+
+    createWaterWheelMesh(-11.4, -0.35, -44.5, 0);         // 北水道西岸農田水車
+    createWaterWheelMesh(-20.8, -0.35, 0.0, Math.PI / 2);  // 西岸中央農田島水車
+    createWaterWheelMesh(20.8, -0.35, 0.0, -Math.PI / 2);  // 東岸中央農田島水車
+
+    // D. 沿著各島小水道與南北洞口水道兩岸種植的「盛開桃花樹」（全數穩立於各有機陸地草坪上，絕不懸浮水面）
+    // 1. 西岸與東岸中央農田島南北小水道駁岸桃樹
+    [-44, -38, -31, -25].forEach((x) => {
+      [-4.8, 4.8].forEach((z) => {
+        const t = createSakuraTree(1.12);
+        t.position.set(x, 0.89, z);
+        worldGroup.add(t);
+      });
+    });
+    [25, 31, 38, 44].forEach((x) => {
+      [-4.8, 4.8].forEach((z) => {
+        const t = createSakuraTree(1.12);
+        t.position.set(x, 0.89, z);
+        worldGroup.add(t);
+      });
+    });
+
+    // 2. 北山洞口水道與南山洞口水道兩側岸上迎客桃樹（立於南北農田島內側草坪岸邊）
+    [-42.5, -45.5, -48.0].forEach((z) => {
+      const leftTree = createSakuraTree(1.18);
+      leftTree.position.set(-13.5, 0.86, z);
+      worldGroup.add(leftTree);
+
+      const rightTree = createSakuraTree(1.18);
+      rightTree.position.set(13.5, 0.86, z);
+      worldGroup.add(rightTree);
+    });
+    [42.5, 45.5, 48.0].forEach((z) => {
+      const leftTree = createSakuraTree(1.15);
+      leftTree.position.set(-13.5, 0.86, z);
+      worldGroup.add(leftTree);
+
+      const rightTree = createSakuraTree(1.15);
+      rightTree.position.set(13.5, 0.86, z);
+      worldGroup.add(rightTree);
+    });
+
+    // 3. 東西外岸山麓沙洲桃林（立於 x = ±55.5 山麓沙洲陸地上）
+    [-29, -24, -19, 19, 24, 29].forEach((z) => {
+      const wTree = createSakuraTree(1.15);
+      wTree.position.set(-55.2, 0.82, z);
+      worldGroup.add(wTree);
+
+      const eTree = createSakuraTree(1.15);
+      eTree.position.set(55.2, 0.82, z);
+      worldGroup.add(eTree);
+    });
+
+    // E. 江南農莊民舍（白牆黛瓦、竹籬圍欄，穩立於西北與東南農田島草坪上）
+    const createJiangnanHomestead = (x: number, y: number, z: number, rotY = 0) => {
+      const cottage = new THREE.Group();
+      cottage.position.set(x, y, z);
+      cottage.rotation.y = rotY;
+
+      const houseWall = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.5, 3.2), mats.wallCream);
+      houseWall.position.y = 1.25;
+      cottage.add(houseWall);
+
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.4, 1.35, 4), mats.roofSlate);
+      roof.position.y = 3.1;
+      roof.rotation.y = Math.PI / 4;
+      roof.scale.set(1.4, 1.0, 1.0);
+      cottage.add(roof);
+
+      const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.2, 0.35), mats.stoneGrey);
+      chimney.position.set(1.1, 3.3, 0.5);
+      cottage.add(chimney);
+
+      const fence = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.75, 0.12), mats.bambooStrawMat);
+      fence.position.set(0, 0.38, 2.4);
+      cottage.add(fence);
+
+      const logs = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.5, 6), mats.woodWarm);
+      logs.rotation.z = Math.PI / 2;
+      logs.position.set(-2.5, 0.22, 1.0);
+      cottage.add(logs);
+
+      enableShadows(cottage);
+      worldGroup.add(cottage);
+    };
+
+    createJiangnanHomestead(-33.2, 0.86, -45.0, 0.25); // 西北農田島農舍
+    createJiangnanHomestead(33.2, 0.86, 45.0, -0.3);   // 東南農田島農舍
+
+    // F. 江南梯級茶園階地（穩立於東岸中央農田島東側坡地 [42.5, 0.89, 0]）
+    const teaTerraceGroup = new THREE.Group();
+    teaTerraceGroup.position.set(42.5, 0.89, 0);
+    for (let r = 0; r < 3; r++) {
+      const tRadius = 3.2 + r * 1.4;
+      const count = 5 + r * 2;
+      for (let b = 0; b < count; b++) {
+        const ang = -0.75 + (b / Math.max(1, count - 1)) * 1.5;
+        const bx = Math.cos(ang) * tRadius;
+        const bz = Math.sin(ang) * tRadius;
+        const bush = new THREE.Mesh(
+          new THREE.SphereGeometry(0.48, 6, 6),
+          mats.mountainGreen,
+        );
+        bush.scale.set(1.1, 0.65, 1.1);
+        bush.position.set(bx - 3.2, r * 0.18 + 0.28, bz);
+        teaTerraceGroup.add(bush);
+      }
+    }
+    worldGroup.add(teaTerraceGroup);
+
+    // G. 悠閒黃牛 / 水牛（穩立於四座農田島田埂草坪上）
+    const createWaterOx = (oxX: number, oxY: number, oxZ: number, rotY = 0) => {
+      const oxGrp = new THREE.Group();
+      oxGrp.position.set(oxX, oxY, oxZ);
+      oxGrp.rotation.y = rotY;
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.95, 2.2), mats.oxBrownMat);
+      body.position.y = 0.85;
+      oxGrp.add(body);
+
+      const rump = new THREE.Mesh(new THREE.SphereGeometry(0.72, 8, 8), mats.oxBrownMat);
+      rump.position.set(0, 0.95, -0.9);
+      oxGrp.add(rump);
+
+      [
+        [-0.48, 0.35, 0.7],
+        [0.48, 0.35, 0.7],
+        [-0.48, 0.35, -0.7],
+        [0.48, 0.35, -0.7],
+      ].forEach(([lx, ly, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.75, 6), mats.oxBrownMat);
+        leg.position.set(lx, ly, lz);
+        oxGrp.add(leg);
+      });
+
+      const headGrp = new THREE.Group();
+      headGrp.position.set(0, 1.25, 1.05);
+
+      const headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.85), mats.oxBrownMat);
+      headMesh.position.set(0, 0, 0.35);
+      headGrp.add(headMesh);
+
+      [-1, 1].forEach((dir) => {
+        const horn = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.08, 5, 8, Math.PI * 0.75), mats.oxHornMat);
+        horn.position.set(dir * 0.38, 0.36, 0.15);
+        horn.rotation.set(0.3, dir * 0.4, dir * 0.8);
+        headGrp.add(horn);
+      });
+
+      oxGrp.add(headGrp);
+      animatedOxHeads.push(headGrp);
+      enableShadows(oxGrp);
+      worldGroup.add(oxGrp);
+    };
+
+    createWaterOx(33.2, 0.86, -45.0, -0.6); // 東北農田島水牛
+    createWaterOx(-14.8, 0.86, -45.2, 0.8); // 西北農田島水牛
+    createWaterOx(-44.5, 0.89, 1.5, 0.8);   // 西岸中央農田島黃牛
+    createWaterOx(44.5, 0.89, 2.2, -0.6);   // 東岸中央農田島黃牛
+
+    // H. 辛勤農夫 NPC（著青布藍衣、頭戴竹編斗笠，手持鋤頭於農田島上勞作，頭上無倒三角）
+    const createFarmer = (fx: number, fy: number, fz: number, rotY = 0, phase = 0) => {
+      const farmerGrp = new THREE.Group();
+      farmerGrp.position.set(fx, fy, fz);
+      farmerGrp.rotation.y = rotY;
+
+      const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 6), mats.woodDark);
+      legs.position.y = 0.3;
+      farmerGrp.add(legs);
+
+      const torsoGrp = new THREE.Group();
+      torsoGrp.position.y = 0.6;
+
+      const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.65, 8), mats.farmerRobeBlue);
+      robe.position.y = 0.32;
+      torsoGrp.add(robe);
+
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.24, 10), mats.bambooStrawMat);
+      hat.position.set(0, 0.76, 0.08);
+      hat.rotation.x = 0.25;
+      torsoGrp.add(hat);
+
+      const hoe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.35, 6), mats.woodWarm);
+      hoe.position.set(0.35, 0.35, 0.45);
+      hoe.rotation.set(0.65, 0.2, -0.4);
+      torsoGrp.add(hoe);
+
+      farmerGrp.add(torsoGrp);
+      animatedFarmers.push({ torso: torsoGrp, phase });
+      enableShadows(farmerGrp);
+      worldGroup.add(farmerGrp);
+    };
+
+    createFarmer(16.2, 0.86, -44.2, 0.4, 0.8);   // 東北農田島農夫
+    createFarmer(-16.2, 0.86, -44.2, -0.6, 1.6); // 西北農田島農夫
+    createFarmer(-43.0, 0.89, -1.8, 0.9, 2.4);   // 西岸中央農田島農夫
+    createFarmer(17.5, 0.86, 44.2, -1.1, 0.2);   // 東南農田島農夫
+    createFarmer(40.2, 0.89, -1.5, -0.3, 1.1);   // 東岸茶園茶農
+
+    // I. 白鷺鷥群（全數站在農田島水田內 y=1.02 或岸邊淺水 y=-0.58，絕不懸空漂浮）
+    [
+      { pos: [-22.0, 1.02, -44.5], ang: 0.6 },
+      { pos: [22.0, 1.02, -44.5], ang: -0.8 },
+      { pos: [-33.0, 1.05, 0.5], ang: 1.2 },
+      { pos: [30.0, 1.05, -0.5], ang: -1.6 },
+      { pos: [-22.0, 1.02, 44.5], ang: 0.4 },
+      { pos: [22.0, 1.02, 44.5], ang: -0.9 },
+      { pos: [-9.2, -0.58, -46.5], ang: 0.3 },
+      { pos: [9.2, -0.58, -46.5], ang: -0.3 },
+    ].forEach((egCfg, egIdx) => {
+      const egretGrp = new THREE.Group();
+      egretGrp.position.set(egCfg.pos[0], egCfg.pos[1], egCfg.pos[2]);
+      egretGrp.rotation.y = egCfg.ang;
+
+      [-0.08, 0.08].forEach((lx) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.55, 4), mats.stoneGrey);
+        leg.position.set(lx, 0.28, 0);
+        egretGrp.add(leg);
+      });
+
+      const body = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.65, 6), mats.egretFeatherMat);
+      body.rotation.x = Math.PI / 2.8;
+      body.position.set(0, 0.65, 0);
+      egretGrp.add(body);
+
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.48, 6), mats.egretFeatherMat);
+      neck.position.set(0, 0.95, 0.22);
+      neck.rotation.x = -0.3;
+      egretGrp.add(neck);
+
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.32, 5), mats.egretBeakMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 1.15, 0.46);
+      egretGrp.add(beak);
+
+      const leftWing = new THREE.Group();
+      const lWingMesh = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.22), mats.egretFeatherMat);
+      lWingMesh.position.set(-0.24, 0, 0);
+      leftWing.add(lWingMesh);
+      leftWing.position.set(-0.14, 0.68, 0);
+      egretGrp.add(leftWing);
+
+      const rightWing = new THREE.Group();
+      const rWingMesh = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.22), mats.egretFeatherMat);
+      rWingMesh.position.set(0.24, 0, 0);
+      rightWing.add(rWingMesh);
+      rightWing.position.set(0.14, 0.68, 0);
+      egretGrp.add(rightWing);
+
+      animatedEgrets.push({ leftWing, rightWing, phase: egIdx * 1.5 });
+      worldGroup.add(egretGrp);
+    });
+
+    // J. 放牧綿羊群（6隻蓬鬆綿羊穩立於西南與東南農田島草甸上）
+    [
+      [15.2, 0.86, 44.2, 0.5],
+      [16.8, 0.86, 45.8, -0.8],
+      [14.5, 0.86, 46.2, 1.4],
+      [-32.5, 0.86, 44.0, -0.5],
+      [-34.2, 0.86, 45.5, 1.1],
+      [-31.2, 0.86, 46.2, -1.3],
+    ].forEach(([sx, sy, sz, rot]) => {
+      const sheep = new THREE.Group();
+      sheep.position.set(sx, sy, sz);
+      sheep.rotation.y = rot;
+
+      const wool = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 8), mats.sheepWoolMat);
+      wool.position.y = 0.55;
+      wool.scale.set(1.25, 0.95, 1.0);
+      sheep.add(wool);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), mats.stoneGrey);
+      head.position.set(0, 0.65, 0.62);
+      sheep.add(head);
+
+      [-0.22, 0.22].forEach((lx) => {
+        [-0.3, 0.3].forEach((lz) => {
+          const sLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.32, 4), mats.woodDark);
+          sLeg.position.set(lx, 0.16, lz);
+          sheep.add(sLeg);
+        });
+      });
+
+      worldGroup.add(sheep);
+    });
+
+    // K. 2 隻農舍旁憨厚小粉豬（穩立於西北與東南農田島農舍旁）
+    [
+      [-29.8, 0.86, -43.8, 0.9],
+      [29.8, 0.86, 43.8, -0.8],
+    ].forEach(([px, py, pz, prot]) => {
+      const pigGrp = new THREE.Group();
+      pigGrp.position.set(px, py, pz);
+      pigGrp.rotation.y = prot;
+
+      const pigBody = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.95, 8), mats.pigSkinMat);
+      pigBody.rotation.x = Math.PI / 2;
+      pigBody.position.y = 0.45;
+      pigGrp.add(pigBody);
+
+      const pigHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 6, 6), mats.pigSkinMat);
+      pigHead.position.set(0, 0.45, 0.58);
+      pigGrp.add(pigHead);
+
+      const pigSnout = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.18, 6), mats.pigSkinMat);
+      pigSnout.rotation.x = Math.PI / 2;
+      pigSnout.position.set(0, 0.42, 0.88);
+      pigGrp.add(pigSnout);
+
+      worldGroup.add(pigGrp);
+    });
+
+    // L. 田埂啄食小公雞與母雞（8隻，穩立於農田島草坪上）
+    [
+      [31.2, 0.86, -43.8, 0],
+      [32.0, 0.86, -44.2, 1.2],
+      [30.8, 0.86, -45.0, -1.0],
+      [32.5, 0.86, -45.5, 2.1],
+      [-30.5, 0.86, -45.2, -0.5],
+      [-31.4, 0.86, -45.8, 0.8],
+      [-15.5, 0.86, 44.5, 1.4],
+      [31.0, 0.86, 44.5, -1.2],
+    ].forEach(([cx, cy, cz, crot], cIdx) => {
+      const chickenGrp = new THREE.Group();
+      chickenGrp.position.set(cx, cy, cz);
+      chickenGrp.rotation.y = crot;
+
+      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), mats.chickenFeatherMat);
+      cBody.position.y = 0.22;
+      chickenGrp.add(cBody);
+
+      const cHeadGrp = new THREE.Group();
+      cHeadGrp.position.set(0, 0.28, 0.14);
+
+      const cHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 5), mats.chickenFeatherMat);
+      cHeadGrp.add(cHeadMesh);
+
+      const cComb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.08), mats.roosterCombMat);
+      cComb.position.set(0, 0.08, 0);
+      cHeadGrp.add(cComb);
+
+      const cBeak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 4), mats.egretBeakMat);
+      cBeak.rotation.x = Math.PI / 2;
+      cBeak.position.set(0, 0, 0.1);
+      cHeadGrp.add(cBeak);
+
+      chickenGrp.add(cHeadGrp);
+      animatedChickens.push({ head: cHeadGrp, phase: cIdx * 1.3 });
+      worldGroup.add(chickenGrp);
     });
 
     // 距離大山近的迷霧淡淡的就好，越往天際外圍才漸次轉濃（營造水墨江南遠山淡霧意境）
@@ -2421,29 +3511,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       }
     });
 
-    const waterfallLocations: Array<[number, number, number, number]> = [
-      [-62, 7.5, -22, Math.PI / 3],
-      [-10, 8.5, -52, 0],
-      [62, 7.5, -16, -Math.PI / 3],
-    ];
 
-    waterfallLocations.forEach(([wx, wy, wz, rotY]) => {
-      const wfGrp = new THREE.Group();
-      wfGrp.position.set(wx, wy, wz);
-      wfGrp.rotation.y = rotY;
-
-      const stream = new THREE.Mesh(new THREE.BoxGeometry(3.2, 11.0, 0.7), mats.waterFoam);
-      stream.rotation.x = 0.22;
-      wfGrp.add(stream);
-
-      for (let p = 0; p < 6; p++) {
-        const foam = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 0), mats.cloudWhite);
-        foam.position.set((p - 2.5) * 0.55, -4.8 + (p % 3) * 0.38, 1.25);
-        wfGrp.add(foam);
-        waterfallDrops.push(foam);
-      }
-      worldGroup.add(wfGrp);
-    });
 
     // 好天氣時天上偶爾飛過的飛鳥群（人字形鶴群，振翅掠過群島天際）
     const birdFlockGroup = new THREE.Group();
@@ -2693,7 +3761,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         phaseOffset: 0.0,
         getPoint: (u) => {
           const a = u * Math.PI * 2;
-          return [Math.cos(a) * 18.2, Math.sin(a) * 14.5];
+          return [Math.cos(a) * 19.2, Math.sin(a) * 18.2];
         },
       },
       {
@@ -2702,55 +3770,69 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         phaseOffset: 0.5,
         getPoint: (u) => {
           const a = u * Math.PI * 2;
-          return [Math.cos(a) * 19.5, Math.sin(a) * 15.6];
+          return [Math.cos(a) * 20.4, Math.sin(a) * 19.2];
         },
       },
-      // 航線 3 & 4：東西橫貫水道（穿梭於痛點島/創意島與討論島/徵才島之間的寬闊河道）
+      // 航線 3：出入北山洞口探秘舟（沿北水道駛入北山洞口 [0, -51.5] 再悠然划出）
       {
         isHuafang: false,
-        speed: 0.017,
-        phaseOffset: 0.15,
-        getPoint: (u) => {
-          const a = u * Math.PI * 2;
-          return [Math.sin(a) * 42.0, Math.sin(a * 2) * 13.5];
+        speed: 0.0095,
+        phaseOffset: 0.0,
+        getPoint: (u: number): [number, number] => {
+          if (u < 0.40) {
+            const p = u / 0.40;
+            const z = -22 - p * 29.5; // -22 -> -51.5 駛入北山洞口
+            const x = Math.sin(p * Math.PI) * 0.8;
+            return [x, z];
+          } else if (u < 0.55) {
+            const p = (u - 0.40) / 0.15;
+            const angle = p * Math.PI;
+            const z = -51.5 - Math.sin(angle) * 2.5;
+            const x = Math.sin(angle) * 1.6;
+            return [x, z];
+          } else if (u < 0.85) {
+            const p = (u - 0.55) / 0.30;
+            const z = -51.5 + p * 29.5; // 破洞而出
+            const x = -Math.sin(p * Math.PI) * 0.8;
+            return [x, z];
+          } else {
+            const p = (u - 0.85) / 0.15;
+            const angle = p * Math.PI * 2;
+            const z = -22 + Math.sin(angle) * 2.5;
+            const x = -Math.sin(angle) * 3.2;
+            return [x, z];
+          }
         },
       },
-      {
-        isHuafang: false,
-        speed: 0.017,
-        phaseOffset: 0.65,
-        getPoint: (u) => {
-          const a = u * Math.PI * 2;
-          return [Math.sin(a) * 42.0, Math.sin(a * 2) * 13.5];
-        },
-      },
-      // 航線 5 & 6：南北縱貫水道（穿梭於北方痛點/討論水道與南方創意/徵才水道）
-      {
-        isHuafang: false,
-        speed: 0.018,
-        phaseOffset: 0.3,
-        getPoint: (u) => {
-          const a = u * Math.PI * 2;
-          return [Math.sin(a * 2) * 16.8, Math.cos(a) * 32.0];
-        },
-      },
+      // 航線 4：出入南山洞口探秘舟（沿南水道駛入南山洞口 [0, 53.5] 再悠然划出）
       {
         isHuafang: true,
-        speed: 0.016,
-        phaseOffset: 0.82,
-        getPoint: (u) => {
-          const a = u * Math.PI * 2;
-          return [Math.sin(a * 2) * 16.8, Math.cos(a) * 32.0];
-        },
-      },
-      // 航線 7：外環山水水道（在群島外緣與遠山之間的寬闊碧波巡航）
-      {
-        isHuafang: true,
-        speed: 0.013,
-        phaseOffset: 0.4,
-        getPoint: (u) => {
-          const a = -u * Math.PI * 2;
-          return [Math.cos(a) * 52.0, Math.sin(a) * 39.0];
+        speed: 0.0095,
+        phaseOffset: 0.35,
+        getPoint: (u: number): [number, number] => {
+          if (u < 0.40) {
+            const p = u / 0.40;
+            const z = 24 + p * 29.5; // 24 -> 53.5 駛入南山洞口
+            const x = Math.sin(p * Math.PI) * 0.9;
+            return [x, z];
+          } else if (u < 0.55) {
+            const p = (u - 0.40) / 0.15;
+            const angle = p * Math.PI;
+            const z = 53.5 + Math.sin(angle) * 2.5;
+            const x = Math.sin(angle) * 1.6;
+            return [x, z];
+          } else if (u < 0.85) {
+            const p = (u - 0.55) / 0.30;
+            const z = 53.5 - p * 29.5; // 破洞而出
+            const x = -Math.sin(p * Math.PI) * 0.9;
+            return [x, z];
+          } else {
+            const p = (u - 0.85) / 0.15;
+            const angle = p * Math.PI * 2;
+            const z = 24 - Math.sin(angle) * 2.5;
+            const x = -Math.sin(angle) * 3.2;
+            return [x, z];
+          }
         },
       },
     ];
@@ -2846,7 +3928,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     worldGroup.add(selectionRing);
 
     // =========================================================
-    // 8.5 線上真人位置 3D 小人系統（最多 25 位小人：瀏覽中在建築外漫步並注視建築內部，使用中進入建築內部）
+    // 8.5 線上真人位置 3D 小人系統（上限 50 位小人，頭頂皆有倒三角標記；NPC 無倒三角）
     // =========================================================
     const BUILDING_3D_ANCHORS: Record<
       IslandBuildingId,
@@ -2941,10 +4023,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     ];
     const walkerSkinMat = new THREE.MeshStandardMaterial({ color: 0xffe4c4, roughness: 0.65 });
     const walkerHairMat = new THREE.MeshStandardMaterial({ color: 0x231f20, roughness: 0.8 });
-    const browsingBadgeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // 瀏覽中：青藍光點
-    const usingBadgeMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });    // 使用中：暖金光點
+    const browsingBadgeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // 瀏覽中：青藍倒三角
+    const usingBadgeMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });    // 使用中：暖金倒三角
 
-    const MAX_WALKERS = 25;
+    const MAX_WALKERS = 50;
     const islandWalkers: Array<{
       root: THREE.Group;
       leftLeg: THREE.Mesh;
@@ -2990,8 +4072,11 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       hairBun.position.set(0, 1.15, -0.03);
       root.add(hairBun);
 
-      const statusDot = new THREE.Mesh(new THREE.OctahedronGeometry(0.085, 0), browsingBadgeMat);
-      statusDot.position.set(0, 1.36, 0);
+      // 線上統計人數小人專屬：頭頂醒目倒三角標記（尖端朝下指向頭頂，NPC 無此標記）
+      const invertedTriangleGeo = new THREE.ConeGeometry(0.145, 0.28, 4);
+      invertedTriangleGeo.rotateX(Math.PI); // 旋轉 180 度使三角錐尖端朝下（倒三角）
+      const statusDot = new THREE.Mesh(invertedTriangleGeo, browsingBadgeMat);
+      statusDot.position.set(0, 1.44, 0);
       root.add(statusDot);
 
       root.scale.setScalar(1.08);
@@ -3050,6 +4135,9 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
             break;
           }
           obj = obj.parent;
+        }
+        if (foundDistrictId === 'home-trade-street' || foundDistrictId === 'main-trade') {
+          return;
         }
         if (foundIslandId) {
           onSelectRef.current(foundIslandId, foundDistrictId);
@@ -3271,15 +4359,52 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       orbitRingGroup.rotation.y = -t * 1.2;
       bulbGroup.position.y = homeY + 4.85 + Math.sin(t * 2.1) * 0.2;
 
-      // 1.5 江南垂柳柳絲隨微風輕柔擺動
+      // 1.5 江南垂柳柳絲與兩排桃花林隨微風輕柔擺動
       swayingWillowFronds.forEach((wf) => {
         wf.group.rotation.z = Math.sin(t * 1.6 + wf.phase) * 0.055;
         wf.group.rotation.x = Math.cos(t * 1.3 + wf.phase) * 0.045;
       });
+      swayingTrees.forEach((st) => {
+        st.group.rotation.z = Math.sin(t * 1.5 + st.phase) * st.amp;
+        st.group.rotation.x = Math.cos(t * 1.2 + st.phase) * (st.amp * 0.8);
+      });
+
+      // 1.8 風吹稻浪（水稻梯田秧苗隨微風陣陣翻滾起伏）
+      const windT = t * 2.8;
+      for (let i = 0; i < swayingRiceShoots.length; i++) {
+        const rs = swayingRiceShoots[i];
+        const wave = Math.sin(windT + rs.baseX * 0.28 + rs.baseZ * 0.22 + rs.phase);
+        rs.mesh.rotation.z = wave * 0.18;
+        rs.mesh.rotation.x = Math.cos(windT * 0.85 + rs.baseX * 0.2) * 0.10;
+      }
 
       // 2. Rotate Waterwheels
       discWheel.rotation.z = -t * 0.9;
       creativeWheel.rotation.z = t * 0.9;
+      animatedWaterwheels.forEach((w) => {
+        w.rotation.x = t * 1.15;
+      });
+
+      // 2.5 Farmland Vitality & Bridge Angler Living Animations (悠閒黃牛晃頭、辛勤農夫勞作、白鷺鷥振翅、小雞啄米、橋上垂釣客提竿)
+      animatedOxHeads.forEach((oxHead, idx) => {
+        oxHead.rotation.x = 0.2 + Math.sin(t * 1.4 + idx * 1.2) * 0.12;
+      });
+      animatedEgrets.forEach((eg) => {
+        const flap = Math.sin(t * 7.5 + eg.phase) * 0.42;
+        eg.leftWing.rotation.z = flap;
+        eg.rightWing.rotation.z = -flap;
+      });
+      animatedFarmers.forEach((f) => {
+        f.torso.rotation.x = Math.sin(t * 2.2 + f.phase) * 0.14;
+      });
+      animatedChickens.forEach((c) => {
+        c.head.rotation.x = Math.max(0, Math.sin(t * 4.2 + c.phase)) * 0.38;
+      });
+      animatedAnglers.forEach((ag) => {
+        // 釣客釣竿隨水波微晃，偶爾輕微抖動提竿
+        const nibble = Math.pow(Math.max(0, Math.sin(t * 1.8 + ag.phase)), 4) * 0.12;
+        ag.rodGroup.rotation.x = Math.sin(t * 1.3 + ag.phase) * 0.035 - nibble;
+      });
 
       // 3. Bobbing Moored Jiangnan Boat & Sailing Jiangnan Boats along Waterways
       sailboat.position.y = -0.18 + Math.sin(t * 1.8) * 0.08;
@@ -3326,7 +4451,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         pc.group.position.y = pc.baseY + Math.sin(t * 0.7 + pc.phase) * 0.45;
       });
 
-      // 4.2 線上真人 3D 小人動態更新（最多 25 位：瀏覽中在建築外漫步並注視裡面，使用中進入建築內部）
+      // 4.2 線上真人 3D 小人動態更新（上限 50 位：頭頂旋轉倒三角標記，瀏覽中在建築外漫步並注視裡面，使用中進入建築內部）
       const currentAvatars = avatarsRef.current || [];
       for (let i = 0; i < MAX_WALKERS; i++) {
         const walker = islandWalkers[i];
@@ -3384,7 +4509,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           walker.rightArm.rotation.x = limbSwing * 0.75;
         }
         walker.statusDot.rotation.y = t * 2.4 + seed;
-        walker.statusDot.position.y = 1.36 + Math.sin(t * 3.2 + seed) * 0.05;
+        walker.statusDot.position.y = 1.44 + Math.sin(t * 3.2 + seed) * 0.05;
       }
 
       // 4.5 好天氣時偶爾飛過天際的飛鳥群（每 24 秒為一週期，其中 16 秒優雅飛越群島上空，8 秒歇息）
@@ -3473,18 +4598,32 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       renderer.render(scene, camera);
 
       // 7. Project 3D Floating Callout Labels to 2D Screen Coordinates
-      // 75% 及以下遠景俯瞰只顯示「島名」；聚焦至 100%（>75%）時顯示「建築物名」與在線比例 %
+      // 地名分級與縮放規則：
+      // < 75% 遠景俯瞰：只顯示一級地名（島名）
+      // 75% 以上(包含)且 < 100%：只顯示二級地名（各島核心主建築/分區）
+      // 100% 以上(包含)：才能顯示三級地名（二級與三級細部分展區/展位/看板）
       const width = container.clientWidth || window.innerWidth;
       const height = container.clientHeight || window.innerHeight;
       const badgeScale = Math.min(1.08, Math.max(0.76, Math.pow(v.zoom, 0.35)));
-      const showIslandNamesOnly = v.zoom <= 0.755;
+      const currentZoomPct = Math.round(v.zoom * 100);
 
       ISLAND_3D_LABELS.forEach((lbl) => {
         const el = labelRefs.current[lbl.id];
         if (!el) return;
-        const shouldDisplay =
-          (lbl.kind === 'island' && showIslandNamesOnly) ||
-          (lbl.kind === 'building' && !showIslandNamesOnly);
+
+        const labelTier = lbl.tier || (lbl.kind === 'island' ? 1 : 2);
+        let shouldDisplay = false;
+
+        if (currentZoomPct < 75) {
+          // 75% 以下只顯示一級地名（島名）
+          shouldDisplay = labelTier === 1;
+        } else if (currentZoomPct < 100) {
+          // 75% 以上(包含)只顯示二級地名
+          shouldDisplay = labelTier === 2;
+        } else {
+          // 100% 才能顯示三級地名（100% 以上二級與三級同時呈現）
+          shouldDisplay = labelTier === 2 || labelTier === 3;
+        }
 
         if (!shouldDisplay) {
           el.style.opacity = '0';
@@ -3503,7 +4642,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         const sx = (tempVec.x * 0.5 + 0.5) * width;
         const sy = (-tempVec.y * 0.5 + 0.5) * height;
         el.style.opacity = '1';
-        el.style.pointerEvents = 'auto';
+        el.style.pointerEvents = lbl.isStaticOnly ? 'none' : 'auto';
         el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -100%) scale(${badgeScale})`;
       });
     };
@@ -3546,7 +4685,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     <div className="island-webgl-wrapper">
       <div ref={mountRef} className="island-webgl-canvas-mount" />
 
-      {/* 3D World-Projected Floating Callout Badges (島名與建築物名分開顯示，建築物顯示即時在線人數佔比 %) */}
+      {/* 3D World-Projected Floating Callout Badges (分級顯示：<75% 一級島名，>=75% 只顯示二級，>=100% 顯示三級) */}
       <div className="island-3d-labels-layer">
         {ISLAND_3D_LABELS.map((lbl) => {
           const isSelected = selectedIslandId === lbl.islandId;
@@ -3554,15 +4693,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           const pct = bStats ? bStats.percentage : 0;
 
           const handleBadgeClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+            if (lbl.isStaticOnly) return;
             e.stopPropagation();
-            if (lbl.kind === 'island') {
+            if (lbl.kind === 'island' || lbl.tier === 1) {
               if (onFocusIslandRef.current) {
                 onFocusIslandRef.current(lbl.islandId);
               } else {
-                onSelectIsland(lbl.islandId, lbl.districtId);
+                onSelectIsland(lbl.islandId, lbl.districtId, lbl.streetId);
               }
             } else {
-              onSelectIsland(lbl.islandId, lbl.districtId);
+              onSelectIsland(lbl.islandId, lbl.districtId, lbl.streetId);
             }
           };
 
@@ -3572,20 +4712,23 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
               ref={(el) => {
                 labelRefs.current[lbl.id] = el;
               }}
-              onClick={handleBadgeClick}
-              className={`island-3d-callout-badge island-ui-interactive ${
-                lbl.isSecondary ? 'is-secondary' : ''
-              } ${isSelected ? 'is-selected' : ''}`}
-              role="button"
-              tabIndex={0}
+              onClick={lbl.isStaticOnly ? undefined : handleBadgeClick}
+              className={`island-3d-callout-badge ${
+                lbl.isStaticOnly ? 'is-static-only' : 'island-ui-interactive'
+              } ${lbl.isSecondary ? 'is-secondary' : ''} ${isSelected ? 'is-selected' : ''}`}
+              role={lbl.isStaticOnly ? undefined : 'button'}
+              tabIndex={lbl.isStaticOnly ? -1 : 0}
               title={
-                lbl.kind === 'island'
-                  ? `點擊「${lbl.title}」自動聚焦至 100% 並顯示建築物名稱`
+                lbl.isStaticOnly
+                  ? `${lbl.title}（籌備中，暫未開放）`
+                  : lbl.tier === 1 || lbl.kind === 'island'
+                  ? `點擊進入「${lbl.title}」`
                   : bStats
                   ? `${lbl.title}：目前線上佔比 ${pct}%（瀏覽 ${bStats.browsingCount} 人 · 使用 ${bStats.usingCount} 人）`
                   : lbl.title
               }
               onKeyDown={(e) => {
+                if (lbl.isStaticOnly) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   handleBadgeClick(e);
@@ -3594,13 +4737,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
             >
               <div className="callout-badge-title-row">
                 <span className="callout-badge-title">{lbl.title}</span>
-                {lbl.kind === 'building' && (
+                {lbl.kind === 'building' && !lbl.isStaticOnly && (
                   <span className="callout-badge-count">{pct}%</span>
                 )}
               </div>
-              {lbl.kind === 'island' && (
-                <div className="callout-badge-subtitle">點擊聚焦 100%</div>
-              )}
               <div className="callout-badge-pointer" />
             </div>
           );

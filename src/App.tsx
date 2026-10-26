@@ -62,6 +62,12 @@ import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
 import { MascotHost } from './components/mascot/MascotHost';
 import { IslandWorldView } from './components/island/IslandWorldView';
 import { IslandAction } from './data/islandWorld';
+import {
+  getOrCreateIslandSessionId,
+  publishLocalPresence,
+  IslandBuildingId,
+  IslandOnlineUserRecord,
+} from './utils/islandPresence';
 import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
 
 // 需要時才載入的頁面（程式碼分割）：縮小首頁第一次下載的檔案大小
@@ -580,6 +586,73 @@ function MainContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [fullscreenEmbedApp]);
 
+  // 同步全站 2D 頁面的即時真人位置至 3D 創點島人流系統
+  useEffect(() => {
+    if (activeTab === 'island_explorer') return;
+    const sessionId = getOrCreateIslandSessionId();
+    let buildingId: IslandBuildingId = 'home-plaza';
+    let activity: 'browsing' | 'using' =
+      activeTab === 'question_detail' || activeTab === 'create_question' || Boolean(fullscreenEmbedApp)
+        ? 'using'
+        : 'browsing';
+
+    if (fullscreenEmbedApp) {
+      buildingId =
+        fullscreenEmbedApp.tertiaryCategory === '遊戲專區' ? 'creative-arcade' : 'creative-exhibition';
+    } else if (activeTab === 'solvers') {
+      buildingId = 'career-academy';
+    } else if (activeTab === 'job_explorer') {
+      buildingId = 'career-temple';
+    } else if (activeTab === 'question_detail' && selectedQuestion) {
+      if (isPainPointQuestion(selectedQuestion)) {
+        buildingId = 'pain-innovation-tower';
+      } else if (isVibeCodingAppQuestion(selectedQuestion)) {
+        buildingId =
+          selectedQuestion.tertiaryCategory === '遊戲專區' ? 'creative-arcade' : 'creative-exhibition';
+      } else if (isL0DiscussionQuestion(selectedQuestion)) {
+        buildingId =
+          selectedQuestion.category === '學術探討'
+            ? 'discussion-library'
+            : selectedQuestion.category === '專業問題'
+            ? 'discussion-workshop'
+            : 'discussion-street';
+      }
+    } else if (specialZone === 'pain_points') {
+      buildingId = 'pain-innovation-tower';
+    } else if (specialZone === 'vibecoding') {
+      buildingId = 'creative-exhibition';
+    } else if (specialZone === 'l0_discussion') {
+      buildingId =
+        selectedCategory === '學術探討'
+          ? 'discussion-library'
+          : selectedCategory === '專業問題'
+          ? 'discussion-workshop'
+          : 'discussion-street';
+    }
+
+    const syncMainPresence = () => {
+      const rec: IslandOnlineUserRecord = {
+        userId: sessionId,
+        sessionId,
+        displayName: currentUser?.name || '線上探索者',
+        buildingId,
+        activity,
+        updatedAt: Date.now(),
+        isCurrentSession: true,
+      };
+      publishLocalPresence(rec);
+      fetch('/api/island/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rec),
+      }).catch(() => {});
+    };
+
+    syncMainPresence();
+    const timer = setInterval(syncMainPresence, 10000);
+    return () => clearInterval(timer);
+  }, [activeTab, specialZone, selectedCategory, selectedQuestion, fullscreenEmbedApp, currentUser?.name]);
+
   const handleViewAppDescription = (app: Question) => {
     questionReturnScrollRef.current = window.scrollY;
     setReturnTabAfterQuestion({
@@ -600,8 +673,16 @@ function MainContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 首次使用引導教學狀態（手動由頁尾、平台介紹或導覽點擊啟動）
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  // 首次使用引導教學狀態（手動由頁尾、平台介紹或導覽點擊啟動；支援 ?onboarding=true 網址直接開啟）
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        return p.get('onboarding') === 'true' || p.get('guide') === 'true';
+      }
+    } catch {}
+    return false;
+  });
   const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
 
@@ -845,6 +926,11 @@ function MainContent() {
   const [aboutPageSection, setAboutPageSection] = useState<string>(() => {
     try {
       if (/^\/(about\/)?agents\/?$/.test(window.location.pathname)) return 'ip_agents';
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        const s = p.get('section');
+        if (s) return s;
+      }
     } catch {}
     return 'others';
   });

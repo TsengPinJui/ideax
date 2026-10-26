@@ -34,6 +34,7 @@ import {
   AiCustomerAnalyticsData,
 } from '../utils/exportSurveyExcel';
 import { loadAllDataFromFirestore } from '../services/firestoreSync';
+import { computeCityDistributionStats } from '../data/cityData';
 
 export const AdminUserAnalyticsTab: React.FC = () => {
   const { availableUsers, setAvailableUsers, isDemoMode } = useApp();
@@ -578,6 +579,12 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     ];
   }, [validUsers, isDemoMode]);
 
+  // 11. 用戶城市與地區分佈統計（與 3D 地圖城市選擇即時連動）
+  const cityDistributionStats = useMemo(
+    () => computeCityDistributionStats(validUsers.length),
+    [validUsers.length]
+  );
+
   // Filtered raw users list
   const filteredUsers = useMemo(() => {
     if (!searchTerm.trim()) return validUsers;
@@ -1113,6 +1120,24 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <span className="text-[11px] text-stone-400">圓餅圖呈現</span>
           </div>
           {renderPieChart(jobLevelPieStats)}
+        </div>
+
+        {/* 4.3 用戶城市與地區分佈（地圖設定即時連動） */}
+        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal-500" />
+              <span>4.3 用戶城市與地區分佈（地圖設定即時連動）</span>
+            </h3>
+            <span className="text-[11px] text-stone-400">台北、台中、高雄、港新馬</span>
+          </div>
+          {renderPieChart(
+            cityDistributionStats.map((c) => ({
+              label: `${c.name} (${c.country})`,
+              count: c.count,
+              color: c.color,
+            }))
+          )}
         </div>
 
         {/* 5. 目前薪水(年)層級分佈 */}

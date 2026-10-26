@@ -2017,7 +2017,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     // 同步寫入 Firestore platform_settings/global 並呼叫後端 API，且保留本機設定不回退
     publicMetricsSavingRef.current += 1;
-    syncSettingToCloud('global', { publicMetricsConfig: next, updatedAt: new Date().toISOString() }).catch(() => {});
+    syncPlatformSettingsToFirestore({ publicMetricsConfig: next }).catch(() => {});
     savePublicMetricsConfig(next as unknown as Record<string, boolean>)
       .catch(() => {})
       .finally(() => {

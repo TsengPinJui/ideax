@@ -201,40 +201,41 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex h-screen h-[100dvh] overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex h-screen h-[100dvh] overflow-hidden items-stretch justify-start">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 cursor-pointer"
+        className="fixed inset-0 bg-stone-950/65 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Sidebar Panel */}
+      {/* Clean Modern Left Sidebar Panel */}
       <aside
-        className="relative z-50 w-[88vw] max-w-xs sm:max-w-sm bg-white h-full h-[100dvh] max-h-[100dvh] shadow-2xl border-r border-stone-200 flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out"
+        className="relative z-50 w-[88vw] max-w-xs sm:max-w-sm h-full h-[100dvh] max-h-[100dvh] bg-white shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-200 select-none border-r border-stone-200"
         role="dialog"
         aria-modal="true"
         aria-label="熱門看板與主題"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/95 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-300 text-amber-700 flex items-center justify-center shadow-2xs">
-              <Layers className="w-4 h-4 text-amber-600" />
+            <div className="w-8 h-8 rounded-xl bg-amber-600/15 border border-amber-500/40 text-amber-800 flex items-center justify-center shadow-2xs">
+              <Layers className="w-4 h-4 text-amber-700" />
             </div>
             <div>
-              <h2 className="text-base font-black text-stone-900">
-                熱門看板與主題
+              <h2 className="text-base font-bold text-stone-900 tracking-wide flex items-center gap-1.5">
+                <span>熱門看板與主題</span>
               </h2>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-white hover:bg-stone-100 active:bg-stone-200 text-stone-500 hover:text-stone-800 border border-stone-200 flex items-center justify-center transition-colors cursor-pointer"
-            title="關閉"
+            className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-700 hover:text-stone-950 border border-stone-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs group"
+            title="關閉選單"
+            aria-label="關閉選單"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-stone-600 group-hover:text-stone-950" />
           </button>
         </div>
 

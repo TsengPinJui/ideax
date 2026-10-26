@@ -502,6 +502,22 @@
   box-shadow: 0 8px 22px rgba(217, 167, 56, 0.38);
 }
 
+.island-3d-callout-badge.is-static-only {
+  cursor: default;
+  pointer-events: none;
+  background: #fbf7ec !important;
+  border-color: #dfd3b8 !important;
+  box-shadow: 0 4px 12px rgba(24, 38, 36, 0.16) !important;
+  transform-origin: center bottom;
+}
+
+.island-3d-callout-badge.is-static-only:hover {
+  background: #fbf7ec !important;
+  border-color: #dfd3b8 !important;
+  box-shadow: 0 4px 12px rgba(24, 38, 36, 0.16) !important;
+  transform: none !important;
+}
+
 .island-3d-callout-badge.is-secondary {
   padding: 4px 11px;
   border-radius: 10px;
@@ -1837,3 +1853,109 @@
     font-family: var(--island-calligraphy-font);
   }
 }
+
+/* ============================================================
+   右下角城市與天氣設定按鈕及彈窗選單
+   ============================================================ */
+.island-bottom-right-city {
+  position: absolute;
+  bottom: 22px;
+  right: 22px;
+  z-index: 28;
+  pointer-events: auto;
+}
+
+.island-city-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 252, 245, 0.94);
+  border: 1px solid rgba(180, 140, 90, 0.35);
+  box-shadow: 0 4px 16px rgba(45, 30, 15, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #292524;
+}
+
+.island-city-btn:hover {
+  background: #ffffff;
+  border-color: #d97706;
+  box-shadow: 0 6px 20px rgba(180, 83, 9, 0.2);
+  transform: translateY(-1px);
+}
+
+.island-city-dropdown {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 290px;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(180, 140, 90, 0.25);
+  box-shadow: 0 12px 36px rgba(45, 30, 15, 0.2), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 14px;
+  z-index: 35;
+  animation: cityDropdownFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cityDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.city-dropdown-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f5f5f4;
+}
+
+.city-dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.city-select-card {
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.city-select-card:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+
+.city-select-card.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  box-shadow: 0 0 0 1.5px #d97706 inset;
+}
+
+@media (max-width: 640px) {
+  .island-bottom-right-city {
+    bottom: 74px;
+    right: 14px;
+  }
+  .island-city-dropdown {
+    width: 260px;
+  }
+}
+
