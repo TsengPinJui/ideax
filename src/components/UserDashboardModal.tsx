@@ -3338,7 +3338,26 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Metric 14: 卡片內頁瀏覽次數（僅管理員可見 或 全站可見） */}
+                  </div>
+                )}
+              </div>
+
+              {/* 紫色獨立控制專區：卡片瀏覽次數、創點島開關、一般用戶智慧上架 */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/60 border-2 border-purple-300 shadow-xs space-y-3.5">
+                <div className="flex items-center justify-between border-b border-purple-200/80 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-purple-950">進階權限與功能展示設定</h4>
+                      <p className="text-[11px] text-purple-900/70 mt-0.5">獨立控制卡片瀏覽數範圍、創點島地圖公開性與一般用戶一鍵智慧上架</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {/* 1. 卡片內頁瀏覽次數 */}
                   {(() => {
                     const isEnabled = publicMetricsConfig.showCardViews ?? true;
                     const scope = publicMetricsConfig.cardViewsScope ?? 'admin';
@@ -3387,7 +3406,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             </p>
                           </div>
 
-                          {/* 切換開關：在「僅管理員可見」與「全站可見」之間切換 */}
                           <button
                             type="button"
                             onClick={() => {
@@ -3420,7 +3438,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           </button>
                         </div>
 
-                        {/* 快速二選一分頁膠囊按鈕：直觀選擇「僅管理員可見」或「全站可見」 */}
                         <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
                           <span className="text-[10px] font-bold text-stone-500 shrink-0">可見範圍：</span>
                           <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
@@ -3454,14 +3471,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     );
                   })()}
 
-                  {/* Feature 15: 一般用戶智慧上架功能開關 */}
+                  {/* 2. 創點島開關 (公開 / 隱藏) */}
                   {(() => {
-                    const isSmartOnboardAllowed = publicMetricsConfig.allowUserSmartOnboard !== false;
+                    const isIslandOpen = publicMetricsConfig.showIslandMap !== false;
 
                     return (
                       <div
-                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 col-span-1 sm:col-span-2 lg:col-span-3 ${
-                          isSmartOnboardAllowed
+                        className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                          isIslandOpen
                             ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
                             : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
                         }`}
@@ -3469,46 +3486,132 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`font-black text-xs flex items-center gap-1.5 ${isSmartOnboardAllowed ? 'text-purple-950' : 'text-stone-700'}`}>
-                                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSmartOnboardAllowed ? 'text-purple-600' : 'text-stone-400'}`} />
-                                <span>一般用戶智慧上架功能</span>
+                              <span className={`font-black text-xs flex items-center gap-1.5 ${isIslandOpen ? 'text-purple-950' : 'text-stone-700'}`}>
+                                <Compass className={`w-3.5 h-3.5 shrink-0 ${isIslandOpen ? 'text-purple-600' : 'text-stone-400'}`} />
+                                <span>創點島開關</span>
                               </span>
-                              {isSmartOnboardAllowed ? (
+                              {isIslandOpen ? (
                                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
-                                  <span>已開放一般用戶使用</span>
+                                  <Globe className="w-2.5 h-2.5" />
+                                  <span>公開</span>
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
-                                  🚫 已關閉（僅管理員可用）
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs flex items-center gap-1">
+                                  <EyeOff className="w-2.5 h-2.5" />
+                                  <span>隱藏</span>
                                 </span>
                               )}
-                              <span className="text-[10px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</span>
                             </div>
                             <p className="text-[11px] text-stone-600 mt-1 leading-snug">
-                              {isSmartOnboardAllowed
-                                ? '開啟中 · 一般會員可於軟體專區使用「一鍵上架」或於刊登頁貼上網址由 AI 自動抓取名稱、描述、分類與首頁截圖（需登入會員）'
-                                : '已關閉 · 一般用戶不可使用智慧上架與一鍵上架入口（軟體專區一鍵上架入口與發布頁智慧讀取將對一般用戶隱藏，僅管理員可用）'}
+                              {isIslandOpen
+                                ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口，所有會員與訪客皆可自由探索'
+                                : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏，僅管理員由後台可預覽或開啟'}
                             </p>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() => updatePublicMetricsConfig({ allowUserSmartOnboard: !isSmartOnboardAllowed })}
+                            role="switch"
+                            aria-checked={isIslandOpen}
+                            onClick={() => updatePublicMetricsConfig({ showIslandMap: !isIslandOpen })}
                             className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
-                              isSmartOnboardAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
+                              isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
                             }`}
-                            title={isSmartOnboardAllowed ? '點擊關閉一般用戶智慧上架功能' : '點擊開啟一般用戶智慧上架功能'}
+                            title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
                           >
                             <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
-                              isSmartOnboardAllowed ? 'translate-x-5.5' : 'translate-x-0'
+                              isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'
                             }`} />
                           </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
+                          <span className="text-[10px] font-bold text-stone-500 shrink-0">目前狀態：</span>
+                          <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
+                            <button
+                              type="button"
+                              onClick={() => updatePublicMetricsConfig({ showIslandMap: true })}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                isIslandOpen
+                                  ? 'bg-purple-700 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                              }`}
+                            >
+                              <Globe className="w-3 h-3" />
+                              <span>公開</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updatePublicMetricsConfig({ showIslandMap: false })}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                                !isIslandOpen
+                                  ? 'bg-stone-700 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                              }`}
+                            >
+                              <EyeOff className="w-3 h-3" />
+                              <span>隱藏</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
-                )}
+
+                {/* 3. 一般用戶智慧上架功能 */}
+                {(() => {
+                  const isSmartOnboardAllowed = publicMetricsConfig.allowUserSmartOnboard !== false;
+
+                  return (
+                    <div
+                      className={`p-3.5 rounded-xl border-2 transition-all space-y-2.5 ${
+                        isSmartOnboardAllowed
+                          ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-500 shadow-sm ring-2 ring-purple-200/60'
+                          : 'bg-stone-50/90 border-dashed border-stone-300 opacity-70'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`font-black text-xs flex items-center gap-1.5 ${isSmartOnboardAllowed ? 'text-purple-950' : 'text-stone-700'}`}>
+                              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSmartOnboardAllowed ? 'text-purple-600' : 'text-stone-400'}`} />
+                              <span>一般用戶智慧上架功能</span>
+                            </span>
+                            {isSmartOnboardAllowed ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                                <span>已開放一般用戶使用</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">
+                                🚫 已關閉（僅管理員可用）
+                              </span>
+                            )}
+                            <span className="text-[10px] text-stone-500 font-medium">※ 上架即代表您已經確認取得作者授權刊登作品於本平台</span>
+                          </div>
+                          <p className="text-[11px] text-stone-600 mt-1 leading-snug">
+                            {isSmartOnboardAllowed
+                              ? '開放中 · 一般會員可於軟體專區使用「一鍵上架」或於刊登頁貼上網址由 AI 自動抓取名稱、描述、分類與首頁截圖（需登入會員）'
+                              : '已關閉 · 一般用戶不可使用智慧上架與一鍵上架入口（軟體專區一鍵上架入口與發布頁智慧讀取將對一般用戶隱藏，僅管理員可用）'}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => updatePublicMetricsConfig({ allowUserSmartOnboard: !isSmartOnboardAllowed })}
+                          className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
+                            isSmartOnboardAllowed ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
+                          }`}
+                          title={isSmartOnboardAllowed ? '點擊關閉一般用戶智慧上架功能' : '點擊開啟一般用戶智慧上架功能'}
+                        >
+                          <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
+                            isSmartOnboardAllowed ? 'translate-x-5.5' : 'translate-x-0'
+                          }`} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
 

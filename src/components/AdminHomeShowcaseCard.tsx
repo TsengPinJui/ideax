@@ -5,6 +5,7 @@ import { HOME_SHOWCASE_MAX_CUSTOM, type HomeShowcaseMode, type Question } from '
 import { useShowcaseSlides } from './HomeShowcasePlayer';
 import { stripAppNameFromTitle } from '../utils/titleFormat';
 import { getHotRankedGames } from '../data/hotGamesData';
+import { isGameQuestion } from '../utils/gameClassification';
 
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創點子提案',
@@ -406,7 +407,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
   const seeds = getHotRankedGames(questions).map((x) => x.question);
   const isGame = (x: Question) => {
     const text = `${x.title || ''} ${x.description || ''}`;
-    return x.status !== 'delisted' && x.status !== 'closed' && (x.category === '遊戲' || x.subcategory === '遊戲' || x.subcategories?.includes('遊戲') || x.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
+    return x.status !== 'delisted' && x.status !== 'closed' && (isGameQuestion(x) || (x.category as string) === '遊戲' || x.subcategory === '遊戲' || x.subcategories?.includes('遊戲') || x.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
   };
   const byId = new Map<string, Question>();
   [...questions.filter(isGame), ...seeds].forEach((q) => { if (!byId.has(q.id)) byId.set(q.id, q); });

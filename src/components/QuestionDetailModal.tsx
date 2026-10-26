@@ -278,6 +278,19 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(liveQuestion, questions) : [];
 
   const [questionHistory, setQuestionHistory] = useState<Question[]>([]);
+  const detailContentScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = () => {
+    if (detailContentScrollRef.current) {
+      detailContentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      detailContentScrollRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToTop();
+  }, [liveQuestion?.id]);
 
   const handleSelectQuestion = (targetQ: Question) => {
     if (liveQuestion && liveQuestion.id !== targetQ.id) {
@@ -288,7 +301,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     } else if (setSelectedQuestion) {
       setSelectedQuestion(targetQ);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   };
 
   const handleBackOrClose = () => {
@@ -1088,7 +1101,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       </div>
 
       {/* Body */}
-      <div className={`p-2.5 sm:p-6 space-y-4 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+      <div ref={detailContentScrollRef} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
         {/* Author info & metadata bar + 私聊按鈕 */}
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">

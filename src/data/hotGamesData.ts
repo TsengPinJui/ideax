@@ -1,5 +1,6 @@
 import { Question } from '../types';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
+import { isGameQuestion } from '../utils/gameClassification';
 
 export interface HotGameDef {
   rank: number;
@@ -261,7 +262,7 @@ export function getHotRankedGames(allQuestions?: Question[], mode: 'custom' | 'v
   });
   const isGame = (q: Question) => {
     const text = `${q.title || ''} ${q.description || ''}`;
-    return q.status !== 'delisted' && q.status !== 'closed' && (q.category === '遊戲' || q.subcategory === '遊戲' || q.subcategories?.includes('遊戲') || q.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
+    return q.status !== 'delisted' && q.status !== 'closed' && (isGameQuestion(q) || (q.category as string) === '遊戲' || q.subcategory === '遊戲' || q.subcategories?.includes('遊戲') || q.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag)) || /遊戲|桌遊|game|rpg/i.test(text));
   };
   let ranked: Array<{ question: Question; heat: string }>;
   if (mode === 'views') {

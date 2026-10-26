@@ -1086,24 +1086,61 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
           {isOtherDisplayExpanded && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 animate-in fade-in duration-200 pt-1">
-              {/* 創點島入口 */}
-              <div className={`p-4 rounded-xl border-2 flex items-center justify-between gap-3 ${localPublicMetrics.showIslandMap !== false ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-400' : 'bg-white border-stone-200 opacity-70'}`}>
-                <div>
-                  <div className="font-extrabold text-xs text-purple-950">創點島地圖入口</div>
-                  <p className="text-[11px] text-stone-600 mt-1">控制首頁地圖卡片與導覽列入口</p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={localPublicMetrics.showIslandMap !== false}
-                  aria-label="顯示創點島地圖入口"
-                  onClick={() => setLocalPublicMetrics((prev) => ({ ...prev, showIslandMap: prev.showIslandMap === false }))}
-                  className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${localPublicMetrics.showIslandMap !== false ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'}`}
-                  title={localPublicMetrics.showIslandMap !== false ? '關閉創點島入口' : '顯示創點島入口'}
-                >
-                  <span className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${localPublicMetrics.showIslandMap !== false ? 'translate-x-5.5' : 'translate-x-0'}`} />
-                </button>
-              </div>
+              {/* 創點島開關 (公開 / 隱藏) */}
+              {(() => {
+                const isIslandOpen = localPublicMetrics.showIslandMap !== false;
+                return (
+                  <div className={`p-4 rounded-xl border-2 space-y-2.5 ${isIslandOpen ? 'bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-purple-400' : 'bg-white border-stone-200 opacity-70'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-xs text-purple-950">創點島開關</span>
+                          {isIslandOpen ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs">公開</span>
+                          ) : (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-500 text-white shadow-2xs">隱藏</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-1">
+                          {isIslandOpen ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口' : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isIslandOpen}
+                        aria-label="創點島開關"
+                        onClick={() => setLocalPublicMetrics((prev) => ({ ...prev, showIslandMap: !isIslandOpen }))}
+                        className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'}`}
+                        title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
+                      >
+                        <span className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-200/60">
+                      <span className="text-[10px] font-bold text-stone-500 shrink-0">目前狀態：</span>
+                      <div className="inline-flex items-center p-0.5 rounded-lg bg-stone-100 border border-stone-200/80">
+                        <button
+                          type="button"
+                          onClick={() => setLocalPublicMetrics((prev) => ({ ...prev, showIslandMap: true }))}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${isIslandOpen ? 'bg-purple-700 text-white shadow-2xs' : 'text-stone-600 hover:bg-stone-200/60'}`}
+                        >
+                          <Globe className="w-3 h-3" />
+                          <span>公開</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLocalPublicMetrics((prev) => ({ ...prev, showIslandMap: false }))}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${!isIslandOpen ? 'bg-stone-700 text-white shadow-2xs' : 'text-stone-600 hover:bg-stone-200/60'}`}
+                        >
+                          <EyeOff className="w-3 h-3" />
+                          <span>隱藏</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 卡片瀏覽數：紫色表示僅管理員可見，亮色表示全員可見 */}
               {(() => {

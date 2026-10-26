@@ -160,10 +160,22 @@ export const SimilarRecommendationsSection: React.FC<SimilarRecommendationsSecti
             getUniqueProposalCoverImage({ id: item.id, title: item.title });
           const authorName = resolveUserDisplayName(item.authorId, item.authorName, availableUsers);
 
+          const handleCardClick = () => {
+            onSelectQuestion(item);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (typeof document !== 'undefined') {
+              const scrollContainers = document.querySelectorAll('.overflow-y-auto');
+              scrollContainers.forEach((el) => {
+                el.scrollTo({ top: 0, behavior: 'smooth' });
+                el.scrollTop = 0;
+              });
+            }
+          };
+
           return (
             <div
               key={item.id}
-              onClick={() => onSelectQuestion(item)}
+              onClick={handleCardClick}
               className="w-[240px] sm:w-[270px] shrink-0 snap-start bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group"
             >
               {/* 封面圖片與浮動分類徽章 */}

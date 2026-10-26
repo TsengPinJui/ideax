@@ -190,11 +190,16 @@ const gamesDistrict: DistrictSeed = {
 };
 
 const rawIslands: IdeaXIsland[] = [
-  createIsland('home', '主島', '中央廣場', '從這裡出發，探索 IdeaX 的內容與服務。', '🏛️', { x: 50, y: 48, size: 'large', land: '#d9c797', edge: '#a77c53' }, [
-    { id: 'main-plaza', name: '中央廣場', subtitle: '最新內容與全站探索', streets: [{ id: 'main-latest-street', name: '探索大道', subtitle: '直接逛全站真實內容', stands: [stand('main-latest', '最新內容看板', 'all', 'central-plaza', 'plaza', ['📰', '💡', '🧭'], 'cards', '沿著中央廣場的公告欄瀏覽 IdeaX 目前公開的內容。', npc('多慧', '創點島導覽員', '想先看看大家最近提出的問題、討論和作品嗎？', 'home', '回傳統首頁'), { navigationTarget: { tab: 'explore' } })] }] },
-    { id: 'main-guide-center', name: '探索導覽中心', subtitle: '快速前往主要功能', streets: [{ id: 'main-quick-street', name: '功能導覽街', subtitle: '從使用需求選擇入口', stands: [stand('main-quick-guide', 'IdeaX 功能入口', 'all', 'guide-center', 'plaza', ['🗺️', '✨', '📍'], 'cards', '依照想做的事，快速前往原網站的對應功能。', npc('多慧', '創點島導覽員', '從島嶼或功能選一個入口，就能接上原有網站流程。', 'home', '看全站內容'))] }] },
+  createIsland('home', '主島', '中央廣場', '從這裡出發，探索 IdeaX 的內容與服務。', '🏛️', { x: 50, y: 50, size: 'large', land: '#d9c797', edge: '#a77c53' }, [
+    { id: 'main-plaza', name: '中央廣場', subtitle: '最新內容與全站探索', streets: [
+      { id: 'main-latest-street', name: '探索大道', subtitle: '直接逛全站真實內容', stands: [stand('main-latest', '最新內容看板', 'all', 'central-plaza', 'plaza', ['📰', '💡', '🧭'], 'cards', '沿著中央廣場的公告欄瀏覽 IdeaX 目前公開的內容。', npc('多慧', '創點島導覽員', '想先看看大家最近提出的問題、討論和作品嗎？', 'home', '看全站內容'), { navigationTarget: { tab: 'explore' } })] },
+      { id: 'main-quick-street', name: '功能導覽街', subtitle: '從使用需求選擇入口', stands: [stand('main-quick-guide', 'IdeaX 功能入口', 'all', 'guide-center', 'plaza', ['🗺️', '✨', '📍'], 'cards', '依照想做的事，快速前往原網站的對應功能。', npc('多慧', '創點島導覽員', '從島嶼或功能選一個入口，就能接上原有網站流程。', 'home', '看全站內容'))] },
+    ] },
+    { id: 'main-trade', name: '貿易街', subtitle: '商案商品交易與專案競標（暫未開放）', streets: [
+      { id: 'main-trade-street', name: '貿易大道', subtitle: '專案交易與競標市集', stands: [stand('main-trade-market', '貿易市集（暫未開放）', 'all', 'guide-center', 'plaza', ['🪙', '⚖️', '📦'], 'cards', '貿易街專案商品交易與專案競標市集籌備中，暫未開放。', npc('貿易掌事', '貿易街掌事', '貿易街目前正在籌備建設中，標示暫未開放，敬請期待後續功能！', 'home', '暫未開放'), { interactionPrompt: '貿易街目前籌備中，暫未對外開放。' })] },
+    ] },
   ]),
-  createIsland('creative', '創意島', '創意島', '展覽館與電玩城，發現軟體作品、遊戲和提案。', '💡', { x: 28, y: 68, size: 'large', land: '#b8cf9b', edge: '#6f9666' }, [
+  createIsland('creative', '創意島', '創意島', '展覽館與電玩城，發現軟體作品、遊戲和提案。', '💡', { x: 8, y: 92, size: 'large', land: '#b8cf9b', edge: '#6f9666' }, [
     { id: 'creative-exhibition', name: '展覽館', subtitle: '作品、AI 工具與創新提案展區', streets: [
       { id: 'creative-ai-street', name: 'AI 工具街', subtitle: '探索 AI 應用與工具作品', stands: [stand('creative-ai-tools', 'AI 工具展櫃', 'app', 'future-lab', 'gallery', ['🤖', '🧪', '✨'], 'exhibits', '在未來實驗室展示 AI 工具與應用作品。', npc('小艾', '實驗室研究員', '想找 AI 工具或看看創作者的新作品嗎？', 'vibecoding_feed', '查看 AI 工具'), { category: 'AI工具', navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
       { id: 'creative-software-street', name: '軟體應用街', subtitle: '網站程式與實用工具作品', stands: [stand('creative-software', '軟體作品展櫃', 'app', 'software-gallery', 'gallery', ['🖥️', '🧰', '🌐'], 'exhibits', '以展品卡片呈現已發布的軟體網站作品。', npc('程程', '展覽館員', '點選展品即可查看 IdeaX 上的作品介紹。', 'vibecoding_feed', '逛軟體展覽館'), { navigationTarget: { tab: 'explore', specialZone: 'vibecoding' } })] },
@@ -202,20 +207,32 @@ const rawIslands: IdeaXIsland[] = [
     ] },
     gamesDistrict,
   ]),
-  createIsland('pain', '痛點島', '痛點島', '從真實問題出發，探索痛點、需求與懸賞。', '🔥', { x: 26, y: 38, size: 'medium', land: '#dfb98c', edge: '#b37b57' }, [
-    { id: 'pain-innovation-tower', name: '創點樓', subtitle: '走進老酒樓，說說你遇到的難題', streets: [{ id: 'pain-point-street', name: '問題卷軸街', subtitle: '看看酒樓公告牆上的真實需求', stands: [stand('pain-point-board', '創點樓大堂', 'pain', 'innovation-tower', 'problem', ['🧾', '🪵', '💬'], 'scrolls', '老式酒樓裡的長桌與公告牆，收錄使用者發布的真實痛點。', npc('掌櫃阿點', '創點樓掌櫃', '客官，先看看樓裡的公告；若你也有難題，我替你記下來。', 'create_pain_point', '寫下我的難題'), { sceneMood: '古代傳統酒樓', navigationTarget: { tab: 'explore', specialZone: 'pain_points' }, interactionPrompt: '翻看公告牆上的真實需求，或請掌櫃協助發布你的難題。' })] }] },
-    { id: 'pain-needs-board', name: '需求公告區', subtitle: '依生活情境和分類尋找需求', streets: [{ id: 'pain-needs-street', name: '需求分類街', subtitle: '查看各領域提出的問題', stands: [stand('pain-needs', '需求分類公告牆', 'pain', 'needs-board', 'problem', ['📌', '🗒️', '🔖'], 'scrolls', '依 IdeaX 現有公開痛點貼文呈現需求內容。', npc('小需', '需求整理員', '點選一張卷軸可查看完整問題和回覆。', 'pain_feed', '瀏覽痛點') , { navigationTarget: { tab: 'explore', specialZone: 'pain_points' } })] }] },
+  createIsland('pain', '痛點島', '痛點島', '從真實問題出發，探索痛點、需求與懸賞。', '🔥', { x: 8, y: 8, size: 'large', land: '#dfb98c', edge: '#b37b57' }, [
+    { id: 'pain-innovation-tower', name: '創點樓', subtitle: '走進老酒樓，說說你遇到的難題', streets: [{ id: 'pain-point-street', name: '問題卷軸街', subtitle: '看看酒樓公告牆上的真實需求', stands: [stand('pain-point-board', '創點樓大堂', 'pain', 'innovation-tower', 'problem', ['🧾', '🪵', '💬'], 'scrolls', '老式酒樓裡的長桌與公告牆，收錄使用者發布的真實痛點。', npc('掌櫃阿點', '創點樓掌櫃', '客官，先看看樓裡的公告；若你也有難題，我替你記下來。', 'create_pain_point', '寫下我的難題'), { sceneMood: '古代傳統酒樓', navigationTarget: { tab: 'explore', specialZone: 'pain_points' }, interactionPrompt: '翻看公告牆上的真實需求，或請創點樓掌櫃協助發布你的難題。' })] }] },
+    { id: 'pain-needs-board', name: '需求公告區', subtitle: '依生活情境和分類尋找需求', streets: [{ id: 'pain-needs-street', name: '需求分類街', subtitle: '查看各領域提出的問題', stands: [stand('pain-needs', '需求分類公告牆', 'pain', 'needs-board', 'problem', ['📌', '🗒️', '🔖'], 'scrolls', '依 IdeaX 現有公開痛點貼文呈現需求內容。', npc('掌櫃阿點', '創點樓掌櫃', '客官請點選一張卷軸查看完整痛點與回覆。', 'pain_feed', '瀏覽痛點') , { navigationTarget: { tab: 'explore', specialZone: 'pain_points' } })] }] },
   ]),
-  createIsland('discussion', '討論島', '討論島', '走進日常、技術與學術街，加入真實討論。', '💬', { x: 76, y: 35, size: 'medium', land: '#e2cc99', edge: '#b59161' }, [
-    { id: 'discussion-market', name: '討論市集', subtitle: '每條主題街都連結原有討論內容', streets: [
-      { id: 'discussion-daily-street', name: '日常街', subtitle: '生活話題與日常疑問', stands: [stand('discussion-daily', '日常交流攤', 'discussion', 'discussion-market', 'market', ['☕', '📰', '💬'], 'cards', '用輕鬆的市集攤位瀏覽日常交流內容。', npc('小聊', '市集招呼員', '最近大家在聊什麼？來看一看，也歡迎加入討論。', 'discussion_feed', '逛討論市集'), { category: '日常疑難', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
-      { id: 'discussion-tech-street', name: '技術街', subtitle: '程式、工程與技術交流', stands: [stand('discussion-tech', '技術交流攤', 'discussion', 'maker-market', 'market', ['⚙️', '💻', '🛠️'], 'cards', '以工程師創客街的工具台和技術交流看板呈現討論。', npc('阿工', '創客街嚮導', '技術問題可以從標題與分類開始找，點進貼文接續討論。', 'discussion_feed', '查看技術討論'), { category: '專業問題', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
-      { id: 'discussion-academic-street', name: '學術街', subtitle: '學術探討與知識交流', stands: [stand('discussion-academic', '知識圖書攤', 'discussion', 'knowledge-library', 'market', ['📚', '🔬', '🧠'], 'cards', '書架、研究筆記與學術討論內容相連。', npc('知知', '知識館員', '可以依問題標題和分類，找到正在交流的主題。', 'discussion_feed', '瀏覽學術討論'), { category: '學術探討', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
+  createIsland('discussion', '討論島', '討論島', '走進日常討論街、技術工作坊與知識圖書館。', '💬', { x: 92, y: 8, size: 'large', land: '#e2cc99', edge: '#b59161' }, [
+    { id: 'discussion-daily-district', name: '日常討論街', subtitle: '生活話題交流，每個討論卡片為一攤', streets: [
+      { id: 'discussion-daily-street', name: '交流攤位街', subtitle: '生活、職場與休閒話題', stands: [stand('discussion-daily', '日常交流各攤', 'discussion', 'discussion-market', 'market', ['☕', '📰', '💬'], 'cards', '生活市集，每個討論卡片即為一個交流攤位。', npc('小聊', '市集攤主', '來逛逛各個交流攤位，看看大家都在聊什麼。', 'discussion_feed', '逛討論市集'), { category: '日常疑難', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
+    ] },
+    { id: 'discussion-tech-district', name: '技術交流', subtitle: '創客工作坊，每個卡片以桌為單位', streets: [
+      { id: 'discussion-tech-street', name: '工作坊交流桌', subtitle: '程式、架構與技術切磋', stands: [stand('discussion-tech', '技術交流工作坊（各桌）', 'discussion', 'maker-market', 'market', ['⚙️', '💻', '🛠️'], 'cards', '創客工作坊，每個討論卡片以交流桌為單位開桌探討。', npc('阿工', '工作坊桌主', '技術交流工作坊已備好各桌，挑一桌坐下切磋。', 'discussion_feed', '查看技術交流桌'), { category: '專業問題', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
+    ] },
+    { id: 'discussion-academic-district', name: '圖書館', subtitle: '學術探討，每個卡片以研討室為單位', streets: [
+      { id: 'discussion-academic-street', name: '學術研討室', subtitle: '學術研究與深度理論探討', stands: [stand('discussion-academic', '學術研討室（各室）', 'discussion', 'knowledge-library', 'market', ['📚', '🔬', '🧠'], 'cards', '圖書館研討區，每個卡片以獨立研討室為單位探討學術論點。', npc('知知', '圖書館長', '研討室內正在進行學術探討，歡迎進入研讀。', 'discussion_feed', '進入學術研討室'), { category: '學術探討', navigationTarget: { tab: 'explore', specialZone: 'l0_discussion' } })] },
     ] },
   ]),
-  createIsland('career', '徵才島', '徵才島', '使用既有職缺搜尋與專家媒合服務。', '🧧', { x: 76, y: 65, size: 'medium', land: '#d6a68d', edge: '#a86d57' }, [
-    { id: 'career-temple', name: '職涯祈願廟', subtitle: '按條件搜尋真實職缺', streets: [{ id: 'career-jobs-street', name: '職缺榜街', subtitle: '開啟原有 AI 獵頭職缺搜尋', stands: [stand('career-job-search', '職缺推薦籤', 'jobs', 'career-temple', 'temple', ['🧧', '🪭', '📜'], 'job_board', '以祈願廟與職缺榜呈現入口；實際搜尋仍由 IdeaX 既有職缺服務處理。', npc('月老職涯官', '職涯指引 NPC', '告訴我你的地區、職務或工作型態，我們從真實職缺開始搜尋。', 'jobs', '開始找職缺'), { contentKind: 'jobs', navigationTarget: { tab: 'job_explorer' }, interactionPrompt: '抽籤只作為導覽儀式；職缺與條件比對由既有職缺搜尋提供。', audioProfile: 'quiet-temple' })] }] },
-    { id: 'career-guild', name: '人才公會', subtitle: '尋找專家與媒合服務', streets: [{ id: 'career-experts-street', name: '專家媒合街', subtitle: '查看既有專家智庫名冊', stands: [stand('career-experts', '專家人才榜', 'experts', 'expert-guild', 'temple', ['🛡️', '🤝', '🏅'], 'guild_roster', '連接 IdeaX 現有專家名冊與媒合頁面。', npc('公會接待員', '人才公會嚮導', '想找特定領域的專家嗎？進入名冊查看專長與媒合方式。', 'experts', '瀏覽專家名冊'), { contentKind: 'experts', navigationTarget: { tab: 'solvers' } })] }] },
+  createIsland('career', '徵才島', '徵才島', '進求職廟向廟公許願，或入翰林院查閱專家各庫。', '🧧', { x: 92, y: 92, size: 'large', land: '#d6a68d', edge: '#a86d57' }, [
+    { id: 'career-temple-district', name: '求職廟', subtitle: '求職廟廟公聆聽需求，記錄並在匯職缺精準找工作', streets: [
+      { id: 'career-temple-street', name: '求職廟大殿', subtitle: '向廟公許下求職期望', stands: [stand('career-temple-main', '求職廟正殿', 'jobs', 'career-temple', 'temple', ['🧧', '🪭', '📜'], 'job_board', '走入求職廟，向廟公許下求職期望，廟公將為您紀錄並於匯職缺精準找工作。', npc('廟公', '求職廟 廟公', '信士請進。向老朽說說您的專業專長、期望地區與理想職缺，我替您記下並在全網匯職缺為您尋得良機。', 'jobs', '向廟公許願找工作'), { contentKind: 'jobs', navigationTarget: { tab: 'job_explorer' }, interactionPrompt: '廟公將聆聽您的求職需求並紀錄，用來在匯職缺為您精準比對工作。', audioProfile: 'quiet-temple' })] },
+    ] },
+    { id: 'career-hanlin-district', name: '翰林院', subtitle: '專家智庫，院內分門別類，以各大智庫分藏專家名冊', streets: [
+      { id: 'hanlin-tech-street', name: '資訊科技庫', subtitle: '軟體開發、AI 人工智慧與雲端架構專家', stands: [stand('hanlin-tech', '資訊科技庫專家名冊', 'experts', 'expert-guild', 'temple', ['💻', '🤖', '☁️'], 'guild_roster', '翰林院資訊科技庫，收錄演算法、前後端、大數據與 AI 實戰專家。', npc('院士', '翰林院學士', '科技庫收納全站頂尖工程專家，請查閱名冊。', 'experts', '查閱科技庫專家'), { contentKind: 'experts', category: '技術開發', navigationTarget: { tab: 'solvers' } })] },
+      { id: 'hanlin-biz-street', name: '商業經營庫', subtitle: '商業策略、跨國行銷與品牌經營顧問', stands: [stand('hanlin-biz', '商業經營庫專家名冊', 'experts', 'expert-guild', 'temple', ['📈', '💼', '🌐'], 'guild_roster', '翰林院商業經營庫，匯聚商業模式、融資與市場拓銷名師。', npc('院士', '翰林院學士', '商業庫收錄各領域資深顧問，隨時可發起諮詢。', 'experts', '查閱商業庫專家'), { contentKind: 'experts', category: '商業職場', navigationTarget: { tab: 'solvers' } })] },
+      { id: 'hanlin-biomed-street', name: '生醫療材庫', subtitle: '生醫科技、醫療器材法規與臨床研究專家', stands: [stand('hanlin-biomed', '生醫療材庫專家名冊', 'experts', 'expert-guild', 'temple', ['🧬', '🔬', '🏥'], 'guild_roster', '翰林院生醫療材庫，專門對接生醫檢驗、醫材認證與前瞻研發專家。', npc('院士', '翰林院學士', '生醫庫匯聚醫學與生技前瞻人才。', 'experts', '查閱生醫庫專家'), { contentKind: 'experts', navigationTarget: { tab: 'solvers' } })] },
+      { id: 'hanlin-design-street', name: '創意設計庫', subtitle: 'UI/UX 產品體驗、工業設計與多媒體專家', stands: [stand('hanlin-design', '創意設計庫專家名冊', 'experts', 'expert-guild', 'temple', ['🎨', '✨', '📐'], 'guild_roster', '翰林院創意設計庫，專注介面體驗、品牌識別與工業造物設計師。', npc('院士', '翰林院學士', '設計庫網羅美學與體驗高手。', 'experts', '查閱設計庫專家'), { contentKind: 'experts', category: '創意設計', navigationTarget: { tab: 'solvers' } })] },
+      { id: 'hanlin-legal-street', name: '法律智財庫', subtitle: '智慧財產權、專利佈局與商務法規顧問', stands: [stand('hanlin-legal', '法律智財庫專家名冊', 'experts', 'expert-guild', 'temple', ['⚖️', '📜', '🛡️'], 'guild_roster', '翰林院法律智財庫，保駕護航技術專利、合約爭議與商標法規。', npc('院士', '翰林院學士', '智財庫為您的創意點子構築法律專利防線。', 'experts', '查閱法規庫專家'), { contentKind: 'experts', navigationTarget: { tab: 'solvers' } })] },
+    ] },
   ]),
 ];
 
