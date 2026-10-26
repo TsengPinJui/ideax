@@ -790,12 +790,12 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     roomEnv.dispose();
     pmremGenerator.dispose();
 
-    // Camera (far plane increased to 950 so high/distant sun, moon & clouds never clip)
+    // Camera (far plane increased to 1600 so ultra-distant sun, moon, stars & horizon clouds never clip)
     const camera = new THREE.PerspectiveCamera(
       36,
       (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
       1,
-      950,
+      1600,
     );
 
     // Lighting Setup
@@ -1017,9 +1017,9 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       fog: false,
       depthWrite: false,
     });
-    const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(6.8, 28, 28), moonMat);
-    moonMesh.position.set(52, 88, -198);
-    const moonHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(12.4, 24, 24), moonHaloMat);
+    const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(9.2, 28, 28), moonMat);
+    moonMesh.position.set(88, 126, -430);
+    const moonHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(17.5, 24, 24), moonHaloMat);
     moonMesh.add(moonHaloMesh);
     celestialGroup.add(moonMesh);
 
@@ -1036,13 +1036,13 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       fog: false,
       depthWrite: false,
     });
-    const sunsetSunMesh = new THREE.Mesh(new THREE.SphereGeometry(8.6, 28, 28), sunsetSunMat);
-    sunsetSunMesh.position.set(-22, 72, -196);
-    const sunsetHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(15.2, 24, 24), sunsetHaloMat);
+    const sunsetSunMesh = new THREE.Mesh(new THREE.SphereGeometry(11.5, 28, 28), sunsetSunMat);
+    sunsetSunMesh.position.set(-42, 96, -425);
+    const sunsetHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(21.0, 24, 24), sunsetHaloMat);
     sunsetSunMesh.add(sunsetHaloMesh);
     celestialGroup.add(sunsetSunMesh);
 
-    // 清晨與正午高掛遠方天際的太陽
+    // 清晨與正午高掛極遠方天際的太陽（位於最外層遠山之後）
     const initialDaySunOp =
       timePhaseRef.current === 'morning' || timePhaseRef.current === 'noon' ? 0.95 : 0;
     const daySunMat = new THREE.MeshBasicMaterial({
@@ -1058,25 +1058,25 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       fog: false,
       depthWrite: false,
     });
-    const daySunMesh = new THREE.Mesh(new THREE.SphereGeometry(7.6, 28, 28), daySunMat);
-    daySunMesh.position.set(-54, 94, -192);
-    const daySunHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(14.0, 24, 24), daySunHaloMat);
+    const daySunMesh = new THREE.Mesh(new THREE.SphereGeometry(10.2, 28, 28), daySunMat);
+    daySunMesh.position.set(-96, 136, -435);
+    const daySunHaloMesh = new THREE.Mesh(new THREE.SphereGeometry(19.0, 24, 24), daySunHaloMat);
     daySunMesh.add(daySunHaloMesh);
     celestialGroup.add(daySunMesh);
 
-    // Starfield for Night Mode (高遠夜空星河)
-    const starCount = 220;
+    // Starfield for Night Mode (極遠夜空星河，位於遠山與明月後方)
+    const starCount = 240;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
-      starPositions[i * 3] = (Math.random() - 0.5) * 320;
-      starPositions[i * 3 + 1] = 48 + Math.random() * 88;
-      starPositions[i * 3 + 2] = -150 - Math.random() * 75;
+      starPositions[i * 3] = (Math.random() - 0.5) * 580;
+      starPositions[i * 3 + 1] = 76 + Math.random() * 135;
+      starPositions[i * 3 + 2] = -440 - Math.random() * 110;
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
     const starMat = new THREE.PointsMaterial({
       color: 0xfff6d6,
-      size: 0.95,
+      size: 1.25,
       transparent: true,
       opacity: initialAtmos.moonOpacity,
       fog: false,
@@ -1157,57 +1157,64 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // PROCEDURAL FLOWING WATERFALL TEXTURES & SCULPTED CASCADE BUILDER
     // =========================================================
     const createWaterfallTextures = () => {
-      // 1. 底層碧玉絲綢流水貼圖（連續無縫滾動）
+      // 1. 底層清澈碧玉流水貼圖（直向柔和絲滑水紋，左右與上下皆無縫銜接）
       const flowCanvas = document.createElement('canvas');
       flowCanvas.width = 256;
       flowCanvas.height = 512;
       const fCtx = flowCanvas.getContext('2d');
       if (fCtx) {
         const bgGrad = fCtx.createLinearGradient(0, 0, 256, 0);
-        bgGrad.addColorStop(0.0, 'rgba(38, 166, 188, 0.72)');
-        bgGrad.addColorStop(0.2, 'rgba(72, 206, 224, 0.92)');
-        bgGrad.addColorStop(0.5, 'rgba(185, 246, 255, 0.96)');
-        bgGrad.addColorStop(0.8, 'rgba(72, 206, 224, 0.92)');
-        bgGrad.addColorStop(1.0, 'rgba(38, 166, 188, 0.72)');
+        bgGrad.addColorStop(0.0, 'rgba(72, 184, 198, 0.88)');
+        bgGrad.addColorStop(0.22, 'rgba(110, 212, 224, 0.94)');
+        bgGrad.addColorStop(0.5, 'rgba(196, 244, 250, 0.97)');
+        bgGrad.addColorStop(0.78, 'rgba(110, 212, 224, 0.94)');
+        bgGrad.addColorStop(1.0, 'rgba(72, 184, 198, 0.88)');
         fCtx.fillStyle = bgGrad;
         fCtx.fillRect(0, 0, 256, 512);
 
-        // 繪製縱向絲滑水脈與飛沫流線（上下可無縫銜接）
-        for (let i = 0; i < 64; i++) {
-          const x = ((i * 29) % 236) + 10;
-          const w = 3 + (i % 5) * 2.4;
-          const alpha = 0.24 + (i % 4) * 0.16;
-          fCtx.fillStyle = `rgba(245, 254, 255, ${alpha})`;
-          for (let seg = 0; seg < 16; seg++) {
-            const y0 = seg * 32;
-            const waveX = Math.sin((seg / 16) * Math.PI * 2 + i * 0.7) * 3.5;
-            fCtx.fillRect(x + waveX, y0, w, 33);
-          }
+        // 繪製柔和筆直的縱向水紋流線（上下可無縫循環滾動）
+        for (let i = 0; i < 48; i++) {
+          const cx = 18 + ((i * 31) % 220);
+          const cy = (i * 47) % 512;
+          const len = 110 + (i % 4) * 45;
+          const rw = 4 + (i % 3) * 3;
+          const alpha = 0.18 + (i % 3) * 0.1;
+          const drawSoftStream = (offsetY: number) => {
+            const g = fCtx.createLinearGradient(cx, cy + offsetY, cx, cy + offsetY + len);
+            g.addColorStop(0.0, 'rgba(255, 255, 255, 0.0)');
+            g.addColorStop(0.3, `rgba(240, 253, 255, ${alpha})`);
+            g.addColorStop(0.7, `rgba(255, 255, 255, ${alpha * 1.15})`);
+            g.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+            fCtx.fillStyle = g;
+            fCtx.fillRect(cx - rw * 0.5, cy + offsetY, rw, len);
+          };
+          drawSoftStream(0);
+          if (cy + len > 512) drawSoftStream(-512);
         }
       }
       const flowTex = new THREE.CanvasTexture(flowCanvas);
       flowTex.wrapS = THREE.RepeatWrapping;
       flowTex.wrapT = THREE.RepeatWrapping;
-      flowTex.repeat.set(1.5, 2.2);
+      flowTex.repeat.set(1.0, 2.0);
       flowTex.colorSpace = THREE.SRGBColorSpace;
 
-      // 2. 表層雪白飛瀑浪花水簾貼圖（高速差速滾動，形成雙層立體水簾）
+      // 2. 表層細膩白沫水簾貼圖（差速滾動）
       const foamCanvas = document.createElement('canvas');
       foamCanvas.width = 256;
       foamCanvas.height = 512;
       const mCtx = foamCanvas.getContext('2d');
       if (mCtx) {
         mCtx.clearRect(0, 0, 256, 512);
-        for (let i = 0; i < 52; i++) {
-          const cx = 16 + ((i * 37) % 224);
-          const cy = (i * 53) % 512;
-          const len = 72 + (i % 4) * 36;
-          const rw = 4 + (i % 3) * 3.5;
+        for (let i = 0; i < 36; i++) {
+          const cx = 24 + ((i * 41) % 208);
+          const cy = (i * 59) % 512;
+          const len = 85 + (i % 4) * 38;
+          const rw = 3.5 + (i % 3) * 2.5;
           const drawStreak = (offsetY: number) => {
             const g = mCtx.createLinearGradient(cx, cy + offsetY, cx, cy + offsetY + len);
             g.addColorStop(0.0, 'rgba(255, 255, 255, 0.0)');
-            g.addColorStop(0.35, 'rgba(255, 255, 255, 0.85)');
-            g.addColorStop(0.75, 'rgba(225, 252, 255, 0.92)');
+            g.addColorStop(0.4, 'rgba(255, 255, 255, 0.65)');
+            g.addColorStop(0.75, 'rgba(235, 252, 255, 0.72)');
             g.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
             mCtx.fillStyle = g;
             mCtx.beginPath();
@@ -1221,7 +1228,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       const foamSheetTex = new THREE.CanvasTexture(foamCanvas);
       foamSheetTex.wrapS = THREE.RepeatWrapping;
       foamSheetTex.wrapT = THREE.RepeatWrapping;
-      foamSheetTex.repeat.set(1.2, 1.8);
+      foamSheetTex.repeat.set(1.0, 1.6);
       foamSheetTex.colorSpace = THREE.SRGBColorSpace;
 
       return { flowTex, foamSheetTex };
@@ -1231,15 +1238,15 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       createWaterfallTextures();
 
     const waterfallCoreFlowMat = new THREE.MeshStandardMaterial({
-      color: 0xd8fbff,
+      color: 0xdffbff,
       map: waterfallFlowTex,
-      emissive: 0x38b6cf,
+      emissive: 0x3aa8bf,
       emissiveMap: waterfallFlowTex,
-      emissiveIntensity: 0.48,
-      roughness: 0.16,
-      metalness: 0.05,
+      emissiveIntensity: 0.35,
+      roughness: 0.2,
+      metalness: 0.04,
       transparent: true,
-      opacity: 0.94,
+      opacity: 0.95,
       side: THREE.DoubleSide,
     });
 
@@ -1247,44 +1254,43 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       color: 0xffffff,
       map: waterfallFoamSheetTex,
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.75,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
 
-    // 建立具自然重力拋物線與三疊岩階起伏的流線型雙層瀑布水簾（徹底取代生硬方塊）
+    // 建立貼合低多邊形山壁岩階、具備立體側邊厚度的流線型瀑布水簾（頂部自水平泉池圓滑溢出，兩側向內包覆嵌入岩壁）
     const createSculptedWaterfallCurtain = (
       topWidth: number,
       bottomWidth: number,
       height: number,
       forwardDrop: number,
-      tiers = 3,
+      _tiers = 1,
     ) => {
       const curtainGrp = new THREE.Group();
       const buildRibbonGeo = (zOffset: number, widthScale: number) => {
-        const segW = 24;
-        const segH = 48;
+        const segW = 20;
+        const segH = 32;
         const geo = new THREE.PlaneGeometry(1, 1, segW, segH);
         const pos = geo.attributes.position as THREE.BufferAttribute;
 
         for (let i = 0; i < pos.count; i++) {
           const u = pos.getX(i); // -0.5 ~ +0.5
-          const v = 0.5 - pos.getY(i); // 0 (崖頂出水口) ~ 1 (潭底入水處)
+          const v = 0.5 - pos.getY(i); // 0 (泉池出水唇) ~ 1 (底部入水處)
 
-          // 隨高度自然向外散開成喇叭狀水簾，並在岩階處微幅澎起
-          const tierBump = Math.sin(v * Math.PI * tiers) * 0.26;
-          const w = THREE.MathUtils.lerp(topWidth, bottomWidth, Math.pow(v, 0.85)) * widthScale;
-          const x = u * (w + tierBump * 0.45);
+          // 隨高度自然微幅展開
+          const w = THREE.MathUtils.lerp(topWidth, bottomWidth, v) * widthScale;
+          // 左右兩側邊緣向內微收並往後嵌入山體岩階，使側面觀看具備飽滿 3D 水體厚度，絕不露出單薄紙片邊緣
+          const edgeFactor = Math.cos(u * Math.PI); // 中央為 1，左右邊緣 u=±0.5 為 0
+          const x = Math.sin(u * Math.PI * 0.5) * w;
 
-          // 垂直高度：由頂部 height 傾瀉至 0
-          const y = (1 - v) * height;
+          // 頂部出水口圓弧過渡，自然向下傾瀉
+          const y = (1 - Math.pow(v, 1.12)) * height;
 
-          // 拋物線前傾弧度 + 三疊斷崖階梯起伏 + 縱向水束圓弧立體感
-          const gravityCurve = Math.pow(v, 0.78) * forwardDrop;
-          const ledgeStep = Math.sin(v * Math.PI * tiers * 2) * (0.22 * (1 - v * 0.3));
-          const centerArch = (1 - 4 * u * u) * 0.42;
-          const rippleZ = Math.cos(u * Math.PI * 7) * 0.08 * Math.sin(v * Math.PI);
-          const z = gravityCurve + ledgeStep + centerArch + rippleZ + zOffset;
+          // 順著山壁斜面平滑流下，中央水束飽滿微凸、兩側嵌入山石
+          const slopeZ = v * forwardDrop;
+          const volumeArchZ = edgeFactor * 0.48 * Math.sin(Math.min(1, v * 4.5) * (Math.PI * 0.5));
+          const z = slopeZ + volumeArchZ + zOffset;
 
           pos.setXYZ(i, x, y, z);
         }
@@ -1293,7 +1299,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       };
 
       const coreMesh = new THREE.Mesh(buildRibbonGeo(0, 1.0), waterfallCoreFlowMat);
-      const veilMesh = new THREE.Mesh(buildRibbonGeo(0.16, 0.96), waterfallFoamVeilMat);
+      const veilMesh = new THREE.Mesh(buildRibbonGeo(0.05, 0.92), waterfallFoamVeilMat);
       curtainGrp.add(coreMesh, veilMesh);
       return curtainGrp;
     };
@@ -4440,8 +4446,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     createLotusPatch(7.8, 42, 5);
 
     // 8.4 第一層：32座無縫閉合疊嶂環形山脈（點擊山觸發：「山不在高，有仙則靈」或「我是山神，最怕愚公」）
-    const mountainMistPoem =
-      '「煙光山色淡溟蒙，千尺浮屠兀倚空。湖上畫船歸欲盡，孤峰猶帶夕陽紅。」';
+    const mountainMistPoem = '「坐看雲起時」';
     const mountainPoems = [
       '「山不在高，有仙則靈」',
       '「我是山神，最怕愚公」',
@@ -4450,7 +4455,9 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     const closedRingCount = 32;
     for (let i = 0; i < closedRingCount; i++) {
       const angle = (i / closedRingCount) * Math.PI * 2;
-      const isCaveOrWaterfallPeak = i === 8 || i === 24; // 南側洞口 (i=8) 與北側飛流直下大瀑布 (i=24) 退讓不遮擋
+      const isSouthCaveArea = i === 7 || i === 8 || i === 9; // 南側水道小洞口後方與兩側山峰退讓，避免山錐掩埋洞口
+      const isNorthWaterfallPeak = i === 24; // 北側飛瀑主峰（與北山疊水飛瀑無縫銜接）
+      const isCaveOrWaterfallPeak = isSouthCaveArea || isNorthWaterfallPeak;
       const isWestPagodaPlateau = i === 16; // 痛點島與創意島之間後方的平頂山台 (i=16)
       const isWestPlateauShoulder = i === 15 || i === 17; // 塔樓山台兩側平緩山肩
 
@@ -4458,10 +4465,14 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         ? 61.5
         : isWestPlateauShoulder
         ? 65.5
-        : (isCaveOrWaterfallPeak ? 75.0 : 69) + Math.sin(i * 1.6) * 3.5;
+        : isSouthCaveArea
+        ? 72.5
+        : isNorthWaterfallPeak
+        ? 64.5
+        : 69 + Math.sin(i * 1.6) * 3.5;
       const mx = Math.cos(angle) * (radiusBase * 1.08);
       const mz = Math.sin(angle) * (radiusBase * 0.94);
-      const mr = isCaveOrWaterfallPeak ? 13.5 : 15.8 + (i % 4) * 1.1;
+      const mr = isNorthWaterfallPeak ? 16.5 : isSouthCaveArea ? 14.2 : 15.8 + (i % 4) * 1.1;
       const mh = 26 + (i % 5) * 2.8;
 
       const peakGrp = new THREE.Group();
@@ -4753,7 +4764,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     }
 
     // 8.6 江南水鄉農田生活煙火氣：山邊大型水溶石洞口（連接水道）、東山飛瀑與河道、水稻梯田、運轉水車、水道兩岸桃樹、悠閒黃牛、辛勤農夫、白鷺鷥與生機家畜
-    // A. 醒目高聳的山邊水溶石洞口（設於北山腳下 [0, 0, -50.5] 與南山腳下 [0, 0, 52.5]，連接南北中央水道，烏篷船可直接駛入洞中）
+    // A. 南山腳下精緻小巧的天然水道石洞口（《桃花源記》「山有小口，彷彿若有光」—— 位於南水道盡頭 [0, 0.2, 51.2]，寬約 3.4m、高約 2.4m，剛好容納一艘烏篷船悠然駛過，且絕不被後方山體遮擋）
     const caveEasterEggSparkles: Array<{
       core: THREE.Mesh;
       halo: THREE.Mesh;
@@ -4771,186 +4782,159 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         easterEggKind: 'cave',
       };
 
-      // 1. 深邃幽暗溶洞內膛（半圓拱頂深洞隧道 + 純黑深淵背板，置於山腳最前方絕不被山體遮擋）
+      // 0. 洞口後方銜接南山主峰的翠綠山麓緩坡（位於 localZ = -4.2，讓小洞口自然嵌於山腳且正面完全外露）
+      const foothillSlope = new THREE.Mesh(
+        new THREE.ConeGeometry(6.8, 14.5, 7),
+        mats.mountainGreen,
+      );
+      foothillSlope.position.set(0, 6.5, -4.2);
+      foothillSlope.rotation.y = Math.PI / 7;
+      waterGrottoGroup.add(foothillSlope);
+
+      // 1. 幽暗深邃的單舟小洞內膛（寬約 3.4m、水面上淨高約 2.4m，恰容一艘烏篷船通行，且正面朝向南水道清晰可見）
       const caveDeepMat = new THREE.MeshBasicMaterial({
-        color: 0x03080c,
+        color: 0x03070b,
         side: THREE.DoubleSide,
       });
       const caveTunnelVault = new THREE.Mesh(
-        new THREE.CylinderGeometry(7.2, 7.6, 11.5, 24, 1, false, 0, Math.PI),
+        new THREE.CylinderGeometry(1.75, 1.85, 4.8, 18, 1, false, 0, Math.PI),
         caveDeepMat,
       );
       caveTunnelVault.rotation.z = Math.PI / 2;
       caveTunnelVault.rotation.y = Math.PI / 2;
-      caveTunnelVault.position.set(0, 0.8, -2.5);
+      caveTunnelVault.position.set(0, -0.15, -1.0);
       waterGrottoGroup.add(caveTunnelVault);
 
       const caveBackdrop = new THREE.Mesh(
-        new THREE.CircleGeometry(7.4, 24, 0, Math.PI),
+        new THREE.CircleGeometry(1.8, 18, 0, Math.PI),
         caveDeepMat,
       );
-      caveBackdrop.position.set(0, 0.8, -1.2);
+      caveBackdrop.position.set(0, -0.15, 0.65);
       waterGrottoGroup.add(caveBackdrop);
 
-      // 2. 高聳外凸的雙層天然青石岩拱門（高約 10.5m、寬約 17m，與後方翠綠山體形成強烈明暗對比）
+      // 2. 層次分明的天然山石小拱門（外圈淺灰暖石與內圈深色岩拱，在翠綠山腳前輪廓清晰、大小適中）
       const outerCliffArch = new THREE.Mesh(
-        new THREE.TorusGeometry(7.8, 2.35, 8, 24, Math.PI),
-        mats.stonePlaza,
+        new THREE.TorusGeometry(1.95, 0.55, 7, 16, Math.PI),
+        mats.stoneStep,
       );
-      outerCliffArch.position.set(0, 1.2, 1.4);
+      outerCliffArch.position.set(0, -0.1, 0.95);
+      outerCliffArch.scale.set(1.0, 1.05, 1.25);
       waterGrottoGroup.add(outerCliffArch);
 
       const innerDarkArch = new THREE.Mesh(
-        new THREE.TorusGeometry(6.9, 1.75, 7, 20, Math.PI),
-        mats.caveRockMat,
+        new THREE.TorusGeometry(1.68, 0.42, 6, 14, Math.PI),
+        mats.cliffDark,
       );
-      innerDarkArch.position.set(0, 1.0, 0.2);
+      innerDarkArch.position.set(0, -0.15, 0.62);
+      innerDarkArch.scale.set(1.0, 1.02, 1.3);
       waterGrottoGroup.add(innerDarkArch);
 
-      // 3. 洞口左右兩側巍峨嶙峋的峭壁巨岩柱（向下扎根至水底）
-      [-8.2, 8.2].forEach((cx, cIdx) => {
-        for (let h = 0; h < 5; h++) {
-          const rock = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(2.8 - h * 0.18, 1),
-            h % 2 === cIdx ? mats.stonePlaza : mats.caveRockMat,
-          );
-          rock.position.set(
-            cx + (h % 2 === 0 ? 0.45 : -0.45),
-            h * 2.1 - 0.2,
-            1.6 - h * 0.25,
-          );
-          rock.scale.set(1.35, 1.25, 1.45);
-          waterGrottoGroup.add(rock);
-        }
+      // 洞頂青苔山石冠，自然過渡至後方山坡
+      const mossyCrown = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.8, 2.6, 1.2, 7),
+        mats.grassLush,
+      );
+      mossyCrown.position.set(0, 2.15, 0.35);
+      mossyCrown.scale.set(1.15, 0.65, 1.1);
+      waterGrottoGroup.add(mossyCrown);
+
+      // 3. 洞口左右兩側緊湊的低多邊形夾岸山石（恰夾出單艘船可過的河口）
+      [-2.15, 2.15].forEach((cx, cIdx) => {
+        const sideSign = cIdx === 0 ? -1 : 1;
+        const baseRock = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.75, 1.15, 2.4, 6),
+          cIdx % 2 === 0 ? mats.mountainRock : mats.cliffRock,
+        );
+        baseRock.position.set(cx, 0.35, 1.05);
+        baseRock.rotation.y = sideSign * 0.4;
+        waterGrottoGroup.add(baseRock);
+
+        const waterLedge = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.65, 0.95, 0.9, 6),
+          mats.stoneStep,
+        );
+        waterLedge.position.set(cx * 1.12, -0.45, 1.65);
+        waterGrottoGroup.add(waterLedge);
       });
 
-      // 4. 洞內延伸至洞外水道的翡翠微光水面（與河道無縫銜接）
+      // 4. 洞口幽碧水面（與南水道無縫銜接）
       const cavePool = new THREE.Mesh(
-        new THREE.CylinderGeometry(7.2, 7.2, 0.24, 24),
+        new THREE.CylinderGeometry(1.85, 1.85, 0.16, 16),
         mats.caveWaterMat,
       );
-      cavePool.position.set(0, -0.66, 0.8);
-      cavePool.scale.set(0.95, 1.0, 1.55);
+      cavePool.position.set(0, -0.72, 0.85);
+      cavePool.scale.set(0.96, 1.0, 1.45);
       waterGrottoGroup.add(cavePool);
 
-      // 5. 洞頂垂掛的大型鐘乳石群（在幽暗洞口背景前清晰可見）
+      // 5. 洞頂垂掛的 3 根小巧鐘乳石
       [
-        [-3.8, 6.2, 1.2, 2.2],
-        [-1.8, 7.1, 1.4, 2.7],
-        [0.0, 7.4, 1.5, 3.0],
-        [1.9, 7.0, 1.4, 2.5],
-        [3.8, 6.1, 1.2, 2.1],
+        [-0.65, 1.28, 0.95, 0.48],
+        [0.0, 1.45, 1.02, 0.58],
+        [0.65, 1.26, 0.95, 0.45],
       ].forEach(([sx, sy, sz, sh], sIdx) => {
         const stalactite = new THREE.Mesh(
-          new THREE.ConeGeometry(0.42, sh, 6),
-          sIdx % 2 === 0 ? mats.stonePlaza : mats.caveRockMat,
+          new THREE.ConeGeometry(0.12, sh, 5),
+          sIdx % 2 === 0 ? mats.stoneStep : mats.cliffDark,
         );
         stalactite.rotation.x = Math.PI;
         stalactite.position.set(sx, sy, sz);
         waterGrottoGroup.add(stalactite);
       });
 
-      // 6. 洞口峭壁側方山澗流泉（採用流線型弧形滾動水簾）
-      const grottoCascade = createSculptedWaterfallCurtain(1.15, 1.85, 8.8, 1.85, 2);
-      grottoCascade.position.set(-7.6, -0.4, 1.6);
-      grottoCascade.rotation.z = -0.08;
-      waterGrottoGroup.add(grottoCascade);
-
-      for (let f = 0; f < 5; f++) {
-        const foam = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.48 + (f % 2) * 0.16, 1),
-          mats.waterFoam,
-        );
-        foam.position.set(-7.2 + (f - 2) * 0.52, -0.38, 3.35 + (f % 2) * 0.28);
-        foam.scale.set(1.3, 0.45, 1.2);
-        waterGrottoGroup.add(foam);
-        waterfallDrops.push(foam);
-      }
-
-      // 7. 洞口水道兩側「江南青石引航燈柱」與洞拱懸掛紅燈籠（引導水道船隻進洞）
-      [-6.2, 6.2].forEach((lx) => {
-        const beaconPost = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.28, 0.38, 3.2, 6),
-          mats.stonePlaza,
-        );
-        beaconPost.position.set(lx, 0.6, 4.2);
-        waterGrottoGroup.add(beaconPost);
-
-        const beaconCap = new THREE.Mesh(
-          new THREE.ConeGeometry(0.68, 0.45, 6),
-          mats.roofSlate,
-        );
-        beaconCap.position.set(lx, 2.65, 4.2);
-        waterGrottoGroup.add(beaconCap);
-
-        const beaconGlow = new THREE.Mesh(
-          new THREE.SphereGeometry(0.28, 10, 10),
-          mats.lanternGlow,
-        );
-        beaconGlow.position.set(lx, 2.25, 4.2);
-        waterGrottoGroup.add(beaconGlow);
-
-        const archLantern = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.28, 0.32, 0.68, 8),
-          mats.lanternGlow,
-        );
-        archLantern.position.set(lx * 0.72, 4.6, 2.2);
-        waterGrottoGroup.add(archLantern);
-      });
-
-      // 8. 山洞彩蛋微光小亮點（「山有小口，彷彿若有光」—— 不加文字提示，僅以洞中一顆溫潤呼吸的小亮點吸引探索點擊）
+      // 6. 山洞彩蛋微光小亮點（「山有小口，彷彿若有光」—— 洞口中央溫潤呼吸的光點，遠看即可發現洞口位置）
       const sparkleCoreMat = new THREE.MeshBasicMaterial({
         color: 0xfff7cc,
       });
       const sparkleCore = new THREE.Mesh(
-        new THREE.SphereGeometry(0.32, 16, 16),
+        new THREE.SphereGeometry(0.22, 14, 14),
         sparkleCoreMat,
       );
-      sparkleCore.position.set(0, 2.45, 2.15);
+      sparkleCore.position.set(0, 0.72, 1.18);
       waterGrottoGroup.add(sparkleCore);
 
       const sparkleHaloMat = new THREE.MeshBasicMaterial({
         color: 0xffdf7a,
         transparent: true,
-        opacity: 0.48,
+        opacity: 0.55,
         depthWrite: false,
       });
       const sparkleHalo = new THREE.Mesh(
-        new THREE.SphereGeometry(0.78, 16, 16),
+        new THREE.SphereGeometry(0.55, 14, 14),
         sparkleHaloMat,
       );
-      sparkleHalo.position.set(0, 2.45, 2.15);
+      sparkleHalo.position.set(0, 0.72, 1.18);
       waterGrottoGroup.add(sparkleHalo);
 
+      // 寬裕的透明點擊感應球，讓小洞口輕鬆好點
       const caveHitSphere = new THREE.Mesh(
-        new THREE.SphereGeometry(5.2, 12, 12),
+        new THREE.SphereGeometry(3.5, 12, 12),
         new THREE.MeshBasicMaterial({
           transparent: true,
           opacity: 0,
           depthWrite: false,
         }),
       );
-      caveHitSphere.position.set(0, 2.8, 1.8);
+      caveHitSphere.position.set(0, 0.85, 1.1);
       waterGrottoGroup.add(caveHitSphere);
 
       caveEasterEggSparkles.push({
         core: sparkleCore,
         halo: sparkleHalo,
         haloMat: sparkleHaloMat,
-        baseY: 2.45,
+        baseY: 0.72,
         phase: gz < 0 ? 0 : Math.PI,
       });
 
-      const caveLight = new THREE.PointLight(0xffb347, 2.4, 24, 1.4);
-      caveLight.position.set(0, 3.8, 3.2);
+      const caveLight = new THREE.PointLight(0xffb347, 1.85, 14, 1.4);
+      caveLight.position.set(0, 0.85, 1.45);
       waterGrottoGroup.add(caveLight);
 
       worldGroup.add(waterGrottoGroup);
       clickableIslands.push(waterGrottoGroup);
     };
 
-    // 南山唯一水道洞口（正對中央南水道 [0, 0.2, 52.5]）
-    createMountainWaterGrotto(0, 0.2, 52.5, Math.PI);
+    // 南山唯一水道小洞口（位於南水道盡頭 [0, 0.2, 51.2]，正對主島南岸，剛好容納一艘烏篷船進出）
+    createMountainWaterGrotto(0, 0.2, 51.2, Math.PI);
 
     // 瀑布水霧與漣漪共用材質
     const wfMistCloudMat = new THREE.MeshStandardMaterial({
@@ -4964,170 +4948,146 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       flatShading: true,
     });
 
-    // 北山中央水道盡頭 [0, 0, -50.5]：「廬山三疊泉式」立體峽谷飛瀑（U型奇石峽谷 + 雙層拋物線滾動水簾 + 三疊激流分水石 + 升騰水霧 + 深藍冒泡深潭）
+    // 北山中央水道盡頭 [0, -0.5, -55.0]：與低多邊形群山融為一體的「雙層青石岩階疊水飛瀑」（無黑色圓球怪石、無突兀深藍圓盤）
     const createNorthCentralGrandWaterfall = () => {
       const grandWf = new THREE.Group();
-      grandWf.position.set(0, 0, -50.5);
+      grandWf.position.set(0, -0.5, -55.0);
       grandWf.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
         easterEggKind: 'waterfall',
       };
 
-      // 1. 天然 U 型疊石峽谷崖壁（取代生硬方塊，以多面體層疊山岩與青苔平台砌出深邃山澗峽谷）
-      const gorgeRocks: Array<[number, number, number, number, number, number, boolean]> = [
-        // 後側深色濕潤峽谷內壁
-        [0, 12.5, -3.4, 5.2, 13.8, 2.2, true],
-        [-3.2, 19.2, -3.6, 3.4, 7.2, 2.4, true],
-        [3.2, 19.0, -3.6, 3.4, 7.2, 2.4, true],
-        // 左側層疊山崖與青苔岩肩
-        [-6.2, 4.2, 1.8, 3.6, 4.8, 3.4, false],
-        [-5.8, 10.5, 0.2, 3.2, 5.5, 3.0, true],
-        [-5.2, 16.8, -1.2, 2.9, 5.2, 2.8, false],
-        [-4.6, 22.4, -2.4, 2.6, 4.2, 2.5, true],
-        // 右側層疊山崖與青苔岩肩
-        [6.2, 4.0, 1.8, 3.6, 4.6, 3.4, false],
-        [5.8, 10.2, 0.2, 3.2, 5.4, 3.0, true],
-        [5.2, 16.5, -1.2, 2.9, 5.0, 2.8, false],
-        [4.6, 22.2, -2.4, 2.6, 4.2, 2.5, true],
-      ];
-      gorgeRocks.forEach(([rx, ry, rz, sx, sy, sz, isDark], idx) => {
-        const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.0, 1),
-          isDark ? mats.caveRockMat : idx % 2 === 0 ? mats.cliffDark : mats.mountainRock,
-        );
-        rock.position.set(rx, ry, rz);
-        rock.scale.set(sx, sy, sz);
-        rock.rotation.set(idx * 0.25, idx * 0.6, (idx % 3 - 1) * 0.12);
-        grandWf.add(rock);
+      // 1. 與周圍 32 座山脈同風格的低多邊形稜角山崖與雙層平頂岩階（採用 7 邊形山岩與翠綠山肩，徹底移除黑色圓球怪石）
+      const leftShoulderPeak = new THREE.Mesh(
+        new THREE.ConeGeometry(8.8, 21.5, 7),
+        mats.mountainGreen,
+      );
+      leftShoulderPeak.position.set(-6.4, 10.2, 0.2);
+      leftShoulderPeak.rotation.y = 0.35;
+      grandWf.add(leftShoulderPeak);
 
-        // 在兩側岩肩頂部覆蓋蒼翠青苔層
-        if (Math.abs(rx) > 4.2 && idx % 2 === 0) {
-          const moss = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(0.88, 1),
-            mats.grassLush,
-          );
-          moss.position.set(rx * 0.96, ry + sy * 0.58, rz + 0.15);
-          moss.scale.set(sx * 0.92, 0.85, sz * 0.88);
-          grandWf.add(moss);
-        }
+      const rightShoulderPeak = new THREE.Mesh(
+        new THREE.ConeGeometry(8.8, 21.0, 7),
+        mats.mountainGreen,
+      );
+      rightShoulderPeak.position.set(6.4, 10.0, 0.2);
+      rightShoulderPeak.rotation.y = -0.35;
+      grandWf.add(rightShoulderPeak);
+
+      // 上層山岩平台（7 邊形低多邊形山石台座，與主山錐體自然嵌合）
+      const upperCliffTerrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.8, 6.6, 15.6, 7),
+        mats.mountainRock,
+      );
+      upperCliffTerrace.position.set(0, 7.8, 0.6);
+      upperCliffTerrace.rotation.y = Math.PI / 7;
+      grandWf.add(upperCliffTerrace);
+
+      // 下層山岩平台（承接上層飛瀑並匯入北水道）
+      const lowerCliffTerrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(4.4, 7.2, 8.2, 7),
+        mats.mountainRock,
+      );
+      lowerCliffTerrace.position.set(0, 4.1, 3.4);
+      lowerCliffTerrace.rotation.y = Math.PI / 7;
+      grandWf.add(lowerCliffTerrace);
+
+      // 兩側低多邊形夾岸山石護壁（貼合階梯斜面，絕不懸空突兀）
+      [-3.8, 3.8].forEach((sideX, idx) => {
+        const sideRidge = new THREE.Mesh(
+          new THREE.ConeGeometry(3.2, 14.5, 6),
+          idx === 0 ? mats.mountainRock : mats.mountainGreen,
+        );
+        sideRidge.position.set(sideX, 7.0, 3.2);
+        sideRidge.rotation.y = idx === 0 ? 0.25 : -0.25;
+        grandWf.add(sideRidge);
       });
 
-      // 峽谷兩側懸崖迎客松
+      // 峽谷兩側蒼翠古松
       const leftCliffPine = createPineTree(1.22);
-      leftCliffPine.position.set(-6.4, 14.2, 0.6);
-      leftCliffPine.rotation.z = -0.22;
+      leftCliffPine.position.set(-5.8, 12.8, 2.2);
       grandWf.add(leftCliffPine);
 
       const rightCliffPine = createPineTree(1.18);
-      rightCliffPine.position.set(6.4, 13.8, 0.6);
-      rightCliffPine.rotation.z = 0.22;
+      rightCliffPine.position.set(5.8, 12.4, 2.2);
       grandWf.add(rightCliffPine);
 
-      // 2. 三疊飛瀑主水簾（上窄下寬、具重力拋物線與三階岩台起伏的雙層動態滾動水簾）
-      const mainCascadeCurtain = createSculptedWaterfallCurtain(4.8, 8.4, 24.5, 5.6, 3);
-      mainCascadeCurtain.position.set(0, -0.45, -2.4);
-      grandWf.add(mainCascadeCurtain);
+      // 2. 山頂源頭碧玉泉池 + 上層飛瀑 + 中層疊泉池 + 下層主飛瀑
+      const upperSpringPool = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.5, 2.5, 0.18, 7),
+        waterfallCoreFlowMat,
+      );
+      upperSpringPool.position.set(0, 15.62, 0.85);
+      grandWf.add(upperSpringPool);
 
-      // 左右兩道山澗副流飛泉，增添「千岩競秀，萬壑爭流」層次感
-      [-3.6, 3.6].forEach((sideX, sIdx) => {
-        const sideCascade = createSculptedWaterfallCurtain(1.35, 2.35, 16.5, 3.8, 2);
-        sideCascade.position.set(sideX, -0.45, -0.6);
-        sideCascade.rotation.y = sIdx === 0 ? 0.14 : -0.14;
-        grandWf.add(sideCascade);
-      });
+      const upperCascade = createSculptedWaterfallCurtain(3.4, 4.2, 7.5, 2.5, 1);
+      upperCascade.position.set(0, 8.15, 1.5);
+      grandWf.add(upperCascade);
 
-      // 3. 瀑中激流分水石與三疊斷崖岩檻（水流撞擊岩石激起滾滾白霧）
-      [
-        [-1.4, 16.2, -0.5, 1.25, 0.85, 1.1],
-        [1.5, 15.8, -0.4, 1.15, 0.8, 1.05],
-        [-2.1, 8.4, 1.3, 1.45, 0.95, 1.25],
-        [0.4, 8.0, 1.45, 1.35, 0.88, 1.2],
-        [2.3, 8.6, 1.25, 1.3, 0.85, 1.15],
-      ].forEach(([bx, by, bz, sx, sy, sz], idx) => {
-        const ledgeRock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.0, 0),
-          idx % 2 === 0 ? mats.caveRockMat : mats.cliffDark,
-        );
-        ledgeRock.position.set(bx, by, bz);
-        ledgeRock.scale.set(sx, sy, sz);
-        grandWf.add(ledgeRock);
+      const midTerracePool = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.9, 2.9, 0.18, 7),
+        waterfallCoreFlowMat,
+      );
+      midTerracePool.position.set(0, 8.22, 3.6);
+      grandWf.add(midTerracePool);
 
-        // 岩檻激起的水霧團
-        const mistPuff = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(1.15 + (idx % 2) * 0.25, 1),
-          wfMistCloudMat,
-        );
-        mistPuff.position.set(bx, by + 0.35, bz + 0.85);
-        mistPuff.scale.set(1.45, 0.78, 1.15);
-        grandWf.add(mistPuff);
-        waterfallMistPuffs.push({
-          mesh: mistPuff,
-          baseX: bx,
-          baseY: by + 0.35,
-          baseZ: bz + 0.85,
-          phase: idx * 1.3,
-        });
-      });
+      // 中層泉池柔和白沫帶
+      const midFoamBar = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.1, 2.3, 0.22, 7),
+        mats.waterFoam,
+      );
+      midFoamBar.position.set(0, 8.28, 3.85);
+      midFoamBar.scale.set(1.15, 0.6, 0.48);
+      grandWf.add(midFoamBar);
 
-      // 4. 飛瀑底部深藍色冒泡深潭區域（點擊時觸發「切勿竭澤而漁！」）
+      const lowerMainCascade = createSculptedWaterfallCurtain(4.0, 5.2, 8.3, 3.2, 1);
+      lowerMainCascade.position.set(0, -0.08, 4.2);
+      grandWf.add(lowerMainCascade);
+
+      // 3. 入水處柔和連續白沫浪花線與河面擴散水波紋（移除突兀深藍色圓盤與圓球泡泡）
       const northBubblingPoolGrp = new THREE.Group();
       northBubblingPoolGrp.userData = {
         easterEggPoem: '「切勿竭澤而漁！」',
         easterEggKind: 'bubbling-pool',
       };
 
-      const grandPlungePool = new THREE.Mesh(
-        new THREE.CylinderGeometry(8.6, 8.6, 0.28, 28),
-        mats.caveWaterMat,
+      const baseFoamCrest = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.8, 3.1, 0.22, 12),
+        mats.waterFoam,
       );
-      grandPlungePool.position.set(0, -0.52, 3.8);
-      grandPlungePool.scale.set(1.22, 1.0, 1.35);
-      northBubblingPoolGrp.add(grandPlungePool);
+      baseFoamCrest.position.set(0, -0.06, 7.35);
+      baseFoamCrest.scale.set(1.15, 0.55, 0.42);
+      northBubblingPoolGrp.add(baseFoamCrest);
+      waterfallDrops.push(baseFoamCrest);
 
-      // 潭底入水處翻湧雪白浪花團與升騰水霧雲
-      for (let f = 0; f < 14; f++) {
-        const ang = (f / 14) * Math.PI * 1.3 - Math.PI * 0.15;
-        const rad = 1.8 + (f % 4) * 1.15;
-        const fx = Math.cos(ang) * rad;
-        const fz = 2.9 + Math.sin(ang) * rad * 0.75;
-        const foam = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.75 + (f % 3) * 0.26, 1),
-          f % 2 === 0 ? mats.waterFoam : wfMistCloudMat,
-        );
-        foam.position.set(fx, -0.22, fz);
-        foam.scale.set(1.35, 0.58, 1.25);
-        northBubblingPoolGrp.add(foam);
-        waterfallDrops.push(foam);
-      }
-
-      // 潭面動態擴散水波紋漣漪圈
+      // 河面自然擴散的同心水波紋漣漪圈
       for (let r = 0; r < 4; r++) {
         const ripMat = new THREE.MeshBasicMaterial({
-          color: 0xe6fbff,
+          color: 0xe8fbff,
           transparent: true,
-          opacity: 0.55,
+          opacity: 0.5,
           side: THREE.DoubleSide,
           depthWrite: false,
         });
         const ripMesh = new THREE.Mesh(
-          new THREE.RingGeometry(1.2, 1.55, 28).rotateX(-Math.PI / 2),
+          new THREE.RingGeometry(1.1, 1.4, 28).rotateX(-Math.PI / 2),
           ripMat,
         );
-        ripMesh.position.set(0, -0.36, 3.4);
+        ripMesh.position.set(0, -0.04, 7.4);
         northBubblingPoolGrp.add(ripMesh);
         waterfallPoolRipples.push({
           mesh: ripMesh,
           mat: ripMat,
           phase: r * 0.25,
-          maxScale: 4.8,
+          maxScale: 4.2,
         });
       }
 
       const northPoolHitBox = new THREE.Mesh(
-        new THREE.CylinderGeometry(9.8, 9.8, 3.2, 16),
+        new THREE.CylinderGeometry(7.5, 7.5, 3.2, 12),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
       );
-      northPoolHitBox.position.set(0, 0.4, 3.8);
+      northPoolHitBox.position.set(0, 0.6, 7.4);
       northBubblingPoolGrp.add(northPoolHitBox);
 
       grandWf.add(northBubblingPoolGrp);
@@ -5140,132 +5100,129 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
     createNorthCentralGrandWaterfall();
 
-    // A2. 東山飛瀑與碧水河道（自東山奇石峽谷 [51.5, 0, 11.2] 飛流直下匯入徵才島與東岸農田之間的清澈河道）
+    // A2. 東山疊水飛瀑與碧水河道（嵌入東山山麓 [58.5, -0.5, 10.8]，採用與周圍山脈一致的 7 邊形低多邊形岩階，移除黑色圓球怪石與深藍圓盤）
     const createEastMountainWaterfall = () => {
       const wfGroup = new THREE.Group();
-      wfGroup.position.set(51.5, 0, 11.2);
-      wfGroup.rotation.y = -Math.PI / 2 - 0.12;
+      wfGroup.position.set(58.5, -0.5, 10.8);
+      wfGroup.rotation.y = -Math.PI / 2 - 0.06;
       wfGroup.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
         easterEggKind: 'waterfall',
       };
 
-      // 1. 東山峽谷疊石崖壁與蒼翠山石護肩
-      const eastGorgeRocks: Array<[number, number, number, number, number, number, boolean]> = [
-        [0.0, 9.5, -2.8, 4.2, 10.5, 2.0, true],
-        [-4.2, 3.8, 1.4, 2.8, 4.2, 2.8, false],
-        [-3.8, 9.6, -0.2, 2.5, 4.8, 2.5, true],
-        [-3.4, 15.2, -1.6, 2.2, 3.8, 2.2, false],
-        [4.2, 3.6, 1.4, 2.8, 4.0, 2.8, false],
-        [3.8, 9.4, -0.2, 2.5, 4.6, 2.5, true],
-        [3.4, 15.0, -1.6, 2.2, 3.8, 2.2, false],
-      ];
-      eastGorgeRocks.forEach(([rx, ry, rz, sx, sy, sz, isDark], idx) => {
-        const cliff = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.0, 1),
-          isDark ? mats.caveRockMat : idx % 2 === 0 ? mats.cliffRock : mats.mountainRock,
+      // 1. 與後方東山無縫銜接的低多邊形山峰與雙層岩階（7 邊形平面著色，完全契合周圍山形與配色）
+      const backMountainPeak = new THREE.Mesh(
+        new THREE.ConeGeometry(11.5, 23.5, 7),
+        mats.mountainGreen,
+      );
+      backMountainPeak.position.set(0, 11.2, -3.6);
+      backMountainPeak.rotation.y = 0.2;
+      wfGroup.add(backMountainPeak);
+
+      [-4.8, 4.8].forEach((sideX, idx) => {
+        const shoulderCone = new THREE.Mesh(
+          new THREE.ConeGeometry(7.2, 17.5, 7),
+          idx === 0 ? mats.mountainRock : mats.mountainGreen,
         );
-        cliff.position.set(rx, ry, rz);
-        cliff.scale.set(sx, sy, sz);
-        cliff.rotation.set(idx * 0.2, idx * 0.5, 0);
-        wfGroup.add(cliff);
+        shoulderCone.position.set(sideX, 8.4, -0.4);
+        shoulderCone.rotation.y = idx === 0 ? 0.35 : -0.35;
+        wfGroup.add(shoulderCone);
       });
 
-      const eastCliffPine = createPineTree(1.12);
-      eastCliffPine.position.set(-4.2, 12.6, 0.5);
-      eastCliffPine.rotation.z = -0.2;
+      const upperRockTerrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.2, 5.4, 13.2, 7),
+        mats.mountainRock,
+      );
+      upperRockTerrace.position.set(0, 6.6, 0.4);
+      upperRockTerrace.rotation.y = Math.PI / 7;
+      wfGroup.add(upperRockTerrace);
+
+      const lowerRockTerrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.6, 6.0, 6.8, 7),
+        mats.mountainRock,
+      );
+      lowerRockTerrace.position.set(0, 3.4, 2.8);
+      lowerRockTerrace.rotation.y = Math.PI / 7;
+      wfGroup.add(lowerRockTerrace);
+
+      const eastCliffPine = createPineTree(1.15);
+      eastCliffPine.position.set(-4.2, 11.2, 1.4);
       wfGroup.add(eastCliffPine);
 
-      // 2. 東山雙層拋物線滾動水簾（三疊山泉傾瀉而下）
-      const eastCurtain = createSculptedWaterfallCurtain(3.4, 6.2, 18.8, 4.6, 3);
-      eastCurtain.position.set(0, -0.45, -1.4);
-      wfGroup.add(eastCurtain);
+      // 2. 上層源頭泉池 + 上層飛瀑 + 中層疊泉池 + 下層飛瀑
+      const upperPool = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.1, 2.1, 0.16, 7),
+        waterfallCoreFlowMat,
+      );
+      upperPool.position.set(0, 13.22, 0.65);
+      wfGroup.add(upperPool);
 
-      // 中段分水奇石與升騰水霧
-      [
-        [-1.1, 11.2, 0.2, 1.1, 0.75, 0.95],
-        [1.2, 6.4, 1.5, 1.25, 0.82, 1.05],
-        [-0.8, 5.8, 1.6, 1.15, 0.78, 1.0],
-      ].forEach(([bx, by, bz, sx, sy, sz], idx) => {
-        const midRock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.0, 0),
-          mats.cliffDark,
-        );
-        midRock.position.set(bx, by, bz);
-        midRock.scale.set(sx, sy, sz);
-        wfGroup.add(midRock);
+      const upperCurtain = createSculptedWaterfallCurtain(2.6, 3.2, 6.4, 2.1, 1);
+      upperCurtain.position.set(0, 6.82, 1.2);
+      wfGroup.add(upperCurtain);
 
-        const mist = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.95, 1),
-          wfMistCloudMat,
-        );
-        mist.position.set(bx, by + 0.3, bz + 0.75);
-        mist.scale.set(1.35, 0.72, 1.1);
-        wfGroup.add(mist);
-        waterfallMistPuffs.push({
-          mesh: mist,
-          baseX: bx,
-          baseY: by + 0.3,
-          baseZ: bz + 0.75,
-          phase: idx * 1.5 + 0.6,
-        });
-      });
+      const midPool = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.4, 2.4, 0.16, 7),
+        waterfallCoreFlowMat,
+      );
+      midPool.position.set(0, 6.82, 3.0);
+      wfGroup.add(midPool);
 
-      // 3. 瀑布底部深藍色冒泡深潭區域（點擊時顯示：「切勿竭澤而漁！」）
+      const midFoam = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.7, 1.9, 0.2, 7),
+        mats.waterFoam,
+      );
+      midFoam.position.set(0, 6.88, 3.2);
+      midFoam.scale.set(1.1, 0.55, 0.45);
+      wfGroup.add(midFoam);
+
+      const lowerCurtain = createSculptedWaterfallCurtain(3.1, 4.1, 6.9, 2.7, 1);
+      lowerCurtain.position.set(0, -0.08, 3.5);
+      wfGroup.add(lowerCurtain);
+
+      // 3. 河道入水處柔和白沫線與同心漣漪（無突兀深藍圓盤、無圓球泡泡）
       const eastBubblingPoolGrp = new THREE.Group();
       eastBubblingPoolGrp.userData = {
         easterEggPoem: '「切勿竭澤而漁！」',
         easterEggKind: 'bubbling-pool',
       };
 
-      const plungePool = new THREE.Mesh(
-        new THREE.CylinderGeometry(5.8, 5.8, 0.24, 24),
-        mats.caveWaterMat,
+      const eastBaseFoam = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.2, 2.5, 0.2, 12),
+        mats.waterFoam,
       );
-      plungePool.position.set(0, -0.6, 3.8);
-      plungePool.scale.set(1.18, 1.0, 1.48);
-      eastBubblingPoolGrp.add(plungePool);
-
-      for (let f = 0; f < 9; f++) {
-        const ang = (f / 9) * Math.PI * 1.3 - Math.PI * 0.15;
-        const rad = 1.6 + (f % 3) * 0.92;
-        const foam = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.65 + (f % 2) * 0.24, 1),
-          f % 2 === 0 ? mats.waterFoam : wfMistCloudMat,
-        );
-        foam.position.set(Math.cos(ang) * rad, -0.24, 3.2 + Math.sin(ang) * rad * 0.8);
-        foam.scale.set(1.3, 0.55, 1.2);
-        eastBubblingPoolGrp.add(foam);
-        waterfallDrops.push(foam);
-      }
+      eastBaseFoam.position.set(0, -0.06, 6.15);
+      eastBaseFoam.scale.set(1.12, 0.5, 0.4);
+      eastBubblingPoolGrp.add(eastBaseFoam);
+      waterfallDrops.push(eastBaseFoam);
 
       for (let r = 0; r < 3; r++) {
         const ripMat = new THREE.MeshBasicMaterial({
-          color: 0xe6fbff,
+          color: 0xe8fbff,
           transparent: true,
-          opacity: 0.52,
+          opacity: 0.48,
           side: THREE.DoubleSide,
           depthWrite: false,
         });
         const ripMesh = new THREE.Mesh(
-          new THREE.RingGeometry(0.95, 1.25, 24).rotateX(-Math.PI / 2),
+          new THREE.RingGeometry(0.9, 1.18, 24).rotateX(-Math.PI / 2),
           ripMat,
         );
-        ripMesh.position.set(0, -0.42, 3.4);
+        ripMesh.position.set(0, -0.04, 6.2);
         eastBubblingPoolGrp.add(ripMesh);
         waterfallPoolRipples.push({
           mesh: ripMesh,
           mat: ripMat,
           phase: r * 0.33 + 0.15,
-          maxScale: 3.6,
+          maxScale: 3.4,
         });
       }
 
       const eastPoolHitBox = new THREE.Mesh(
-        new THREE.CylinderGeometry(7.2, 7.2, 3.2, 16),
+        new THREE.CylinderGeometry(6.2, 6.2, 3.0, 12),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
       );
-      eastPoolHitBox.position.set(0, 0.4, 3.8);
+      eastPoolHitBox.position.set(0, 0.5, 6.2);
       eastBubblingPoolGrp.add(eastPoolHitBox);
 
       wfGroup.add(eastBubblingPoolGrp);
@@ -5277,19 +5234,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
       // 4. 順著河道蜿蜒流入中央水道的「流動溪水波光帶」
       const streamWaypoints: Array<[number, number, number, number]> = [
-        [44.5, 10.8, 4.8, -0.08],
-        [39.5, 10.2, 4.5, -0.12],
-        [34.5, 9.6, 4.2, -0.16],
-        [29.5, 8.8, 4.0, -0.24],
-        [24.8, 7.6, 3.8, -0.35],
-        [21.2, 6.0, 3.5, -0.48],
+        [49.5, 10.8, 4.8, -0.06],
+        [44.5, 10.5, 4.6, -0.08],
+        [39.5, 10.0, 4.4, -0.12],
+        [34.5, 9.4, 4.2, -0.16],
+        [29.5, 8.6, 4.0, -0.24],
+        [24.8, 7.5, 3.8, -0.35],
       ];
       streamWaypoints.forEach(([sx, sz, len, rot], idx) => {
         const rippleRibbon = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.85 + (idx % 2) * 0.25, len).rotateX(-Math.PI / 2).rotateY(Math.PI / 2),
+          new THREE.PlaneGeometry(0.85 + (idx % 2) * 0.22, len).rotateX(-Math.PI / 2).rotateY(Math.PI / 2),
           waterfallFoamVeilMat,
         );
-        rippleRibbon.position.set(sx, -0.56, sz + (idx % 2 === 0 ? 0.42 : -0.42));
+        rippleRibbon.position.set(sx, -0.56, sz + (idx % 2 === 0 ? 0.35 : -0.35));
         rippleRibbon.rotation.y = rot;
         worldGroup.add(rippleRibbon);
       });
@@ -5309,42 +5266,43 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         '「塔影初收日色昏，隔牆人語近甘園。南山遊遍分歸路，半入錢唐半暗門。」',
       ];
 
-      // 西山高崖山澗飛瀑（位於痛點島西側山壁 [-55.2, 0, -20.5]，採用流線型雙層滾動水簾與山石夾岸）
+      // 西山高崖山澗飛瀑（位於痛點島西側山麓 [-57.5, -0.5, -20.5]，採用 7 邊形低多邊形山岩台座與疊水飛瀑）
       const westWf = new THREE.Group();
-      westWf.position.set(-55.2, 0, -20.5);
+      westWf.position.set(-57.5, -0.5, -20.5);
       westWf.rotation.y = Math.PI / 2 - 0.15;
       westWf.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
         easterEggKind: 'waterfall',
       };
 
-      [
-        [-2.4, 5.5, -0.8, 2.2, 6.2, 2.2],
-        [2.4, 5.2, -0.8, 2.2, 5.8, 2.2],
-      ].forEach(([rx, ry, rz, sx, sy, sz], idx) => {
-        const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(1.0, 1),
-          idx === 0 ? mats.cliffDark : mats.mountainRock,
-        );
-        rock.position.set(rx, ry, rz);
-        rock.scale.set(sx, sy, sz);
-        westWf.add(rock);
-      });
+      const westCliffTerrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.6, 4.6, 11.2, 7),
+        mats.mountainRock,
+      );
+      westCliffTerrace.position.set(0, 5.6, -0.4);
+      westCliffTerrace.rotation.y = Math.PI / 7;
+      westWf.add(westCliffTerrace);
 
-      const westCurtain = createSculptedWaterfallCurtain(2.1, 3.6, 13.5, 3.2, 2);
-      westCurtain.position.set(0, -0.45, -1.2);
+      const westTopPool = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.7, 1.7, 0.15, 7),
+        waterfallCoreFlowMat,
+      );
+      westTopPool.position.set(0, 11.22, -0.2);
+      westWf.add(westTopPool);
+
+      const westCurtain = createSculptedWaterfallCurtain(2.1, 3.0, 10.6, 3.2, 1);
+      westCurtain.position.set(0, 0.62, 0.3);
       westWf.add(westCurtain);
 
-      for (let f = 0; f < 5; f++) {
-        const foam = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.52 + (f % 2) * 0.18, 1),
-          mats.waterFoam,
-        );
-        foam.position.set((f - 2) * 0.68, -0.28, 2.15);
-        foam.scale.set(1.3, 0.5, 1.2);
-        westWf.add(foam);
-        waterfallDrops.push(foam);
-      }
+      const westBaseFoam = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.6, 1.8, 0.18, 10),
+        mats.waterFoam,
+      );
+      westBaseFoam.position.set(0, 0.65, 3.45);
+      westBaseFoam.scale.set(1.1, 0.45, 0.38);
+      westWf.add(westBaseFoam);
+      waterfallDrops.push(westBaseFoam);
+
       worldGroup.add(westWf);
       clickableIslands.push(westWf);
 
@@ -6415,8 +6373,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       egretGrp.position.set(egCfg.pos[0], egCfg.pos[1], egCfg.pos[2]);
       egretGrp.rotation.y = egCfg.ang;
       egretGrp.userData = {
-        easterEggPoem: npcVillagerPoem,
-        easterEggKind: 'npc',
+        easterEggPoem: '「我不是梅妻鶴子，我是閒雲野鶴」',
+        easterEggKind: 'egret',
       };
 
       [-0.08, 0.08].forEach((lx) => {
@@ -6453,6 +6411,14 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       rightWing.add(rWingMesh);
       rightWing.position.set(0.14, 0.68, 0);
       egretGrp.add(rightWing);
+
+      // 透明擴大點擊感應球，讓玩家點擊白鷺鷥更靈敏好點
+      const egretHitSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.15, 10, 10),
+        invisibleHitMat,
+      );
+      egretHitSphere.position.set(0, 0.72, 0.12);
+      egretGrp.add(egretHitSphere);
 
       animatedEgrets.push({ leftWing, rightWing, phase: egIdx * 1.5 });
       worldGroup.add(egretGrp);
@@ -7543,7 +7509,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           }
         },
       },
-      // 航線 4：出入南山洞口探秘舟（沿南水道駛入南山洞口 [0, 53.5] 再悠然划出）
+      // 航線 4：出入南山小洞口探秘舟（沿南水道筆直對準單舟寬度的南山小洞口 [0, 52.5] 駛入再悠然划出）
       {
         isHuafang: true,
         speed: 0.0095,
@@ -7551,19 +7517,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         getPoint: (u: number): [number, number] => {
           if (u < 0.40) {
             const p = u / 0.40;
-            const z = 24 + p * 29.5; // 24 -> 53.5 駛入南山洞口
-            const x = Math.sin(p * Math.PI) * 0.9;
+            const z = 24 + p * 29.0; // 24 -> 53.0 駛入南山小洞口
+            const x = Math.sin(p * Math.PI) * 0.45 * (1 - p * 0.75);
             return [x, z];
           } else if (u < 0.55) {
             const p = (u - 0.40) / 0.15;
             const angle = p * Math.PI;
-            const z = 53.5 + Math.sin(angle) * 2.5;
-            const x = Math.sin(angle) * 1.6;
+            const z = 53.0 + Math.sin(angle) * 1.3;
+            const x = Math.sin(angle) * 0.18;
             return [x, z];
           } else if (u < 0.85) {
             const p = (u - 0.55) / 0.30;
-            const z = 53.5 - p * 29.5; // 破洞而出
-            const x = -Math.sin(p * Math.PI) * 0.9;
+            const z = 53.0 - p * 29.0; // 由小洞口悠然駛出
+            const x = -Math.sin(p * Math.PI) * 0.45 * p;
             return [x, z];
           } else {
             const p = (u - 0.85) / 0.15;

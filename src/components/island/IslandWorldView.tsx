@@ -2859,7 +2859,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               </button>
             </div>
 
-            <h2 className="guide-main-title">到村內逛逛</h2>
+            <h2 className="guide-main-title">快來和創點源互動 !</h2>
 
             <p className="guide-main-desc">
               點選島嶼進入探索。電腦版按住左鍵可平移地圖、右鍵拖曳可旋轉並調整俯視角；手機版用單手指移動即可平移並調整俯視角。場景並會隨所在地時辰與天候（清晨・中午・傍晚・晚上及雨天）自動變換。
