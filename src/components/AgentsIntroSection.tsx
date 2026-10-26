@@ -12,7 +12,7 @@ type Agent = {
   /** 職稱下方的一行補充（例如 007 的三件法寶） */
   tagline?: string;
   img?: string;
-  /** 創點國虛擬身分證（小圖、原圖） */
+  /** 創點源虛擬身分證（小圖、原圖） */
   idCard?: { thumb: string; full: string };
   intro: string;
   duties: string[];
@@ -77,7 +77,7 @@ const AGENTS: Agent[] = [
 // 預備角色：還沒分派任務、名字和身分證
 const RESERVE = {
   img: '/agents/bear.webp',
-  intro: '創點國的神秘成員。個子高大、有點憨厚，擅長幫人把想法落地，懂很多技術。',
+  intro: '創點源的神秘成員。個子高大、有點憨厚，擅長幫人把想法落地，懂很多技術。',
 };
 
 // 點小圖放大看身分證；Esc 或點背景關閉
@@ -202,9 +202,9 @@ export const AgentsIntroSection: React.FC = () => {
             {a.idCard && (
               <button
                 type="button"
-                onClick={() => setViewing({ src: a.idCard!.full, alt: `${a.name}的創點國身分證`, wide: true, saveAs: `創點國身分證-${a.name.replace(/[（(].*?[)）]/g, '').trim()}` })}
+                onClick={() => setViewing({ src: a.idCard!.full, alt: `${a.name}的創點源身分證`, wide: true, saveAs: `創點源身分證-${a.name.replace(/[（(].*?[)）]/g, '').trim()}` })}
                 title="看身分證"
-                aria-label={`放大看${a.name}的創點國身分證`}
+                aria-label={`放大看${a.name}的創點源身分證`}
                 className="group relative shrink-0 -mt-1 rounded-lg ring-1 ring-black/10 bg-white shadow-sm overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md hover:-rotate-2 cursor-zoom-in"
               >
                 <img src={a.idCard.thumb} alt="" loading="lazy" width={96} height={64} className="block w-24 h-16 object-cover" />
@@ -236,7 +236,7 @@ export const AgentsIntroSection: React.FC = () => {
     <div className="rounded-3xl border border-dashed border-stone-300 bg-gradient-to-br from-stone-50 to-red-50/40 p-5 sm:p-6">
       <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5"><Clock className="w-4 h-4 text-stone-500" />預備角色（待命中，尚未分派任務）</h3>
       <div className="mt-3 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-        <img src={RESERVE.img} alt="預備角色：創點國的神秘成員" loading="lazy" className="h-44 w-auto object-contain drop-shadow-sm shrink-0" />
+        <img src={RESERVE.img} alt="預備角色：創點源的神秘成員" loading="lazy" className="h-44 w-auto object-contain drop-shadow-sm shrink-0" />
         <div className="text-center sm:text-left">
           <div className="text-base font-black text-stone-900">？？？</div>
           <div className="mt-0.5 text-xs font-bold text-stone-500">名字與職位即將公布</div>

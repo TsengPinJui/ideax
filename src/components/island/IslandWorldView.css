@@ -732,16 +732,19 @@
 }
 
 .shichen-sub-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--island-calligraphy-font);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  opacity: 0.84;
-  margin-top: 1px;
+  letter-spacing: 0.1em;
+  opacity: 0.9;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
-/* +8 時區 8 大場景彈出面板 */
+/* 8 大場景彈出面板 */
 .island-atmosphere-dropdown {
   margin-top: 8px;
   width: min(92vw, 350px);
@@ -834,7 +837,7 @@
 }
 
 /* ============================================================
-   底部置中視角控制工具列（縮放 + 重設視角 + 單指俯角切換 + 說明）
+   底部置中視角控制工具列（全圖示：縮放 + 重設視角 + 音樂開關 + 說明）
    ============================================================ */
 .island-map-controls {
   position: absolute;
@@ -871,13 +874,14 @@
 }
 
 .island-map-zoom-controls button,
-.island-reset-btn {
+.island-reset-btn,
+.island-bgm-btn {
+  width: 32px;
   height: 30px;
-  padding: 0 9px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   border: 1px solid #e1e3d7;
   border-radius: 10px;
   background: #fff;
@@ -890,8 +894,19 @@
   transition: all 0.16s ease;
 }
 
+.island-bgm-btn.is-playing {
+  background: #eef6f3;
+  border-color: #b7d4c8;
+  color: #2f5b4e;
+}
+
+.island-bgm-btn.is-muted {
+  color: #8c9691;
+}
+
 .island-map-zoom-controls button:hover,
-.island-reset-btn:hover {
+.island-reset-btn:hover,
+.island-bgm-btn:hover {
   background: #fff8e6;
   border-color: #d6b866;
   color: #79571f;
@@ -909,9 +924,10 @@
 .island-guide-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 32px;
   height: 30px;
-  padding: 0 11px;
+  padding: 0;
   font-size: 11.5px;
   font-weight: 800;
   color: #5c431d;

@@ -490,8 +490,8 @@ export const IDEAX_AGENTS: IslandAgentProfile[] = [
     name: '大熊（預備神兵）',
     title: '技術落地神兵 / 神秘成員',
     img: '/agents/bear.webp',
-    intro: '創點國的神秘成員。個子高大、有點憨厚，擅長幫人把想法落地，懂很多技術，為創點國各項工程默默守護。',
-    duties: ['複雜技術攻堅與架構落地', '硬體打樣與軟體系統實作調研', '默默守護創點國水系與山林工坊'],
+    intro: '創點源的神秘成員。個子高大、有點憨厚，擅長幫人把想法落地，懂很多技術，為創點源各項工程默默守護。',
+    duties: ['複雜技術攻堅與架構落地', '硬體打樣與軟體系統實作調研', '默默守護創點源水系與山林工坊'],
     spots: ['中央廣場神木旁', '技術工作坊'],
     accent: 'from-stone-100 to-amber-50/50 border-stone-300',
   },
@@ -502,7 +502,7 @@ const rawIslands: IdeaXIsland[] = [
     { id: 'main-plaza', name: '中央廣場', subtitle: '探索看板、島覽地圖與守護 Agent 角色介紹', streets: [
       { id: 'main-latest-street', name: '探索看板', subtitle: '直接逛全站最新公開內容', stands: [stand('main-latest', '探索看板', 'all', 'central-plaza', 'plaza', ['📰', '💡', '🧭'], 'cards', '沿著中央廣場的公告欄瀏覽 IdeaX 目前最新公開內容與探索動態。', npc('多慧', '創點島導覽員', '想先看看大家最近提出的問題、討論和作品嗎？', 'home', '看全站內容'), { navigationTarget: { tab: 'explore' } })] },
       { id: 'main-quick-street', name: '島覽地圖', subtitle: '新手導覽教學、平台介紹、運作說明、條款聲明', stands: [] },
-      { id: 'main-agents-street', name: '角色介紹', subtitle: '創點國六隻守護 Agent 介紹與身分證名冊', stands: [stand('main-agents-roster', '六大 Agent 角色介紹', 'all', 'guide-center', 'plaza', ['🤖', '💡', '🪪'], 'cards', '創點國六大原創 Agent 角色：小燈泡、搜搜、白喵、頂多慧、007、大熊！查看角色職位、出沒地點與虛擬身分證。', npc('小燈泡', '調節器 Agent', '哈囉！我們是創點國的六位守護夥伴，點擊卡片就能查看大家的檔案與身分證喔！💡', 'home', '查看角色介紹'))] },
+      { id: 'main-agents-street', name: '角色介紹', subtitle: '創點源六隻守護 Agent 介紹與身分證名冊', stands: [stand('main-agents-roster', '六大 Agent 角色介紹', 'all', 'guide-center', 'plaza', ['🤖', '💡', '🪪'], 'cards', '創點源六大原創 Agent 角色：小燈泡、搜搜、白喵、頂多慧、007、大熊！查看角色職位、出沒地點與虛擬身分證。', npc('小燈泡', '調節器 Agent', '哈囉！我們是創點源的六位守護夥伴，點擊卡片就能查看大家的檔案與身分證喔！💡', 'home', '查看角色介紹'))] },
     ] },
     { id: 'main-trade', name: '貿易街(開發中)', subtitle: '商案商品交易與專案競標市集（開發中，暫未開放）', streets: [
       { id: 'main-trade-street', name: '貿易街(開發中)', subtitle: '專案交易與競標市集（開發中）', stands: [stand('main-trade-market', '貿易街(開發中)', 'all', 'guide-center', 'plaza', ['🪙', '⚖️', '📦'], 'cards', '貿易街專案商品交易與專案競標市集籌備中，暫未開放。', npc('貿易掌事', '貿易街掌事', '貿易街目前正在籌備建設中，標示暫未開放，敬請期待後續功能！', 'home', '暫未開放'), { interactionPrompt: '貿易街目前籌備中，暫未對外開放。' })] },

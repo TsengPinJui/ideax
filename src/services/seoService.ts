@@ -547,7 +547,7 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     queryParam: '?tab=about',
     title: '原創 IP 與 Agent — IdeaX 創點子的角色們：小燈泡、搜搜、白喵、多慧、007',
     description: '認識 IdeaX 創點子的原創角色與 AI Agent：站內嚮導小燈泡、找工作的探索者搜搜、市場顧問白喵、官方客服多慧、AI CRM Agent 007。看看他們各自負責什麼、在網站哪裡出沒，還能下載角色身分證明信片！',
-    keywords: ['原創 IP', 'AI Agent', '角色介紹', '小燈泡', '搜搜', '白喵', '多慧', '007', '吉祥物', '創點國'],
+    keywords: ['原創 IP', 'AI Agent', '角色介紹', '小燈泡', '搜搜', '白喵', '多慧', '007', '吉祥物', '創點源'],
     icon: 'Users',
     image: { url: '/agents/group-og.jpg', width: 1200, height: 800, type: 'image/jpeg' },
   },

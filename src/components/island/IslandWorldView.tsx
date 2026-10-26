@@ -26,6 +26,8 @@ import {
   Sunrise,
   Sunset,
   Users,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react';
 import {
@@ -69,9 +71,11 @@ import {
   getStoredUserCityId,
   setStoredUserCityId,
   getCityConfig,
+   getCityLocalTimePhase,
   fetchCityWeather,
   CityWeatherAndTime,
 } from '../../data/cityData';
+import { ancientJiangnanBgm } from '../../utils/ancientBgm';
 import './IslandWorldView.css';
 
 interface IslandWorldViewProps {
@@ -115,29 +119,50 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     };
   }, [currentCity]);
 
-  // +8 時區 (Asia/Taipei) 時間與天氣場景狀態（支援自動依所選城市時間與天氣變換 + 手動預覽 8 大場景）
-  const [utc8Now, setUtc8Now] = useState(() => getUtc8TimeInfo());
+  // 依設定的所在地時區與即時天氣更新場景（支援自動依所在地變換 + 手動預覽 8 大場景）
+  const [clockTick, setClockTick] = useState(0);
   const [timeMode, setTimeMode] = useState<TimeOfDayMode>('auto');
   const [weatherMode, setWeatherMode] = useState<WeatherMode>('auto');
   const [showAtmosphereMenu, setShowAtmosphereMenu] = useState(false);
 
+  // 古風背景雅樂狀態（地圖開啟時自動播放，離開地圖時停止）
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(() => ancientJiangnanBgm.getMuted());
+
+  useEffect(() => {
+    ancientJiangnanBgm.start();
+    return () => {
+      ancientJiangnanBgm.stop();
+    };
+  }, []);
+
+  const handleToggleBgm = () => {
+    const nextMuted = !isBgmMuted;
+    setIsBgmMuted(nextMuted);
+    ancientJiangnanBgm.setMuted(nextMuted);
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setUtc8Now(getUtc8TimeInfo());
+      setClockTick((t) => t + 1);
     }, 30000);
     return () => clearInterval(timer);
   }, []);
 
+  const localTimeInfo = useMemo(
+    () => getCityLocalTimePhase(currentCity.timezone),
+    [currentCity, clockTick],
+  );
+
   const activeTimePhase: TimeOfDayPhase =
     timeMode === 'auto'
-      ? (cityWeatherInfo?.phase || utc8Now.phase)
+      ? (cityWeatherInfo?.phase || localTimeInfo.phase)
       : timeMode;
   const activeWeather: WeatherType =
     weatherMode === 'auto'
       ? (cityWeatherInfo?.weather || 'clear')
       : weatherMode;
   const activeSceneTitle = getSceneTitle(activeTimePhase, activeWeather);
-  const shichenDisplay = getDisplayShichen(timeMode, utc8Now);
+  const shichenDisplay = getDisplayShichen(timeMode, localTimeInfo);
 
   // 選中層級狀態（島 -> 區 -> 街 -> 攤）
   const [selectedIslandId, setSelectedIslandId] = useState<string | null>('home');
@@ -802,7 +827,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     setLeftModalMode('expert');
   };
 
-  // 點擊創點國守護 Agent：在畫面左側跳出 Agent 檔案彈窗
+  // 點擊創點源守護 Agent：在畫面左側跳出 Agent 檔案彈窗
   const handleOpenAgentPreview = (agent: IslandAgentProfile) => {
     setPreviewAgent(agent);
     setLeftModalMode('agent');
@@ -912,7 +937,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       <div
         ref={mapStageRef}
         className={`island-3d-stage${isDragging ? ' is-dragging' : ''}`}
-        aria-label="IdeaX 創點國 3D 俯視地圖：電腦左鍵平移、右鍵調整俯視角與旋轉；手機單指移動並調整俯視角"
+        aria-label="IdeaX 創點源 3D 俯視地圖：電腦左鍵平移、右鍵調整俯視角與旋轉；手機單指移動並調整俯視角"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={(e) => handlePointerEnd(e, true)}
@@ -935,36 +960,36 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           </button>
         </div>
 
-        {/* 頂部中間：IdeaX 創點國 — 島覽 — */}
+        {/* 頂部中間：IdeaX 創點源 — 島覽 — */}
         <div className="island-top-center-brand">
           <div className="island-brand-text-center">
-            <h1 className="island-map-main-title">IdeaX 創點國</h1>
+            <h1 className="island-map-main-title">IdeaX 創點源</h1>
             <div className="island-subtitle-row">
               <p className="island-map-subtitle">— 島覽 —</p>
             </div>
           </div>
         </div>
 
-        {/* 右上角：時辰顯示（純文字不用背框，z-index 低於右側島覽欄因此可被右側欄自然遮蓋；點擊可預覽切換 8 大時辰場景） */}
+        {/* 右上角：時間與佈景分兩排顯示（第一排：時辰與時間；第二排：佈景；點擊可預覽切換 8 大場景） */}
         <div className="island-top-right-shichen island-ui-interactive">
           <button
             type="button"
             onClick={() => setShowAtmosphereMenu((prev) => !prev)}
             className="island-shichen-pure-text-btn"
-            title="點擊切換 +8 時區時辰與晴雨場景"
+            title="點擊切換時辰與晴雨佈景"
           >
             <span className="shichen-main-row">
-              {renderPhaseIcon(activeTimePhase, activeWeather)}
               <span className="shichen-calligraphy-title">
-                {shichenDisplay.shichenName} · {activeSceneTitle}
+                {shichenDisplay.shichenName} · {localTimeInfo.timeString}
               </span>
             </span>
             <span className="shichen-sub-row">
-              {shichenDisplay.shichenAlias} · +8區 {utc8Now.timeString}
+              {renderPhaseIcon(activeTimePhase, activeWeather)}
+              <span>{activeSceneTitle}</span>
             </span>
           </button>
 
-          {/* +8 時區 8 大場景彈出選單 */}
+          {/* 8 大場景彈出選單 */}
           {showAtmosphereMenu && (
             <div
               className="island-atmosphere-dropdown is-right-aligned"
@@ -974,7 +999,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 <div className="flex items-center gap-1.5 text-xs font-black text-stone-800">
                   <Clock size={14} className="text-amber-700" />
                   <span>
-                    {shichenDisplay.shichenName}（+8區 {utc8Now.timeString}）
+                    {shichenDisplay.shichenName} · {localTimeInfo.timeString}
                   </span>
                 </div>
                 <button
@@ -987,7 +1012,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                     timeMode === 'auto' && weatherMode === 'auto' ? 'active' : ''
                   }`}
                 >
-                  依 +8 時間自動
+                  依所在地自動
                 </button>
               </div>
 
@@ -1040,7 +1065,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           )}
         </div>
 
-        {/* 底部置中視角控制工具列（原本在頂部的縮放、重設視角、說明移到底部，並移除原本底部的島嶼列） */}
+        {/* 底部置中視角控制工具列（全圖示按鈕：縮放、重設視角、古風音樂開關、說明） */}
         <div className="island-map-controls island-ui-interactive" aria-label="地圖操作">
           <div className="island-map-zoom-controls">
             <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖">
@@ -1058,10 +1083,22 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             type="button"
             onClick={resetView}
             className="island-reset-btn"
-            title="重設俯視角度、旋轉與縮放"
+            title="重設視角"
+            aria-label="重設視角"
           >
-            <RotateCcw size={14} />
-            <span>重設視角</span>
+            <RotateCcw size={15} />
+          </button>
+
+          <div className="island-controls-divider" />
+
+          <button
+            type="button"
+            onClick={handleToggleBgm}
+            className={`island-bgm-btn ${isBgmMuted ? 'is-muted' : 'is-playing'}`}
+            title={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
+            aria-label={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
+          >
+            {isBgmMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
 
           <div className="island-controls-divider" />
@@ -1070,10 +1107,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             type="button"
             onClick={() => setShowGuideModal(true)}
             className="island-guide-btn"
-            title="開啟島覽說明"
+            title="島覽說明"
+            aria-label="島覽說明"
           >
             <HelpCircle size={15} />
-            <span>說明</span>
           </button>
         </div>
 
@@ -1147,6 +1184,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         <IslandScene3D
           view={view}
           timePhase={activeTimePhase}
+          timeMode={timeMode}
+          localHour={localTimeInfo.hour}
           weather={activeWeather}
           selectedIslandId={selectedIslandId}
           contentCounts={contentCounts}
@@ -1183,7 +1222,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 }}
                 className="cursor-pointer hover:text-stone-900"
               >
-                {selectedIsland?.name || '創點國'}
+                {selectedIsland?.name || '創點源'}
               </span>
               {selectedDistrict && (
                 <>
@@ -2521,7 +2560,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           {leftModalMode === 'agent' && previewAgent && (
             <div className="island-preview-pane">
               <div className="island-pane-header">
-                <span className="island-preview-badge">創點國守護者 · {previewAgent.name}</span>
+                <span className="island-preview-badge">創點源守護者 · {previewAgent.name}</span>
                 <button
                   type="button"
                   onClick={() => setLeftModalMode('none')}
@@ -2590,7 +2629,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   <div className="mt-3 p-3 rounded-2xl bg-amber-50/80 border border-amber-900/15">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-black text-amber-950 flex items-center gap-1">
-                        <ScrollText size={13} className="text-amber-700" /> 創點國虛擬身分證
+                        <ScrollText size={13} className="text-amber-700" /> 創點源虛擬身分證
                       </span>
                       <span className="text-[10px] text-stone-500 font-bold text-amber-800">點擊看大圖</span>
                     </div>
@@ -2600,8 +2639,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                       onClick={() =>
                         setViewingIdCard({
                           src: previewAgent.idCard!.full,
-                          alt: `${previewAgent.name}的創點國身分證`,
-                          name: `創點國身分證-${previewAgent.name}`,
+                          alt: `${previewAgent.name}的創點源身分證`,
+                          name: `創點源身分證-${previewAgent.name}`,
                         })
                       }
                       className="w-full rounded-xl border border-amber-900/20 shadow-xs cursor-zoom-in hover:scale-[1.01] transition-transform"
@@ -2820,10 +2859,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               </button>
             </div>
 
-            <h2 className="guide-main-title">在海上逛逛</h2>
+            <h2 className="guide-main-title">到村內逛逛</h2>
 
             <p className="guide-main-desc">
-              點選島嶼進入探索。電腦版按住左鍵可平移地圖、右鍵拖曳可旋轉並調整俯視角；手機版用單手指移動即可平移並調整俯視角。場景並會隨 +8 時區（清晨・中午・傍晚・晚上及雨天）自動變換。
+              點選島嶼進入探索。電腦版按住左鍵可平移地圖、右鍵拖曳可旋轉並調整俯視角；手機版用單手指移動即可平移並調整俯視角。場景並會隨所在地時辰與天候（清晨・中午・傍晚・晚上及雨天）自動變換。
             </p>
 
             <div className="guide-mouse-grid">
