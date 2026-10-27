@@ -1185,7 +1185,9 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
   const treeN = Math.round(perim / 5.5);
   for (let i = 0; i < treeN; i++) {
     const a = (i / treeN) * Math.PI * 2 + rand() * 0.08;
-    const off = 3.0 + rand() * 3.2;
+    let off = 3.0 + rand() * 3.2;
+    // 島緣有店面時，樹往外退一點，樹冠才不會穿進屋頂
+    if (blockedByBuilding(Math.cos(a) * (rx + off) + cx, Math.sin(a) * (rz + off) + cz, 4)) off += 2.8;
     const x = Math.cos(a) * (rx + off);
     const z = Math.sin(a) * (rz + off);
     if (blockedByBridge(x + cx, z + cz, 3.5)) continue;

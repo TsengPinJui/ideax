@@ -29,6 +29,7 @@ import type { Question } from '../../types';
 import type { Collider } from './types';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
 import { setTextureAnisotropy } from './stylized/textures';
+import { peekKingdomResume, saveKingdomResume, clearKingdomResume } from './kingdomResume';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -120,6 +121,27 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     });
   }, []);
   const mountRef = useRef<HTMLDivElement>(null);
+
+  /** 要離開 3D 去看內容時，記住現在的位置、樓層與時段，回來時接著逛 */
+  const rememberPose = useCallback(() => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const st = storyRef.current;
+    saveKingdomResume({
+      x: c.position.x,
+      y: c.position.y,
+      z: c.position.z,
+      yaw: c.yaw,
+      pitch: c.pitch,
+      level: st.tween ? st.tween.toLevel : st.level,
+      towerId: st.tween ? st.tween.towerId : st.towerId,
+      timeOfDay: worldRef.current?.timeOfDay || 'dusk',
+    });
+  }, []);
+  const handleExit = useCallback(() => {
+    clearKingdomResume();
+    onExit();
+  }, [onExit]);
 
   // Core 3D engine refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -315,6 +337,25 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const spawnPos = new THREE.Vector3(...initialManifest.defaultSpawn.position);
     controls.setSpawn(spawnPos, initialManifest.defaultSpawn.yaw);
 
+    // 從痛點詳情等頁面回來：站回原本的位置、樓層與時段
+    const resume = peekKingdomResume();
+    let startRegionId: RegionId = initialManifest.id;
+    let resumeClearTimer: number | undefined;
+    if (resume) {
+      controls.setSpawn(new THREE.Vector3(resume.x, resume.y, resume.z), resume.yaw);
+      controls.pitch = resume.pitch;
+      controls.updateCameraTransform(0);
+      if (resume.level > 0 && resume.towerId && towersRef.current.has(resume.towerId)) {
+        storyRef.current = { towerId: resume.towerId, level: resume.level, armed: false, tween: null };
+        setFloorLevel(resume.level);
+      }
+      world.setTimeOfDay(resume.timeOfDay);
+      setTimeOfDay(resume.timeOfDay);
+      startRegionId = detectPlayerSpatialContext(resume.x, resume.z).regionId;
+      setActiveRegionId(startRegionId);
+      resumeClearTimer = window.setTimeout(clearKingdomResume, 1500);
+    }
+
     // 6. RegionManager
     const regionManager = new RegionManager(scene);
     regionManagerRef.current = regionManager;
@@ -335,7 +376,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     // Load Initial Region (which also preloads the remaining 4 islands in background)
     regionManager
-      .loadRegion(initialManifest.id)
+      .loadRegion(startRegionId)
       .then(() => {
         setErrorMessage(null);
       })
@@ -545,6 +586,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      if (resumeClearTimer) window.clearTimeout(resumeClearTimer);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleGlobalKeyDown);
 
@@ -689,7 +731,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               </div>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={onExit} className="kx-btn-ghost px-3.5 py-2 text-[13px] cursor-pointer">離開</button>
+              <button type="button" onClick={handleExit} className="kx-btn-ghost px-3.5 py-2 text-[13px] cursor-pointer">離開</button>
               <button type="button" onClick={handleSafeReturn} className="kx-btn-ghost px-3.5 py-2 text-[13px] flex items-center gap-1.5 cursor-pointer">
                 <ShieldCheck className="w-4 h-4" /> 回到原本的島
               </button>
@@ -719,7 +761,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleDevStats={() => setIsDevStatsOpen(!isDevStatsOpen)}
-        onExit={onExit}
+        onExit={handleExit}
         onJoystickMove={(vx, vy) => {
           if (controlsRef.current) {
             controlsRef.current.touchStick.active = true;
@@ -777,10 +819,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onClose={() => setPainFloorOpen(null)}
         onOpenQuestion={(q) => {
           setPainFloorOpen(null);
+          rememberPose();
           onOpenQuestion?.(q);
         }}
         onCreate={() => {
           setPainFloorOpen(null);
+          rememberPose();
           onNavigateToModule?.('create_pain_point');
         }}
       />
@@ -794,6 +838,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onNavigateToModule={(mod) => {
           setActiveModalBuilding(null);
           if (onNavigateToModule) {
+            rememberPose();
             onNavigateToModule(mod);
           }
         }}

@@ -810,6 +810,132 @@ export function farmlandTexture() {
   });
 }
 
+/** 市集攤位的條紋布棚（下緣有波浪布邊） */
+export function awningTexture(a: string, b: string) {
+  return cached(`awning_${a}_${b}`, () => {
+    const [c, ctx] = makeCanvas(256, 256);
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = i % 2 ? b : a;
+      ctx.fillRect((i * 256) / n, 0, 256 / n + 1, 256);
+    }
+    // 布紋陰影
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, 'rgba(0,0,0,0.18)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    speckle(ctx, 256, 256, 900, seeded(a.length * 31 + b.length), 0.06);
+    // 金色滾邊
+    ctx.fillStyle = '#d9b04a';
+    ctx.fillRect(0, 236, 256, 8);
+    return toTexture(c, { repeat: false });
+  });
+}
+
+export type ShopKind = 'tea' | 'books' | 'crafts' | 'lanterns' | 'sweets' | 'ink' | 'general' | 'toys';
+
+/** 店舖裡的貨架（櫃檯後方的牆面）：茶罐、書冊、燈籠、糕點…依店種畫不同的貨 */
+export function shopInteriorTexture(kind: ShopKind) {
+  return cached(`shopIn_${kind}`, () => {
+    const W = 512;
+    const H = 320;
+    const [c, ctx] = makeCanvas(W, H);
+    const rand = seeded(kind.length * 977 + kind.charCodeAt(0));
+    ctx.fillStyle = '#3a2213';
+    ctx.fillRect(0, 0, W, H);
+    // 木格貨架
+    const rows = 3;
+    const cols = 4;
+    const cw = W / cols;
+    const rh = H / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let k = 0; k < cols; k++) {
+        const x = k * cw;
+        const y = r * rh;
+        const g = ctx.createLinearGradient(0, y, 0, y + rh);
+        g.addColorStop(0, '#2a170c');
+        g.addColorStop(1, '#4b2c17');
+        ctx.fillStyle = g;
+        ctx.fillRect(x + 8, y + 8, cw - 16, rh - 16);
+        const baseY = y + rh - 14;
+        const palette: Record<ShopKind, string[]> = {
+          tea: ['#3f6b4a', '#7a3b22', '#c9a227', '#2f5675'],
+          books: ['#8e2420', '#2f5675', '#3f6b4a', '#c9a227', '#6b4a2a'],
+          crafts: ['#b5651d', '#c9a227', '#2c6a62', '#9c2a22'],
+          lanterns: ['#c62828', '#e2b85a', '#c62828'],
+          sweets: ['#f2a6c2', '#f6d36b', '#e8e0cf', '#c9844a'],
+          ink: ['#1d1d1d', '#8e2420', '#e8e0cf', '#2f5675'],
+          general: ['#b5651d', '#3f6b4a', '#c9a227', '#8e2420', '#2f5675'],
+          toys: ['#e05a3a', '#3f8fd0', '#f2c94c', '#5fae5a'],
+        };
+        const cols2 = palette[kind];
+        let px = x + 16;
+        while (px < x + cw - 24) {
+          const col = cols2[Math.floor(rand() * cols2.length)];
+          ctx.fillStyle = col;
+          if (kind === 'books' || kind === 'ink') {
+            const bw = 8 + rand() * 9;
+            const bh = rh * (0.45 + rand() * 0.3);
+            ctx.fillRect(px, baseY - bh, bw, bh);
+            ctx.fillStyle = 'rgba(255,230,160,0.5)';
+            ctx.fillRect(px + 2, baseY - bh + 6, bw - 4, 3);
+            px += bw + 2;
+          } else if (kind === 'lanterns') {
+            const rr = 14 + rand() * 6;
+            ctx.beginPath();
+            ctx.ellipse(px + rr, baseY - rr * 1.3, rr, rr * 1.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#e2b85a';
+            ctx.fillRect(px + rr * 0.5, baseY - rr * 2.6, rr, 4);
+            ctx.fillRect(px + rr * 0.5, baseY - 4, rr, 4);
+            px += rr * 2 + 6;
+          } else if (kind === 'sweets') {
+            const rr = 8 + rand() * 5;
+            for (let q = 0; q < 3; q++) {
+              ctx.beginPath();
+              ctx.arc(px + rr, baseY - rr - q * rr * 1.2, rr, 0, Math.PI * 2);
+              ctx.fillStyle = cols2[Math.floor(rand() * cols2.length)];
+              ctx.fill();
+            }
+            px += rr * 2 + 6;
+          } else {
+            // 罐子、木盒、陶瓶
+            const jw = 16 + rand() * 14;
+            const jh = rh * (0.3 + rand() * 0.35);
+            ctx.beginPath();
+            ctx.moveTo(px, baseY);
+            ctx.lineTo(px + jw, baseY);
+            ctx.lineTo(px + jw * 0.92, baseY - jh);
+            ctx.lineTo(px + jw * 0.08, baseY - jh);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,240,200,0.25)';
+            ctx.fillRect(px + jw * 0.2, baseY - jh * 0.8, 3, jh * 0.6);
+            ctx.fillStyle = '#e8d9b5';
+            ctx.fillRect(px + jw * 0.25, baseY - jh * 0.6, jw * 0.5, jh * 0.28);
+            px += jw + 5;
+          }
+        }
+        // 層板
+        ctx.fillStyle = '#6b3f22';
+        ctx.fillRect(x + 4, baseY, cw - 8, 8);
+      }
+    }
+    // 直柱
+    ctx.fillStyle = '#5a321c';
+    for (let k = 0; k <= cols; k++) ctx.fillRect(k * cw - 5, 0, 10, H);
+    // 暖光
+    const lg = ctx.createRadialGradient(W / 2, H * 0.35, 20, W / 2, H * 0.35, W * 0.7);
+    lg.addColorStop(0, 'rgba(255,190,90,0.22)');
+    lg.addColorStop(1, 'rgba(0,0,0,0.25)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, 0, W, H);
+    return toTexture(c, { repeat: false });
+  });
+}
+
 /** 依顯示卡能力提高貼圖的斜角清晰度 */
 export function setTextureAnisotropy(n: number) {
   for (const t of cache.values()) {
