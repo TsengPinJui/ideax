@@ -744,6 +744,72 @@ export function foamTexture() {
   });
 }
 
+/** 田園：田埂分隔的稻田、水田、油菜花田、茶園 */
+export function farmlandTexture() {
+  return cached('farmland', () => {
+    const S = 512;
+    const [c, ctx] = makeCanvas(S, S);
+    const rand = seeded(101);
+    ctx.fillStyle = '#8a7350';
+    ctx.fillRect(0, 0, S, S);
+    const cols = [0, 150, 290, 400, 512];
+    const rows = [0, 120, 260, 380, 512];
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        const x0 = cols[i] + 5;
+        const y0 = rows[j] + 5;
+        const w = cols[i + 1] - cols[i] - 10;
+        const h = rows[j + 1] - rows[j] - 10;
+        const kind = Math.floor(rand() * 5);
+        if (kind === 0 || kind === 1) {
+          // 稻田（一行行秧苗）
+          ctx.fillStyle = kind === 0 ? '#6f9a3c' : '#86ad45';
+          ctx.fillRect(x0, y0, w, h);
+          ctx.strokeStyle = 'rgba(40,80,20,0.35)';
+          ctx.lineWidth = 3;
+          for (let y = y0 + 6; y < y0 + h; y += 9) {
+            ctx.beginPath();
+            ctx.moveTo(x0, y);
+            ctx.lineTo(x0 + w, y);
+            ctx.stroke();
+          }
+        } else if (kind === 2) {
+          // 水田（映著天光）
+          const g = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
+          g.addColorStop(0, '#9fc3c9');
+          g.addColorStop(1, '#6f9aa3');
+          ctx.fillStyle = g;
+          ctx.fillRect(x0, y0, w, h);
+          ctx.fillStyle = 'rgba(90,140,50,0.8)';
+          for (let y = y0 + 8; y < y0 + h - 4; y += 12) for (let x = x0 + 6; x < x0 + w - 4; x += 12) ctx.fillRect(x, y, 3, 4);
+        } else if (kind === 3) {
+          // 油菜花田
+          ctx.fillStyle = '#e9cf4a';
+          ctx.fillRect(x0, y0, w, h);
+          for (let k = 0; k < 220; k++) {
+            ctx.fillStyle = rand() > 0.5 ? 'rgba(255,240,140,0.9)' : 'rgba(150,170,60,0.6)';
+            ctx.fillRect(x0 + rand() * w, y0 + rand() * h, 3, 3);
+          }
+        } else {
+          // 茶園（一條條深綠茶樹）
+          ctx.fillStyle = '#7a8f4a';
+          ctx.fillRect(x0, y0, w, h);
+          ctx.strokeStyle = '#3f6a2c';
+          ctx.lineWidth = 8;
+          for (let x = x0 + 8; x < x0 + w; x += 16) {
+            ctx.beginPath();
+            ctx.moveTo(x, y0);
+            ctx.lineTo(x, y0 + h);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    speckle(ctx, S, S, 2500, rand, 0.08);
+    return toTexture(c);
+  });
+}
+
 /** 依顯示卡能力提高貼圖的斜角清晰度 */
 export function setTextureAnisotropy(n: number) {
   for (const t of cache.values()) {

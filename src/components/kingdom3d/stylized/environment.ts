@@ -17,8 +17,10 @@ import {
   lotusPadTexture,
   moonTexture,
   petalTexture,
+  farmlandTexture,
   seeded,
 } from './textures';
+import { MOUNTAIN_RING, FARMLANDS, LOTUS_PATCHES, BASIN_LANDMARKS, landOutline } from './basinLayout';
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
@@ -71,7 +73,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0xcfe2ee, fogNear: 140, fogFar: 620,
     deep: 0x16627a, shallow: 0x3aa2a8, waterSky: 0x9fcbe6, glint: 1.0,
     lantern: 0.55, lamp: 0.4, windows: 0.0, glowOpacity: 0.12, glowSize: 1.8, orb: 1.0,
-    exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0x5f8c72, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
+    exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0xffffff, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
   },
   dusk: {
     top: 0x4d79b8, horizon: 0xffc88f, bottom: 0xd99a6a,
@@ -80,7 +82,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0xf0c49c, fogNear: 120, fogFar: 560,
     deep: 0x1f4f63, shallow: 0x3f7d80, waterSky: 0xf2a877, glint: 1.4,
     lantern: 1.5, lamp: 1.1, windows: 0.45, glowOpacity: 0.42, glowSize: 2.4, orb: 1.6,
-    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0x6f7f78, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.42,
+    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.42,
   },
   night: {
     top: 0x060c22, horizon: 0x1d2b4f, bottom: 0x0b1226,
@@ -89,7 +91,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0x15203b, fogNear: 70, fogFar: 420,
     deep: 0x07142a, shallow: 0x123049, waterSky: 0x223a66, glint: 0.9,
     lantern: 3.2, lamp: 2.6, windows: 1.35, glowOpacity: 0.95, glowSize: 3.0, orb: 2.6,
-    exposure: 1.2, stars: 1, moon: true, playerLamp: 2.2, mountain: 0x1d2740, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.85,
+    exposure: 1.2, stars: 1, moon: true, playerLamp: 2.2, mountain: 0x4a5582, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.85,
   },
 };
 
@@ -147,7 +149,7 @@ function makeWaterMaterial() {
         vec3 V = normalize(cameraPosition - vWorld);
         float fres = pow(1.0 - max(dot(n, V), 0.0), 3.0);
         vec3 base = mix(uDeep, uShallow, clamp(0.45 + 0.22 * wave(p * 0.4), 0.0, 1.0));
-        vec3 col = mix(base, uSky, clamp(fres * 0.5 + 0.06, 0.0, 0.62));
+        vec3 col = mix(base, uSky, clamp(fres * 0.4 + 0.05, 0.0, 0.45));
         vec3 R = reflect(-V, n);
         vec3 L = normalize(uSunDir);
         float spec = pow(max(dot(R, L), 0.0), 140.0) * 2.2 + pow(max(dot(R, L), 0.0), 18.0) * 0.18;
@@ -226,6 +228,8 @@ export class StylizedWorld {
   private ambient: THREE.AmbientLight;
   private playerLamp: THREE.PointLight;
   private time = 0;
+  private waterwheels: THREE.Group[] = [];
+  private lotusPadMat: THREE.MeshStandardMaterial | null = null;
   private ownedTextures: THREE.Texture[] = [];
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
@@ -301,16 +305,14 @@ export class StylizedWorld {
     water.position.y = -0.35;
     this.root.add(water);
 
-    // 遠山（石灰岩峰林）
-    this.mountainMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8c, roughness: 1 });
-    this.buildMountains(rand);
-
-    // 近景：北方瀑布懸崖與五層塔、東西兩座瀑布岩、湖心亭與荷花
+    // 盆地：照 /island 的地圖構造（32 座閉合環形山、田園陸地、北山飛瀑、塔樓山台、南山洞口、東山飛瀑）
+    this.mountainMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8c, roughness: 1, vertexColors: true });
     const trees = new TreeBatch();
-    this.buildPagodaCliff(trees);
-    this.buildSideCliff(-152, 4, 1, trees, 21);
-    this.buildSideCliff(154, -2, -1, trees, 33);
+    this.buildMountainRing(trees);
+    this.buildDistantPeaks(rand);
+    this.buildFarmlands(trees);
     this.buildLakePavilion(0, 64);
+    for (const [x, z, r] of LOTUS_PATCHES) this.buildLotus(x, z, r, Math.round(r * 3));
     this.root.add(trees.build());
 
     // 飄落的花瓣（夜晚變成螢火蟲）
@@ -343,32 +345,121 @@ export class StylizedWorld {
     this.setTimeOfDay('dusk');
   }
 
-  private buildMountains(rand: () => number) {
-    // 桂林式石灰岩峰林：陡峭的側面、圓頂，用旋轉剖面做出來
+  /** 山的剖面：寬山腳、往上收窄、圓頂（可疊成連綿山牆） */
+  private mountainGeometry(r: number, h: number, seed: number, flatTop = 0) {
+    const rand = seeded(seed);
+    const pts: THREE.Vector2[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      let rr = r * (1 - Math.pow(t, 1.15) * 0.82);
+      if (t > 0.8) rr *= Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.8) / 0.2, 2))) * (1 - flatTop) + flatTop;
+      pts.push(new THREE.Vector2(Math.max(0.05, rr), t * h));
+    }
+    const geo = new THREE.LatheGeometry(pts, 18);
+    const p = geo.attributes.position as THREE.BufferAttribute;
+    const colors: number[] = [];
+    const low = new THREE.Color(0x8c8775);
+    const mid = new THREE.Color(0x5f8a4e);
+    const top = new THREE.Color(0x7aa35a);
+    const c = new THREE.Color();
+    for (let k = 0; k < p.count; k++) {
+      const y = p.getY(k);
+      const ang = Math.atan2(p.getZ(k), p.getX(k));
+      const j = 1 + Math.sin(ang * 3 + seed) * 0.07 + Math.sin(ang * 7 + y * 0.08) * 0.05 + (rand() - 0.5) * 0.05;
+      p.setXYZ(k, p.getX(k) * j, y * (1 + (rand() - 0.5) * 0.02), p.getZ(k) * j);
+      const t = y / h;
+      c.copy(low).lerp(mid, Math.min(1, t * 2.4));
+      if (t > 0.55) c.lerp(top, (t - 0.55) / 0.45);
+      colors.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /** 第一層：32 座閉合環形山，圍成盆地 */
+  private buildMountainRing(trees: TreeBatch) {
+    const mats = getStyleMaterials();
     const g = new THREE.Group();
-    const profile = (h: number, r: number) => {
-      const pts: THREE.Vector2[] = [];
-      for (let i = 0; i <= 10; i++) {
-        const t = i / 10;
-        const rr = r * (t < 0.75 ? 1 - t * 0.35 : 0.74 * Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.75) / 0.25, 2))));
-        pts.push(new THREE.Vector2(Math.max(0.01, rr), t * h));
+    for (const pk of MOUNTAIN_RING) {
+      if (pk.kind === 'westPlateau') continue;
+      const geo = this.mountainGeometry(pk.r, pk.h, pk.i * 7 + 3);
+      const m = new THREE.Mesh(geo, this.mountainMat);
+      m.position.set(pk.x, -2, pk.z);
+      g.add(m);
+      // 山腳的松樹
+      const rand = seeded(pk.i + 11);
+      for (let k = 0; k < 5; k++) {
+        const a = Math.atan2(-pk.z, -pk.x) + (rand() - 0.5) * 1.6;
+        const rr = pk.r * (0.82 + rand() * 0.12);
+        trees.add(rand() > 0.3 ? 'pine' : 'green', pk.x + Math.cos(a) * rr, 1 + rand() * 2, pk.z + Math.sin(a) * rr, 1.3 + rand() * 0.8);
       }
-      return pts;
-    };
-    for (let i = 0; i < 46; i++) {
-      const a = (i / 46) * Math.PI * 2 + rand() * 0.1;
-      const dist = 250 + rand() * 230;
-      const h = 50 + rand() * 100;
-      const r = h * (0.22 + rand() * 0.14);
-      const geo = new THREE.LatheGeometry(profile(h, r), 12);
-      const p = geo.attributes.position as THREE.BufferAttribute;
-      for (let k = 0; k < p.count; k++) {
-        const y = p.getY(k);
-        const j = 1 + Math.sin(y * 0.15 + i) * 0.08 + (rand() - 0.5) * 0.08;
-        p.setXYZ(k, p.getX(k) * j, y, p.getZ(k) * j);
-      }
-      geo.computeVertexNormals();
-      geo.scale(1, 1, 0.8 + rand() * 0.4);
+    }
+    mergeByMaterial(g, false);
+    this.root.add(g);
+
+    // 西側塔樓平頂山台＋五層塔
+    const wp = BASIN_LANDMARKS.westPlateau;
+    const plat = new THREE.Group();
+    plat.position.set(wp.x, 0, wp.z);
+    const plateauTop = 30;
+    plat.add(new THREE.Mesh(this.mountainGeometry(wp.r * 1.25, plateauTop + 2, 161, 0.72), this.mountainMat));
+    plat.children[0].position.y = -2;
+    const lawn = new THREE.Mesh(new THREE.CircleGeometry(wp.r * 1.25 * 0.33, 32).rotateX(-Math.PI / 2), mats.grass);
+    lawn.position.y = plateauTop - 0.15;
+    plat.add(lawn);
+    this.root.add(plat);
+    this.buildPagoda(wp.x + 2, wp.z, plateauTop, trees);
+
+    // 北山飛瀑：上下兩疊瀑布，中間一層岩台與水潭
+    const nf = BASIN_LANDMARKS.northFalls;
+    const ledge = new THREE.Mesh(cliffGeometry(9, 5, 11, 7, 3, 77, 24, 3), mats.rock);
+    ledge.position.set(0, 24, nf.faceZ - 9);
+    this.root.add(ledge);
+    this.addFallSegment(0, nf.faceZ - 15, 48, 24, 9, 0, 0.18);
+    this.addFallSegment(0, nf.faceZ - 7, 24, -0.3, 13, 0, 0.12);
+
+    // 東山飛瀑（山壁瀑布，朝向盆地）
+    const ef = BASIN_LANDMARKS.eastFalls;
+    this.addFallSegment(ef.faceX + 8, ef.z, 34, -0.3, 8, -Math.PI / 2, 0.2);
+
+    // 南山洞口：水道一路通進山腳的大溶洞
+    const sc = BASIN_LANDMARKS.southCave;
+    const cave = new THREE.Group();
+    cave.position.set(0, 0, sc.faceZ + 3);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(10, 2.6, 8, 24, Math.PI), mats.rock);
+    arch.scale.set(1, 1.15, 1.4);
+    cave.add(arch);
+    const dark = new THREE.Mesh(new THREE.CircleGeometry(10, 24, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x07080a }));
+    dark.position.z = 1.5;
+    dark.rotation.y = Math.PI;
+    dark.scale.y = 1.15;
+    cave.add(dark);
+    cave.position.y = -0.4;
+    this.root.add(cave);
+    const lan = new LanternBatch();
+    for (const sx of [-1, 1]) lan.addPost(sx * 13, 0.2, sc.faceZ - 2, 2.6);
+    this.root.add(lan.build());
+
+    // 山腰的雲霧（坐看雲起時）
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2;
+      const r = 150 + (i % 3) * 8;
+      const sp = new THREE.Sprite(this.cloudMat);
+      sp.position.set(Math.cos(a) * r * 1.08, 22 + (i % 4) * 5, Math.sin(a) * r * 0.94);
+      sp.scale.set(70, 22, 1);
+      this.root.add(sp);
+    }
+  }
+
+  /** 第二層：盆地外更遠、更高的峰林（被霧淡化，增加層次） */
+  private buildDistantPeaks(rand: () => number) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 2 + rand() * 0.1;
+      const dist = 300 + rand() * 200;
+      const h = 90 + rand() * 90;
+      const geo = this.mountainGeometry(h * 0.42, h, 500 + i);
       geo.translate(Math.cos(a) * dist, -3, Math.sin(a) * dist);
       g.add(new THREE.Mesh(geo, this.mountainMat));
     }
@@ -376,43 +467,33 @@ export class StylizedWorld {
     this.root.add(g);
   }
 
-  private addWaterfall(x: number, z: number, topY: number, width: number, faceYaw: number, tilt: number) {
+  /** 一段瀑布（從 topY 落到 bottomY），x,z 是瀑布頂端、faceYaw 是水流朝向 */
+  private addFallSegment(x: number, z: number, topY: number, bottomY: number, width: number, faceYaw: number, tilt: number) {
     const tex = waterfallTexture().clone();
     tex.needsUpdate = true;
-    tex.repeat.set(width / 6, topY / 10);
+    const len = topY - bottomY;
+    tex.repeat.set(width / 6, len / 10);
     this.ownedTextures.push(tex);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff });
     this.waterfalls.push(mat);
-    const len = topY + 0.4;
-    const fall = new THREE.Mesh(new THREE.PlaneGeometry(width, len), mat);
     const grp = new THREE.Group();
     grp.position.set(x, 0, z);
     grp.rotation.y = faceYaw;
-    fall.position.set(0, topY / 2 - 0.3, Math.sin(tilt) * len * 0.5);
+    const fall = new THREE.Mesh(new THREE.PlaneGeometry(width, len), mat);
+    fall.position.set(0, bottomY + len / 2, Math.sin(tilt) * len * 0.5);
     fall.rotation.x = -tilt;
     grp.add(fall);
-    // 水花與水霧
-    const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
-    mist.scale.set(width * 2.2, width * 1.2, 1);
-    mist.position.set(0, 1.2, Math.sin(tilt) * len + 1);
+    const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }));
+    mist.scale.set(width * 2.4, width * 1.3, 1);
+    mist.position.set(0, bottomY + 1.2, Math.sin(tilt) * len + 1);
     grp.add(mist);
     this.root.add(grp);
   }
 
-  private buildPagodaCliff(trees: TreeBatch) {
+  private buildPagoda(cx: number, cz: number, top: number, trees: TreeBatch) {
     const mats = getStyleMaterials();
-    const cx = 0;
-    const cz = -122;
-    const top = 26;
     const g = new THREE.Group();
     g.position.set(cx, 0, cz);
-    const cliff = new THREE.Mesh(cliffGeometry(25, 17, 31, 23, top + 6, 91, 64, 8), mats.rock);
-    cliff.position.y = top;
-    g.add(cliff);
-    const cap = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2).scale(25, 1, 17), mats.grass);
-    cap.position.y = top;
-    g.add(cap);
-    // 五層塔
     const base = new THREE.Mesh(scaledBox(11, 1.2, 11, 2, 1.2, 2), mats.stone);
     base.position.y = top + 0.6;
     g.add(base);
@@ -437,63 +518,153 @@ export class StylizedWorld {
     }
     const lan = new LanternBatch();
     for (let t = 0; t < 5; t++) {
-      const s = 7.5 * (1 - t * 0.13) / 2 + 1.3;
+      const s = (7.5 * (1 - t * 0.13)) / 2 + 1.3;
       const yy = top + 1.2 + 3.6 + t * 3.15 - 0.2;
       for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) lan.addHanging(sx * s, yy, sz * s, 0.9);
     }
     g.add(lan.build());
     const rand = seeded(5);
     const kinds: TreeKind[] = ['pine', 'cherry', 'green', 'cherry'];
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 16; i++) {
       const a = rand() * Math.PI * 2;
-      const k = 0.62 + rand() * 0.32;
-      const x = Math.cos(a) * 25 * k;
-      const z = Math.sin(a) * 17 * k;
-      if (Math.abs(x) < 7.5 && Math.abs(z) < 7.5) continue;
-      trees.add(kinds[i % kinds.length], cx + x, top, cz + z, 1.0 + rand() * 0.6);
+      const r = 8 + rand() * 4;
+      trees.add(kinds[i % kinds.length], cx + Math.cos(a) * r, top, cz + Math.sin(a) * r, 1 + rand() * 0.5);
     }
     mergeByMaterial(g);
     this.root.add(g);
-    // 兩道瀑布（南面，朝向主島）
-    this.addWaterfall(cx - 9, cz + 15.5, top, 6, 0, 0.2);
-    this.addWaterfall(cx + 6, cz + 16.3, top - 2, 4.5, 0, 0.22);
   }
 
-  private buildSideCliff(cx: number, cz: number, faceDir: 1 | -1, trees: TreeBatch, seed: number) {
+  /** 田園陸地：岩岸＋草地＋田埂分隔的稻田、水田、油菜花、茶園，點綴農舍、水車、草垛與樹 */
+  private buildFarmlands(trees: TreeBatch) {
     const mats = getStyleMaterials();
-    const top = 17;
+    const farmMat = new THREE.MeshStandardMaterial({ map: farmlandTexture(), roughness: 0.9 });
     const g = new THREE.Group();
-    g.position.set(cx, 0, cz);
-    const cliff = new THREE.Mesh(cliffGeometry(14, 22, 19, 28, top + 6, seed, 48, 6), mats.rock);
-    cliff.position.y = top;
-    g.add(cliff);
-    const cap = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2).scale(14, 1, 22), mats.grass);
-    cap.position.y = top;
-    g.add(cap);
-    // 崖頂涼亭
-    const pav = new THREE.Group();
-    pav.position.set(0, top, -6);
-    const deck = new THREE.Mesh(scaledBox(6, 0.5, 6, 2, 0.5, 2), mats.stone);
-    deck.position.y = 0.25;
-    pav.add(deck);
-    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 3, 8), mats.redLacquer);
-      col.position.set(sx * 2.4, 2, sz * 2.4);
-      pav.add(col);
-    }
-    const roof = buildRoofTier(4.8, 4.8, { rise: 2.2, overhang: 1.2, curl: 1.0, theme: 'teal', finial: true });
-    roof.position.y = 3.5;
-    pav.add(roof);
-    g.add(pav);
-    const rand = seeded(seed);
-    for (let i = 0; i < 14; i++) {
-      const a = rand() * Math.PI * 2;
-      const k = 0.55 + rand() * 0.35;
-      trees.add(i % 3 ? 'pine' : 'cherry', cx + Math.cos(a) * 14 * k, top, cz + Math.sin(a) * 22 * k + 3, 1 + rand() * 0.5);
-    }
+    const houses = new THREE.Group();
+    const lan = new LanternBatch();
+    const hayGeo = new THREE.ConeGeometry(0.9, 1.6, 10);
+    const hayMat = new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: 1 });
+    FARMLANDS.forEach((l, li) => {
+      const outline = landOutline(l);
+      const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, z)));
+      // 岩岸（往下延伸到水下）
+      const side = new THREE.ExtrudeGeometry(shape, { depth: 3, bevelEnabled: true, bevelSize: 1.2, bevelThickness: 0.5, bevelSegments: 2, curveSegments: 24 });
+      side.rotateX(Math.PI / 2);
+      const sideMesh = new THREE.Mesh(side, [mats.grass, mats.rock]);
+      sideMesh.position.y = 0;
+      g.add(sideMesh);
+      // 田地（比陸地小一圈，留草地邊）
+      const inner = landOutline({ ...l, rx: l.rx * 0.84, rz: l.rz * 0.84 });
+      const fshape = new THREE.Shape(inner.map(([x, z]) => new THREE.Vector2(x, z)));
+      const fgeo = new THREE.ShapeGeometry(fshape, 24);
+      fgeo.rotateX(Math.PI / 2);
+      const uv = fgeo.attributes.uv as THREE.BufferAttribute;
+      const p = fgeo.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i) / 26, p.getZ(i) / 26);
+      // ShapeGeometry 旋轉後法線朝下，翻面
+      const idx = fgeo.index!;
+      for (let i = 0; i < idx.count; i += 3) {
+        const a0 = idx.getX(i + 1);
+        idx.setX(i + 1, idx.getX(i + 2));
+        idx.setX(i + 2, a0);
+      }
+      fgeo.computeVertexNormals();
+      const field = new THREE.Mesh(fgeo, farmMat);
+      field.position.y = 0.5;
+      field.receiveShadow = true;
+      g.add(field);
+
+      const rand = seeded(Math.round(l.seed * 100));
+      // 農舍（白牆黑瓦）
+      const nHouse = 2 + Math.floor(rand() * 3);
+      for (let k = 0; k < nHouse; k++) {
+        const a = rand() * Math.PI * 2;
+        const rr = 0.35 + rand() * 0.4;
+        const x = l.cx + Math.cos(a) * l.rx * rr;
+        const z = l.cz + Math.sin(a) * l.rz * rr;
+        const yaw = Math.atan2(-x, -z) + (rand() - 0.5) * 0.6;
+        const hg = new THREE.Group();
+        hg.position.set(x, 0.5, z);
+        hg.rotation.y = yaw;
+        const w = 4 + rand() * 2;
+        const d = 3 + rand() * 1.2;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.6, d), mats.plaster);
+        wall.position.y = 1.3;
+        hg.add(wall);
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.7, 0.1), mats.darkWood);
+        door.position.set(0, 0.85, d / 2 + 0.02);
+        hg.add(door);
+        const roof = buildRoofTier(w, d, { rise: 1.3, overhang: 0.7, curl: 0.35, theme: 'slate', lite: true });
+        roof.position.y = 2.6;
+        hg.add(roof);
+        houses.add(hg);
+        lan.addHanging(x + Math.sin(yaw) * (d / 2 + 0.4), 2.2, z + Math.cos(yaw) * (d / 2 + 0.4), 0.7);
+      }
+      // 草垛
+      for (let k = 0; k < 3; k++) {
+        const a = rand() * Math.PI * 2;
+        const rr = 0.3 + rand() * 0.45;
+        const hay = new THREE.Mesh(hayGeo, hayMat);
+        hay.position.set(l.cx + Math.cos(a) * l.rx * rr, 1.3, l.cz + Math.sin(a) * l.rz * rr);
+        g.add(hay);
+      }
+      // 樹：沿陸地外緣
+      for (let k = 0; k < Math.round((l.rx + l.rz) / 4); k++) {
+        const [x, z] = outline[Math.floor(rand() * outline.length)];
+        const ix = l.cx + (x - l.cx) * 0.9;
+        const iz = l.cz + (z - l.cz) * 0.9;
+        trees.add((['cherry', 'green', 'green', 'pine', 'maple'] as TreeKind[])[k % 5], ix, 0.5, iz, 1 + rand() * 0.6);
+      }
+      // 水車（朝向盆地中央的岸邊）
+      if (li % 2 === 0) {
+        const toC = Math.atan2(-l.cz, -l.cx);
+        let best = outline[0];
+        let bd = -Infinity;
+        for (const pt of outline) {
+          const d = Math.cos(Math.atan2(pt[1] - l.cz, pt[0] - l.cx) - toC);
+          if (d > bd) {
+            bd = d;
+            best = pt;
+          }
+        }
+        const wheel = new THREE.Group();
+        wheel.position.set(best[0] + Math.cos(toC) * 1.5, 1.4, best[1] + Math.sin(toC) * 1.5);
+        wheel.rotation.y = -toC;
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.16, 6, 20), mats.darkWood);
+        wheel.add(rim);
+        for (let k = 0; k < 8; k++) {
+          const sp = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4.4, 0.12), mats.darkWood);
+          sp.rotation.z = (k / 8) * Math.PI;
+          wheel.add(sp);
+          const pad = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.9), mats.darkWood);
+          pad.position.set(Math.cos((k / 8) * Math.PI * 2) * 2.2, Math.sin((k / 8) * Math.PI * 2) * 2.2, 0);
+          pad.rotation.z = (k / 8) * Math.PI * 2;
+          wheel.add(pad);
+        }
+        const holder = new THREE.Group();
+        holder.add(wheel);
+        this.root.add(holder);
+        this.waterwheels.push(wheel);
+      }
+    });
     mergeByMaterial(g);
-    this.root.add(g);
-    this.addWaterfall(cx + faceDir * 14.6, cz + 4, top, 5, (faceDir * Math.PI) / 2, 0.24);
+    mergeByMaterial(houses);
+    this.root.add(g, houses, lan.build());
+  }
+
+  private buildLotus(cx: number, cz: number, radius: number, n: number) {
+    const rand = seeded(Math.round(cx * 7 + cz * 13));
+    const padMat = this.lotusPadMat || (this.lotusPadMat = new THREE.MeshStandardMaterial({ map: lotusPadTexture(), transparent: true, alphaTest: 0.4, roughness: 0.7, side: THREE.DoubleSide }));
+    const pads = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2), padMat, n);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    for (let i = 0; i < n; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = Math.sqrt(rand()) * radius;
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2);
+      const s = 0.6 + rand() * 0.9;
+      pads.setMatrixAt(i, m.compose(new THREE.Vector3(cx + Math.cos(a) * r, -0.3, cz + Math.sin(a) * r), q, new THREE.Vector3(s, 1, s)));
+    }
+    this.root.add(pads);
   }
 
   private buildLakePavilion(cx: number, cz: number) {
@@ -647,6 +818,7 @@ export class StylizedWorld {
     this.stars.position.copy(cam);
     this.moon.position.copy(this.sunDir).multiplyScalar(760).add(cam);
     for (const m of this.waterfalls) if (m.map) m.map.offset.y = (this.time * 0.9) % 1;
+    for (const w of this.waterwheels) w.rotation.z = -this.time * 0.6;
     this.playerLamp.position.set(cam.x, cam.y + 1.5, cam.z);
     this.sun.position.copy(this.sunDir).multiplyScalar(120).add(cam);
     this.sun.target.position.copy(cam);

@@ -352,6 +352,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         setNearBuilding(foundBuilding);
       }
 
+      const dbgY = (window as any).__kingdomCamY;
+      if (typeof dbgY === 'number') camera.position.y = dbgY;
       world.update(delta, camera.position);
       if ((lodTick = (lodTick + 1) % 15) === 0) regionManager.updateInteriorLod(camera.position.x, camera.position.z);
 
@@ -401,6 +403,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.pitch = pitch;
           controls.updateCameraTransform(0);
         },
+        getPos: () => ({ x: controls.position.x, z: controls.position.z, yaw: controls.yaw }),
         setTimeOfDay: (t: TimeOfDay) => {
           world.setTimeOfDay(t);
           setTimeOfDay(t);
