@@ -2,13 +2,15 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { RegionId } from './types';
 import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
+import { BASIN_LANDMARKS, MOUNTAIN_RING, FARMLANDS, landOutline } from './stylized/basinLayout';
 
 /** 遠景地標（與 StylizedWorld 的位置一致） */
 const LANDMARKS = {
-  pagoda: { x: 0, z: -122, rx: 25, rz: 17, name: '瀑布塔崖' },
-  west: { x: -152, z: 4, rx: 14, rz: 22, name: '西瀑岩' },
-  east: { x: 154, z: -2, rx: 14, rz: 22, name: '東瀑岩' },
-  lake: { x: 0, z: 64, name: '湖心亭' },
+  north: BASIN_LANDMARKS.northFalls,
+  west: BASIN_LANDMARKS.westPlateau,
+  south: BASIN_LANDMARKS.southCave,
+  east: BASIN_LANDMARKS.eastFalls,
+  lake: BASIN_LANDMARKS.lakePavilion,
 };
 
 const INK = '#4a3420';
@@ -50,18 +52,25 @@ export function WorldMapContent({
   const full = detail === 'full';
   return (
     <g>
-      {/* 遠方地標 */}
-      <ellipse cx={LANDMARKS.pagoda.x} cy={LANDMARKS.pagoda.z} rx={LANDMARKS.pagoda.rx} ry={LANDMARKS.pagoda.rz} fill="#b5ad98" stroke={LAND_EDGE} strokeWidth={1.2} />
-      <Pagoda x={LANDMARKS.pagoda.x} y={LANDMARKS.pagoda.z + 4} s={full ? 1.1 : 1.4} />
-      {[-9, 6].map((dx) => (
-        <path key={dx} d={`M ${dx} ${LANDMARKS.pagoda.z + 15} q 1 6 0 12`} stroke="#5fa6c4" strokeWidth={2.2} fill="none" strokeLinecap="round" />
-      ))}
-      {[LANDMARKS.west, LANDMARKS.east].map((l) => (
-        <g key={l.name}>
-          <ellipse cx={l.x} cy={l.z} rx={l.rx} ry={l.rz} fill="#b5ad98" stroke={LAND_EDGE} strokeWidth={1.2} />
-          <Pavilion x={l.x} y={l.z - 6} s={full ? 1 : 1.3} />
+      {/* 環形群山（盆地） */}
+      {MOUNTAIN_RING.map((p) => (
+        <g key={p.i}>
+          <circle cx={p.x} cy={p.z} r={p.r * 0.92} fill={p.kind === 'westPlateau' ? '#a9b48a' : '#8fa27a'} stroke={LAND_EDGE} strokeWidth={1} />
+          {full && <path d={`M ${p.x - p.r * 0.5} ${p.z + p.r * 0.25} L ${p.x} ${p.z - p.r * 0.45} L ${p.x + p.r * 0.5} ${p.z + p.r * 0.25}`} fill="none" stroke="rgba(60,70,50,0.55)" strokeWidth={1.4} />}
         </g>
       ))}
+      {/* 田園陸地 */}
+      {FARMLANDS.map((l, i) => (
+        <g key={i}>
+          <polygon points={landOutline(l, 32).map(([x, z]) => `${x},${z}`).join(' ')} fill="#c7cf8e" stroke={LAND_EDGE} strokeWidth={1} />
+          <polygon points={landOutline({ ...l, rx: l.rx * 0.8, rz: l.rz * 0.8 }, 32).map(([x, z]) => `${x},${z}`).join(' ')} fill="url(#kx-paddy)" opacity={0.85} />
+        </g>
+      ))}
+      <Pagoda x={LANDMARKS.west.x + 2} y={LANDMARKS.west.z + 4} s={full ? 1.4 : 1.8} />
+      {/* 北山飛瀑、東山飛瀑、南山洞口 */}
+      <path d={`M 0 ${LANDMARKS.north.faceZ - 12} q 1.5 10 0 22`} stroke="#5fa6c4" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <path d={`M ${LANDMARKS.east.faceX + 6} ${LANDMARKS.east.z} q -8 1 -16 0`} stroke="#5fa6c4" strokeWidth={3.5} fill="none" strokeLinecap="round" />
+      <path d={`M -10 ${LANDMARKS.south.faceZ + 3} a 10 9 0 0 1 20 0 Z`} fill="#2b2620" />
       <ellipse cx={LANDMARKS.lake.x} cy={LANDMARKS.lake.z} rx={22} ry={11} fill="rgba(110,160,90,0.18)" />
       {Array.from({ length: 16 }).map((_, i) => (
         <circle key={i} cx={Math.cos(i * 2.4) * (8 + (i % 4) * 4)} cy={LANDMARKS.lake.z + Math.sin(i * 2.4) * (4 + (i % 3) * 2.5)} r={1.6} fill="#5f8f45" opacity={0.85} />
@@ -107,11 +116,14 @@ export function WorldMapContent({
         );
       })}
       {full && (
-        <g className="kx-serif" fontSize={5} fill={INK} fontWeight={700} textAnchor="middle">
-          <text x={LANDMARKS.pagoda.x} y={LANDMARKS.pagoda.z - 21}>{LANDMARKS.pagoda.name}</text>
-          <text x={LANDMARKS.west.x} y={LANDMARKS.west.z + 30}>{LANDMARKS.west.name}</text>
-          <text x={LANDMARKS.east.x} y={LANDMARKS.east.z + 30}>{LANDMARKS.east.name}</text>
+        <g className="kx-serif" fontSize={6} fill={INK} fontWeight={700} textAnchor="middle">
+          <text x={0} y={LANDMARKS.north.faceZ + 16}>{LANDMARKS.north.name}</text>
+          <text x={LANDMARKS.west.x + 2} y={LANDMARKS.west.z + 18}>{LANDMARKS.west.name}</text>
+          <text x={LANDMARKS.east.faceX - 14} y={LANDMARKS.east.z + 3}>{LANDMARKS.east.name}</text>
+          <text x={0} y={LANDMARKS.south.faceZ - 6}>{LANDMARKS.south.name}</text>
           <text x={LANDMARKS.lake.x} y={LANDMARKS.lake.z + 15}>{LANDMARKS.lake.name}</text>
+          <text x={-100} y={-112} fontSize={5} fill="#5b6a3a">田園</text>
+          <text x={100} y={-112} fontSize={5} fill="#5b6a3a">田園</text>
         </g>
       )}
     </g>
@@ -155,6 +167,10 @@ export function CompassMinimap({
     <button type="button" onClick={onOpen} className="kx-minimap block relative" style={{ width: size, height: size }} title="開啟全島地圖">
       <svg viewBox={`${-R} ${-R} ${R * 2} ${R * 2}`} width={size} height={size} className="block">
         <defs>
+          <pattern id="kx-paddy" width="10" height="10" patternUnits="userSpaceOnUse">
+            <rect width="10" height="10" fill="#9fbf6a" />
+            <path d="M0 5 H10 M5 0 V10" stroke="#d8c48a" strokeWidth="1.2" />
+          </pattern>
           <clipPath id="kx-mini-clip">
             <circle r={R} />
           </clipPath>
@@ -222,14 +238,18 @@ export function WorldMapModal({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <svg viewBox="-185 -160 370 285" className="w-full h-auto block rounded-xl" style={{ maxHeight: '72vh' }}>
+        <svg viewBox="-215 -195 430 390" className="w-full h-auto block rounded-xl" style={{ maxHeight: '72vh' }}>
           <defs>
+            <pattern id="kx-paddy" width="10" height="10" patternUnits="userSpaceOnUse">
+              <rect width="10" height="10" fill="#9fbf6a" />
+              <path d="M0 5 H10 M5 0 V10" stroke="#d8c48a" strokeWidth="1.2" />
+            </pattern>
             <pattern id="kx-waves" width="22" height="12" patternUnits="userSpaceOnUse">
               <path d="M 0 9 Q 5.5 3 11 9 Q 16.5 15 22 9" fill="none" stroke="rgba(70,110,120,0.22)" strokeWidth="0.8" />
             </pattern>
           </defs>
-          <rect x={-185} y={-160} width={370} height={285} fill="rgba(160,200,200,0.28)" />
-          <rect x={-185} y={-160} width={370} height={285} fill="url(#kx-waves)" />
+          <rect x={-215} y={-195} width={430} height={390} fill="rgba(160,200,200,0.28)" />
+          <rect x={-215} y={-195} width={430} height={390} fill="url(#kx-waves)" />
           <WorldMapContent
             activeRegionId={activeRegionId}
             detail="full"
@@ -240,7 +260,7 @@ export function WorldMapModal({
           />
           <PlayerArrow x={playerPos.x} y={playerPos.z} yawRad={yawRad} size={4.5} />
           {/* 羅盤 */}
-          <g transform="translate(160 100)" className="kx-serif">
+          <g transform="translate(195 175)" className="kx-serif">
             <circle r={15} fill="rgba(255,248,230,0.7)" stroke={INK} strokeWidth={0.8} />
             <path d="M 0 -13 L 3 0 L 0 13 L -3 0 Z" fill="#8e1f17" />
             <path d="M -13 0 L 0 3 L 13 0 L 0 -3 Z" fill={INK} opacity={0.75} />

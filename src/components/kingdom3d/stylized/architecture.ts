@@ -190,8 +190,9 @@ export function mergeByMaterial(group: THREE.Group, shadows = true) {
     if (!geo.index) return;
     if (!geo.attributes.uv || !geo.attributes.normal) return;
     const g = geo.clone();
+    const keepColor = Boolean((m.material as THREE.MeshStandardMaterial).vertexColors);
     for (const name of Object.keys(g.attributes)) {
-      if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+      if (!['position', 'normal', 'uv', ...(keepColor ? ['color'] : [])].includes(name)) g.deleteAttribute(name);
     }
     g.applyMatrix4(tmpM.multiplyMatrices(inv, m.matrixWorld));
     const b = buckets.get(m.material as THREE.Material) || { geos: [], meshes: [] };
@@ -304,7 +305,7 @@ export type RoofTheme = 'slate' | 'teal' | 'gold' | 'red';
 export function buildRoofTier(
   w: number,
   d: number,
-  opts: { rise: number; overhang: number; curl: number; theme: RoofTheme; ridge?: boolean; finial?: boolean }
+  opts: { rise: number; overhang: number; curl: number; theme: RoofTheme; ridge?: boolean; finial?: boolean; lite?: boolean }
 ): THREE.Group {
   const mats = getStyleMaterials();
   const g = new THREE.Group();
@@ -321,7 +322,7 @@ export function buildRoofTier(
   const A = alongX ? halfW : halfD;
   const B = alongX ? halfD : halfW;
   // 垂脊：從正脊兩端沿對角線到翹起的屋角
-  for (const sa of [-1, 1]) {
+  for (const sa of opts.lite ? [] : [-1, 1]) {
     for (const sb of [-1, 1]) {
       const pts: THREE.Vector3[] = [];
       for (let k = 0; k <= 8; k++) {
@@ -337,7 +338,7 @@ export function buildRoofTier(
     }
   }
   // 屋簷邊的一排瓦當（沿著翹起的簷口繞一圈）
-  {
+  if (!opts.lite) {
     const pts: THREE.Vector3[] = [];
     const per = 14;
     const corners: [number, number][] = [[-halfW, -halfD], [halfW, -halfD], [halfW, halfD], [-halfW, halfD]];

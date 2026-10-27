@@ -214,6 +214,21 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   };
 
   const [menuOpen, setMenuOpen] = useState(false);
+  // 按住 Shift 疾走時，右下腳印按鈕同步亮起
+  const [shiftHeld, setShiftHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false); };
+    const blur = () => setShiftHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
+    };
+  }, []);
   const [mapOpen, setMapOpen] = useState(false);
   const region = REGION_CONFIGS[activeRegionId];
   const spaceLabel = React.useMemo(
@@ -404,7 +419,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               <button
                 type="button"
                 onClick={onToggleFastWalk}
-                data-on={isFastWalk}
+                data-on={isFastWalk || shiftHeld}
                 className="kx-round w-12 h-12 sm:w-14 sm:h-14"
                 title={isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）'}
                 aria-label="疾走"
