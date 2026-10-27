@@ -63,8 +63,9 @@ const HOME_SHOPS = ringProps('region-home', 'shop', 6, 4.4, 3.0, [
   { deg: -17, name: '匠心工坊', sub: '手作・木藝', goods: 'toys' },
   { deg: 0, name: '燈籠鋪', sub: '花燈・紙燈', goods: 'lanterns' },
   { deg: 17, name: '墨香文房', sub: '筆墨紙硯', goods: 'ink' },
-  { deg: 255, name: '甜點心鋪', sub: '糕餅・糖果', goods: 'sweets' },
-  { deg: 285, name: '巧手雜貨', sub: '日用百貨', goods: 'general' },
+  // 北面讓開貿易街（0, -19.5，寬 13.5）與探索看板、島覽地圖兩棟
+  { deg: 240, name: '甜點心鋪', sub: '糕餅・糖果', goods: 'sweets' },
+  { deg: 300, name: '巧手雜貨', sub: '日用百貨', goods: 'general' },
 ]);
 
 /** 創意島北側：創意集市集（五個攤位＋牌坊） */
@@ -251,13 +252,16 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   sign.position.set(0, pl + H1 + H2 * 0.55, d / 2 + 0.03);
   g.add(sign);
   const banTxt = p.name.replace(/[^\p{Script=Han}]/gu, '').slice(0, 4);
-  const banMat = cachedMat(m.banners, banTxt, () => new THREE.MeshStandardMaterial({ map: bannerTexture(banTxt), roughness: 0.9, side: THREE.DoubleSide }));
+  const banMat = cachedMat(m.banners, banTxt, () => new THREE.MeshStandardMaterial({ map: bannerTexture(banTxt), roughness: 0.9 }));
   const side = hv % 2 ? 1 : -1;
-  const ban = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.8), banMat);
-  ban.position.set(side * (w / 2 + 0.05), pl + H1 - 1.05, d / 2 + 0.55);
-  ban.rotation.y = Math.PI / 2;
-  ban.userData.noMerge = true;
-  g.add(ban);
+  // 直旗正反兩面各一片，從哪一側看字都是正的
+  for (const face of [1, -1]) {
+    const ban = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.8), banMat);
+    ban.position.set(side * (w / 2 + 0.05) + face * 0.012, pl + H1 - 1.05, d / 2 + 0.55);
+    ban.rotation.y = face * (Math.PI / 2);
+    ban.userData.noMerge = true;
+    g.add(ban);
+  }
   add(g, new THREE.CylinderGeometry(0.03, 0.03, 0.75, 5).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), sm.darkWood, side * (w / 2 + 0.05), pl + H1 - 0.12, d / 2 + 0.55);
   // 屋頂
   const roof = buildRoofTier(w, d, { rise: 1.45, overhang: 0.85, curl: 0.45, theme, ridge: true, lite: true });
