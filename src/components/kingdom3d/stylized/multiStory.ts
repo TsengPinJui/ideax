@@ -6,7 +6,7 @@ import { localToWorldXZ } from '../regionConfigs';
  * 座標都是建築本地座標（+Z 是正門那一面），需要時再轉成世界座標。
  * 第 k 段樓梯（k 樓 → k+1 樓）沿左右側牆交替擺放：從靠門的一端（z0，低）往後牆（z1，高）爬升。
  */
-export const FLOOR_H = 3.6;
+export const FLOOR_H = 4.5;
 
 export interface Flight {
   k: number;
@@ -19,13 +19,15 @@ export interface Flight {
 
 export interface StoryLayout {
   floors: number;
+  /** 地下樓層數：樓層編號 0..basements-1 在地面下，basements 是有大門的地面層 */
+  basements: number;
   floorH: number;
   flights: Flight[];
   w: number;
   d: number;
 }
 
-export function getStoryLayout(b: Pick<BuildingInteractable, 'width' | 'depth'> & { floors?: number }): StoryLayout | null {
+export function getStoryLayout(b: Pick<BuildingInteractable, 'width' | 'depth'> & { floors?: number; basements?: number }): StoryLayout | null {
   const floors = b.floors || 1;
   if (floors < 2) return null;
   const w = b.width;
@@ -39,7 +41,26 @@ export function getStoryLayout(b: Pick<BuildingInteractable, 'width' | 'depth'> 
     const side: -1 | 1 = k % 2 === 0 ? -1 : 1;
     flights.push({ k, side, lx: side * (w / 2 - 0.45 - laneW / 2), laneW, z0, z1 });
   }
-  return { floors, floorH: FLOOR_H, flights, w, d };
+  return { floors, basements: Math.max(0, Math.min(floors - 1, b.basements || 0)), floorH: FLOOR_H, flights, w, d };
+}
+
+/** 第 level 層（樓層編號）的地板高度；地面層是 0，地下為負 */
+export function levelY(lay: StoryLayout, level: number) {
+  return (level - lay.basements) * lay.floorH;
+}
+
+/** 地面層通往地下的樓梯井（世界座標四邊形）：島上的地面要在這裡挖洞 */
+export function groundStairwell(b: BuildingInteractable, lay: StoryLayout): [number, number][] | null {
+  if (lay.basements < 1) return null;
+  const f = lay.flights[lay.basements - 1];
+  const x0 = f.lx - f.laneW / 2;
+  const x1 = f.lx + f.laneW / 2;
+  return [
+    [x0, f.z1],
+    [x1, f.z1],
+    [x1, f.z0],
+    [x0, f.z0],
+  ].map(([x, z]) => localToWorldXZ(b.position.x, b.position.z, b.facingYaw, x, z));
 }
 
 type Seg = [number, number, number, number];
@@ -48,9 +69,11 @@ type Seg = [number, number, number, number];
 function levelSegments(lay: StoryLayout, level: number): Seg[] {
   const { w, d } = lay;
   const segs: Seg[] = [];
-  if (level > 0) {
-    // 樓上：四面牆完全封閉（沒有門）
+  if (level !== lay.basements) {
+    // 樓上與地下：四面牆完全封閉（沒有門）
     segs.push([-w / 2, -d / 2, w / 2, -d / 2], [-w / 2, d / 2, w / 2, d / 2], [-w / 2, -d / 2, -w / 2, d / 2], [w / 2, -d / 2, w / 2, d / 2]);
+  }
+  if (level > 0) {
     // 下方上來的樓梯井：內側長邊＋靠門那端封住，靠後牆那端開放（走進去就下樓）
     const f = lay.flights[level - 1];
     const inner = f.lx - f.side * (f.laneW / 2);
@@ -71,7 +94,8 @@ export function levelColliders(b: BuildingInteractable, lay: StoryLayout, level:
   return levelSegments(lay, level).map(([x1, z1, x2, z2], i) => {
     const [ax, az] = localToWorldXZ(cx, cz, b.facingYaw, x1, z1);
     const [bx, bz] = localToWorldXZ(cx, cz, b.facingYaw, x2, z2);
-    return { id: `${b.id}-L${level}-${i}`, type: 'segment', x1: ax, z1: az, x2: bx, z2: bz, halfThickness: level > 0 && i < 4 ? 0.28 : 0.12 } as Collider;
+    const closed = level !== lay.basements;
+    return { id: `${b.id}-L${level}-${i}`, type: 'segment', x1: ax, z1: az, x2: bx, z2: bz, halfThickness: closed && i < 4 ? 0.28 : 0.12 } as Collider;
   });
 }
 

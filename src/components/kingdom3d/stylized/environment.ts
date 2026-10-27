@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { disposeStreetMaterials } from './streets';
+import { REGION_CONFIGS } from '../regionConfigs';
 import {
   getStyleMaterials,
   disposeStyleMaterials,
@@ -109,6 +110,9 @@ function makeWaterMaterial() {
         uSunDir: { value: new THREE.Vector3(0, 1, 0) },
         uSunColor: { value: new THREE.Color() },
         uGlint: { value: 1 },
+        // 有地下室的建築範圍：海面在這裡不畫，從樓梯井往下看才看得到地下室
+        uHole: { value: new THREE.Vector4(1e5, 1e5, 1, 0) },
+        uHoleSize: { value: new THREE.Vector2(0, 0) },
       },
     ]),
     vertexShader: /* glsl */ `
@@ -132,6 +136,8 @@ function makeWaterMaterial() {
       uniform vec3 uSunDir;
       uniform vec3 uSunColor;
       uniform float uGlint;
+      uniform vec4 uHole;
+      uniform vec2 uHoleSize;
       varying vec3 vWorld;
       float wave(vec2 p) {
         return sin(p.x * 0.31 + uTime * 0.8) * 0.5
@@ -142,6 +148,9 @@ function makeWaterMaterial() {
       }
       void main() {
         vec2 p = vWorld.xz;
+        vec2 hd = p - uHole.xy;
+        vec2 hl = vec2(hd.x * uHole.z - hd.y * uHole.w, hd.x * uHole.w + hd.y * uHole.z);
+        if (abs(hl.x) < uHoleSize.x && abs(hl.y) < uHoleSize.y) discard;
         float e = 0.2;
         vec3 n = normalize(vec3(
           -(wave(p + vec2(e, 0.0)) - wave(p - vec2(e, 0.0))) * 0.55,
@@ -301,6 +310,15 @@ export class StylizedWorld {
 
     // 海面
     this.waterMat = makeWaterMaterial();
+    {
+      const bb = Object.values(REGION_CONFIGS)
+        .flatMap((r) => r.buildings)
+        .find((b) => (b.basements || 0) > 0);
+      if (bb) {
+        this.waterMat.uniforms.uHole.value.set(bb.position.x, bb.position.z, Math.cos(bb.facingYaw), Math.sin(bb.facingYaw));
+        this.waterMat.uniforms.uHoleSize.value.set(bb.width / 2, bb.depth / 2);
+      }
+    }
     const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1), this.waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.y = -0.35;
@@ -413,16 +431,20 @@ export class StylizedWorld {
     this.buildPagoda(wp.x + 2, wp.z, plateauTop, trees);
 
     // 北山飛瀑：上下兩疊瀑布，中間一層岩台與水潭
+    // 瀑布貼著山壁的實際表面往下流（用射線量山壁位置，水幕不會被山體蓋住）
+    g.updateWorldMatrix(true, true);
     const nf = BASIN_LANDMARKS.northFalls;
+    const north = { base: new THREE.Vector3(nf.x, 0, nf.faceZ + 60), dir: new THREE.Vector3(0, 0, -1), side: new THREE.Vector3(1, 0, 0) };
+    const ledgeZ = this.surfaceAt(g, north.base, north.dir, 24);
     const ledge = new THREE.Mesh(cliffGeometry(9, 5, 11, 7, 3, 77, 24, 3), mats.rock);
-    ledge.position.set(0, 24, nf.faceZ - 9);
+    ledge.position.set(nf.x, 21.5, ledgeZ.z + 3.5);
     this.root.add(ledge);
-    this.addFallSegment(0, nf.faceZ - 15, 48, 24, 9, 0, 0.18);
-    this.addFallSegment(0, nf.faceZ - 7, 24, -0.3, 13, 0, 0.12);
+    this.addConformingFall(g, north, 50, 24.6, 9, 1.0);
+    this.addConformingFall(g, { ...north, base: north.base.clone().setZ(ledgeZ.z + 60) }, 21.6, -0.3, 13, 1.4);
 
     // 東山飛瀑（山壁瀑布，朝向盆地）
     const ef = BASIN_LANDMARKS.eastFalls;
-    this.addFallSegment(ef.faceX + 8, ef.z, 34, -0.3, 8, -Math.PI / 2, 0.2);
+    this.addConformingFall(g, { base: new THREE.Vector3(ef.faceX - 60, 0, ef.z), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 36, -0.3, 8, 1.0);
 
     // 南山洞口：水道一路通進山腳的大溶洞
     const sc = BASIN_LANDMARKS.southCave;
@@ -469,6 +491,70 @@ export class StylizedWorld {
   }
 
   /** 一段瀑布（從 topY 落到 bottomY），x,z 是瀑布頂端、faceYaw 是水流朝向 */
+  /** 從盆地這側往山的方向打射線，回傳某高度上山壁表面的位置（沒打到就回傳很遠的地方） */
+  private surfaceAt(target: THREE.Object3D, base: THREE.Vector3, dir: THREE.Vector3, y: number) {
+    const rc = new THREE.Raycaster(new THREE.Vector3(base.x, y, base.z), dir, 0, 200);
+    const hit = rc.intersectObject(target, true)[0];
+    return hit ? hit.point.clone() : new THREE.Vector3(base.x, y, base.z).addScaledVector(dir, 60);
+  }
+
+  /** 貼著山壁的瀑布水幕：每一段高度量一次山壁，往外留 gap 公尺 */
+  private addConformingFall(
+    target: THREE.Object3D,
+    at: { base: THREE.Vector3; dir: THREE.Vector3; side: THREE.Vector3 },
+    topY: number,
+    bottomY: number,
+    width: number,
+    gap: number
+  ) {
+    const n = 16;
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= n; i++) {
+      const y = topY - ((topY - bottomY) * i) / n;
+      pts.push(this.surfaceAt(target, at.base, at.dir, y).addScaledVector(at.dir, -gap));
+    }
+    // 水幕不能往山裡縮：每一點至少和上一點一樣往外
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1].dot(at.dir);
+      const cur = pts[i].dot(at.dir);
+      if (cur > prev) pts[i].addScaledVector(at.dir, prev - cur);
+    }
+    const pos: number[] = [];
+    const uv: number[] = [];
+    const idx: number[] = [];
+    let len = 0;
+    for (let i = 0; i <= n; i++) {
+      if (i > 0) len += pts[i].distanceTo(pts[i - 1]);
+      const w = width * (1 + (i / n) * 0.35);
+      for (const sx of [-1, 1]) {
+        const p = pts[i].clone().addScaledVector(at.side, (sx * w) / 2);
+        pos.push(p.x, p.y, p.z);
+        uv.push(((sx + 1) / 2) * (width / 6), -len / 10);
+      }
+      if (i < n) {
+        const a = i * 2;
+        idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const tex = waterfallTexture().clone();
+    tex.needsUpdate = true;
+    this.ownedTextures.push(tex);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff });
+    this.waterfalls.push(mat);
+    this.root.add(new THREE.Mesh(geo, mat));
+    const bottom = pts[n];
+    const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }));
+    mist.scale.set(width * 2.4, width * 1.3, 1);
+    mist.position.copy(bottom).addScaledVector(at.dir, -1.5);
+    mist.position.y = bottomY + 1.2;
+    this.root.add(mist);
+  }
+
   private addFallSegment(x: number, z: number, topY: number, bottomY: number, width: number, faceYaw: number, tilt: number) {
     const tex = waterfallTexture().clone();
     tex.needsUpdate = true;

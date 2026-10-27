@@ -10,6 +10,14 @@ export interface ControlsInputState {
   sprint: boolean;
 }
 
+/** 焦點在輸入框、文字區或可編輯區時，鍵盤是拿來打字的 */
+export function isTypingTarget(t: EventTarget | null) {
+  const el = t as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+
 export class FirstPersonControls {
   public camera: THREE.PerspectiveCamera;
   public domElement: HTMLElement;
@@ -116,6 +124,8 @@ export class FirstPersonControls {
     };
 
     this.keyDownHandler = (e: KeyboardEvent) => {
+      // 在左側內頁打字（留言、搜尋）時，不要讓 WASD 走動
+      if (isTypingTarget(e.target)) return;
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':

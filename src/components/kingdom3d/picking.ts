@@ -4,7 +4,8 @@ import * as THREE from 'three';
 export type PickTarget =
   | { kind: 'building'; id: string }
   | { kind: 'street'; id: string }
-  | { kind: 'painBoard'; level: number; buildingId: string };
+  | { kind: 'painBoard'; level: number; buildingId: string }
+  | { kind: 'desk'; buildingId: string };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 
