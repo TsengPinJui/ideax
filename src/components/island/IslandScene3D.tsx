@@ -8945,42 +8945,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     worldGroup.add(baiMiaoRoot);
     clickableIslands.push(baiMiaoRoot);
 
-    // 白喵跨島與過橋巡遊路線（主島 ➔ 西北拱橋 ➔ 痛點島 ➔ 主島 ➔ 東北拱橋 ➔ 討論島 ➔ 主島 ➔ 東南拱橋 ➔ 徵才島 ➔ 主島 ➔ 西南拱橋 ➔ 創意島）
-    const baiMiaoWaypoints: Array<[number, number, number]> = [
-      [0, homeY + 0.18, 4.2],
-      [-5.2, homeY + 0.18, -3.8],
-      [-8.8, homeY + 0.22, -6.6],
-      [-15.65, homeY + 2.38, -11.7], // 西北青石拱橋橋頂
-      [-22.5, painY + 0.22, -16.8],
-      [-26.2, painY + 0.20, -19.5], // 痛點島閒晃
-      [-22.5, painY + 0.22, -16.8],
-      [-15.65, homeY + 2.38, -11.7],
-      [-8.8, homeY + 0.22, -6.6],
-      [0, homeY + 0.18, -4.6],
-      [8.8, homeY + 0.22, -6.6],
-      [15.65, homeY + 2.38, -11.7], // 東北青石拱橋橋頂
-      [22.5, discY + 0.22, -16.8],
-      [27.2, discY + 0.20, -18.2], // 討論島茶藝街口閒晃
-      [22.5, discY + 0.22, -16.8],
-      [15.65, homeY + 2.38, -11.7],
-      [8.8, homeY + 0.22, -6.6],
-      [6.2, homeY + 0.18, 0.5],
-      [8.8, homeY + 0.22, 6.6],
-      [15.65, homeY + 2.38, 11.7], // 東南青石拱橋橋頂
-      [22.5, careerY + 0.22, 16.8],
-      [26.0, careerY + 0.20, 19.6], // 徵才島閒晃
-      [22.5, careerY + 0.22, 16.8],
-      [15.65, homeY + 2.38, 11.7],
-      [8.8, homeY + 0.22, 6.6],
-      [0, homeY + 0.18, 5.2],
-      [-8.8, homeY + 0.22, 6.6],
-      [-15.65, homeY + 2.38, 11.7], // 西南青石拱橋橋頂
-      [-22.5, creativeY + 0.22, 16.8],
-      [-26.0, creativeY + 0.20, 19.8], // 創意島閒晃
-      [-22.5, creativeY + 0.22, 16.8],
-      [-15.65, homeY + 2.38, 11.7],
-      [-8.8, homeY + 0.22, 6.6],
+    // 白喵待在徵才島上閒晃：在月洞門庭院前庭與求職廟旁的空地繞圈（庭院座標 → 徵才島座標 → 世界座標）
+    // 庭院群組位於徵才島 (-0.6, 0.4)、轉 -30°；翰林院在庭院 (-6.5, -0.4)、求職廟在 (3.6, -3.9)、荷花池在 (-6.2, 3.8)，路線都避開
+    const baiMiaoCourtLoop: Array<[number, number]> = [
+      [-1.5, 5.5],
+      [3.0, 6.5],
+      [8.0, 5.5],
+      [9.5, 1.5],
+      [8.5, -3.0],
+      [5.5, 2.5],
+      [1.5, 3.2],
     ];
+    const baiMiaoWaypoints: Array<[number, number, number]> = baiMiaoCourtLoop.map(([lx, lz]) => {
+      const rx = -0.6 + 0.866 * lx - 0.5 * lz;
+      const rz = 0.4 + 0.5 * lx + 0.866 * lz;
+      return [32 + rx, careerY + 0.2, 24 + rz];
+    });
 
     // (C) 多慧 (Duohui)：在主島熱情的招呼新來的小人，有時會拍拍翅膀（點擊觸發多慧專屬彩蛋）
     const duohuiRoot = new THREE.Group();
@@ -10929,7 +10909,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         });
       }
 
-      // (B) 白喵慵懶在各座島與橋間閒晃，有時躺下來打滾或睡覺（每 20 秒循環：12.5 秒閒晃 ➔ 3.5 秒躺下打滾 ➔ 4 秒睡覺冒泡泡）
+      // (B) 白喵在徵才島上慵懶閒晃，有時躺下來打滾或睡覺（每 20 秒循環：12.5 秒閒晃 ➔ 3.5 秒躺下打滾 ➔ 4 秒睡覺冒泡泡）
       const bmCycleLen = 20.0;
       const bmWalkLen = 12.5;
       const bmRollLen = 3.5;

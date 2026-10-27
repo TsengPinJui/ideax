@@ -224,9 +224,51 @@ export const WORLD_BRIDGES: BridgeZone[] = [
 /**
  * Generate bridge balustrade colliders and walkable corridor zones
  */
+/**
+ * 拱橋欄杆只蓋在水面上那一段（兩端停在岸邊）：橋的端點其實已經在島上，
+ * 欄杆一路延伸上岸會和岸上的圍牆接在一起，把旁邊的空地封死。回傳 [t0, t1]（0～1 沿橋）。
+ */
+export function bridgeRailRange(b: { x1: number; z1: number; x2: number; z2: number }): [number, number] {
+  const isles = [
+    { cx: 0, cz: 0, rx: 31.5, rz: 29.5 },
+    { cx: -68, cz: -48, rx: 31.0, rz: 28.0 },
+    { cx: 72, cz: -48, rx: 34.0, rz: 31.0 },
+    { cx: -68, cz: 48, rx: 33.0, rz: 30.0 },
+    { cx: 72, cz: 48, rx: 35.0, rz: 31.0 },
+  ];
+  // 岸邊：可走範圍外緣往內 1.5 公尺的地方
+  const onLand = (x: number, z: number) => isles.some((e) => ((x - e.cx) / (e.rx - 1.5)) ** 2 + ((z - e.cz) / (e.rz - 1.5)) ** 2 < 1);
+  let t0 = 0;
+  let t1 = 1;
+  const n = 400;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    if (!onLand(b.x1 + (b.x2 - b.x1) * t, b.z1 + (b.z2 - b.z1) * t)) {
+      t0 = t;
+      break;
+    }
+  }
+  for (let i = n; i >= 0; i--) {
+    const t = i / n;
+    if (!onLand(b.x1 + (b.x2 - b.x1) * t, b.z1 + (b.z2 - b.z1) * t)) {
+      t1 = t;
+      break;
+    }
+  }
+  return t1 > t0 ? [t0, t1] : [0, 1];
+}
+
 export function getBridgeSideColliders(): Collider[] {
   const list: Collider[] = [];
-  for (const b of WORLD_BRIDGES) {
+  for (const b0 of WORLD_BRIDGES) {
+    const [ta, tb] = bridgeRailRange(b0);
+    const b = {
+      ...b0,
+      x1: b0.x1 + (b0.x2 - b0.x1) * ta,
+      z1: b0.z1 + (b0.z2 - b0.z1) * ta,
+      x2: b0.x1 + (b0.x2 - b0.x1) * tb,
+      z2: b0.z1 + (b0.z2 - b0.z1) * tb,
+    };
     const dx = b.x2 - b.x1;
     const dz = b.z2 - b.z1;
     const len = Math.hypot(dx, dz);
@@ -416,6 +458,7 @@ const painBuildings: BuildingInteractable[] = [
     height: 13.5,
     floors: 4,
     basements: 1,
+    exterior: 'tulou',
     doorWidth: 4.8,
     tiers: 3,
     colorHex: 0xdc2626,
@@ -451,8 +494,9 @@ const discussionBuildings: BuildingInteractable[] = [
     width: 15.0,
     depth: 11.0,
     height: 7.6,
+    exterior: 'huizhou',
     doorWidth: 4.4,
-    tiers: 4,
+    tiers: 2,
     colorHex: 0x0f766e,
     interactionRadius: 5.5,
     description: '古雅藏書閣，分設一層·資訊工程閣、二層·經世商道閣、三層·自然生命閣、四層·人文哲思閣。',
@@ -478,6 +522,7 @@ const discussionBuildings: BuildingInteractable[] = [
     width: 12.5,
     depth: 9.5,
     height: 5.2,
+    exterior: 'huizhou',
     doorWidth: 4.0,
     tiers: 2,
     colorHex: 0x1d4ed8,
@@ -505,6 +550,7 @@ const discussionBuildings: BuildingInteractable[] = [
     width: 12.5,
     depth: 9.5,
     height: 5.0,
+    exterior: 'huizhou',
     doorWidth: 4.0,
     tiers: 2,
     colorHex: 0x15803d,
@@ -539,6 +585,7 @@ const creativeBuildings: BuildingInteractable[] = [
     width: 16.0,
     depth: 11.5,
     height: 6.0,
+    exterior: 'exhibition',
     doorWidth: 4.6,
     tiers: 2,
     colorHex: 0x0284c7,
@@ -566,6 +613,7 @@ const creativeBuildings: BuildingInteractable[] = [
     width: 15.5,
     depth: 11.0,
     height: 5.8,
+    exterior: 'arcade',
     doorWidth: 4.6,
     tiers: 2,
     colorHex: 0x9333ea,
@@ -688,6 +736,7 @@ const careerBuildings: BuildingInteractable[] = [
     width: 12.5,
     depth: 9.5,
     height: 6.0,
+    npc: 'soso',
     doorWidth: 4.2,
     tiers: 2,
     colorHex: 0xe11d48,
@@ -760,7 +809,8 @@ export const REGION_HOME: RegionManifest = {
   plazaColorHex: 0xe7e5e4,
   walkableZones: getGlobalWalkableZones(),
   colliders: [
-    { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 2.2 },
+    // 大燈泡雕像（石座＋一圈望柱，半徑約 5 公尺）
+    { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 4.6 },
     ...homeBuildings.flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
@@ -787,8 +837,9 @@ export const REGION_PAIN: RegionManifest = {
   islandRadiusZ: 28,
   plazaRadius: 14,
   defaultSpawn: {
-    position: [-56, 0, -42],
-    yaw: Math.PI * 0.25,
+    // 土樓正門前（門朝東北）
+    position: [-58.1, 0, -33.4],
+    yaw: Math.PI * 0.2,
   },
   ambientColor: 0xfef2f2,
   sunColor: 0xfde68a,

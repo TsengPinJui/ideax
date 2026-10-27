@@ -868,6 +868,8 @@ export class StylizedWorld {
     mats.glow.opacity = p.glowOpacity;
     mats.glow.size = p.glowSize;
     mats.orb.emissiveIntensity = p.orb;
+    mats.bulbGlass.emissiveIntensity = 0.45 + p.orb * 0.25;
+    mats.bulbRing.emissiveIntensity = 0.6 + p.orb * 0.2;
     this.renderer.toneMappingExposure = p.exposure;
     (this.stars.material as THREE.PointsMaterial).opacity = p.stars;
     this.moon.visible = p.moon;
