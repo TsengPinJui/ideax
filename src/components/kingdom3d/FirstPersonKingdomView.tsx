@@ -147,6 +147,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'desk' });
     } else if (t.kind === 'npc') {
       setDrawer({ kind: 'soso' });
+    } else if (t.kind === 'bulb') {
+      sceneRef.current?.traverse((o) => {
+        if (typeof o.userData?.celebrate === 'function') o.userData.celebrate(cameraRef.current?.position.x, cameraRef.current?.position.z);
+      });
     } else if (t.kind === 'feature') {
       setDrawer({ kind: 'feature', id: t.id });
     } else if (t.kind === 'jobScroll') {
@@ -810,6 +814,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.updateCameraTransform(0);
         },
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
+        pickCenter: () => JSON.stringify(pickAt(null, null)),
         place: (x: number, z: number, yaw: number) => {
           controls.position.x = x;
           controls.position.z = z;

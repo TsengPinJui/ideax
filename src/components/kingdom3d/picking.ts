@@ -8,7 +8,8 @@ export type PickTarget =
   | { kind: 'desk'; buildingId: string }
   | { kind: 'npc'; id: 'soso' }
   | { kind: 'jobScroll' }
-  | { kind: 'feature'; id: 'stage' | 'proposal' };
+  | { kind: 'feature'; id: 'stage' | 'proposal' }
+  | { kind: 'bulb' };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 
