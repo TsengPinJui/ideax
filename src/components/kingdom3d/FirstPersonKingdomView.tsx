@@ -30,7 +30,10 @@ import { ancientJiangnanBgm } from '../../utils/ancientBgm';
 import { DevStatsPanel } from './DevStatsPanel';
 import { painForFloor } from './PainFloorModal';
 import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
-import { drawPainBoardTexture, PAIN_FLOORS, PAIN_BASEMENTS, PainBoardLayout } from './stylized/painBoard';
+import { RING, ringLevelColliders, ringStair, insideRing } from './stylized/tulou';
+import { HALL_BUILDINGS, HALL_ZONES, hallOf, hallArrival, hallZoneItems, drawBoothTexture, drawZoneSignTexture } from './stylized/exhibitHall';
+import { FloorDirectory, FloorEntry } from './FloorDirectory';
+import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
 import type { Question } from '../../types';
 import type { Collider } from './types';
@@ -69,13 +72,70 @@ interface FirstPersonKingdomViewProps {
   renderQuestionPage?: (q: Question, ctx: { back: () => void; leave: () => void }) => React.ReactNode;
 }
 
-type Tower = { b: BuildingInteractable; lay: StoryLayout; cols: Collider[][] };
+/** 多樓層建築：各層碰撞，與「站在樓梯口時要怎麼走」 */
+type Tower = {
+  b: BuildingInteractable;
+  basements: number;
+  cols: Collider[][];
+  stair: (level: number, x: number, z: number, from: THREE.Vector3) => { pts: THREE.Vector3[]; toLevel: number } | null;
+};
+
+function rectTower(b: BuildingInteractable, lay: StoryLayout): Tower {
+  return {
+    b,
+    basements: lay.basements,
+    cols: Array.from({ length: lay.floors }, (_, k) => levelColliders(b, lay, k)),
+    stair: (rel, x, z, from) => {
+      const [lx, lz] = toLocal(b, x, z);
+      const idx = rel + lay.basements;
+      const up = upTrigger(lay, idx, lx, lz);
+      const down = downTrigger(lay, idx, lx, lz);
+      if (!up && !down) return null;
+      const fh = lay.floorH;
+      const P = (px: number, pz: number, y: number) => {
+        const [wx, wz] = toWorld(b, px, pz);
+        return new THREE.Vector3(wx, y, wz);
+      };
+      return up
+        ? { pts: [from.clone(), P(up.lx, up.z0 + 0.2, rel * fh), P(up.lx, up.z1, (rel + 1) * fh), P(up.lx, up.z1 - 1.0, (rel + 1) * fh)], toLevel: rel + 1 }
+        : { pts: [from.clone(), P(down!.lx, down!.z1, rel * fh), P(down!.lx, down!.z0, (rel - 1) * fh), P(down!.lx, down!.z0 + 1.2, (rel - 1) * fh)], toLevel: rel - 1 };
+    },
+  };
+}
+
+/** 圓形土樓：一樓用島上的碰撞，二、三樓用環形迴廊的碰撞 */
+function ringTower(b: BuildingInteractable): Tower {
+  return {
+    b,
+    basements: 0,
+    cols: Array.from({ length: RING.floors }, (_, k) => (k === 0 ? [] : ringLevelColliders(b, k))),
+    stair: (rel, x, z, from) => (insideRing(b, x, z) ? ringStair(b, rel, x, z, from) : null),
+  };
+}
+/** 地下主展場：地下一樓用展場自己的碰撞（展場組好後才填入），沒有走的樓梯，靠點下樓口／樓層表進出 */
+function hallTower(b: BuildingInteractable): Tower {
+  return { b, basements: 1, cols: [[]], stair: () => null };
+}
+
+/** 樓層顯示名稱（左上角地點、靠近時的提示） */
+function floorLabel(b: BuildingInteractable, level: number) {
+  if (b.exterior === 'tulou') return (PAIN_FLOORS[level] || PAIN_FLOORS[0]).label;
+  const h = hallOf(b.id);
+  if (h) return level < 0 ? '地下主展場' : h.lobby;
+  return '';
+}
+
+/** 樓層表上要列出的建築 */
+const hasDirectory = (b: BuildingInteractable | null | undefined) => Boolean(b && (b.exterior === 'tulou' || hallOf(b.id)));
+
 type StoryState = {
   towerId: string | null;
   level: number;
   armed: boolean;
   tween: null | { pts: THREE.Vector3[]; t: number; dur: number; toLevel: number; towerId: string };
 };
+
+const BOOTHS_PER_ZONE = 16;
 
 const REGION_BUILDINGS = new Map<string, BuildingInteractable>(
   Object.values(REGION_CONFIGS).flatMap((r) => r.buildings.map((b) => [b.id, b] as [string, BuildingInteractable]))
@@ -110,6 +170,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   questionsRef.current = questions;
   const storyRef = useRef<StoryState>({ towerId: null, level: 0, armed: true, tween: null });
   const [floorLevel, setFloorLevel] = useState(0);
+  const [storyTowerId, setStoryTowerId] = useState<string | null>(null);
   // 左側面板（照 /island：點畫面上的建築、攤位、懸賞牆，細節在左側彈出）
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const drawerRef = useRef<DrawerState | null>(null);
@@ -125,11 +186,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [onlineOthers, setOnlineOthers] = useState(0);
   const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
   const openForBuilding = useCallback((b: BuildingInteractable) => {
-    if (towersRef.current.has(b.id)) {
+    if (b.exterior === 'tulou' && towersRef.current.has(b.id)) {
       // story.level 是相對地面的樓層（0＝地面層、-1＝地下一樓）；懸賞牆的樓層編號要加上地下層數
       const tw = towersRef.current.get(b.id)!;
       const inside = storyRef.current.towerId === b.id || storyRef.current.level !== 0;
-      setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level + tw.lay.basements } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
+      setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level + tw.basements } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
     } else {
       setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
     }
@@ -155,18 +216,75 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'feature', id: t.id });
     } else if (t.kind === 'jobScroll') {
       setDrawer({ kind: sosoJobsCountRef.current > 0 ? 'jobs' : 'soso' });
+    } else if (t.kind === 'booth') {
+      const items = hallZoneItems(t.buildingId, t.zone, questionsRef.current);
+      const zoneState: DrawerState = { kind: 'hallZone', buildingId: t.buildingId, zone: t.zone };
+      const q = t.index < BOOTHS_PER_ZONE - 1 || items.length <= BOOTHS_PER_ZONE ? items[t.index] : null;
+      setDrawer(q ? { kind: 'question', question: q, back: zoneState } : zoneState);
+    } else if (t.kind === 'goFloor') {
+      goFloorRef.current?.(t.buildingId, t.level);
     }
   }, []);
+  const goFloorRef = useRef<((buildingId: string, level: number, zone?: number) => void) | null>(null);
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
     for (const r of Object.values(REGION_CONFIGS)) {
       for (const b of r.buildings) {
+        if (b.exterior === 'tulou') {
+          towersRef.current.set(b.id, ringTower(b));
+          continue;
+        }
+        if (hallOf(b.id)) {
+          towersRef.current.set(b.id, hallTower(b));
+          continue;
+        }
         const lay = getStoryLayout(b);
-        if (lay) towersRef.current.set(b.id, { b, lay, cols: Array.from({ length: lay.floors }, (_, k) => levelColliders(b, lay, k)) });
+        if (lay) towersRef.current.set(b.id, rectTower(b, lay));
       }
     }
   }
   const floorNameCache = useRef<Map<string, BuildingInteractable>>(new Map());
+  /** 地下主展場：每個攤位擺一件真實作品，展區招牌顯示件數 */
+  const refreshHallBooths = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const cache = new Map<string, Question[]>();
+    const itemsOf = (bid: string, zone: number) => {
+      const k = `${bid}#${zone}`;
+      if (!cache.has(k)) cache.set(k, hallZoneItems(bid, zone, questionsRef.current));
+      return cache.get(k)!;
+    };
+    scene.traverse((o) => {
+      const booth = o.userData?.hallBooth as { buildingId: string; zone: number; index: number } | undefined;
+      const sign = o.userData?.hallSign as { buildingId: string; zone: number } | undefined;
+      if (!booth && !sign) return;
+      const info = (booth || sign)!;
+      const h = hallOf(info.buildingId);
+      const zone = h && HALL_ZONES[h.kind][info.zone];
+      if (!zone) return;
+      const items = itemsOf(info.buildingId, info.zone);
+      const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      let key: string;
+      let draw: () => THREE.Texture;
+      if (booth) {
+        // 最後一個攤位：作品太多時改成「還有 N 件」
+        const overflow = booth.index === BOOTHS_PER_ZONE - 1 && items.length > BOOTHS_PER_ZONE;
+        const q = items[booth.index] || null;
+        const more = overflow ? items.length - (BOOTHS_PER_ZONE - 1) : 0;
+        key = q ? `${q.id}|${q.title}|${q.viewsCount ?? q.views ?? 0}|${more}` : 'empty';
+        draw = () => drawBoothTexture(zone.name, zone.color, q, more);
+      } else {
+        key = `n${items.length}`;
+        draw = () => drawZoneSignTexture(zone.name, items.length, zone.color);
+      }
+      if (o.userData.drawnKey === key) return;
+      o.userData.drawnKey = key;
+      const old = mat.map;
+      mat.map = draw();
+      mat.needsUpdate = true;
+      old?.dispose();
+    });
+  }, []);
   /** 創點樓各層懸賞牆：換上真實痛點 */
   const refreshPainBoards = useCallback(() => {
     const scene = sceneRef.current;
@@ -349,6 +467,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         playSoundEffect('portal');
         storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
         setFloorLevel(0);
+        setStoryTowerId(null);
         await regionManagerRef.current.loadRegion(targetRegionId);
         controlsRef.current.setSpawn(
           new THREE.Vector3(...manifest.defaultSpawn.position),
@@ -497,6 +616,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (resume.level !== 0 && resume.towerId && towersRef.current.has(resume.towerId)) {
         storyRef.current = { towerId: resume.towerId, level: resume.level, armed: false, tween: null };
         setFloorLevel(resume.level);
+        setStoryTowerId(resume.towerId);
       }
       world.setTimeOfDay(resume.timeOfDay);
       setTimeOfDay(resume.timeOfDay);
@@ -520,16 +640,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 可以點的東西（建築、攤位、懸賞牆）：每座島組好後重新收集
     const pickables: THREE.Object3D[] = [];
     const tickers: ((t: number) => void)[] = [];
+    const hallGroups = new Map<string, THREE.Object3D>();
     const collectPickables = () => {
       pickables.length = 0;
       tickers.length = 0;
       scene.traverse((o) => {
         if (o.userData?.pick || o.userData?.painBoard) pickables.push(o);
         if (typeof o.userData?.tick === 'function') tickers.push(o.userData.tick);
+        if (o.userData?.hallId) {
+          hallGroups.set(o.userData.hallId, o);
+          const tw = towersRef.current.get(o.userData.hallId);
+          if (tw && Array.isArray(o.userData.hallColliders)) tw.cols[0] = o.userData.hallColliders;
+        }
       });
     };
     regionManager.onRegionReady = () => {
       refreshPainBoards();
+      refreshHallBooths();
       collectPickables();
     };
     regionManager.onError = (err) => {
@@ -588,9 +715,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         // 樓板不擋射線：只認玩家所在這一層的懸賞牆與書桌
         if (t.kind === 'painBoard') {
           const tw = towersRef.current.get(t.buildingId);
-          if (t.level !== storyRef.current.level + (tw?.lay.basements || 0)) continue;
+          if (t.level !== storyRef.current.level + (tw?.basements || 0)) continue;
         }
         if (t.kind === 'desk' && storyRef.current.level !== 0) continue;
+        // 地下主展場：在裡面只認展場的攤位與樓梯；在外面不認展場裡的東西
+        const st = storyRef.current;
+        const inHall = st.level < 0 && Boolean(hallOf(st.towerId));
+        const hallThing = t.kind === 'booth' || (t.kind === 'goFloor' && t.level === 0);
+        if (inHall ? !hallThing || (t as { buildingId: string }).buildingId !== st.towerId : hallThing) continue;
         return t;
       }
       return null;
@@ -643,6 +775,53 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
     mp.start();
 
+    // 換樓層：樓層表、下樓口、地下室的上樓梯（直接把玩家放到那一層）
+    goFloorRef.current = (buildingId, level, zone) => {
+      const b = REGION_BUILDINGS.get(buildingId);
+      const tw = towersRef.current.get(buildingId);
+      if (!b || !tw) return;
+      let x: number;
+      let z: number;
+      let yaw: number;
+      const look = (fx: number, fz: number, tx: number, tz: number) => Math.atan2(-(tx - fx), -(tz - fz));
+      if (hallOf(buildingId) && level < 0) {
+        const a = hallArrival(buildingId, zone);
+        x = a.x;
+        z = a.z;
+        yaw = a.yaw;
+        level = -1;
+      } else if (b.exterior === 'tulou') {
+        if (level <= 0) {
+          // 中庭，面向舞台
+          [x, z] = toWorld(b, 0, 7);
+          const [tx, tz] = toWorld(b, 0, -4);
+          yaw = look(x, z, tx, tz);
+          level = 0;
+        } else {
+          // 樓上迴廊（後方），沿著迴廊看
+          level = Math.min(level, RING.floors - 1);
+          const th = Math.PI * 0.94;
+          [x, z] = toWorld(b, Math.sin(th) * RING.RC, Math.cos(th) * RING.RC);
+          const [tx, tz] = toWorld(b, Math.sin(th + 0.3) * RING.RC, Math.cos(th + 0.3) * RING.RC);
+          yaw = look(x, z, tx, tz);
+        }
+      } else {
+        // 一樓大廳：站在下樓口前面，面向大門
+        [x, z] = toWorld(b, 0, -b.depth * 0.25 + 1.9);
+        const [tx, tz] = toWorld(b, 0, b.depth / 2);
+        yaw = look(x, z, tx, tz);
+        level = 0;
+      }
+      playSoundEffect('portal');
+      storyRef.current = { towerId: level !== 0 ? buildingId : null, level, armed: false, tween: null };
+      setFloorLevel(level);
+      setStoryTowerId(level !== 0 ? buildingId : null);
+      controls.setSpawn(new THREE.Vector3(x, level * FLOOR_H, z), yaw);
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      setDrawer(null);
+    };
+
     // 9. Animation & Physics Game Loop
     const clock = new THREE.Clock();
     const globalWalkableZones = getGlobalWalkableZones();
@@ -667,12 +846,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           story.tween = null;
           story.armed = false;
           setFloorLevel(story.level);
+          setStoryTowerId(story.towerId);
         }
       } else if (regionManager.status === 'active') {
         // story.level：相對地面的樓層（0＝有大門的地面層，負數是地下）
         const tower = story.level !== 0 && story.towerId ? towersRef.current.get(story.towerId) || null : null;
         const desiredVelocity = controls.getDesiredVelocity();
-        const activeColliders = tower ? tower.cols[story.level + tower.lay.basements] || [] : regionManager.getAllColliders();
+        const activeColliders = tower ? tower.cols[story.level + tower.basements] || [] : regionManager.getAllColliders();
 
         const newPos = PhysicsController.movePlayer(
           controls.position,
@@ -694,22 +874,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             return sp.insideBuilding ? towersRef.current.get(sp.insideBuilding.id) || null : null;
           })();
           if (here) {
-            const [lx, lz] = toLocal(here.b, controls.position.x, controls.position.z);
-            const idx = story.level + here.lay.basements;
-            const up = upTrigger(here.lay, idx, lx, lz);
-            const down = downTrigger(here.lay, idx, lx, lz);
-            if (!up && !down) story.armed = true;
+            const st = here.stair(story.level, controls.position.x, controls.position.z, controls.position);
+            if (!st) story.armed = true;
             else if (story.armed) {
-              const k = story.level;
-              const fh = here.lay.floorH;
-              const P = (x: number, z: number, y: number) => {
-                const [wx, wz] = toWorld(here.b, x, z);
-                return new THREE.Vector3(wx, y, wz);
-              };
-              const pts = up
-                ? [controls.position.clone(), P(up.lx, up.z0 + 0.2, k * fh), P(up.lx, up.z1, (k + 1) * fh), P(up.lx, up.z1 - 1.0, (k + 1) * fh)]
-                : [controls.position.clone(), P(down!.lx, down!.z1, k * fh), P(down!.lx, down!.z0, (k - 1) * fh), P(down!.lx, down!.z0 + 1.2, (k - 1) * fh)];
-              story.tween = { pts, t: 0, dur: 2.1, toLevel: up ? k + 1 : k - 1, towerId: here.b.id };
+              story.tween = { pts: st.pts, t: 0, dur: 2.1, toLevel: st.toLevel, towerId: here.b.id };
               playSoundEffect('interact');
             }
           } else {
@@ -740,14 +908,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             }
           }
         }
+        // 在樓上或地下時，所在的就是那棟建築
+        if (tower) foundBuilding = REGION_BUILDINGS.get(tower.b.id) || tower.b;
         // 多樓層建築：提示顯示目前在第幾樓
         if (foundBuilding && towersRef.current.has(foundBuilding.id)) {
           const lvl = story.level;
           const key = `${foundBuilding.id}-${lvl}`;
           let named = floorNameCache.current.get(key);
           if (!named) {
-            const bs = towersRef.current.get(foundBuilding.id)?.lay.basements || 0;
-            named = { ...foundBuilding, name: `${foundBuilding.name}・${(PAIN_FLOORS[lvl + bs] || PAIN_FLOORS[0]).label}` };
+            const label = floorLabel(foundBuilding, lvl);
+            named = { ...foundBuilding, name: label ? `${foundBuilding.name}・${label}` : foundBuilding.name };
             floorNameCache.current.set(key, named);
           }
           foundBuilding = named;
@@ -755,6 +925,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         nearBuildingRef.current = foundBuilding;
         setNearBuilding(foundBuilding);
       }
+
+      for (const [id, g] of hallGroups) g.visible = story.level < 0 && story.towerId === id;
 
       mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
       const now = performance.now() / 1000;
@@ -815,6 +987,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         },
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
+        goFloor: (id: string, level: number, zone?: number) => goFloorRef.current?.(id, level, zone),
         place: (x: number, z: number, yaw: number) => {
           controls.position.x = x;
           controls.position.z = z;
@@ -856,10 +1029,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
   }, [initialRegionId, playSoundEffect]);
 
-  // 痛點有新增或更新時，懸賞牆跟著換
+  // 痛點有新增或更新時，懸賞牆跟著換；作品有新增時，地下主展場的攤位跟著換
   useEffect(() => {
     refreshPainBoards();
-  }, [questions, refreshPainBoards]);
+    refreshHallBooths();
+  }, [questions, refreshPainBoards, refreshHallBooths]);
 
   // 有新提案或貼文時：主廣場大燈泡閃爍跳躍，並發出清脆音效（剛進來載入資料時不算）
   const mountedAtRef = useRef(Date.now());
@@ -954,6 +1128,39 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     REGION_CONFIGS[failedRegionId]?.name || failedRegionId;
 
   const isFastWalk = (quality.moveSpeedMultiplier || 1.0) > 1.2;
+
+  // 右側樓層表：在樓上／地下時列出所在建築；在地面時，靠近或走進創點樓、展覽館、電玩城就列出
+  const dirBuilding =
+    floorLevel !== 0 && storyTowerId
+      ? REGION_BUILDINGS.get(storyTowerId) || null
+      : nearBuilding && hasDirectory(REGION_BUILDINGS.get(nearBuilding.id))
+      ? REGION_BUILDINGS.get(nearBuilding.id) || null
+      : null;
+  const dirId = dirBuilding?.id || null;
+  const floorEntries = React.useMemo((): FloorEntry[] => {
+    const b = dirId ? REGION_BUILDINGS.get(dirId) : null;
+    if (!b) return [];
+    const here = (lvl: number) => floorLevel === lvl && (lvl === 0 ? storyTowerId === null : storyTowerId === b.id);
+    if (b.exterior === 'tulou') {
+      return PAIN_FLOORS.map((f, i) => ({
+        key: `p${i}`,
+        tag: f.short,
+        name: f.label.replace(/^.*・/, ''),
+        count: painForFloor(questions, i).length,
+        unit: ' 則',
+        level: i,
+        current: here(i),
+      }));
+    }
+    const h = hallOf(b.id);
+    if (!h) return [];
+    const zones = HALL_ZONES[h.kind].map((z, i) => ({ z, i, n: hallZoneItems(b.id, i, questions).length }));
+    const total = zones.reduce((a, x) => a + x.n, 0);
+    return [
+      { key: 'lobby', tag: '1F', name: h.lobby, count: total, unit: ' 件', level: 0, current: here(0) },
+      ...zones.map(({ z, i, n }) => ({ key: `b1-${i}`, tag: 'B1', name: z.name, count: n, unit: ' 件', level: -1, zone: i, child: true, current: false })),
+    ];
+  }, [dirId, floorLevel, storyTowerId, questions]);
 
   return (
     <div className="relative w-full h-screen bg-stone-950 overflow-hidden select-none font-sans">
@@ -1062,7 +1269,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
           handleChangeQuality({ fancy: next, shadows: next });
         }}
-        placeOverride={floorLevel !== 0 ? `創點樓・${(PAIN_FLOORS[floorLevel + PAIN_BASEMENTS] || PAIN_FLOORS[0]).label}` : undefined}
+        placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? `${REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, '')}・${floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)}` : undefined}
         timeOfDay={timeOfDay}
         onCycleTimeOfDay={() => {
           const order: TimeOfDay[] = ['day', 'dusk', 'night'];
@@ -1077,6 +1284,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           });
         }}
       />
+
+      {dirBuilding && floorEntries.length > 0 && regionStatus === 'active' && (
+        <FloorDirectory
+          title={dirBuilding.name.replace(/[（(].*$/, '')}
+          entries={floorEntries}
+          onGo={(e) => goFloorRef.current?.(dirBuilding.id, e.level, e.zone)}
+        />
+      )}
 
       {/* 左側面板：建築介紹與功能按鈕、創點樓各層痛點、市集攤位、內容預覽 */}
       <KingdomSideDrawer

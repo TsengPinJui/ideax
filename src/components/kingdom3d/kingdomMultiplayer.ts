@@ -8,6 +8,8 @@ import { app, auth } from '../../services/firebase';
  * - 需要在 Vercel 設定 VITE_FIREBASE_DATABASE_URL（Realtime Database 的網址），沒設定時自動關閉
  * - 只有登入的人會出現在世界裡、也只有登入的人看得到其他人；只傳暱稱與位置
  * - 離線（關分頁、斷線）時伺服器自動把自己移除
+ * - 位置存在 kingdomPresence/{登入者 uid}/{這個分頁的 session}：同一個瀏覽器開多個分頁、
+ *   或管理員切換示範帳號（共用同一個 Firebase 登入）時，彼此也看得到
  */
 
 const DB_URL: string | undefined = (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL || undefined;
@@ -42,6 +44,7 @@ export class KingdomMultiplayer {
   private serverOffset = 0;
   private name = '旅人';
   private color = 0;
+  private readonly sid = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   public status: MultiplayerStatus = 'off';
   public onStatus?: (s: MultiplayerStatus) => void;
   public onPlayers?: (players: RemotePlayerState[]) => void;
@@ -95,7 +98,7 @@ export class KingdomMultiplayer {
     this.unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
       this.serverOffset = Number(snap.val()) || 0;
     });
-    const mine = ref(db, `${PATH}/${uid}`);
+    const mine = ref(db, `${PATH}/${uid}/${this.sid}`);
     onDisconnect(mine)
       .remove()
       .catch(() => {});
@@ -104,12 +107,14 @@ export class KingdomMultiplayer {
       (snap) => {
         const now = Date.now() + this.serverOffset;
         const list: RemotePlayerState[] = [];
-        snap.forEach((child) => {
-          const v = child.val();
-          if (!v || child.key === uid) return;
-          if (typeof v.t !== 'number' || now - v.t > STALE_MS) return;
-          if (![v.x, v.z, v.r].every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) return;
-          list.push({ id: child.key!, name: String(v.n || '旅人').slice(0, 20), color: Number(v.c) || 0, x: v.x, y: Number(v.y) || 0, z: v.z, yaw: v.r, t: v.t });
+        snap.forEach((userNode) => {
+          userNode.forEach((child) => {
+            const v = child.val();
+            if (!v || (userNode.key === uid && child.key === this.sid)) return;
+            if (typeof v.t !== 'number' || now - v.t > STALE_MS) return;
+            if (![v.x, v.z, v.r].every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) return;
+            list.push({ id: `${userNode.key}/${child.key}`, name: String(v.n || '旅人').slice(0, 20), color: Number(v.c) || 0, x: v.x, y: Number(v.y) || 0, z: v.z, yaw: v.r, t: v.t });
+          });
         });
         if (this.status !== 'online') this.setStatus('online');
         this.onPlayers?.(list);
@@ -126,7 +131,7 @@ export class KingdomMultiplayer {
     this.unsubPlayers = null;
     this.unsubOffset?.();
     this.unsubOffset = null;
-    if (this.db && this.user) remove(ref(this.db, `${PATH}/${this.user.uid}`)).catch(() => {});
+    if (this.db && this.user) remove(ref(this.db, `${PATH}/${this.user.uid}/${this.sid}`)).catch(() => {});
     this.last.x = NaN;
   }
 
@@ -141,7 +146,7 @@ export class KingdomMultiplayer {
     this.lastSent = now;
     this.last = { x, y, z, yaw };
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    set(ref(this.db, `${PATH}/${this.user.uid}`), { n: this.name, c: this.color, x: r2(x), y: r2(y), z: r2(z), r: r2(yaw), t: serverTimestamp() }).catch((err) => {
+    set(ref(this.db, `${PATH}/${this.user.uid}/${this.sid}`), { n: this.name, c: this.color, x: r2(x), y: r2(y), z: r2(z), r: r2(yaw), t: serverTimestamp() }).catch((err) => {
       console.warn('[kingdom] 位置同步失敗', err?.message);
       this.setStatus('error');
     });

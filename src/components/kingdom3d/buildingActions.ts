@@ -39,10 +39,9 @@ export const BUILDING_ACTIONS: Record<string, KingdomActionButton[]> = {
   ],
   'home-agents': [{ label: '查看 AI 角色介紹', hint: '職位、出沒地點與虛擬身分證', action: mod('agents'), primary: true }],
   'pain-innovation-tower': [
-    { label: '一樓・日常疑難', action: { kind: 'painFloor', level: 1 }, primary: true },
-    { label: '地下一樓・創新創業', action: { kind: 'painFloor', level: 0 } },
-    { label: '二樓・專業問題', action: { kind: 'painFloor', level: 2 } },
-    { label: '三樓・學術探討', action: { kind: 'painFloor', level: 3 } },
+    { label: '一樓・日常疑難', hint: '中庭佈告欄與一樓迴廊', action: { kind: 'painFloor', level: 0 }, primary: true },
+    { label: '二樓・專業問題', action: { kind: 'painFloor', level: 1 } },
+    { label: '三樓・學術探討', action: { kind: 'painFloor', level: 2 } },
     { label: '刊登痛點', action: mod('create_pain_point') },
     { label: '痛點專區', hint: '在平台上看全部痛點', action: mod('pain_feed') },
   ],
@@ -131,7 +130,7 @@ export const FEATURE_INFO: Record<'stage' | 'proposal', { title: string; badge: 
     title: '創點舞台',
     badge: '創點樓・一樓',
     sub: '提案發表・創星季',
-    desc: '天井西側的戲台，是發表提案、創星季競賽與活動的舞台。',
+    desc: '中庭後方的戲台，是發表提案、創星季競賽與活動的舞台。',
     actions: [
       { label: '前往創星季', hint: '競賽說明、賽程與報名', action: mod('star_season'), primary: true },
       { label: '逛創點子提案', hint: '大家發表的創新提案', action: mod('ideas_feed') },
@@ -141,7 +140,7 @@ export const FEATURE_INFO: Record<'stage' | 'proposal', { title: string; badge: 
     title: '提案桌',
     badge: '創點樓・一樓',
     sub: '把點子寫成創新提案',
-    desc: '看完懸賞牆上的痛點，有了解法就在這張桌子寫成創新提案。',
+    desc: '逛完迴廊上的痛點，有了解法就在中庭的提案台寫成創新提案。',
     actions: [
       { label: '發表創新提案', hint: '在新分頁填寫', action: mod('create_proposal'), primary: true },
       { label: '逛創點子提案', action: mod('ideas_feed') },

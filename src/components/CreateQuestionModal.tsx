@@ -88,6 +88,10 @@ const CATEGORIES: Category[] = [
   '學術探討',
   '日常疑難',
 ];
+/** 痛點不再使用「創新創業」分類（創業相關的痛點改歸「專業問題・企業管理」） */
+const PAIN_CATEGORIES: Category[] = CATEGORIES.filter((c) => c !== '創新創業');
+const painSafe = (postType: PostType, cat: Category | '', sub: string): [Category | '', string] =>
+  postType === 'pain_point' && cat === '創新創業' ? ['專業問題', '企業管理'] : [cat, sub];
 
 const getPostTypeName = (type: PostType): string => {
   switch (type) {
@@ -281,7 +285,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [postType, setPostType] = useState<PostType>(initialPostType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Category | ''>(initialCategory || '創新創業');
+  const [category, setCategory] = useState<Category | ''>(
+    initialPostType === 'pain_point' ? (initialCategory && initialCategory !== '創新創業' ? initialCategory : '') : initialCategory || '創新創業'
+  );
   const [subcategory, setSubcategory] = useState<string>(
     initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : '資訊科技'
   );
@@ -558,9 +564,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       if (res) {
         setAiAnalysisResult(res);
         if (res.category) {
-          setCategory(res.category as Category);
-        }
-        if (res.subcategory) {
+          const [c, sub] = painSafe(postType, res.category as Category, res.subcategory || '');
+          setCategory(c);
+          if (sub) setSubcategory(sub);
+        } else if (res.subcategory) {
           setSubcategory(res.subcategory);
         }
         if (res.tags && res.tags.length > 0) {
@@ -640,6 +647,13 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const currentBounty = isNoPaymentMode ? 0 : (Number(effectiveBounty) || 0);
 
   // Update subcategory whenever category changes
+  useEffect(() => {
+    if (postType === 'pain_point' && category === '創新創業') {
+      setCategory('');
+      setSubcategory('');
+    }
+  }, [postType, category]);
+
   const handleCategoryChange = (newCat: Category | '') => {
     setCategory(newCat);
     setSubcategory('');
@@ -972,7 +986,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      let finalCategory: Category = (category || '創新創業') as Category;
+      let finalCategory: Category = (category || (postType === 'pain_point' ? '日常疑難' : '創新創業')) as Category;
       let finalSubcategory = subcategory;
       let finalTags = tagsInput
         .split(/[#,\s，、]+/)
@@ -1006,6 +1020,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         if (finalTags.length < 2 && finalAiResult.tags && finalAiResult.tags.length > 0) {
           finalTags = Array.from(new Set([...finalTags, ...finalAiResult.tags])).filter(Boolean).slice(0, 5);
         }
+      }
+      // 痛點不使用「創新創業」分類
+      if (postType === 'pain_point' && finalCategory === '創新創業') {
+        finalCategory = '專業問題';
+        finalSubcategory = '企業管理';
       }
 
       if (postType === 'vibecoding_app') {
@@ -2695,7 +2714,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-xs font-semibold text-stone-800 outline-none focus:border-amber-500"
             >
               <option value="">請選擇主領域（未選由「市場顧問」自動判定）</option>
-              {CATEGORIES.map((c) => (
+              {(postType === 'pain_point' ? PAIN_CATEGORIES : CATEGORIES).map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
