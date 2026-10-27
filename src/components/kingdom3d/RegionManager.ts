@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import { makePickProxy } from './picking';
+import { createTulouShell, TULOU_RADIUS } from './stylized/tulou';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -93,7 +94,7 @@ export class RegionManager {
           plazaRadius: manifest.plazaRadius,
           bridges: WORLD_BRIDGES,
           avoid: [
-            ...manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: Math.max(b.width, b.depth) / 2 + 1 })),
+            ...manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: b.exterior === 'tulou' ? TULOU_RADIUS + 2.5 : Math.max(b.width, b.depth) / 2 + 1 })),
             ...streetAvoidAreas(id),
           ],
           landmark: manifest.landmark,
@@ -172,6 +173,12 @@ export class RegionManager {
     for (const b of manifest.buildings) {
       const bld = createStyledBuilding(b);
       group.add(bld);
+      // 創點樓外圍的圓形土樓
+      if (b.exterior === 'tulou') {
+        const shell = createTulouShell(b);
+        group.add(shell);
+        extraColliders.push(...(shell.userData.colliders as Collider[]));
+      }
       // 點畫面上的建築就能打開左側介紹
       group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));

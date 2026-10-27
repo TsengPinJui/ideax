@@ -20,6 +20,8 @@ import { PhysicsController } from './PhysicsController';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { KingdomSideDrawer, DrawerState, findStreetProp } from './KingdomSideDrawer';
+import { useSosoJobs, SosoJob, SosoState } from './useSosoJobs';
+import { drawJobScrollTexture } from './stylized/jobScroll';
 import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, openInNewTab } from './buildingActions';
@@ -132,6 +134,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
     }
   }, []);
+  const sosoJobsCountRef = useRef(0);
   const openForTarget = useCallback((t: PickTarget) => {
     if (t.kind === 'building') {
       const b = REGION_BUILDINGS.get(t.id);
@@ -142,6 +145,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (findStreetProp(t.id)) setDrawer({ kind: 'street', propId: t.id });
     } else if (t.kind === 'desk') {
       setDrawer({ kind: 'desk' });
+    } else if (t.kind === 'npc') {
+      setDrawer({ kind: 'soso' });
+    } else if (t.kind === 'jobScroll') {
+      setDrawer({ kind: sosoJobsCountRef.current > 0 ? 'jobs' : 'soso' });
     }
   }, []);
   const towersRef = useRef<Map<string, Tower>>(new Map());
@@ -265,7 +272,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   });
 
   // Sound effects helper via Web Audio API
-  const playSoundEffect = useCallback((type: 'portal' | 'interact') => {
+  const playSoundEffect = useCallback((type: 'portal' | 'interact' | 'bulb') => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -285,6 +292,22 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           gain.connect(ctx.destination);
           osc.start(now + idx * 0.08);
           osc.stop(now + idx * 0.08 + 0.55);
+        });
+      } else if (type === 'bulb') {
+        // 叮叮噹：上行琶音＋高音泛音
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = idx % 2 ? 'triangle' : 'sine';
+          const t0 = now + idx * 0.09;
+          osc.frequency.setValueAtTime(freq, t0);
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(0.16, t0 + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.75);
         });
       } else if (type === 'interact') {
         const osc = ctx.createOscillator();
@@ -334,6 +357,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   );
 
   const [mapSignal, setMapSignal] = useState(0);
+  // 求職廟搜搜：結果寫到兩旁畫卷（只改自己畫面上的貼圖）
+  const writeJobScrolls = useCallback((jobs: SosoJob[], status: SosoState['status'], brief: string) => {
+    sosoJobsCountRef.current = jobs.length;
+    sceneRef.current?.traverse((o) => {
+      const info = o.userData?.jobScroll as { side: number } | undefined;
+      if (!info) return;
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      const old = mat.map;
+      mat.map = drawJobScrollTexture(info.side, jobs.slice(info.side * 5, info.side * 5 + 5), status, brief);
+      mat.needsUpdate = true;
+      old?.dispose();
+    });
+  }, []);
+  const { soso, sendSoso, searchSoso, resetSoso } = useSosoJobs(writeJobScrolls);
   const tapRef = useRef<((x: number, y: number) => boolean) | null>(null);
   const currentUserNameRef = useRef(currentUser?.name || '');
   currentUserNameRef.current = currentUser?.name || '';
@@ -476,10 +513,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     // 可以點的東西（建築、攤位、懸賞牆）：每座島組好後重新收集
     const pickables: THREE.Object3D[] = [];
+    const tickers: ((t: number) => void)[] = [];
     const collectPickables = () => {
       pickables.length = 0;
+      tickers.length = 0;
       scene.traverse((o) => {
         if (o.userData?.pick || o.userData?.painBoard) pickables.push(o);
+        if (typeof o.userData?.tick === 'function') tickers.push(o.userData.tick);
       });
     };
     regionManager.onRegionReady = () => {
@@ -711,6 +751,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
 
       mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
+      const now = performance.now() / 1000;
+      for (const tk of tickers) tk(now);
       remoteView.update(delta);
 
       const dbgY = (window as any).__kingdomCamY;
@@ -811,6 +853,19 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   useEffect(() => {
     refreshPainBoards();
   }, [questions, refreshPainBoards]);
+
+  // 有新提案或貼文時：主廣場大燈泡閃爍跳躍，並發出清脆音效（剛進來載入資料時不算）
+  const mountedAtRef = useRef(Date.now());
+  const prevCountRef = useRef(questions.length);
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = questions.length;
+    if (questions.length <= prev || prev === 0 || Date.now() - mountedAtRef.current < 6000) return;
+    sceneRef.current?.traverse((o) => {
+      if (typeof o.userData?.alert === 'function') o.userData.alert();
+    });
+    playSoundEffect('bulb');
+  }, [questions.length, playSoundEffect]);
 
   // Handle quality settings change
   const handleChangeQuality = (updated: Partial<QualitySettings>) => {
@@ -1022,6 +1077,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         questions={questions}
         onChange={setDrawer}
         onAction={handleDrawerAction}
+        soso={{ state: soso, send: sendSoso, search: searchSoso, reset: resetSoso }}
         onOpenQuestion={(q) => {
           rememberPose();
           setDrawer(null);

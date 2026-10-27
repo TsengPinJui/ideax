@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { RegionId } from './types';
 import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
 import { STREET_PROPS } from './stylized/streets';
+import { TULOU_RADIUS } from './stylized/tulou';
 import { BASIN_LANDMARKS, MOUNTAIN_RING, FARMLANDS, landOutline } from './stylized/basinLayout';
 
 /** 遠景地標（與 StylizedWorld 的位置一致） */
@@ -97,6 +98,11 @@ export function WorldMapContent({
             <ellipse cx={cx} cy={cz} rx={r.islandRadiusX} ry={r.islandRadiusZ} fill={LAND} stroke={isAct ? '#b3261e' : 'rgba(107,90,58,0.6)'} strokeWidth={isAct ? 2.2 : 0.8} strokeDasharray={isAct ? undefined : '3 2'} />
             <circle cx={cx} cy={cz} r={r.plazaRadius} fill="#efe6cf" stroke="rgba(107,90,58,0.45)" strokeWidth={0.8} />
             {rid === 'region-career' && <rect x={48} y={28} width={48} height={40} fill="none" stroke="#8a7a62" strokeWidth={1.4} />}
+            {r.buildings
+              .filter((b) => b.exterior === 'tulou')
+              .map((b) => (
+                <circle key={`${b.id}-tulou`} cx={b.position.x} cy={b.position.z} r={TULOU_RADIUS} fill="#c9a47a" stroke={INK} strokeWidth={0.9} />
+              ))}
             {r.buildings.map((b) => (
               <g key={b.id} transform={`translate(${b.position.x} ${b.position.z}) rotate(${(-b.facingYaw * 180) / Math.PI})`}>
                 <rect x={-b.width / 2} y={-b.depth / 2} width={b.width} height={b.depth} fill="#9b3a2c" stroke={INK} strokeWidth={0.8} rx={0.8} />

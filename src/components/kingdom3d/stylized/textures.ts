@@ -459,6 +459,34 @@ export function signboardTexture(title: string, subtitle?: string) {
   });
 }
 
+/** 門聯：紅底金字直書（七言） */
+export function coupletTexture(text: string) {
+  return cached(`couplet_${text}`, () => {
+    const chars = Array.from(text).slice(0, 9);
+    const W = 160;
+    const H = 120 * chars.length + 60;
+    const [c, ctx] = makeCanvas(W, H);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#8e1d17');
+    g.addColorStop(0.5, '#b3261e');
+    g.addColorStop(1, '#8e1d17');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#e0b14a';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, W - 16, H - 16);
+    speckle(ctx, W, H, 600, seeded(text.length * 13 + 7), 0.07);
+    ctx.fillStyle = '#f6d36b';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 96px ${SERIF}`;
+    chars.forEach((ch, i) => ctx.fillText(ch, W / 2, 30 + 120 * (i + 0.5)));
+    return toTexture(c, { repeat: false });
+  });
+}
+
 /** 直式紅布旗幟 */
 export function bannerTexture(text: string) {
   return cached(`banner_${text}`, () => {

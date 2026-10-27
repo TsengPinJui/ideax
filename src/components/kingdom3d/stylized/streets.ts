@@ -15,7 +15,11 @@ export type StallContent = 'new' | 'proposal' | 'game' | 'app' | 'hot';
 export interface StreetProp {
   id: string;
   regionId: RegionId;
-  kind: 'shop' | 'stall' | 'gate';
+  kind: 'shop' | 'stall' | 'gate' | 'seat';
+  /** 白牆黛瓦（討論島的鋪子、茶莊） */
+  style?: 'huizhou';
+  /** 點了之後左側面板的說明 */
+  note?: string;
   name: string;
   sub?: string;
   goods: ShopKind;
@@ -82,10 +86,42 @@ const CREATIVE_GATE: StreetProp = (() => {
   return { id: 'region-creative-gate', regionId: 'region-creative', kind: 'gate', name: '創意集', sub: '市集・攤販・活動', goods: 'general', x: cx, z: cz - 14.5, yaw: 0, w: 7.6, d: 1.2 };
 })();
 
+/** 討論島：工作坊前的百工坊（四間工匠鋪＋牌坊）、茶藝街（三間茶莊＋牌樓＋露天茶座） */
+const DISC = (id: string, kind: StreetProp['kind'], name: string, sub: string, goods: ShopKind, x: number, z: number, yaw: number, note?: string): StreetProp => ({
+  id: `region-discussion-${id}`,
+  regionId: 'region-discussion',
+  kind,
+  name,
+  sub,
+  goods,
+  x,
+  z,
+  yaw,
+  w: kind === 'gate' ? 7.6 : kind === 'seat' ? 2.6 : 6,
+  d: kind === 'gate' ? 1.2 : kind === 'seat' ? 2.6 : 4.4,
+  style: kind === 'shop' ? 'huizhou' : undefined,
+  note,
+});
+const CRAFT_NOTE = '百工坊的工匠鋪是街景；要討論軟體架構、AI、軟硬整合與全端開發，請進中間的「工作坊」。';
+const TEA_NOTE = '茶藝街的茶莊是街景；要聊天交流，請進中間的「茶藝街」茶館，每個討論就是一張茶桌。';
+const DISCUSSION_PROPS: StreetProp[] = [
+  DISC('craft-0', 'shop', '鐵匠鋪', '百工坊', 'general', 86, -56, 0, CRAFT_NOTE),
+  DISC('craft-1', 'shop', '木匠鋪', '百工坊', 'toys', 86, -34, Math.PI, CRAFT_NOTE),
+  DISC('craft-2', 'shop', '機關巧藝鋪', '百工坊', 'crafts', 93.5, -62, -Math.PI / 2, CRAFT_NOTE),
+  DISC('craft-3', 'shop', '金工鍛造鋪', '百工坊', 'lanterns', 92.5, -30.5, -Math.PI / 2, CRAFT_NOTE),
+  DISC('craft-gate', 'gate', '百工坊', '軟體・AI・軟硬整合・全端', 'general', 79, -45, -Math.PI / 2, CRAFT_NOTE),
+  DISC('tea-0', 'shop', '清茗茶莊', '茶藝街', 'tea', 58, -56, 0, TEA_NOTE),
+  DISC('tea-1', 'shop', '雅韻茶樓', '茶藝街', 'tea', 58, -34, Math.PI, TEA_NOTE),
+  DISC('tea-2', 'shop', '茗香茶點', '茶藝街', 'sweets', 50.5, -62, Math.PI / 2, TEA_NOTE),
+  DISC('tea-gate', 'gate', '茶藝街', '日常・生活・職場・靈感', 'tea', 65, -45, Math.PI / 2, TEA_NOTE),
+  DISC('tea-seat-0', 'seat', '露天茶座', '茶藝街', 'tea', 62.2, -40.6, 0, TEA_NOTE),
+  DISC('tea-seat-1', 'seat', '露天茶座', '茶藝街', 'tea', 62.2, -49.4, 0, TEA_NOTE),
+];
+
 export const STREET_PROPS: Record<RegionId, StreetProp[]> = {
   'region-home': HOME_SHOPS,
   'region-pain': [],
-  'region-discussion': [],
+  'region-discussion': DISCUSSION_PROPS,
   'region-creative': [...CREATIVE_STALLS, CREATIVE_GATE],
   'region-career': [],
 };
@@ -217,8 +253,8 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   const H2 = 2.3;
   const pl = 0.3;
   const themes: RoofTheme[] = ['slate', 'teal', 'red', 'slate'];
-  const theme = themes[hv % themes.length];
-  const facade = sm.facades[hv % sm.facades.length];
+  const theme = p.style === 'huizhou' ? 'slate' : themes[hv % themes.length];
+  const facade = p.style === 'huizhou' ? creamMat() : sm.facades[hv % sm.facades.length];
 
   add(g, scaledBox(w + 0.3, pl, d + 0.3, 2, pl, 2), sm.stone, 0, pl / 2, 0);
   add(g, scaledBox(w - 0.5, 0.05, d - 0.5, 2.5, 0.05, 2.5), sm.woodFloor, 0, pl + 0.025, 0);
@@ -264,7 +300,7 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   }
   add(g, new THREE.CylinderGeometry(0.03, 0.03, 0.75, 5).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), sm.darkWood, side * (w / 2 + 0.05), pl + H1 - 0.12, d / 2 + 0.55);
   // 屋頂
-  const roof = buildRoofTier(w, d, { rise: 1.45, overhang: 0.85, curl: 0.45, theme, ridge: true, lite: true });
+  const roof = buildRoofTier(w, d, { rise: 1.45, overhang: 0.55, curl: 0.2, theme, ridge: true, lite: true, horns: false });
   roof.position.y = pl + H1 + H2 + 0.05;
   g.add(roof);
   // 門口兩盞燈籠、兩只大陶缸
@@ -282,6 +318,37 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
     extra.push({ id: `${p.id}-jar${s}`, type: 'cylinder', x: wx, z: wz, radius: 0.35 } as Collider);
   }
   return [...rectColliders(p, 0.1), ...extra];
+}
+
+let cream: THREE.MeshStandardMaterial | null = null;
+function creamMat() {
+  if (!cream) cream = new THREE.MeshStandardMaterial({ color: 0xf3ead6, roughness: 0.9 });
+  return cream;
+}
+
+/** 露天茶座：圓桌、兩張石凳、藍或黃的油紙傘 */
+function buildSeat(p: StreetProp, root: THREE.Group): Collider[] {
+  const sm = getStyleMaterials();
+  const m = mats();
+  const g = new THREE.Group();
+  g.position.set(p.x, 0, p.z);
+  root.add(g);
+  const blue = p.id.endsWith('0');
+  const umb = cachedMat(m.awnings, blue ? 'umbBlue' : 'umbGold', () => new THREE.MeshStandardMaterial({ color: blue ? 0x2f6bb3 : 0xe2b030, roughness: 0.8, side: THREE.DoubleSide }));
+  add(g, new THREE.CylinderGeometry(0.62, 0.62, 0.08, 18), sm.darkWood, 0, 0.76, 0);
+  add(g, new THREE.CylinderGeometry(0.1, 0.16, 0.74, 8), sm.darkWood, 0, 0.37, 0);
+  for (const s of [-1, 1]) add(g, new THREE.CylinderGeometry(0.24, 0.28, 0.46, 12), sm.stoneLight, s * 1.0, 0.23, 0);
+  // 茶壺、茶杯
+  add(g, new THREE.SphereGeometry(0.13, 12, 10), sm.pot, 0, 0.92, 0);
+  for (const s of [-1, 1]) add(g, new THREE.CylinderGeometry(0.05, 0.04, 0.07, 10), sm.plaster, s * 0.3, 0.84, 0.12);
+  add(g, new THREE.CylinderGeometry(0.035, 0.035, 2.5, 6), sm.darkWood, 0, 1.25, 0);
+  add(g, new THREE.ConeGeometry(1.45, 0.55, 16, 1, true), umb, 0, 2.55, 0);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const rib = add(g, new THREE.CylinderGeometry(0.015, 0.015, 1.5, 4), sm.darkWood, Math.cos(a) * 0.72, 2.5, Math.sin(a) * 0.72);
+    rib.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2);
+  }
+  return [{ id: `${p.id}-table`, type: 'cylinder', x: p.x, z: p.z, radius: 1.3 } as Collider];
 }
 
 /** 市集攤位：條紋布棚、櫃檯、後方貨架、吊牌與攤主 */
@@ -365,7 +432,7 @@ function buildGate(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   back.scale.set(1, 0.82, 1);
   back.rotation.y = Math.PI;
   g.add(back);
-  const roof = buildRoofTier(p.w + 0.4, 1.0, { rise: 0.75, overhang: 0.6, curl: 0.4, theme: 'red', ridge: true, lite: true });
+  const roof = buildRoofTier(p.w + 0.4, 1.0, { rise: 0.75, overhang: 0.6, curl: 0.4, theme: 'red', ridge: true, lite: true, horns: false });
   roof.position.y = 5.38;
   g.add(roof);
   return cols;
@@ -384,13 +451,14 @@ export function createStreetProps(regionId: RegionId): THREE.Group | null {
   for (const p of list) {
     if (p.kind === 'shop') colliders.push(...buildShop(p, root, lanterns, toWorld));
     else if (p.kind === 'stall') colliders.push(...buildStall(p, root, lanterns, toWorld));
+    else if (p.kind === 'seat') colliders.push(...buildSeat(p, root));
     else colliders.push(...buildGate(p, root, lanterns, toWorld));
   }
   mergeByMaterial(root);
   root.add(lanterns.build());
   // 點擊範圍（合併之後才加，才不會被併進街景網格）
   for (const p of list) {
-    const h = p.kind === 'shop' ? 6.6 : p.kind === 'stall' ? 3 : 6;
+    const h = p.kind === 'shop' ? 6.6 : p.kind === 'stall' || p.kind === 'seat' ? 3 : 6;
     root.add(makePickProxy(p.w + 0.4, h, p.kind === 'gate' ? 1.6 : p.d + 1.2, p.x, p.z, p.yaw, { kind: 'street', id: p.id }));
   }
   root.userData.colliders = colliders;

@@ -12,6 +12,7 @@ import {
   ceilingTexture,
   signboardTexture,
   bannerTexture,
+  coupletTexture,
   glowTexture,
   scrollPaintingTexture,
   balustradeTexture,
@@ -24,6 +25,10 @@ import {
 } from './textures';
 import { getStoryLayout, levelColliders, levelY } from './multiStory';
 import { makePickProxy } from '../picking';
+import { DOOR_COUPLETS } from '../couplets';
+import { bridgeRailRange } from '../regionConfigs';
+import { drawJobScrollTexture } from './jobScroll';
+import { createSosoNpc } from './npcs';
 import { drawPainBoardTexture, deskPaperTexture, MAIN_BOARD, SIDE_BOARD, PainBoardLayout } from './painBoard';
 
 /* =====================================================================
@@ -52,6 +57,11 @@ export interface StyleMaterials {
   trunk: THREE.MeshStandardMaterial;
   foliage: THREE.MeshStandardMaterial;
   orb: THREE.MeshStandardMaterial;
+  bulbGlass: THREE.MeshPhysicalMaterial;
+  bulbRing: THREE.MeshStandardMaterial;
+  filament: THREE.MeshBasicMaterial;
+  screwMetal: THREE.MeshStandardMaterial;
+  pedestalDark: THREE.MeshStandardMaterial;
   rug: THREE.MeshStandardMaterial;
   plaster: THREE.MeshStandardMaterial;
   balustrade: THREE.MeshStandardMaterial;
@@ -123,6 +133,12 @@ export function getStyleMaterials(): StyleMaterials {
     trunk: std({ color: 0x5b3a26, roughness: 0.95 }),
     foliage: std({ color: 0xffffff, roughness: 0.85 }),
     orb: std({ color: 0xffe08a, emissive: 0xffc04a, emissiveIntensity: 1.6, roughness: 0.25 }),
+    // 主廣場大燈泡（照 /island 的經典燈泡雕像）
+    bulbGlass: new THREE.MeshPhysicalMaterial({ color: 0xffd23f, emissive: 0xff9d00, emissiveIntensity: 0.65, roughness: 0.14, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.08, transparent: true, opacity: 0.84 }),
+    bulbRing: std({ color: 0xffe066, emissive: 0xffae00, emissiveIntensity: 0.85, roughness: 0.25, metalness: 0.5 }),
+    filament: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    screwMetal: std({ color: 0x363a40, roughness: 0.32, metalness: 0.72 }),
+    pedestalDark: std({ color: 0x2a2440, roughness: 0.55, metalness: 0.15 }),
     rug: std({ color: 0x8e2420, roughness: 0.9 }),
     plaster: std({ color: 0xf1eadc, roughness: 0.95 }),
     balustrade: std({ map: balustradeTexture(), bumpMap: bumpOf('balustrade', balustradeTexture()), bumpScale: 2.5, roughness: 0.9 }),
@@ -308,7 +324,7 @@ export type RoofTheme = 'slate' | 'teal' | 'gold' | 'red';
 export function buildRoofTier(
   w: number,
   d: number,
-  opts: { rise: number; overhang: number; curl: number; theme: RoofTheme; ridge?: boolean; finial?: boolean; lite?: boolean }
+  opts: { rise: number; overhang: number; curl: number; theme: RoofTheme; ridge?: boolean; finial?: boolean; lite?: boolean; horns?: boolean }
 ): THREE.Group {
   const mats = getStyleMaterials();
   const g = new THREE.Group();
@@ -368,13 +384,21 @@ export function buildRoofTier(
       const beam = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.32, 0.42, alongX ? 0.32 : len), ridgeMat);
       beam.position.y = peak + 0.18;
       g.add(beam);
-      // 脊獸（兩端上翹的鴟吻）
-      for (const s of [-1, 1]) {
+      // 脊獸（兩端上翹的鴟吻）；小屋頂改成正脊兩端微翹的脊頭
+      for (const s of opts.horns === false ? [] : [-1, 1]) {
         const horn = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.11, 6, 10, Math.PI * 0.75), mats.gold);
         const off = s * (ridgeHalf + 0.15);
         horn.position.set(alongX ? off : 0, peak + 0.55, alongX ? 0 : off);
         horn.rotation.set(0, alongX ? 0 : Math.PI / 2, s > 0 ? 0.15 : Math.PI - 0.15);
         g.add(horn);
+      }
+      if (opts.horns === false) {
+        for (const s of [-1, 1]) {
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(alongX ? 0.32 : 0.36, 0.3, alongX ? 0.36 : 0.32), ridgeMat);
+          cap.position.set(alongX ? s * (ridgeHalf + 0.25) : 0, peak + 0.3, alongX ? 0 : s * (ridgeHalf + 0.25));
+          cap.rotation.set(alongX ? 0 : s * 0.35, 0, alongX ? -s * 0.35 : 0);
+          g.add(cap);
+        }
       }
     }
     if (opts.finial || ridgeHalf <= 0.3) {
@@ -579,7 +603,37 @@ export interface StyledBuildingInput {
   doorWidth?: number;
   tiers?: number;
   floors?: number;
+  basements?: number;
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou';
+  npc?: 'soso';
   colorHex: number;
+}
+
+/** 展覽館、電玩城的外觀材質（照 /island） */
+let extMats: {
+  cream: THREE.MeshStandardMaterial;
+  arcade: THREE.MeshStandardMaterial;
+  arcadeTrim: THREE.MeshStandardMaterial;
+  glass: THREE.MeshStandardMaterial;
+  neonRed: THREE.MeshStandardMaterial;
+  neonBlue: THREE.MeshStandardMaterial;
+  padWhite: THREE.MeshStandardMaterial;
+  flags: THREE.MeshStandardMaterial[];
+} | null = null;
+function exteriorMats() {
+  if (extMats) return extMats;
+  const std = (p: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.02, ...p });
+  extMats = {
+    cream: std({ color: 0xf3ead6, roughness: 0.9 }),
+    arcade: std({ map: facadeTexture(false, 1), emissiveMap: facadeTexture(true, 1), emissive: new THREE.Color(0xff5fd6), emissiveIntensity: 0.55, color: 0x5a4a7a, roughness: 0.6 }),
+    arcadeTrim: std({ color: 0x241f33, roughness: 0.45, metalness: 0.35 }),
+    glass: std({ color: 0x7cc0ee, emissive: 0x2a6a9a, emissiveIntensity: 0.35, roughness: 0.12, metalness: 0.3, transparent: true, opacity: 0.62, side: THREE.DoubleSide }),
+    neonRed: std({ color: 0xff3b5c, emissive: 0xff2a4a, emissiveIntensity: 1.4, roughness: 0.3 }),
+    neonBlue: std({ color: 0x3bb8ff, emissive: 0x2a9cff, emissiveIntensity: 1.4, roughness: 0.3 }),
+    padWhite: std({ color: 0xf4f1ea, roughness: 0.35, metalness: 0.05 }),
+    flags: [0xc62828, 0x2f6bb3, 0xf3a6c4, 0xe2b030].map((c) => std({ color: c, roughness: 0.85, side: THREE.DoubleSide })),
+  };
+  return extMats;
 }
 
 function hashStr(s: string) {
@@ -644,9 +698,15 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const thick = 0.45;
   const tiers = b.tiers || 1;
   const hv = hashStr(b.id);
-  const facade = mats.facades[hv % mats.facades.length];
+  const ext = b.exterior;
+  const em = ext === 'exhibition' || ext === 'arcade' ? exteriorMats() : null;
+  // 徽派（討論島，照 /island）：白牆黛瓦、深色木柱、兩側馬頭牆
+  const huizhou = ext === 'huizhou';
+  const facade = ext === 'exhibition' || huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : mats.facades[hv % mats.facades.length];
+  // 柱子：展覽館與徽派深色木柱、電玩城深色金屬，其餘紅柱
+  const pillarMat = ext === 'exhibition' || huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
   const themes: RoofTheme[] = ['slate', 'teal', 'slate', 'red'];
-  const theme: RoofTheme = tiers >= 4 ? 'gold' : themes[hv % themes.length];
+  const theme: RoofTheme = b.exterior === 'huizhou' ? 'slate' : tiers >= 4 ? 'gold' : themes[hv % themes.length];
   const plinthH = 0.45;
   const wallH = h - plinthH;
   const lanterns = new LanternBatch();
@@ -769,7 +829,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
 
   // 紅柱：四角、門兩側、沿牆每約 3.2 公尺
   const colGeo = new THREE.CylinderGeometry(0.24, 0.27, h - 0.1, 10);
-  const colAt = (x: number, z: number) => addMesh(body, colGeo, mats.redLacquer, x, (h - 0.1) / 2 + 0.05, z);
+  const colAt = (x: number, z: number) => addMesh(body, colGeo, pillarMat, x, (h - 0.1) / 2 + 0.05, z);
   for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) colAt(x, z);
   colAt(-doorW / 2 - 0.12, d / 2 + 0.05);
   colAt(doorW / 2 + 0.12, d / 2 + 0.05);
@@ -786,10 +846,10 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   // 門框金邊
   addMesh(body, new THREE.BoxGeometry(doorW + 0.7, 0.18, thick + 0.25), mats.gold, 0, doorH, d / 2);
 
-  // 屋簷下的額枋
-  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), mats.redLacquer, 0, h - 0.1, 0);
-  // 斗拱：額枋上方一排青綠彩繪的托架
-  {
+  // 屋簷下的額枋（展覽館：奶油色簷口；電玩城：深色平台；徽派：深色木枋）
+  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'exhibition' ? em!.cream : ext === 'arcade' ? mats.roofs.slate : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
+  // 斗拱：額枋上方一排青綠彩繪的托架（中式樓閣才有）
+  if (!em && !huizhou) {
     const blockGeo = new THREE.BoxGeometry(0.3, 0.22, 0.3);
     const armGeo = new THREE.BoxGeometry(0.18, 0.15, 0.7);
     const crossGeo = new THREE.BoxGeometry(0.7, 0.15, 0.18);
@@ -831,9 +891,71 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   for (let i = 0; i < cu.count; i++) cu.setXY(i, (cu.getX(i) * (w - 0.4)) / 3, (cu.getY(i) * (d - 0.4)) / 3);
   body.add(ceil);
 
-  // 屋頂（多重簷）
+  // 屋頂：展覽館＝菱格藍玻璃採光穹頂；電玩城＝平頂＋屋頂大手把；其餘＝多重簷
+  if (ext === 'exhibition') {
+    const rimY = h + 0.1;
+    addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.cream, 0, rimY + 0.18, 0);
+    const domeH = Math.min(w, d) * 0.42;
+    const dome = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2 * Math.max(w, d) * 0.98, domeH, 4, 1, true), em!.glass);
+    dome.rotation.y = Math.PI / 4;
+    dome.scale.set(w >= d ? 1 : d / w, 1, w >= d ? d / w : 1);
+    dome.position.y = rimY + 0.36 + domeH / 2;
+    dome.userData.noMerge = true;
+    root.add(dome);
+    // 金色稜脊：頂點到四角＋中間兩道十字肋
+    {
+      const apex = new THREE.Vector3(0, rimY + 0.36 + domeH, 0);
+      const ends: THREE.Vector3[] = [];
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) ends.push(new THREE.Vector3((sx * w) / 2 * 0.98, rimY + 0.36, (sz * d) / 2 * 0.98));
+      ends.push(new THREE.Vector3(0, rimY + 0.36, (d / 2) * 0.98), new THREE.Vector3(0, rimY + 0.36, (-d / 2) * 0.98), new THREE.Vector3((w / 2) * 0.98, rimY + 0.36, 0), new THREE.Vector3((-w / 2) * 0.98, rimY + 0.36, 0));
+      for (const e of ends) {
+        const len = apex.distanceTo(e);
+        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, len, 6), mats.gold);
+        rib.position.copy(apex).add(e).multiplyScalar(0.5);
+        rib.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), e.clone().sub(apex).normalize());
+        body.add(rib);
+      }
+    }
+    addMesh(body, new THREE.SphereGeometry(0.35, 12, 10), mats.gold, 0, rimY + 0.36 + domeH + 0.1, 0);
+    // 門前繽紛直立展旗（紅、藍、粉、金）
+    [-1.6, -0.6, 0.6, 1.6].forEach((k, i) => {
+      const fx = k * (doorW / 2 + 0.9) / 1.6 + Math.sign(k) * 0.4;
+      addMesh(body, new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mats.darkWood, fx, 1.7, d / 2 + 1.6);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 1.6), em!.flags[i]);
+      flag.position.set(fx + 0.3, 2.45, d / 2 + 1.6);
+      flag.userData.noMerge = true;
+      root.add(flag);
+    });
+  } else if (ext === 'arcade') {
+    const rimY = h + 0.1;
+    addMesh(body, scaledBox(w + 0.8, 0.3, d + 0.8, 3, 0.3, 3), mats.roofs.slate, 0, rimY + 0.15, 0);
+    // 屋頂的大遊戲手把
+    const pad = new THREE.Group();
+    const ps = Math.min(w, d) * 0.22;
+    pad.position.set(0, rimY + 0.3 + ps * 0.75, 0);
+    pad.rotation.x = 0.28;
+    pad.scale.setScalar(ps);
+    addMesh(pad, new THREE.BoxGeometry(2.2, 0.48, 1.32), em!.padWhite, 0, 0, 0);
+    for (const side of [-1, 1]) {
+      const grip = addMesh(pad, new THREE.CapsuleGeometry(0.5, 1.0, 6, 12), em!.padWhite, side * 1.15, -0.05, 0.38);
+      grip.rotation.set(Math.PI / 2, 0, -side * 0.32);
+    }
+    addMesh(pad, new THREE.BoxGeometry(0.58, 0.18, 0.2), em!.arcadeTrim, -0.78, 0.28, -0.05);
+    addMesh(pad, new THREE.BoxGeometry(0.2, 0.18, 0.58), em!.arcadeTrim, -0.78, 0.28, -0.05);
+    for (const sx of [-0.32, 0.32]) addMesh(pad, new THREE.CylinderGeometry(0.18, 0.12, 0.22, 10), em!.arcadeTrim, sx, 0.3, 0.28);
+    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), em!.neonRed, 0.75, 0.28, 0.15);
+    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), em!.neonBlue, 0.98, 0.28, -0.1);
+    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), mats.gold, 0.55, 0.28, -0.15);
+    body.add(pad);
+    // 門前紅藍霓虹燈柱
+    for (const sx of [-1, 1]) {
+      addMesh(body, new THREE.BoxGeometry(0.4, h - 0.6, 0.4), sx < 0 ? em!.neonRed : em!.neonBlue, sx * (doorW / 2 + 0.55), (h - 0.6) / 2, d / 2 + 0.35);
+    }
+    // 霓虹燈條沿屋簷一圈
+    addMesh(body, new THREE.BoxGeometry(w + 0.9, 0.1, 0.1), em!.neonBlue, 0, rimY - 0.05, d / 2 + 0.47);
+  }
   let y = h + 0.1;
-  for (let t = 0; t < tiers; t++) {
+  for (let t = 0; t < (em ? 0 : tiers); t++) {
     const sc = 1 - t * 0.2;
     const tw = w * sc;
     const td = d * sc;
@@ -873,6 +995,23 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     });
     tier.position.y = y;
     body.add(tier);
+    // 徽派馬頭牆：兩側山牆高出屋頂，三階跌落、黛瓦壓頂
+    if (huizhou && t === 0) {
+      const top = y + rise * 0.82;
+      const steps: [number, number, number][] = [
+        [d + 0.4, y - 0.2, y + 0.75],
+        [d * 0.66, y + 0.75, top - 0.75],
+        [d * 0.32, top - 0.75, top],
+      ];
+      for (const sx of [-1, 1]) {
+        const gx = sx * (w / 2 + 0.05);
+        for (const [len, y0, y1] of steps) {
+          addMesh(body, scaledBox(0.42, y1 - y0, len, 1.5, 1.5, 1.5), facade, gx, (y0 + y1) / 2, 0);
+          addMesh(body, new THREE.BoxGeometry(0.72, 0.2, len + 0.3), mats.roofs.slate, gx, y1 + 0.1, 0);
+          for (const sz of [-1, 1]) addMesh(body, new THREE.BoxGeometry(0.72, 0.16, 0.5), mats.ridges.slate, gx, y1 + 0.26, sz * (len / 2 + 0.05));
+        }
+      }
+    }
     // 屋角吊燈籠（第一層）
     if (t === 0) {
       const ox = tw / 2 + 1.1;
@@ -893,7 +1032,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   for (const sx of [-1, 1]) {
     const lx = sx * (doorW / 2 + 1.15);
     const lz = d / 2 + 1.3;
-    if (Math.abs(lx) + 0.5 > w / 2 + 1.5) continue;
+    if (Math.abs(lx) + 0.5 > w / 2 + 1.5 || em) continue;
     addMesh(body, lionGeo, mats.sculpt, lx, 0, lz, sx * 0.25);
     const [wx, wz] = toWorld(lx, lz);
     extraColliders.push({ id: `${b.id}-lion-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.6 });
@@ -912,18 +1051,25 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   }
   // 多樓層：一樓樓梯的扶手碰撞
   if (lay) extraColliders.push(...(levelColliders(b as any, lay, lay.basements) as any));
+  if (b.npc === 'soso') {
+    const [wx, wz] = toWorld(2.6, -d * 0.25 + 0.4);
+    extraColliders.push({ id: `${b.id}-soso`, type: 'cylinder', x: wx, z: wz, radius: 0.9 });
+  }
   root.userData.colliders = extraColliders;
 
   // 門口一對大燈籠、兩側旗幟、牌匾
   lanterns.addHanging(-doorW / 2 - 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
   lanterns.addHanging(doorW / 2 + 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
+  // 門聯：與建築功能有關的七言詩句（面向大門時上聯在右）；沒有設定的才用館名旗幟
+  const couplet = DOOR_COUPLETS[b.id];
   const bannerText = (b.name || '').replace(/[（(].*$/, '').replace(/[^\p{Script=Han}A-Za-z]/gu, '').slice(0, 4) || '創點';
   const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTexture(bannerText), roughness: 0.9, side: THREE.DoubleSide });
-  const bannerH = Math.min(2.6, wallH - 0.6);
+  const bannerH = Math.min(couplet ? 3.1 : 2.6, wallH - 0.6, doorH - 0.15);
   for (const sx of [-1, 1]) {
     const x = sx * (doorW / 2 + Math.min(1.25, wingW * 0.55));
     if (Math.abs(x) + 0.5 > w / 2) continue;
-    const ban = new THREE.Mesh(new THREE.PlaneGeometry(0.85, bannerH), bannerMat);
+    const mat = couplet ? new THREE.MeshStandardMaterial({ map: coupletTexture(sx > 0 ? couplet[0] : couplet[1]), roughness: 0.85 }) : bannerMat;
+    const ban = new THREE.Mesh(new THREE.PlaneGeometry(couplet ? 0.62 : 0.85, bannerH), mat);
     ban.position.set(x, plinthH + 0.35 + bannerH / 2, d / 2 + thick / 2 + 0.03);
     ban.userData.noMerge = true;
     root.add(ban);
@@ -938,7 +1084,30 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
 
   // 室內：掛畫、內牆牌匾、中央發光寶珠台
   const inner = new THREE.Group();
-  for (const sx of lay ? [] : [-1, 1]) {
+  // 求職廟：兩側換成搜搜的尋職畫卷（內容只畫在自己的畫面上）＋搜搜本人
+  if (b.npc === 'soso') {
+    for (const side of [0, 1]) {
+      const sx = side === 0 ? -1 : 1;
+      const scroll = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.44), new THREE.MeshStandardMaterial({ map: drawJobScrollTexture(side, [], 'idle'), roughness: 0.85 }));
+      scroll.position.set(sx * (w / 2 - thick / 2 - 0.05), 2.35, -0.2);
+      scroll.rotation.y = -sx * (Math.PI / 2);
+      scroll.userData.noMerge = true;
+      scroll.userData.jobScroll = { side };
+      scroll.userData.pick = { kind: 'jobScroll' };
+      inner.add(scroll);
+      for (const yy of [2.35 + 1.78, 2.35 - 1.78]) {
+        const rod = addMesh(inner, new THREE.CylinderGeometry(0.07, 0.07, 2.7, 10), mats.darkWood, sx * (w / 2 - thick / 2 - 0.12), yy, -0.2);
+        rod.rotation.x = Math.PI / 2;
+        for (const e of [-1, 1]) addMesh(inner, new THREE.SphereGeometry(0.1, 8, 6), mats.gold, sx * (w / 2 - thick / 2 - 0.12), yy, -0.2 + e * 1.38);
+      }
+    }
+    const soso = createSosoNpc();
+    soso.position.set(2.6, 0.05, -d * 0.25 + 0.4);
+    soso.rotation.y = -0.35;
+    soso.userData.noMerge = true;
+    root.add(soso);
+  }
+  for (const sx of lay || b.npc === 'soso' ? [] : [-1, 1]) {
     for (let k = 0; k < 2; k++) {
       const pm = new THREE.MeshStandardMaterial({ map: scrollPaintingTexture(hv % 7 + k + (sx > 0 ? 3 : 0)), roughness: 0.9 });
       const p = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.2), pm);
@@ -1138,6 +1307,8 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
   const parts = new THREE.Group();
   const lanterns = new LanternBatch();
   const yAt = (t: number) => Math.sin(t * Math.PI) * maxH;
+  // 欄杆只在水面那一段，上岸後就收掉（和碰撞一致）
+  const [ra, rb] = bridgeRailRange(bridge);
 
   for (let i = 0; i < segs; i++) {
     const t1 = i / segs;
@@ -1150,7 +1321,7 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
     deck.rotation.x = pitch;
     parts.add(deck);
     // 欄板＋扶手
-    for (const rx of [-w / 2 + 0.18, w / 2 - 0.18]) {
+    for (const rx of tm >= ra && tm <= rb ? [-w / 2 + 0.18, w / 2 - 0.18] : []) {
       const panel = new THREE.Mesh(scaledBox(0.2, 0.58, stepZ + 0.04, stepZ, 0.58, stepZ), mats.balustrade);
       panel.position.set(rx, yAt(tm) + 0.34, lz);
       panel.rotation.x = pitch;
@@ -1161,7 +1332,7 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
       parts.add(rail);
     }
     // 望柱
-    for (const rx of [-w / 2 + 0.18, w / 2 - 0.18]) {
+    for (const rx of t1 >= ra - 0.5 / segs && t1 <= rb + 1 / segs ? [-w / 2 + 0.18, w / 2 - 0.18] : []) {
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.0, 0.3), mats.stoneLight);
       post.position.set(rx, yAt(t1) + 0.5, (t1 - 0.5) * span);
       parts.add(post);
@@ -1182,7 +1353,7 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
   arch.scale.set(1, 0.55, 1);
   parts.add(arch);
   // 橋頭與橋中的石燈
-  for (const t of [0.04, 0.5, 0.96]) {
+  for (const t of [Math.max(0.04, ra), 0.5, Math.min(0.96, rb)]) {
     for (const rx of [-w / 2 - 0.15, w / 2 + 0.15]) {
       lanterns.addPost(rx, yAt(t), (t - 0.5) * span, t === 0.5 ? 1.6 : 2.4);
     }
@@ -1416,48 +1587,113 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     trees.add('bush', x + cx, 0, z + cz, 0.6 + rand() * 0.4);
   }
 
-  // 地標：小燈泡紀念碑（蓮花石座＋紅柱＋發光燈泡）
+  // 地標：主廣場大燈泡雕像（照 /island：八角深色石座＋金邊、渾圓金黃玻璃燈泡、發光鎢絲、愛迪生螺紋燈頭、傾斜金色光環）
   if (inp.landmark) {
     const lm = inp.landmark;
+    const S = 1.45;
     const lg = new THREE.Group();
     lg.position.set(lm.x - cx, 0, lm.z - cz);
-    addMesh(lg, new THREE.CylinderGeometry(lm.radius + 0.15, lm.radius + 0.4, 0.5, 8), mats.stone, 0, 0.25, 0);
-    addMesh(lg, new THREE.CylinderGeometry(lm.radius - 0.35, lm.radius - 0.05, 0.9, 8), mats.stoneLight, 0, 0.95, 0);
-    addMesh(lg, new THREE.TorusGeometry(lm.radius - 0.1, 0.12, 6, 24).rotateX(Math.PI / 2), mats.gold, 0, 1.42, 0);
-    const pillarH = Math.max(2, lm.height - 3.3);
-    addMesh(lg, new THREE.CylinderGeometry(0.55, 0.75, pillarH, 12), mats.redLacquer, 0, 1.4 + pillarH / 2, 0);
-    for (const yy of [1.6, 1.4 + pillarH - 0.2]) addMesh(lg, new THREE.TorusGeometry(0.7, 0.1, 6, 18).rotateX(Math.PI / 2), mats.gold, 0, yy, 0);
-    // 大燈泡：金色螺旋燈座＋梨形發光玻璃泡（比原本大約一倍半）
-    const baseY = 1.4 + pillarH;
-    addMesh(lg, new THREE.CylinderGeometry(1.0, 0.75, 0.5, 16), mats.gold, 0, baseY + 0.25, 0);
-    addMesh(lg, new THREE.CylinderGeometry(0.95, 0.95, 1.1, 16), mats.gold, 0, baseY + 1.0, 0);
-    for (let k = 0; k < 4; k++) addMesh(lg, new THREE.TorusGeometry(0.97, 0.07, 6, 20).rotateX(Math.PI / 2), mats.stoneLight, 0, baseY + 0.62 + k * 0.26, 0);
-    const R = 2.6;
+    lg.scale.setScalar(S);
+    const stud = new THREE.Group();
+    // 四周八根望柱＋金色柱頭
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      addMesh(stud, new THREE.CylinderGeometry(0.14, 0.16, 0.78, 8), mats.stoneLight, Math.cos(a) * 3.3, 0.39, Math.sin(a) * 3.3);
+      addMesh(stud, new THREE.SphereGeometry(0.18, 8, 8), mats.gold, Math.cos(a) * 3.3, 0.85, Math.sin(a) * 3.3);
+    }
+    lg.add(stud);
+    addMesh(lg, new THREE.CylinderGeometry(1.95, 2.05, 0.2, 8), mats.stone, 0, 0.1, 0);
+    addMesh(lg, new THREE.CylinderGeometry(1.55, 1.85, 1.2, 8), mats.pedestalDark, 0, 0.8, 0);
+    addMesh(lg, new THREE.CylinderGeometry(1.72, 1.78, 0.18, 8), mats.gold, 0, 0.33, 0);
+    addMesh(lg, new THREE.CylinderGeometry(1.6, 1.6, 0.12, 8), mats.gold, 0, 1.42, 0);
+    const bulb = new THREE.Group();
+    bulb.position.y = 4.55;
+    lg.add(bulb);
+    // 玻璃罩：下方收腰燈頸＋上方渾圓球體
     const prof: THREE.Vector2[] = [];
     for (let i = 0; i <= 20; i++) {
-      const t = i / 20;
-      // 由頸部（窄）往上鼓成球形，頂端收圓
-      const y = t * (R * 2.15);
-      let r: number;
-      if (t < 0.25) r = 0.95 + (R * 0.62 - 0.95) * (t / 0.25);
-      else {
-        const u = (t - 0.25) / 0.75;
-        r = Math.max(0.02, R * Math.sqrt(Math.max(0, 1 - Math.pow(u * 1.55 - 0.55, 2))) * (u < 0.36 ? 0.62 + (u / 0.36) * 0.38 : 1));
-      }
-      prof.push(new THREE.Vector2(r, y));
+      const u = i / 20;
+      const y = -1.35 + u * 1.77;
+      const sm = u * u * (3 - 2 * u);
+      prof.push(new THREE.Vector2(0.88 + Math.pow(sm, 1.35) * 1.1, y));
     }
-    const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), mats.orb);
-    glass.position.y = baseY + 1.5;
+    const domeC = 1.15;
+    const domeR = 2.11;
+    const a0 = Math.asin((0.42 - domeC) / domeR);
+    for (let i = 1; i <= 28; i++) {
+      const th = a0 + (i / 28) * (Math.PI / 2 - a0);
+      prof.push(new THREE.Vector2(Math.max(0, Math.cos(th) * domeR), domeC + Math.sin(th) * domeR));
+    }
+    const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), mats.bulbGlass);
     glass.userData.noMerge = true;
-    lg.add(glass);
-    const centerY = baseY + 1.5 + R * 1.35;
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffc860, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
-    halo.scale.set(R * 5.5, R * 5.5, 1);
-    halo.position.y = centerY;
+    glass.renderOrder = 3;
+    bulb.add(glass);
+    // 內部鎢絲支架與發光鎢絲
+    addMesh(bulb, new THREE.CylinderGeometry(0.18, 0.28, 1.45, 16), mats.bulbRing, 0, -0.68, 0);
+    addMesh(bulb, new THREE.BoxGeometry(0.46, 0.24, 0.18), mats.bulbRing, 0, 0.08, 0);
+    for (const side of [-1, 1]) {
+      const wire = addMesh(bulb, new THREE.CylinderGeometry(0.045, 0.045, 1.35, 8), mats.bulbRing, side * 0.36, 0.68, 0);
+      wire.rotation.z = -side * 0.28;
+    }
+    const arcGeo = new THREE.TorusGeometry(0.62, 0.085, 12, 32, Math.PI * 1.25);
+    for (const ry of [0, Math.PI / 2]) {
+      const arc = new THREE.Mesh(arcGeo, mats.filament);
+      arc.position.y = 1.25;
+      arc.rotation.set(0, ry, -Math.PI * 0.125);
+      arc.userData.noMerge = true;
+      bulb.add(arc);
+    }
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), mats.filament);
+    core.position.y = 1.25;
+    core.userData.noMerge = true;
+    bulb.add(core);
+    // 愛迪生螺紋燈頭
+    addMesh(bulb, new THREE.CylinderGeometry(0.9, 0.88, 0.22, 36), mats.gold, 0, -1.42, 0);
+    addMesh(bulb, new THREE.CylinderGeometry(0.86, 0.78, 1.08, 36), mats.screwMetal, 0, -1.98, 0);
+    [-1.64, -1.94, -2.24].forEach((ry, k) => addMesh(bulb, new THREE.TorusGeometry(0.85 - k * 0.025, 0.115, 12, 36).rotateX(Math.PI / 2), mats.screwMetal, 0, ry, 0));
+    addMesh(bulb, new THREE.CylinderGeometry(0.74, 0.44, 0.28, 32), mats.pedestalDark, 0, -2.58, 0);
+    addMesh(bulb, new THREE.SphereGeometry(0.44, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55), mats.screwMetal, 0, -2.62, 0);
+    // 傾斜的金色星軌光環
+    const orbit = new THREE.Mesh(new THREE.TorusGeometry(2.75, 0.11, 12, 56).rotateX(Math.PI / 2), mats.bulbRing);
+    orbit.position.y = 0.65;
+    orbit.rotation.set(0.22, 0, 0.34);
+    orbit.userData.noMerge = true;
+    bulb.add(orbit);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffc860, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.set(9, 9, 1);
+    halo.position.y = 1.15;
     halo.userData.noMerge = true;
-    lg.add(halo);
-    lanterns.addHanging(lm.x - cx, centerY, lm.z - cz, 0.01);
-    parts.add(lg);
+    bulb.add(halo);
+    lanterns.addHanging(lm.x - cx, (4.55 + 1.15) * S, lm.z - cz, 0.01);
+    bulb.traverse((o) => (o.userData.noMerge = true));
+    let last = 0;
+    let alertAt = -10;
+    const baseY = bulb.position.y;
+    let baseGlow = -1;
+    // 平常慢慢轉；有新提案時閃爍、跳躍約 2.5 秒
+    bulb.userData.tick = (t: number) => {
+      const dt = last ? Math.min(0.1, t - last) : 0;
+      last = t;
+      const k = t - alertAt;
+      const on = k >= 0 && k < 2.6;
+      bulb.rotation.y += dt * (on ? 2.2 : 0.35);
+      if (on) {
+        if (baseGlow < 0) baseGlow = mats.bulbGlass.emissiveIntensity;
+        const decay = 1 - k / 2.6;
+        bulb.position.y = baseY + Math.abs(Math.sin(k * 7.5)) * 0.9 * decay;
+        mats.bulbGlass.emissiveIntensity = baseGlow + (Math.sin(k * 26) > 0 ? 2.4 : 0.2) * decay;
+        (halo.material as THREE.SpriteMaterial).opacity = 0.5 + 0.45 * decay * (Math.sin(k * 26) > 0 ? 1 : 0.3);
+      } else if (baseGlow >= 0) {
+        bulb.position.y = baseY;
+        mats.bulbGlass.emissiveIntensity = baseGlow;
+        (halo.material as THREE.SpriteMaterial).opacity = 0.5;
+        baseGlow = -1;
+      }
+    };
+    bulb.userData.alert = () => {
+      alertAt = performance.now() / 1000;
+    };
+    g.add(lg);
   }
 
   // 草叢與小花（草地外環）
