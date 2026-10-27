@@ -1662,9 +1662,32 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     halo.userData.noMerge = true;
     bulb.add(halo);
     lanterns.addHanging(lm.x - cx, (4.55 + 1.15) * S, lm.z - cz, 0.01);
+    // 隱藏的笑臉：平常是無臉雕像，點一下露出笑臉並快速轉圈
+    const faceMat = new THREE.MeshBasicMaterial({ color: 0x5a3a12 });
+    const cheekMat = new THREE.MeshBasicMaterial({ color: 0xff8fa3, transparent: true, opacity: 0.85 });
+    const face = new THREE.Group();
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.055, 6, 14, Math.PI), faceMat);
+      eye.position.set(sx * 0.55, 1.62, 2.1);
+      face.add(eye);
+      const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.18, 14), cheekMat);
+      cheek.position.set(sx * 0.95, 1.2, 1.98);
+      cheek.rotation.y = sx * 0.45;
+      face.add(cheek);
+    }
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.07, 8, 20, Math.PI), faceMat);
+    smile.rotation.z = Math.PI;
+    smile.position.set(0, 1.12, 2.16);
+    face.add(smile);
+    face.visible = false;
+    face.traverse((o) => (o.renderOrder = 5));
+    bulb.add(face);
     bulb.traverse((o) => (o.userData.noMerge = true));
     let last = 0;
     let alertAt = -10;
+    let spinAt = -10;
+    let spinFrom = 0;
+    let spinTo = 0;
     const baseY = bulb.position.y;
     let baseGlow = -1;
     // 平常慢慢轉；有新提案時閃爍、跳躍約 2.5 秒
@@ -1673,7 +1696,17 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
       last = t;
       const k = t - alertAt;
       const on = k >= 0 && k < 2.6;
-      bulb.rotation.y += dt * (on ? 2.2 : 0.35);
+      const ks = t - spinAt;
+      // 點擊：快速轉兩圈後停在面向點的人，笑臉露出約 3 秒
+      face.visible = ks >= 0 && ks < 3.2;
+      if (ks >= 0 && ks < 1.0) {
+        const e = 1 - Math.pow(1 - ks / 1.0, 3);
+        bulb.rotation.y = spinFrom + (spinTo - spinFrom) * e;
+      } else if (ks >= 1.0 && ks < 3.2) {
+        bulb.rotation.y = spinTo;
+      } else {
+        bulb.rotation.y += dt * (on ? 2.2 : 0.35);
+      }
       if (on) {
         if (baseGlow < 0) baseGlow = mats.bulbGlass.emissiveIntensity;
         const decay = 1 - k / 2.6;
@@ -1690,6 +1723,18 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     bulb.userData.alert = () => {
       alertAt = performance.now() / 1000;
     };
+    bulb.userData.celebrate = (camX?: number, camZ?: number) => {
+      spinAt = performance.now() / 1000;
+      spinFrom = bulb.rotation.y;
+      const wp = new THREE.Vector3();
+      bulb.getWorldPosition(wp);
+      const face = camX === undefined || camZ === undefined ? spinFrom : Math.atan2(camX - wp.x, camZ - wp.z);
+      // 轉兩圈多，最後笑臉朝向點的人
+      let target = face;
+      while (target < spinFrom + Math.PI * 4) target += Math.PI * 2;
+      spinTo = target;
+    };
+    lg.add(makePickProxy(4.6, 5.6, 4.6, 0, 0, 0, { kind: 'bulb' }, 1.6));
     g.add(lg);
   }
 
