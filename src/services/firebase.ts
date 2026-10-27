@@ -87,6 +87,10 @@ export const firebaseConfig = {
   // 手機瀏覽器會隔離不同網域的資料，社群登入改走自己的網域（/__/auth 由 Vercel 轉送到 Firebase）。
   // 需先在 Facebook／Google 後台加入 https://<網域>/__/auth/handler，再於 Vercel 設定 VITE_FIREBASE_AUTH_DOMAIN。
   authDomain: resolveAuthDomain(),
+  databaseURL:
+    (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL ||
+    (firebaseConfigJson as any).databaseURL ||
+    'https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app',
   projectId: firebaseConfigJson.projectId,
   storageBucket: firebaseConfigJson.storageBucket,
   messagingSenderId: firebaseConfigJson.messagingSenderId,

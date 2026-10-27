@@ -1290,7 +1290,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {
           handleChangeQuality({
-            moveSpeedMultiplier: isFastWalk ? 1.0 : 1.75,
+            moveSpeedMultiplier: isFastWalk ? 1.0 : 2.1,
           });
         }}
       />

@@ -30,8 +30,8 @@ export class FirstPersonControls {
 
   // Limits
   public static readonly PITCH_LIMIT = 1.30; // ~74.5 degrees
-  public static readonly WALK_SPEED = 5.4; // meters/sec
-  public static readonly SPRINT_MULTIPLIER = 1.65;
+  public static readonly WALK_SPEED = 2.8; // meters/sec (stroll pace)
+  public static readonly SPRINT_MULTIPLIER = 2.1;
   public static readonly MOUSE_SENSITIVITY = 0.0022;
 
   // Desktop keyboard & mouse
@@ -275,8 +275,9 @@ export class FirstPersonControls {
   public updateCameraTransform(delta: number) {
     let bobOffset = 0;
     if (this.settings.headBob && this.isMoving) {
-      this.bobTimer += delta * 11.5;
-      bobOffset = Math.sin(this.bobTimer) * 0.038;
+      const sprinting = this.keys.sprint || (this.settings.moveSpeedMultiplier || 1.0) > 1.2;
+      this.bobTimer += delta * (sprinting ? 11.5 : 7.2);
+      bobOffset = Math.sin(this.bobTimer) * (sprinting ? 0.036 : 0.022);
     } else {
       this.bobTimer = 0;
     }

@@ -1,18 +1,21 @@
 import * as THREE from 'three';
 import { getDatabase, ref, set, onValue, onDisconnect, remove, serverTimestamp, Database, Unsubscribe } from 'firebase/database';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { app, auth } from '../../services/firebase';
+import { app, auth, firebaseConfig } from '../../services/firebase';
 
 /**
  * 3D 五島多人同遊：用 Firebase Realtime Database 交換每位玩家的位置（每秒最多 5 次，停著不動就不送）。
- * - 需要在 Vercel 設定 VITE_FIREBASE_DATABASE_URL（Realtime Database 的網址），沒設定時自動關閉
- * - 只有登入的人會出現在世界裡、也只有登入的人看得到其他人；只傳暱稱與位置
+ * - 優先使用環境變數 VITE_FIREBASE_DATABASE_URL，未設定時自動使用專案預設的 Realtime Database 網址
+ * - 已登入會員與未登入訪客都能出現在世界裡、彼此看得到；只傳暱稱與位置
  * - 離線（關分頁、斷線）時伺服器自動把自己移除
- * - 位置存在 kingdomPresence/{登入者 uid}/{這個分頁的 session}：同一個瀏覽器開多個分頁、
- *   或管理員切換示範帳號（共用同一個 Firebase 登入）時，彼此也看得到
+ * - 位置存在 kingdomPresence/{uid 或 guest_id}/{這個分頁的 session}：同一個瀏覽器開多個分頁、
+ *   或管理員切換示範帳號時，彼此也看得到
  */
 
-const DB_URL: string | undefined = (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL || undefined;
+const DB_URL: string | undefined =
+  (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL ||
+  firebaseConfig.databaseURL ||
+  'https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app';
 const PATH = 'kingdomPresence';
 const SEND_INTERVAL_MS = 200;
 const HEARTBEAT_MS = 15000;
@@ -33,9 +36,26 @@ export interface RemotePlayerState {
 
 export const multiplayerConfigured = Boolean(DB_URL);
 
+function getOrCreateGuestUid(): string {
+  const key = 'ideax_kingdom_guest_uid';
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing && /^guest_[a-z0-9]{6,30}$/.test(existing)) {
+      return existing;
+    }
+    const created = `guest_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(key, created);
+    return created;
+  } catch {
+    return `guest_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
 export class KingdomMultiplayer {
   private db: Database | null = null;
   private user: FirebaseUser | null = null;
+  private activeUid: string = getOrCreateGuestUid();
+  private attached = false;
   private unsubAuth: (() => void) | null = null;
   private unsubPlayers: Unsubscribe | null = null;
   private unsubOffset: Unsubscribe | null = null;
@@ -51,8 +71,9 @@ export class KingdomMultiplayer {
 
   constructor(name: string, colorSeed: string) {
     this.setName(name);
+    const seed = colorSeed && colorSeed !== 'guest' ? colorSeed : `${this.activeUid}-${this.sid}`;
     let h = 0;
-    for (let i = 0; i < colorSeed.length; i++) h = (h * 31 + colorSeed.charCodeAt(i)) >>> 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
     this.color = h % AVATAR_COLORS.length;
   }
 
@@ -76,11 +97,7 @@ export class KingdomMultiplayer {
     this.unsubAuth = onAuthStateChanged(auth, (u) => {
       this.detach();
       this.user = u;
-      if (!u) {
-        this.setStatus('guest');
-        this.onPlayers?.([]);
-        return;
-      }
+      this.activeUid = u ? u.uid : getOrCreateGuestUid();
       this.attach();
     });
   }
@@ -91,8 +108,11 @@ export class KingdomMultiplayer {
   }
 
   private attach() {
-    if (!this.db || !this.user) return;
-    const uid = this.user.uid;
+    if (!this.db || !this.activeUid) return;
+    const uid = this.activeUid;
+    this.attached = true;
+    this.lastSent = 0;
+    this.last.x = NaN;
     this.setStatus('connecting');
     const db = this.db;
     this.unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
@@ -127,17 +147,18 @@ export class KingdomMultiplayer {
   }
 
   private detach() {
+    this.attached = false;
     this.unsubPlayers?.();
     this.unsubPlayers = null;
     this.unsubOffset?.();
     this.unsubOffset = null;
-    if (this.db && this.user) remove(ref(this.db, `${PATH}/${this.user.uid}/${this.sid}`)).catch(() => {});
+    if (this.db && this.activeUid) remove(ref(this.db, `${PATH}/${this.activeUid}/${this.sid}`)).catch(() => {});
     this.last.x = NaN;
   }
 
   /** 每一幀呼叫：位置有變（或太久沒送）才寫入 */
   update(x: number, y: number, z: number, yaw: number) {
-    if (!this.db || !this.user || this.status === 'error') return;
+    if (!this.db || !this.activeUid || !this.attached || this.status === 'error') return;
     const now = performance.now();
     if (now - this.lastSent < SEND_INTERVAL_MS) return;
     const moved =
@@ -146,7 +167,7 @@ export class KingdomMultiplayer {
     this.lastSent = now;
     this.last = { x, y, z, yaw };
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    set(ref(this.db, `${PATH}/${this.user.uid}/${this.sid}`), { n: this.name, c: this.color, x: r2(x), y: r2(y), z: r2(z), r: r2(yaw), t: serverTimestamp() }).catch((err) => {
+    set(ref(this.db, `${PATH}/${this.activeUid}/${this.sid}`), { n: this.name, c: this.color, x: r2(x), y: r2(y), z: r2(z), r: r2(yaw), t: serverTimestamp() }).catch((err) => {
       console.warn('[kingdom] 位置同步失敗', err?.message);
       this.setStatus('error');
     });

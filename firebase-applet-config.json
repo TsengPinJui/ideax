@@ -3,6 +3,7 @@
   "appId": "1:901207969430:web:dd6bbc19aa8070ebb17cb7",
   "apiKey": "AIzaSyCZYTHffdGT1AYwNDk_RRZ1mMMWLfoQocE",
   "authDomain": "ideax-2af9c.firebaseapp.com",
+  "databaseURL": "https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app",
   "firestoreDatabaseId": "ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c",
   "storageBucket": "ideax-2af9c.firebasestorage.app",
   "messagingSenderId": "901207969430",

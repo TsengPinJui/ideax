@@ -3,10 +3,10 @@
     ".read": false,
     ".write": false,
     "kingdomPresence": {
-      ".read": "auth != null",
+      ".read": true,
       "$uid": {
         "$sid": {
-          ".write": "auth != null && auth.uid === $uid && $sid.length <= 40",
+          ".write": "((auth != null && auth.uid === $uid) || ($uid.beginsWith('guest_') && $uid.length <= 40)) && $sid.length <= 40",
           ".validate": "!newData.exists() || newData.hasChildren(['n', 'x', 'z', 'r', 't'])",
           "n": { ".validate": "newData.isString() && newData.val().length <= 24" },
           "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 64" },
