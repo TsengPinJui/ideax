@@ -63,6 +63,7 @@ import {
   getDifyConfig,
   saveDifyConfig,
   resetDifyConfig,
+  getDifyKeyForAgent,
   DifyConfig,
 } from '../services/difyClientService';
 import { getAuthHeaders } from '../services/authHeader';
@@ -379,58 +380,6 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     const startTime = Date.now();
 
     try {
-      // 若為搜職 Agent，先進行條件明確性排查（籠統提「附近」未指明位置、或「我的大學/專業/性格」未明說者主動向用戶確認）
-      if (targetAgent === 'explorer_agent') {
-        setExplorerBatchProgressText(' 正在檢驗搜尋條件明確性（排查附近或我的...籠統條件）...');
-        const intakeRes = await fetch('/api/job-explorer/intake', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, filters: {} }),
-        }).catch(() => null);
-
-        const intakeData = intakeRes ? await intakeRes.json().catch(() => null) : null;
-        if (intakeData?.isAmbiguous) {
-          setExplorerBatchProgressText(' 條件尚不明確，已啟動用戶確認追問機制');
-          setDifyLiveResponse({
-            success: true,
-            source: 'ambiguity-intake-guard',
-            agentKey: 'Explorer Agent 需求釐清確認調節器 (Intake Regulator)',
-            notice: ` 系統成功攔截籠統條件！檢測到【${(intakeData.ambiguousTypes || []).join(', ')}】等不清不楚的條件（例如詢問附近但未指定確切位置、或提到我的大學/專業/性格但未明說）。已暫停直接搜尋，改為向用戶提出具體確認！`,
-            latencyMs: Date.now() - startTime,
-            rawOutput: JSON.stringify(intakeData, null, 2),
-            parsedJson: {
-              reply: intakeData.reply,
-              clarificationQuestion: intakeData.clarificationQuestion,
-              suggestedChips: intakeData.suggestedChips,
-              isAmbiguous: true,
-              ambiguousTypes: intakeData.ambiguousTypes,
-            },
-          });
-          return;
-        }
-
-        setExplorerBatchProgressText('正在整理來源網站搜尋入口…');
-        const sourceRes = await fetch('/api/job-explorer/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, filters: {} }),
-        });
-        const sourceData = await sourceRes.json().catch(() => null);
-        if (!sourceRes.ok || !sourceData?.success) throw new Error(sourceData?.error || '整理搜尋入口失敗');
-        const sourceCount = Array.isArray(sourceData.sources) ? sourceData.sources.length : 0;
-        setExplorerBatchProgressText(`已整理 ${sourceCount} 個來源網站搜尋入口。`);
-        setDifyLiveResponse({
-          success: true,
-          source: 'source-links-only',
-          agentKey: 'IdeaX 求職網站搜尋入口',
-          notice: `此流程只產生 ${sourceCount} 個來源網站搜尋連結，不擷取或保存第三方職缺明細。`,
-          latencyMs: Date.now() - startTime,
-          rawOutput: JSON.stringify(sourceData, null, 2),
-          parsedJson: sourceData,
-        });
-        return;
-      }
-
       // 步驟 1：優先透過瀏覽器發起 CORS 串流直連 Dify 官方 API（https://api.dify.ai/v1）
       // 徹底解決在 www.ideax.tw 等靜態托管環境下沒有 Node 後端 (/api/...) 導致 404 的問題！
       let directSuccess = false;
@@ -463,6 +412,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
             body: JSON.stringify({
               agentType: targetAgent,
               query: q,
+              customKey: getDifyKeyForAgent(targetAgent),
             }),
           });
           if (res.ok) {

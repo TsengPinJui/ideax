@@ -309,7 +309,7 @@ async function fetchVideoBlobFromFirestore(): Promise<Blob> {
     Array.from({ length: Math.min(CONCURRENCY, remainingIndices.length) }, () => worker())
   );
 
-  return new Blob(chunks, { type: mimeType });
+  return new Blob(chunks as any, { type: mimeType });
 }
 
 /**

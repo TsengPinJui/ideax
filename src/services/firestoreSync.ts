@@ -1590,7 +1590,7 @@ export async function loadSecondaryBootDataFromFirestore(): Promise<{
     } = {};
 
     if (!usersSnap.empty) {
-      result.users = usersSnap.docs.map((d) => stripUserSecrets({ id: d.id, ...(d.data() as User) }));
+      result.users = usersSnap.docs.map((d) => stripUserSecrets({ ...(d.data() as User), id: d.id }));
     }
     if (!aSnap.empty) {
       result.answers = aSnap.docs.map((d) => d.data() as Answer);
@@ -1692,7 +1692,7 @@ export async function loadAllDataFromFirestore(
     } = {};
 
     if (!usersSnap.empty) {
-      result.users = usersSnap.docs.map((d) => stripUserSecrets({ id: d.id, ...(d.data() as User) }));
+      result.users = usersSnap.docs.map((d) => stripUserSecrets({ ...(d.data() as User), id: d.id }));
     }
     if (!qSnap.empty) {
       result.questions = qSnap.docs

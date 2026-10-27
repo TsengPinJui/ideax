@@ -69,7 +69,7 @@ interface VibeCodingExhibitionViewProps {
 import { SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
 
 export const VIBE_CATEGORIES = [
-  { id: 'all', label: '全部分類', icon: LayoutGrid, description: '全站所有軟體網站、AI 工具與互動遊戲' },
+  { id: 'all', label: '軟體、遊戲', icon: LayoutGrid, description: '全站所有軟體網站、AI 工具與互動遊戲' },
   { id: '遊戲', label: '遊戲', icon: Gamepad2, description: '熱門小遊戲、休閒互動、料理模擬與即時對戰' },
   { id: 'AI工具', label: 'AI工具', icon: Cpu, description: 'AI Agent 助手、生成式創作、視覺影音與數據洞察' },
   { id: '網站程式', label: '網站程式', icon: Globe, description: 'Web 服務、管理系統、電商平台與生活實用工具' },
@@ -156,7 +156,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [selectedTertiary, setSelectedTertiary] = useState<string>('all');
-  const [isGroupedView, setIsGroupedView] = useState<boolean>(true);
+  const [isGroupedView, setIsGroupedView] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'rating' | 'bookmarks' | 'tipped' | 'liked' | 'discussions' | 'most_views'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('grid'); // 軟體網站作品牆默認小卡片 (雙欄方格) 顯示
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
@@ -347,7 +347,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
   const groupedSections = useMemo(() => {
     const categoriesToGroup = [
-      { id: '遊戲', label: '遊戲專區', icon: Gamepad2, subtitle: '熱門小遊戲、休閒互動、料理模擬與即時對戰' },
       { id: 'AI工具', label: 'AI 智慧工具', icon: Cpu, subtitle: 'AI Agent 助手、生成式創作、視覺影音與智能分析' },
       { id: '網站程式', label: '網站系統與服務', icon: Globe, subtitle: 'Web 服務、管理後台、電商平台與生活實用工具' },
       { id: '自動化', label: '自動化工作流', icon: Workflow, subtitle: '定時排程、跨平台流程整合與效率機器人' },
@@ -1008,7 +1007,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
               </div>
               <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
-                <span>軟體網站作品牆</span>
+                <span>軟體、遊戲</span>
                 {onTogglePin && (
                   <button
                     type="button"
@@ -1290,23 +1289,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </>
                 )}
               </select>
-
-              {/* 依分類歸納切換鍵（全部分類時可用） */}
-              {selectedSubcat === 'all' && activeTab === 'all' && !searchQuery.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setIsGroupedView(!isGroupedView)}
-                  className={`px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    isGroupedView
-                      ? 'bg-indigo-50 text-indigo-900 border-indigo-300 font-black shadow-2xs'
-                      : 'bg-white text-stone-600 hover:bg-stone-50 border-indigo-200'
-                  }`}
-                  title={isGroupedView ? '目前：依分類歸納分組（點擊切換為平鋪列表）' : '目前：平鋪列表（點擊切換為依分類歸納分組）'}
-                >
-                  <Layers className={`w-3.5 h-3.5 ${isGroupedView ? 'text-indigo-600' : 'text-stone-400'}`} />
-                  <span className="hidden sm:inline">{isGroupedView ? '分類歸納' : '全部平鋪'}</span>
-                </button>
-              )}
 
               {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
               <div className="inline-flex rounded-xl bg-white/90 border border-indigo-200 p-0.5 sm:p-1 shrink-0">

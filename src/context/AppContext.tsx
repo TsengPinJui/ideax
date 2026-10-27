@@ -3384,7 +3384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           const mergedById = new Map<string, Question>();
           filteredQ.forEach((q) => {
-            const isInnov = q.postType === 'innovation_proposal' || q.category === '創新提案' || q.specialZone === 'create_ideas';
+            const isInnov = q.postType === 'innovation_proposal' || (q.category as any) === '創新提案' || q.specialZone === 'create_ideas';
             const resolvedAppName = q.appName || (isInnov ? deriveInnovationProposalName(q) : q.appName);
             mergedById.set(q.id, {
               ...q,
@@ -3393,7 +3393,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
           });
           missingVirtualForCloud.forEach((vq) => {
-            const isInnov = vq.postType === 'innovation_proposal' || vq.category === '創新提案' || vq.specialZone === 'create_ideas';
+            const isInnov = vq.postType === 'innovation_proposal' || (vq.category as any) === '創新提案' || vq.specialZone === 'create_ideas';
             const resolvedAppName = vq.appName || (isInnov ? deriveInnovationProposalName(vq) : vq.appName);
             mergedById.set(vq.id, {
               ...vq,
@@ -3423,7 +3423,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               (criticalData.questions || []).map((cq) => [cq.id, (cq.appName || '').trim()])
             );
             const proposalsNeedingAppNameSync = finalMergedQ.filter((q) => {
-              const isInnov = q.postType === 'innovation_proposal' || q.category === '創新提案' || q.specialZone === 'create_ideas';
+              const isInnov = q.postType === 'innovation_proposal' || (q.category as any) === '創新提案' || q.specialZone === 'create_ideas';
               if (!isInnov) return false;
               const derived = (q.appName || deriveInnovationProposalName(q)).trim();
               if (!derived) return false;

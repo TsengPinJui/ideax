@@ -102,8 +102,8 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
       : []),
     {
       id: 'vibecoding',
-      label: '軟體網站作品牆',
-      shortLabel: '軟體網站',
+      label: '軟體、遊戲',
+      shortLabel: '軟體、遊戲',
       subLabel: '網站程式、遊戲、AI工具、自動化、擴充功能',
       icon: '🚀',
       count: zoneCounts.vibecoding,
@@ -112,7 +112,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
       idleClasses: 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border-indigo-200/80 hover:border-indigo-300 shadow-2xs',
       badgeIdleClasses: 'bg-indigo-200/70 text-indigo-900',
       accentDot: 'bg-indigo-500',
-      title: '切換至主題專區：軟體網站（網站程式、遊戲、AI工具、自動化、擴充功能）',
+      title: '切換至主題專區：軟體、遊戲（網站程式、遊戲、AI工具、自動化、擴充功能）',
     },
     ...(onOpenStarSeason
       ? [

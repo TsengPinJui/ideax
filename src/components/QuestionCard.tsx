@@ -37,7 +37,7 @@ interface QuestionCardProps {
 export function getFormattedAppNameAndTitle(question: Question): { appName: string; cleanTitle: string } {
   const isInnovation =
     question.postType === 'innovation_proposal' ||
-    question.category === '創新提案' ||
+    (question.category as any) === '創新提案' ||
     question.specialZone === 'create_ideas';
 
   let rawAppName = (

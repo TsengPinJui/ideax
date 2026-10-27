@@ -165,32 +165,6 @@ export interface DifyDirectCallResult {
 export async function callDifyClientDirect(params: DifyDirectCallParams): Promise<DifyDirectCallResult> {
   const config = getDifyConfig();
   const agentType = params.agentType || 'aicrm_agent';
-  if (agentType === 'explorer_agent') {
-    const startedAt = Date.now();
-    const response = await fetch('/api/job-explorer/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: params.query, filters: {} }),
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok || !data?.success) throw new Error(data?.error || '跨平台搜尋職缺失敗');
-    const payload = {
-      reply: data.reply,
-      jobs: Array.isArray(data.jobs) ? data.jobs : [],
-      sources: Array.isArray(data.sources) ? data.sources : [],
-    };
-    return {
-      success: true,
-      source: 'ideax-cross-platform-job-search',
-      rawOutput: JSON.stringify(payload, null, 2),
-      parsedJson: payload,
-      latencyMs: Date.now() - startedAt,
-      messageId: `jobs-${Date.now()}`,
-      conversationId: params.conversationId || '',
-      agentKey: 'IdeaX 匯職缺跨平台全網搜尋',
-      notice: '跨平台搜尋在招職缺已完成。',
-    };
-  }
   const apiKey = params.apiKey || getDifyKeyForAgent(agentType);
   const baseUrl = config.baseUrl;
 

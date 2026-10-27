@@ -40,6 +40,7 @@ import { ChipMultiSelect } from './jobExplorer/ChipMultiSelect';
 import { JobsInstallPrompt } from './jobExplorer/JobsInstallPrompt';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { accompanyDuringSearch } from './mascot/mascotConfig';
+import { getDifyKeyForAgent } from '../services/difyClientService';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
 export type JobSortKey =
@@ -1368,7 +1369,12 @@ export const JobExplorerView: React.FC = () => {
           method: 'POST',
           signal: sess.controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: sess.brief, filters: sess.filters }),
+          body: JSON.stringify({
+            query: sess.brief,
+            filters: sess.filters,
+            customKey: getDifyKeyForAgent('explorer_agent'),
+            conversationId: difyConvId || undefined,
+          }),
         });
 
         if (streamRes.ok && streamRes.body) {
@@ -1440,7 +1446,12 @@ export const JobExplorerView: React.FC = () => {
           method: 'POST',
           signal: sess.controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: sess.brief, filters: sess.filters }),
+          body: JSON.stringify({
+            query: sess.brief,
+            filters: sess.filters,
+            customKey: getDifyKeyForAgent('explorer_agent'),
+            conversationId: difyConvId || undefined,
+          }),
         });
         const data = await response.json().catch(() => null);
         if (!response.ok || !data?.success) throw new Error(data?.error || '跨平台搜尋失敗');
@@ -1571,6 +1582,9 @@ export const JobExplorerView: React.FC = () => {
           previousRoles: currentRolesFrom(messages),
           conversationHistory: userHistory,
           skippedDimensions: effectiveSkipped,
+          customKey: getDifyKeyForAgent('explorer_agent'),
+          conversationId: difyConvId || undefined,
+          visitorId: typeof localStorage !== 'undefined' ? (localStorage.getItem('ideax_user_id') || undefined) : undefined,
           filters: {
             keyword: keyword.trim(),
             city: selectedCity,
@@ -1583,6 +1597,9 @@ export const JobExplorerView: React.FC = () => {
       });
 
       const data = await res.json().catch(() => null);
+      if (data?.difyConversationId || data?.conversationId) {
+        setDifyConvId(data.difyConversationId || data.conversationId);
+      }
       setAiStatus('typing');
       await new Promise((r) => setTimeout(r, 250));
 

@@ -1632,9 +1632,6 @@ function extractJsonFromText(text: string): any {
 // ==========================================
 app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
   const { agentType, query, inputs, customKey } = req.body;
-  if (agentType === 'explorer_agent') {
-    return res.status(410).json({ success: false, error: '匯職缺已改為來源網站搜尋連結，不再呼叫職缺搜尋 Agent。' });
-  }
 
   let apiKey = String(customKey || '').trim();
   if (!apiKey) {
@@ -5302,6 +5299,36 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
     const skippedDims = new Set<string>(skippedDimensionsInput);
 
+    // ─── 優先呼叫 Dify 匯職缺 Agent (搜搜) 記錄對話並取得回應 ───
+    const difyKey = String(req.body?.customKey || '').trim() || mascotAgentKey('explorer');
+    let difyOutputText: string | null = null;
+    let difyConvId = String(req.body?.conversationId || '').trim();
+    let difyMsgId = '';
+    if (difyKey) {
+      try {
+        const difyRes = await callDifyStreamingAgent({
+          apiKey: difyKey,
+          query: rawMessage,
+          conversationId: difyConvId || undefined,
+          user: String(req.body?.visitorId || 'job_explorer_user').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+          inputs: {
+            platform_name: 'IdeaX',
+            平台名稱: 'IdeaX',
+            entry: 'job_explorer',
+            previous_brief: previousBrief,
+          },
+          timeoutMs: 30000,
+        });
+        if (difyRes && difyRes.text) {
+          difyOutputText = difyRes.text;
+          if (difyRes.conversationId) difyConvId = difyRes.conversationId;
+          if (difyRes.messageId) difyMsgId = difyRes.messageId;
+        }
+      } catch (difyErr) {
+        console.warn('[Job Explorer Intake] Dify agent call warning:', difyErr);
+      }
+    }
+
     // ─── 優先使用 Gemini 進行深度語意理解與實體抽取 ───
     const geminiIntake = await parseJobIntakeWithGemini({
       rawMessage,
@@ -5350,8 +5377,10 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
       return res.json({
         success: true,
-        intakeEngine: geminiIntake.__engine || 'ai',
-        reply: resolvedReply,
+        intakeEngine: difyOutputText ? 'dify' : (geminiIntake.__engine || 'ai'),
+        difyConversationId: difyConvId || undefined,
+        difyMessageId: difyMsgId || undefined,
+        reply: difyOutputText || resolvedReply,
         confirmedBrief,
         searchBriefIfSkipped: confirmedBrief,
         isAmbiguous: isAmb,
@@ -5713,10 +5742,12 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      intakeEngine: 'rules',
+      intakeEngine: difyOutputText ? 'dify' : 'rules',
+      difyConversationId: difyConvId || undefined,
+      difyMessageId: difyMsgId || undefined,
       aiNote: lastIntakeAiNote || undefined,
       preferences: extractPreferencesFromText(fullText),
-      reply: resolvedReply,
+      reply: difyOutputText || resolvedReply,
       confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
       searchBriefIfSkipped: finalBrief,
       isAmbiguous: isCoreAmbiguous,
@@ -5748,6 +5779,20 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
   try {
     const query = String(req.body?.query || '').trim().slice(0, 600);
     if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+
+    // 觸發 Dify 記錄職缺搜尋事件
+    const searchDifyKey = String(req.body?.customKey || '').trim() || mascotAgentKey('explorer');
+    const searchConvId = String(req.body?.conversationId || '').trim();
+    if (searchDifyKey) {
+      callDifyStreamingAgent({
+        apiKey: searchDifyKey,
+        query: `【執行職缺檢索】${query}`,
+        conversationId: searchConvId || undefined,
+        user: String(req.body?.visitorId || 'job_explorer_user').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+        inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'job_explorer_search' },
+        timeoutMs: 30000,
+      }).catch((e) => console.warn('[Job Search Dify Log Error]', e?.message || e));
+    }
 
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store');
@@ -5791,6 +5836,20 @@ app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
   try {
     const query = String(req.body?.query || '').trim().slice(0, 600);
     if (!query) return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+
+    // 觸發 Dify 記錄職缺搜尋事件
+    const searchDifyKey = String(req.body?.customKey || '').trim() || mascotAgentKey('explorer');
+    const searchConvId = String(req.body?.conversationId || '').trim();
+    if (searchDifyKey) {
+      callDifyStreamingAgent({
+        apiKey: searchDifyKey,
+        query: `【執行職缺檢索】${query}`,
+        conversationId: searchConvId || undefined,
+        user: String(req.body?.visitorId || 'job_explorer_user').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+        inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'job_explorer_search' },
+        timeoutMs: 30000,
+      }).catch((e) => console.warn('[Job Search Dify Log Error]', e?.message || e));
+    }
 
     const result = await executeJobSearch(query, req.body?.filters);
     res.setHeader('Cache-Control', 'no-store');
