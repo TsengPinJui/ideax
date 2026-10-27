@@ -33,8 +33,30 @@ const visible = (q: Question) => q.status !== 'delisted' && !(q as any).isDelist
 const isWork = (q: Question) => q.postType === 'vibecoding_app' || q.postType === 'innovation_proposal' || isGameQuestion(q);
 const time = (q: Question) => Date.parse(q.createdAt) || 0;
 
+export function hotScore(q: Question): number {
+  const views = q.viewsCount ?? q.views ?? 0;
+  const likes = (q as any).likesCount ?? q.likes ?? 0;
+  const discs = q.discussionsCount ?? (q.discussions ? q.discussions.length : 0);
+  const sols = q.solutionsCount ?? (q.solutions ? q.solutions.length : 0);
+  return views + likes * 5 + discs * 8 + sols * 10;
+}
+
 export function stallItems(questions: Question[], content: StallContent): Question[] {
   const pool = questions.filter(visible);
+  const discPool = pool.filter((q) => q.postType === 'chat_discussion' || (!q.postType && !isGameQuestion(q)));
+  const matchDisc = (re: RegExp, subcat?: string, cat?: string) => {
+    const exact = discPool.filter((q) => {
+      if (subcat && q.subcategory === subcat) return true;
+      const hay = `${q.title || ''} ${q.description || ''} ${q.category || ''} ${q.subcategory || ''} ${(q.tags || []).join(' ')}`;
+      return re.test(hay);
+    });
+    if (exact.length > 0) return exact.sort((a, b) => time(b) - time(a));
+    if (cat) {
+      const byCat = discPool.filter((q) => q.category === cat);
+      if (byCat.length > 0) return byCat.sort((a, b) => time(b) - time(a));
+    }
+    return discPool.sort((a, b) => time(b) - time(a));
+  };
   switch (content) {
     case 'proposal':
       return pool.filter((q) => q.postType === 'innovation_proposal').sort((a, b) => time(b) - time(a));
@@ -44,10 +66,37 @@ export function stallItems(questions: Question[], content: StallContent): Questi
       return pool.filter((q) => q.postType === 'vibecoding_app' && !isGameQuestion(q)).sort((a, b) => time(b) - time(a));
     case 'hot':
       return pool.filter(isWork).sort((a, b) => (b.viewsCount ?? b.views ?? 0) - (a.viewsCount ?? a.views ?? 0));
+    case 'tea_daily':
+      return matchDisc(/日常|閒聊|交流|分享|心情|隨筆|家務|購物/i, undefined, '日常疑難');
+    case 'tea_life':
+      return matchDisc(/生活|情感|感情|心靈|健康|旅行|美食|休閒|慢調/i, '感情', '日常疑難');
+    case 'tea_work':
+      return matchDisc(/職場|工作|職涯|求職|轉職|管理|同事|人脈|商業/i, '職場', '日常疑難');
+    case 'tea_idea':
+      return matchDisc(/靈感|哲學|思維|創意|想法|探討|觀點|未來|時事/i, '時事', '學術探討');
+    case 'tea_board':
+      return matchDisc(/日常|生活|職場|靈感|閒聊|交流|家務|感情|時事/i, undefined, '日常疑難');
+    case 'craft_plumbing':
+      return matchDisc(/水電|管線|配線|漏水|跳電|插座|衛浴|馬達|水塔|電工|修繕/i, '水電', '專業問題');
+    case 'craft_interior':
+      return matchDisc(/室內裝修|裝修|裝潢|木工|油漆|泥作|系統櫃|設計|地板|隔音|採光|建材/i, '室內裝修', '專業問題');
+    case 'craft_law':
+      return matchDisc(/法律智財|法律|智財|專利|商標|著作權|合約|訴訟|法務|條款|糾紛|權益/i, '法律智財', '專業問題');
+    case 'craft_tax':
+      return matchDisc(/會計稅務|會計|稅務|報稅|發票|營業稅|營所稅|記帳|財務|節稅|審計|帳務/i, '會計稅務', '專業問題');
+    case 'craft_mgmt':
+      return matchDisc(/企業管理|管理|組織|人資|KPI|OKR|營運|策略|領導|流程|企業|制度/i, '企業管理', '專業問題');
+    case 'craft_board':
+      return matchDisc(/水電|室內裝修|法律智財|會計稅務|企業管理|專業|工程|實務/i, undefined, '專業問題');
     case 'new':
     default:
       return pool.filter(isWork).sort((a, b) => time(b) - time(a));
   }
+}
+
+/** 取得該類店鋪的「熱門討論」清單（依觀看、按讚、討論與解答熱度排序，供店鋪門前看板與抽屜輪播） */
+export function hotStallItems(questions: Question[], content: StallContent): Question[] {
+  return [...stallItems(questions, content)].sort((a, b) => hotScore(b) - hotScore(a));
 }
 
 const badgeOf = (q: Question) =>
@@ -160,6 +209,89 @@ function QuestionRows({ list, onPick, empty }: { list: Question[]; onPick: (q: Q
   );
 }
 
+/** 店鋪熱門討論自動輪播區塊（與 3D 店鋪門前走馬燈同步展示該分類熱門討論） */
+function ShopHotCarousel({
+  shopName,
+  items,
+  onPick,
+}: {
+  shopName: string;
+  items: Question[];
+  onPick: (q: Question) => void;
+}) {
+  const slides = items.slice(0, 5);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    setIdx(0);
+  }, [shopName, slides.length]);
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const t = window.setInterval(() => {
+      setIdx((prev) => (prev + 1) % slides.length);
+    }, 3800);
+    return () => window.clearInterval(t);
+  }, [slides.length]);
+
+  if (!slides.length) return null;
+  const cur = slides[idx % slides.length];
+  const views = cur.viewsCount ?? cur.views ?? 0;
+  const replies = (cur.discussionsCount ?? (cur.discussions ? cur.discussions.length : 0)) + (cur.solutionsCount ?? (cur.solutions ? cur.solutions.length : 0));
+
+  return (
+    <div
+      className="mx-4 mt-3 rounded-xl p-3 space-y-2"
+      style={{
+        background: 'linear-gradient(135deg, rgba(156,31,24,0.52), rgba(45,20,12,0.85))',
+        border: '1.5px solid rgba(242,201,76,0.72)',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[12.5px] font-bold flex items-center gap-1" style={{ color: '#fde68a' }}>
+          🔥 {shopName}・熱門討論輪播
+        </span>
+        <div className="flex items-center gap-1.5">
+          {slides.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setIdx(i)}
+              className="w-2 h-2 rounded-full transition-all cursor-pointer"
+              style={{
+                background: i === idx % slides.length ? '#fbbf24' : 'rgba(246,231,196,0.3)',
+                transform: i === idx % slides.length ? 'scale(1.25)' : 'scale(1)',
+              }}
+              aria-label={`第 ${i + 1} 則熱門討論`}
+            />
+          ))}
+          <span className="text-[11px] tabular-nums ml-1" style={{ color: '#f6e7c4' }}>
+            {idx + 1}/{slides.length}
+          </span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onPick(cur)}
+        className="w-full text-left rounded-lg px-3 py-2.5 cursor-pointer transition-colors hover:bg-[rgba(242,201,76,0.14)]"
+        style={{ background: 'rgba(0,0,0,0.32)', border: '1px solid rgba(242,201,76,0.35)' }}
+      >
+        <div className="text-[14.5px] font-bold line-clamp-2 leading-snug" style={{ color: '#fff8dc' }}>
+          {cur.title || '（未命名討論）'}
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11.5px]" style={{ color: '#e7d3a5' }}>
+          <span className="truncate">
+            【{cur.subcategory || cur.category || '熱門'}】{cur.authorName || '創點源行家'}
+          </span>
+          <span className="shrink-0" style={{ color: '#fbbf24' }}>
+            👁 {views} · 💬 {replies} ➔
+          </span>
+        </div>
+      </button>
+    </div>
+  );
+}
+
 export const KingdomSideDrawer: React.FC<{
   state: DrawerState | null;
   questions: Question[];
@@ -201,6 +333,12 @@ export const KingdomSideDrawer: React.FC<{
       if (p?.kind === 'gate' && p.regionId === 'region-creative') {
         return STREET_PROPS[p.regionId]
           .filter((s) => s.kind === 'stall')
+          .map((s) => ({ label: s.name, hint: s.sub, run: () => onChange({ kind: 'street', propId: s.id }) }));
+      }
+      if (p?.kind === 'gate' && p.regionId === 'region-discussion') {
+        const isTea = p.id.includes('tea');
+        return STREET_PROPS[p.regionId]
+          .filter((s) => s.kind !== 'gate' && (isTea ? s.id.includes('tea') : s.id.includes('craft')))
           .map((s) => ({ label: s.name, hint: s.sub, run: () => onChange({ kind: 'street', propId: s.id }) }));
       }
     }
@@ -284,9 +422,10 @@ export const KingdomSideDrawer: React.FC<{
         <div className="flex-1 overflow-y-auto px-4 py-3">
           <QuestionRows list={list.slice(0, 60)} onPick={openQ} empty="這層還沒有痛點，歡迎刊登第一則！" />
         </div>
-        <div className="px-4 py-3 flex justify-end" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })} className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer">
-            <PenLine className="w-4 h-4" /> 刊登痛點
+        <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
+          <span className="kx-sub text-[12px]">正反面佈告欄與迴廊皆可張貼</span>
+          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })} className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer shrink-0">
+            <PenLine className="w-4 h-4" /> 張貼／刊登痛點
           </button>
         </div>
       </>
@@ -303,23 +442,84 @@ export const KingdomSideDrawer: React.FC<{
           </div>
         </>
       );
-    } else if (p?.kind === 'stall' && p.content) {
+    } else if (p?.kind === 'gate' && p.regionId === 'region-discussion') {
+      body = (
+        <>
+          <Header title={p.name} badge="討論島・街區" sub={p.sub} onClose={close} />
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <p className="kx-sub text-[13px]">{p.note}</p>
+            <ActionList actions={actions} />
+          </div>
+          <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
+            <button
+              type="button"
+              onClick={() => onAction({ kind: 'module', module: 'create_discussion' })}
+              className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer"
+            >
+              <PenLine className="w-4 h-4" /> 發起討論
+            </button>
+          </div>
+        </>
+      );
+    } else if (p && p.content) {
       const list = stallItems(questions, p.content);
+      const hotList = hotStallItems(questions, p.content);
+      const isDiscProp = p.regionId === 'region-discussion';
+      const isCraft = p.id.includes('craft');
+      const isBoard = p.kind === 'board';
+      const unit = isDiscProp ? '則討論' : '件';
+      const siblingShops = isDiscProp
+        ? STREET_PROPS['region-discussion'].filter((s) => s.kind === 'shop' && (isCraft ? s.id.includes('craft') : s.id.includes('tea')))
+        : [];
       body = (
         <>
           <Header
             title={p.name}
-            badge="創意集"
-            sub={`${p.sub || ''}・共 ${list.length} 件`}
+            badge={isDiscProp ? (isBoard ? '街道佈告欄' : isCraft ? '百工坊・店鋪' : '茶藝街・茶館') : '創意集'}
+            sub={`${p.sub || ''}・共 ${list.length} ${unit}`}
             onClose={close}
             onBack={() => {
-              const gate = STREET_PROPS[p.regionId].find((s) => s.kind === 'gate');
+              const gate = STREET_PROPS[p.regionId].find((s) =>
+                s.kind === 'gate' && (isDiscProp ? (p.id.includes('tea') ? s.id.includes('tea') : s.id.includes('craft')) : true)
+              );
               onChange(gate ? { kind: 'street', propId: gate.id } : null);
             }}
           />
+          {isDiscProp && siblingShops.length > 0 && (
+            <div className="px-4 pt-2.5 flex flex-wrap gap-1.5">
+              {siblingShops.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onChange({ kind: 'street', propId: s.id })}
+                  className="rounded-md px-2 py-1 text-[12px] cursor-pointer transition-colors"
+                  style={{
+                    background: s.id === p.id ? 'rgba(179,38,30,0.82)' : 'rgba(0,0,0,0.28)',
+                    border: `1px solid ${s.id === p.id ? 'rgba(242,198,106,0.85)' : 'rgba(226,184,90,0.25)'}`,
+                    color: '#f6e7c4',
+                  }}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {isDiscProp && <ShopHotCarousel shopName={p.name.replace(/佈告欄・|討論欄・/, '')} items={hotList} onPick={openQ} />}
           <div className="flex-1 overflow-y-auto px-4 py-3">
-            <QuestionRows list={list.slice(0, 40)} onPick={openQ} empty="這個攤位還沒有擺上作品。" />
+            <QuestionRows list={list.slice(0, 40)} onPick={openQ} empty={isDiscProp ? '這間店鋪目前還沒有對應討論，歡迎發起第一則討論！' : '這個攤位還沒有擺上作品。'} />
           </div>
+          {isDiscProp && (
+            <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
+              <span className="kx-sub text-[12px]">街旁兩排佈告欄同步張貼・店門輪播熱門</span>
+              <button
+                type="button"
+                onClick={() => onAction({ kind: 'module', module: 'create_discussion' })}
+                className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <PenLine className="w-4 h-4" /> 發起討論
+              </button>
+            </div>
+          )}
         </>
       );
     } else if (p) {
@@ -337,13 +537,14 @@ export const KingdomSideDrawer: React.FC<{
     }
   } else if (state?.kind === 'hallZone') {
     const h = hallOf(state.buildingId);
+    const isLib = h?.kind === 'library';
     const zones = h ? HALL_ZONES[h.kind] : [];
     const zone = zones[state.zone];
     const list = hallZoneItems(state.buildingId, state.zone, questions);
     if (h && zone) {
       body = (
         <>
-          <Header title={zone.name} badge={h.title} sub={`${zone.sub}・共 ${list.length} 件`} onClose={close} />
+          <Header title={zone.name} badge={h.title} sub={`${zone.sub}・共 ${list.length} ${isLib ? '冊' : '件'}`} onClose={close} />
           <div className="px-4 pt-3">
             <div className={`grid gap-1.5 ${zones.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
               {zones.map((z, i) => (
@@ -358,21 +559,30 @@ export const KingdomSideDrawer: React.FC<{
                     color: '#f6e7c4',
                   }}
                 >
-                  {z.name.replace(/展場|展區/, '')}
+                  {z.name.replace(/展場|展區|・.*/, '')}
                 </button>
               ))}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3">
-            <QuestionRows list={list.slice(0, 80)} onPick={openQ} empty="這個展區還沒有作品，歡迎上架第一件！" />
+            <QuestionRows
+              list={list.slice(0, 80)}
+              onPick={openQ}
+              empty={isLib ? '此分類書架尚無討論典籍，歡迎發起第一則討論！' : '這個展區還沒有作品，歡迎上架第一件！'}
+            />
           </div>
           <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
             <button
               type="button"
-              onClick={() => onAction({ kind: 'module', module: zone.key === 'proposal' ? 'create_proposal' : 'create_app' })}
+              onClick={() =>
+                onAction({
+                  kind: 'module',
+                  module: isLib ? 'create_discussion' : zone.key === 'proposal' ? 'create_proposal' : 'create_app',
+                })
+              }
               className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer"
             >
-              <PenLine className="w-4 h-4" /> {zone.key === 'proposal' ? '發表創新提案' : '上架作品'}
+              <PenLine className="w-4 h-4" /> {isLib ? '發起討論' : zone.key === 'proposal' ? '發表創新提案' : '上架作品'}
             </button>
           </div>
         </>

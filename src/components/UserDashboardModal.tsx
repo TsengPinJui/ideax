@@ -3057,7 +3057,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         );
                       })()}
 
-                      {/* 2. 創點島開關 (公開 / 隱藏) ＋ 管理員預覽 */}
+                      {/* 2. 創點源開關 (公開 / 隱藏) ＋ 管理員預覽 */}
                       {(() => {
                         const isIslandOpen = publicMetricsConfig.showIslandMap !== false;
 
@@ -3074,7 +3074,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`font-black text-xs flex items-center gap-1.5 ${isIslandOpen ? 'text-purple-950' : 'text-stone-700'}`}>
                                     <Compass className={`w-3.5 h-3.5 shrink-0 ${isIslandOpen ? 'text-purple-600' : 'text-stone-400'}`} />
-                                    <span>創點島開關</span>
+                                    <span>創點源開關</span>
                                   </span>
                                   {isIslandOpen ? (
                                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs flex items-center gap-1">
@@ -3090,8 +3090,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 </div>
                                 <p className="text-[11px] text-stone-600 mt-1 leading-snug">
                                   {isIslandOpen
-                                    ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口，所有會員與訪客皆可自由探索'
-                                    : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏，僅管理員由後台可預覽或開啟'}
+                                    ? '公開中 · 全站頂部導覽列與首頁展示「創點源•3D島覽」入口，所有會員與訪客皆可自由探索'
+                                    : '已隱藏 · 創點源•3D島覽入口對全站一般用戶隱藏，僅管理員由後台可預覽或開啟'}
                                 </p>
                               </div>
 
@@ -3103,7 +3103,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${
                                   isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'
                                 }`}
-                                title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
+                                title={isIslandOpen ? '點擊將創點源設為「隱藏」' : '點擊將創點源設為「公開」'}
                               >
                                 <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${
                                   isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'
@@ -3141,12 +3141,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                               </div>
                             </div>
 
-                            {/* 管理員特權預覽 (進入創點島且不影響其他人的顯示設定) */}
+                            {/* 管理員特權預覽 (進入創點源且不影響其他人的顯示設定) */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-purple-200/60 mt-1">
                               <div className="flex items-center gap-1.5 text-[11px] text-purple-900">
                                 <Shield className="w-3.5 h-3.5 text-purple-700 shrink-0" />
                                 <span className="font-bold">管理員預覽：</span>
-                                <span className="text-stone-500 text-[10.5px]">進入創點島且不影響其他人的顯示設定</span>
+                                <span className="text-stone-500 text-[10.5px]">進入創點源且不影響其他人的顯示設定</span>
                               </div>
                               <div className="flex items-center gap-1.5 self-end sm:self-auto">
                                 <button
@@ -3160,16 +3160,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                     }
                                   }}
                                   className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-black flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                                  title="以管理員身分直接進入創點島，不論目前是否為隱藏狀態，都不變更前台公開/隱藏設定"
+                                  title="以管理員身分直接進入創點源，不論目前是否為隱藏狀態，都不變更前台公開/隱藏設定"
                                 >
                                   <Compass className="w-3.5 h-3.5" />
-                                  <span>進入創點島預覽</span>
+                                  <span>進入創點源預覽</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => window.open('/island', '_blank', 'noopener,noreferrer')}
                                   className="px-2 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 text-[11px] font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
-                                  title="在新分頁開啟創點島地圖預覽"
+                                  title="在新分頁開啟創點源•3D地圖預覽"
                                 >
                                   <span>新分頁 ↗</span>
                                 </button>

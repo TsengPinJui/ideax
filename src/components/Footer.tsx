@@ -112,7 +112,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-cyan-300 transition-colors text-left font-semibold text-cyan-400 cursor-pointer flex items-center gap-1.5"
                 >
                   <Map className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span>創點島•互動島覽</span>
+                  <span>創點源•3D島覽</span>
                 </a>
               </li>
               <li>

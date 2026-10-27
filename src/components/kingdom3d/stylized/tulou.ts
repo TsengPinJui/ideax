@@ -357,7 +357,8 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
     add(new THREE.BoxGeometry(0.5, 0.5, 0.9), mats.sculpt, s * (gateW / 2 + 0.45), 0.25, fz + 0.7);
   }
   add(scaledBox(gateW + 1.8, 0.5, 0.75, 1.5, 0.5, 1.5), mats.stoneLight, 0, gateH + 0.25, fz);
-  const signMat = new THREE.MeshStandardMaterial({ map: signboardTexture(b.name, '痛點懸賞・土樓'), roughness: 0.55, metalness: 0.1 });
+  const sTex = signboardTexture(b.name, '痛點懸賞・土樓');
+  const signMat = new THREE.MeshStandardMaterial({ map: sTex, emissive: 0xffffff, emissiveMap: sTex, emissiveIntensity: 0.58, roughness: 0.45, metalness: 0.12 });
   const plaque = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.15, 0.16), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, signMat, mats.darkWood]);
   plaque.position.set(0, gateH + 1.15, fz + 0.32);
   plaque.userData.noMerge = true;
@@ -372,7 +373,8 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
   const couplet = DOOR_COUPLETS[b.id];
   if (couplet) {
     for (const s of [1, -1]) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 3.2), new THREE.MeshStandardMaterial({ map: coupletTexture(s > 0 ? couplet[0] : couplet[1]), roughness: 0.85 }));
+      const cTex = coupletTexture(s > 0 ? couplet[0] : couplet[1]);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 3.2), new THREE.MeshStandardMaterial({ map: cTex, emissive: 0xffffff, emissiveMap: cTex, emissiveIntensity: 0.55, roughness: 0.8 }));
       m.position.set(s * (gateW / 2 + 0.45), 2.45, fz + 0.36);
       m.userData.noMerge = true;
       root.add(m);
@@ -391,7 +393,7 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
     offsets[level] += count;
     inner.add(mesh);
   };
-  // 中庭佈告欄（日常疑難）：木架＋小屋頂
+  // 中庭佈告欄（日常疑難）：木架＋小屋頂（正面與背面皆可張貼與點選）
   for (const s of [-1, 1]) {
     const g = new THREE.Group();
     g.position.set(s * 9.9, 0, 5.4);
@@ -402,14 +404,17 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
     const pr = buildRoofTier(bw + 0.6, 0.7, { rise: 0.35, overhang: 0.35, curl: 0.25, theme: 'slate', ridge: true, lite: true });
     pr.position.y = 3.05;
     g.add(pr);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(bw, bw * 0.275), boardMat(0, MAIN_BOARD));
-    m.position.set(0, 1.85, 0.02);
-    g.add(m);
-    add(new THREE.BoxGeometry(bw + 0.2, bw * 0.275 + 0.2, 0.08), mats.darkWood, 0, 1.85, -0.04, 0, g);
+    add(new THREE.BoxGeometry(bw + 0.2, bw * 0.275 + 0.2, 0.08), mats.darkWood, 0, 1.85, 0, 0, g);
+    for (const face of [1, -1]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(bw, bw * 0.275), boardMat(0, MAIN_BOARD));
+      m.position.set(0, 1.85, face * 0.045);
+      if (face < 0) m.rotation.y = Math.PI;
+      m.userData.noMerge = true;
+      m.userData.painBoard = { level: 0, buildingId: b.id, offset: offsets[0], count: 8, layout: MAIN_BOARD };
+      offsets[0] += 8;
+      g.add(m);
+    }
     g.updateMatrixWorld(true);
-    m.userData.noMerge = true;
-    m.userData.painBoard = { level: 0, buildingId: b.id, offset: offsets[0], count: 8, layout: MAIN_BOARD };
-    offsets[0] += 8;
   }
   // 迴廊牆面
   const nb = 22;
@@ -427,7 +432,7 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
     }
   }
 
-  // ── 中庭：創點舞台（後方，面向大門）
+  // ── 中庭：創點舞台（後方，面向大門；舞台背牆背面也設有懸賞佈告欄）
   const colliders: Collider[] = [];
   const rect = (id: string, cx0: number, cz0: number, hw: number, hd: number, yaw = 0) => {
     const c = Math.cos(yaw);
@@ -453,7 +458,12 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
     back.userData.noMerge = true;
     sg.add(back);
     a2(new THREE.BoxGeometry(sw - 0.4, 2.5, 0.12), mats.darkWood, 0, sh + 1.3, -sd / 2 + 0.06);
-    const smat = new THREE.MeshStandardMaterial({ map: signboardTexture('創點舞台', '提案發表・創星季'), roughness: 0.55 });
+    const stageBackBoard = new THREE.Mesh(new THREE.PlaneGeometry(sw - 0.6, (sw - 0.6) * 0.275), boardMat(0, MAIN_BOARD));
+    stageBackBoard.position.set(0, sh + 1.3, -11.2 - sd / 2 - 0.01);
+    stageBackBoard.rotation.y = Math.PI;
+    pushBoard(stageBackBoard, 0, MAIN_BOARD);
+    const stTex = signboardTexture('創點舞台', '提案發表・創星季');
+    const smat = new THREE.MeshStandardMaterial({ map: stTex, emissive: 0xffffff, emissiveMap: stTex, emissiveIntensity: 0.58, roughness: 0.45 });
     const splaque = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.62, 0.1), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, smat, mats.darkWood]);
     splaque.position.set(0, sh + 2.95, sd / 2 - 0.15);
     splaque.userData.noMerge = true;

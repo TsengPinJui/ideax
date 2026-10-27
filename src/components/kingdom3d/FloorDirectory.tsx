@@ -42,15 +42,15 @@ export const FloorDirectory: React.FC<{
       return !o;
     });
   return (
-    <div className="kx-root absolute right-2.5 sm:right-4 top-[7.5rem] sm:top-36 z-20 pointer-events-auto w-[11.5rem] sm:w-56">
+    <div data-ui-panel="true" className="kx-root absolute right-2 sm:right-4 top-28 sm:top-36 z-20 pointer-events-auto w-40 sm:w-56">
       <div className="kx-panel kx-corners overflow-hidden">
-        <button type="button" onClick={toggle} className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer" aria-expanded={open}>
+        <button type="button" onClick={toggle} className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 cursor-pointer" aria-expanded={open}>
           <Layers className="w-4 h-4 text-amber-300 shrink-0" />
-          <span className="kx-title text-[14px] truncate flex-1 text-left">{title}・樓層</span>
+          <span className="kx-title text-[13px] sm:text-[14px] truncate flex-1 text-left">{title}・樓層</span>
           {open ? <ChevronDown className="w-4 h-4 text-amber-200/70" /> : <ChevronRight className="w-4 h-4 text-amber-200/70" />}
         </button>
         {open && (
-          <ul className="px-1.5 pb-1.5 space-y-1" style={{ borderTop: '1px solid rgba(226,184,90,0.25)' }}>
+          <ul className="px-1.5 pb-1.5 space-y-1 max-h-[34dvh] sm:max-h-[45dvh] overflow-y-auto" style={{ borderTop: '1px solid rgba(226,184,90,0.25)' }}>
             {entries.map((e) => (
               <li key={e.key} className={e.child ? 'pl-3' : ''}>
                 <button

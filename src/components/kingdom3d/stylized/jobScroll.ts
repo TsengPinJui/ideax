@@ -8,8 +8,8 @@ export interface ScrollJob {
   salaryText?: string;
 }
 
-const SERIF = '"Noto Serif TC","Songti TC","PMingLiU",serif';
-const KAI = '"LXGW WenKai TC","Noto Serif TC","PMingLiU",serif';
+const SERIF = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
+const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
 function clip(ctx: CanvasRenderingContext2D, text: string, maxW: number) {
   let t = text;

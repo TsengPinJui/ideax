@@ -476,7 +476,7 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     tier: 3,
   },
 
-  // 4. 討論島（藏書閣、工作坊、茶藝街 — 三個物件圍繞中央廣場空地）
+  // 4. 討論島（藏書閣、百工坊、茶藝街 — 三個分明街區圍繞中央廣場空地）
   {
     id: 'bldg-discussion-library',
     islandId: 'discussion',
@@ -493,7 +493,7 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     islandId: 'discussion',
     districtId: 'discussion-tech-district',
     buildingId: 'discussion-workshop',
-    title: '工作坊',
+    title: '百工坊',
     worldPos: [42.5, 10.2, -28.1],
     imgPos: [81.0, 18.8],
     kind: 'building',
@@ -3603,6 +3603,47 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       workshopBlock.add(rightShop);
     });
 
+    // 街道旁兩排佈告欄（張貼水電坊、室內裝修坊、法律智財坊、會計稅務坊、企業管理坊等各種討論）
+    const createStreetDiscussionBoard = (side: -1 | 1, zPos: number) => {
+      const bGroup = new THREE.Group();
+      [-0.42, 0.42].forEach((px) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 1.55, 8), mats.woodDark);
+        post.position.set(px, 0.78, 0);
+        bGroup.add(post);
+      });
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.72, 0.09), mats.woodFrame);
+      frame.position.set(0, 0.96, 0);
+      bGroup.add(frame);
+      const paper = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.58, 0.11), mats.plasterWall);
+      paper.position.set(0, 0.96, 0);
+      bGroup.add(paper);
+      [-0.24, 0.02, 0.26].forEach((nx, nIdx) => {
+        const note = new THREE.Mesh(
+          new THREE.BoxGeometry(0.21, 0.34, 0.125),
+          nIdx === 1 ? mats.goldTrim : mats.lanternWarm,
+        );
+        note.position.set(nx, 0.95 + (nIdx % 2 === 0 ? 0.04 : -0.03), 0);
+        bGroup.add(note);
+      });
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.12, 0.42), mats.tileDark);
+      roof.position.set(0, 1.48, 0);
+      bGroup.add(roof);
+      const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.06, 0.1), mats.goldTrim);
+      ridge.position.set(0, 1.56, 0);
+      bGroup.add(ridge);
+      bGroup.position.set(side * 1.38, 0.06, zPos);
+      bGroup.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+      enableShadows(bGroup);
+      return bGroup;
+    };
+
+    [-3.2, -1.25, 1.25, 3.2].forEach((bz) => {
+      if (Math.abs(bz) > 1.5) {
+        workshopBlock.add(createStreetDiscussionBoard(-1, bz));
+      }
+      workshopBlock.add(createStreetDiscussionBoard(1, bz));
+    });
+
     // 4C. 第三個圍合建築 —— 南側【茶藝街】（位於廣場南側，北排正中央留出通往廣場的迎賓街口）
     const teaStreetBlock = new THREE.Group();
     teaStreetBlock.position.set(-0.4, discY, 8.4);
@@ -4543,14 +4584,23 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     gardenCourtyard.add(createGardenWallSegment(-12.8, -9.2, -12.8, -5.2, 2.45, true, mats.wallCream));
     gardenCourtyard.add(createGardenWallSegment(-12.8, 0.0, -12.8, 8.4, 2.45, true, mats.wallCream));
 
-    // C. 北側後院：粉牆黛瓦圍牆 + 江南飛簷抄手游廊（退至 z = -9.2，讓翰林院與求職廟後方留有寬敞後院）
-    gardenCourtyard.add(createGardenWallSegment(-12.8, -9.2, 12.8, -9.2, 2.55, true, mats.wallCream));
-    const northCorridor = createGardenCoveredCorridor(-11.6, -8.3, 11.6, -8.3);
+    // C. 北側外牆：粉牆黛瓦「月洞門」+ 左右延伸粉牆圍牆（四面皆設一座月洞門）
+    const northMainMoonGate = createMoonGateWallSegment(5.2, 2.78, mats.wallCream, true, true);
+    northMainMoonGate.position.set(0.0, 0, -9.2);
+    gardenCourtyard.add(northMainMoonGate);
+    gardenCourtyard.add(createGardenWallSegment(-12.8, -9.2, -2.6, -9.2, 2.55, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(2.6, -9.2, 12.8, -9.2, 2.55, true, mats.wallCream));
+    const northCorridor = createGardenCoveredCorridor(-11.6, -8.3, -3.2, -8.3);
     gardenCourtyard.add(northCorridor);
 
-    // D. 東側院牆：粉牆黛瓦圍牆 + 東側飛簷游廊（外推至 x = +12.8，不擠壓求職廟）
-    gardenCourtyard.add(createGardenWallSegment(12.8, -9.2, 12.8, 8.4, 2.45, true, mats.wallCream));
-    const eastCorridor = createGardenCoveredCorridor(11.9, -7.8, 11.9, 7.2);
+    // D. 東側外牆：粉牆黛瓦「月洞門」+ 南北兩段粉牆圍牆（四面皆設一座月洞門）
+    const eastMainMoonGate = createMoonGateWallSegment(5.2, 2.78, mats.wallCream, true, true);
+    eastMainMoonGate.position.set(12.8, 0, -0.4);
+    eastMainMoonGate.rotation.y = Math.PI / 2;
+    gardenCourtyard.add(eastMainMoonGate);
+    gardenCourtyard.add(createGardenWallSegment(12.8, -9.2, 12.8, -3.0, 2.45, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(12.8, 2.2, 12.8, 8.4, 2.45, true, mats.wallCream));
+    const eastCorridor = createGardenCoveredCorridor(11.9, 2.6, 11.9, 7.2);
     gardenCourtyard.add(eastCorridor);
 
     // E. 庭院雅致半開放朱紅月洞門景牆（位於前庭中軸微偏西 x = -1.2, z = 4.6，僅作短段借景雲牆，不阻斷兩館之間寬敞的中庭廣場）

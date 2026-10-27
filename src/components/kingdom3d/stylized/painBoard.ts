@@ -19,8 +19,8 @@ export interface PainCard {
   bounty?: number;
 }
 
-const SERIF = '"Noto Serif TC","Songti TC","PMingLiU",serif';
-const KAI = '"LXGW WenKai TC","Noto Serif TC","PMingLiU",serif';
+const SERIF = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
+const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number) {
   const lines: string[] = [];

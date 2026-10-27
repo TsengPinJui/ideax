@@ -52,8 +52,8 @@ export function createSosoNpc(): THREE.Group {
   ctx.strokeStyle = 'rgba(226,184,90,0.9)';
   ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.fillStyle = '#f6e7c4';
-  ctx.font = '800 30px "Noto Serif TC",serif';
+  ctx.fillStyle = '#fff9de';
+  ctx.font = '900 30px "DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('搜搜・問職缺', 128, 33);

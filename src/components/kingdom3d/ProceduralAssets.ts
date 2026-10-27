@@ -17,28 +17,45 @@ export function createSignPlaqueTexture(
   subtitle?: string,
   _accentHex: number = 0xd97706
 ): THREE.CanvasTexture {
-  // 深色漆木匾＋金框金字
+  // 深色烏木匾＋雙層描金框＋高對比書法金字
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
   const ctx = canvas.getContext('2d')!;
   const g = ctx.createLinearGradient(0, 0, 0, 160);
-  g.addColorStop(0, '#4a2412');
-  g.addColorStop(1, '#2b130a');
+  g.addColorStop(0, '#1e0c05');
+  g.addColorStop(0.5, '#120703');
+  g.addColorStop(1, '#261007');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 512, 160);
-  ctx.strokeStyle = '#d4a637';
+  ctx.strokeStyle = '#f5ca5c';
   ctx.lineWidth = 8;
   ctx.strokeRect(8, 8, 496, 144);
-  ctx.fillStyle = '#f2c94c';
-  ctx.font = '900 52px "Noto Serif TC","Songti TC","PMingLiU",serif';
+  ctx.strokeStyle = 'rgba(255, 236, 168, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(16, 16, 480, 128);
+  const fontStack = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
+  ctx.font = `900 58px ${fontStack}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(title, 256, subtitle ? 64 : 80);
+  const ty = subtitle ? 64 : 82;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#090301';
+  ctx.lineWidth = 10;
+  ctx.strokeText(title, 256, ty);
+  const tg = ctx.createLinearGradient(0, ty - 28, 0, ty + 28);
+  tg.addColorStop(0, '#fffdf0');
+  tg.addColorStop(0.45, '#ffe885');
+  tg.addColorStop(1, '#f4b427');
+  ctx.fillStyle = tg;
+  ctx.fillText(title, 256, ty);
   if (subtitle) {
-    ctx.fillStyle = '#e9d8a6';
-    ctx.font = '700 24px "Noto Serif TC","Songti TC","PMingLiU",serif';
-    ctx.fillText(subtitle, 256, 118);
+    ctx.font = `700 26px ${fontStack}`;
+    ctx.strokeStyle = '#090301';
+    ctx.lineWidth = 6;
+    ctx.strokeText(subtitle, 256, 120);
+    ctx.fillStyle = '#fff4c2';
+    ctx.fillText(subtitle, 256, 120);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -379,7 +396,7 @@ export function createCourtyardWallMesh(
   seg: CourtyardWallSegment,
   _mats: MaterialPalette
 ): THREE.Group {
-  // 粉牆黛瓦：白色粉牆、石砌牆基、黑瓦牆帽，月洞門兩側掛燈籠
+  // 江南園林粉牆黛瓦與真實圓形「月洞門」：白粉牆、青石基座、圓洞門框、弧形雲牆黛瓦壓頂、抱鼓石與宮燈
   const sm = getStyleMaterials();
   const group = new THREE.Group();
   const dx = seg.x2 - seg.x1;
@@ -391,6 +408,7 @@ export function createCourtyardWallMesh(
   const h = seg.height || 3.2;
   const thick = 0.45;
   const wallPiece = (l: number, x: number) => {
+    if (l <= 0.1) return;
     const base = new THREE.Mesh(scaledBox(l + 0.05, 0.6, thick + 0.12, 2, 0.6, 2), sm.stone);
     base.position.set(x, 0.3, 0);
     group.add(base);
@@ -410,33 +428,156 @@ export function createCourtyardWallMesh(
   if (!seg.hasMoonGate) {
     wallPiece(len, 0);
   } else {
-    const gateW = seg.gateWidth || 5.6;
-    const wingLen = Math.max(0.5, (len - gateW) / 2);
-    [-1, 1].forEach((dir) => {
-      wallPiece(wingLen, dir * (gateW / 2 + wingLen / 2));
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, h + 0.5, 12), sm.redLacquer);
-      pillar.position.set(dir * (gateW / 2), (h + 0.5) / 2, 0);
-      group.add(pillar);
+    const gateW = seg.gateWidth || 6.0;
+    // 月洞門外框：中間隆起的雲牆＋正圓形月洞開口
+    const holeR = Math.min(2.35, Math.max(1.85, gateW * 0.34));
+    const holeCy = Math.max(1.65, holeR * 0.78);
+    const centerSpan = Math.min(len, Math.max(gateW + 1.8, holeR * 2 + 2.4));
+    const wingLen = Math.max(0, (len - centerSpan) / 2);
+    if (wingLen > 0.15) {
+      wallPiece(wingLen, -(centerSpan / 2 + wingLen / 2));
+      wallPiece(wingLen, centerSpan / 2 + wingLen / 2);
+    }
+
+    // 兩側青石牆基（讓開中央月洞門踏步）
+    const sideBaseW = Math.max(0.6, (centerSpan - holeR * 1.65) / 2);
+    for (const dir of [-1, 1]) {
+      const sb = new THREE.Mesh(
+        scaledBox(sideBaseW, 0.6, thick + 0.16, 1.5, 0.6, 1.5),
+        sm.stone
+      );
+      sb.position.set(dir * (centerSpan / 2 - sideBaseW / 2), 0.3, 0);
+      group.add(sb);
+    }
+    // 月洞門下緣青石門檻（微凸於地面，方便步行通過）
+    const sill = new THREE.Mesh(
+      new THREE.BoxGeometry(holeR * 1.8, 0.08, thick + 0.32),
+      sm.stoneLight
+    );
+    sill.position.set(0, 0.04, 0);
+    group.add(sill);
+
+    // 雲牆本體（外輪廓中央拱起，內部挖出完整圓形月洞）
+    const archTopY = Math.max(h + 1.45, holeCy + holeR + 0.85);
+    const wallShape = new THREE.Shape();
+    const hw = centerSpan / 2;
+    const shoulderX = Math.min(hw - 0.3, holeR + 0.95);
+    wallShape.moveTo(-hw, 0);
+    wallShape.lineTo(-hw, h);
+    wallShape.lineTo(-shoulderX, h);
+    wallShape.quadraticCurveTo(0, archTopY + 0.45, shoulderX, h);
+    wallShape.lineTo(hw, h);
+    wallShape.lineTo(hw, 0);
+    wallShape.closePath();
+
+    // 挖出正圓形月洞孔
+    const holePath = new THREE.Path();
+    holePath.absarc(0, holeCy, holeR, 0, Math.PI * 2, true);
+    wallShape.holes.push(holePath);
+
+    const extrudeGeo = new THREE.ExtrudeGeometry(wallShape, {
+      depth: thick,
+      bevelEnabled: false,
+      curveSegments: 36,
     });
-    const header = new THREE.Mesh(new THREE.BoxGeometry(gateW + 0.8, 0.65, thick + 0.25), sm.plaster);
-    header.position.set(0, h + 0.45, 0);
-    group.add(header);
-    const headerCap = new THREE.Mesh(scaledBox(gateW + 1.2, 0.22, thick + 0.8, 1.5, 0.22, 1.5), sm.roofs.slate);
-    headerCap.position.set(0, h + 0.88, 0);
-    group.add(headerCap);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(gateW / 2, 0.22, 10, 28, Math.PI), sm.stoneLight);
-    rim.position.set(0, h - 0.8, 0);
-    rim.scale.y = Math.min(1, 2.8 / (gateW / 2));
-    group.add(rim);
+    extrudeGeo.translate(0, 0, -thick / 2);
+    const moonWall = new THREE.Mesh(extrudeGeo, sm.plaster);
+    moonWall.castShadow = true;
+    moonWall.receiveShadow = true;
+    group.add(moonWall);
+
+    // 圓形月洞青石邊框與朱漆內圈（完整 360 度圓框，底部切齊地面）
+    const thetaStart = -Math.PI * 0.18;
+    const thetaLen = Math.PI * 1.36;
+    const outerRim = new THREE.Mesh(
+      new THREE.TorusGeometry(holeR + 0.06, 0.18, 12, 44, thetaLen),
+      sm.stoneLight
+    );
+    outerRim.position.set(0, holeCy, 0);
+    outerRim.rotation.z = thetaStart;
+    outerRim.scale.z = (thick + 0.24) / 0.36;
+    group.add(outerRim);
+
+    const innerRim = new THREE.Mesh(
+      new THREE.TorusGeometry(holeR - 0.06, 0.08, 10, 44, thetaLen),
+      sm.redLacquer
+    );
+    innerRim.position.set(0, holeCy, 0);
+    innerRim.rotation.z = thetaStart;
+    innerRim.scale.z = (thick + 0.28) / 0.16;
+    group.add(innerRim);
+
+    // 兩側抱鼓石（傳統月洞門石鼓座）
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const drum = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16),
+          sm.stoneLight
+        );
+        drum.rotation.y = Math.PI / 2;
+        drum.rotation.z = Math.PI / 2;
+        drum.position.set(sx * (holeR + 0.18), 0.45, sz * (thick / 2 + 0.22));
+        group.add(drum);
+      }
+    }
+
+    // 雲牆頂部弧形黛瓦牆帽（分段貼合拱頂曲線）
+    const capSegs = 14;
+    for (let i = 0; i < capSegs; i++) {
+      const t0 = i / capSegs;
+      const t1 = (i + 1) / capSegs;
+      const x0 = -hw + t0 * centerSpan;
+      const x1 = -hw + t1 * centerSpan;
+      const xm = (x0 + x1) / 2;
+      const yAt = (x: number) => {
+        if (Math.abs(x) >= shoulderX) return h;
+        const u = x / shoulderX;
+        return h + (1 - u * u) * (archTopY - h + 0.22);
+      };
+      const y0 = yAt(x0);
+      const y1 = yAt(x1);
+      const segLen = Math.hypot(x1 - x0, y1 - y0) + 0.08;
+      const ang = Math.atan2(y1 - y0, x1 - x0);
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(segLen, 0.22, thick + 0.72),
+        sm.roofs.slate
+      );
+      cap.position.set(xm, (y0 + y1) / 2 + 0.1, 0);
+      cap.rotation.z = ang;
+      group.add(cap);
+
+      const ridge = new THREE.Mesh(
+        new THREE.BoxGeometry(segLen, 0.16, 0.22),
+        sm.ridges.slate
+      );
+      ridge.position.set(xm, (y0 + y1) / 2 + 0.26, 0);
+      ridge.rotation.z = ang;
+      group.add(ridge);
+    }
+
+    // 月洞門兩側掛宮燈
     const lan = new LanternBatch();
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) lan.addHanging(sx * (gateW / 2 + 0.9), h - 0.6, sz * 0.75, 0.95);
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        lan.addHanging(sx * (holeR + 0.72), holeCy + holeR * 0.45, sz * 0.65, 0.9);
+      }
+    }
     group.add(lan.build());
+
+    // 月洞門正反面匾額
     if (seg.gateLabel) {
       const tex = createSignPlaqueTexture(seg.gateLabel, undefined, 0x0d9488);
       const signMat = new THREE.MeshBasicMaterial({ map: tex });
+      const signY = holeCy + holeR + 0.48;
       for (const side of [1, -1]) {
-        const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.1), signMat);
-        sign.position.set(0, h + 1.5, side * 0.3);
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(2.6, 0.86, 0.1),
+          sm.darkWood
+        );
+        frame.position.set(0, signY, side * (thick / 2 + 0.06));
+        group.add(frame);
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.48, 0.76), signMat);
+        sign.position.set(0, signY, side * (thick / 2 + 0.12));
         if (side < 0) sign.rotation.y = Math.PI;
         group.add(sign);
       }

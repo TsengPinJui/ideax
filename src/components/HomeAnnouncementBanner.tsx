@@ -186,14 +186,14 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
                 type="button"
                 onClick={onOpenIsland}
                 className="hidden lg:flex group relative min-h-[66px] items-center gap-3 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-amber-50 px-3 py-2 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm cursor-pointer"
-                aria-label="開啟創點島互動地圖"
+                aria-label="開啟創點源•3D島覽"
               >
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-white shadow-2xs p-1">
                   <IdeaIslandIcon size={34} />
                 </div>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島•互動島覽地圖</span>
-                  <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">五座主題島嶼，沉浸式探索網站內容</span>
+                  <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點源•3D島覽</span>
+                  <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">3D地圖 ⇄ 實境漫遊雙模式切換</span>
                 </span>
                 <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-700 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </button>

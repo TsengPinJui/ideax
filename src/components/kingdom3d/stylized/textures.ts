@@ -426,88 +426,118 @@ export function ceilingTexture() {
   });
 }
 
-const SERIF = '"Noto Serif TC","Songti TC","STSong","PMingLiU","MingLiU",serif';
+const SERIF = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
-/** 木製牌匾（深色漆木＋金框＋金字） */
+/** 木製牌匾（深色漆木＋亮金雙框＋立體描邊泥金書法大字，遠看也清晰醒目） */
 export function signboardTexture(title: string, subtitle?: string) {
-  return cached(`sign_${title}_${subtitle || ''}`, () => {
+  return cached(`sign_v2_${title}_${subtitle || ''}`, () => {
     const [c, ctx] = makeCanvas(768, 256);
     const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, '#4a2412');
-    g.addColorStop(1, '#2b130a');
+    g.addColorStop(0, '#301408');
+    g.addColorStop(0.5, '#1e0b04');
+    g.addColorStop(1, '#120602');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 768, 256);
-    ctx.strokeStyle = '#d4a637';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(14, 14, 740, 228);
-    ctx.lineWidth = 3;
-    ctx.strokeRect(30, 30, 708, 196);
-    ctx.fillStyle = '#f2c94c';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 6;
+    ctx.strokeStyle = '#ffda66';
+    ctx.lineWidth = 12;
+    ctx.strokeRect(12, 12, 744, 232);
+    ctx.strokeStyle = '#e8b944';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(28, 28, 712, 200);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const size = Math.min(104, Math.floor(640 / Math.max(2, title.length)));
+    ctx.lineJoin = 'round';
+    const size = Math.min(116, Math.floor(670 / Math.max(2, title.length)));
     ctx.font = `900 ${size}px ${SERIF}`;
-    ctx.fillText(title, 384, subtitle ? 112 : 128);
+    const titleY = subtitle ? 106 : 128;
+    // 深黑木底描邊＋暖金發光，讓字體在飛簷陰影與夜色中依然鮮明立體
+    ctx.shadowColor = 'rgba(255, 204, 64, 0.75)';
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = '#0d0401';
+    ctx.lineWidth = 14;
+    ctx.strokeText(title, 384, titleY);
+    const textGrad = ctx.createLinearGradient(0, titleY - size * 0.5, 0, titleY + size * 0.5);
+    textGrad.addColorStop(0, '#fffbe0');
+    textGrad.addColorStop(0.45, '#ffe570');
+    textGrad.addColorStop(1, '#f6b928');
+    ctx.fillStyle = textGrad;
+    ctx.fillText(title, 384, titleY);
     if (subtitle) {
-      ctx.font = `700 34px ${SERIF}`;
-      ctx.fillStyle = '#e9d8a6';
+      ctx.font = `700 38px ${SERIF}`;
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = '#0d0401';
+      ctx.lineWidth = 9;
+      ctx.strokeText(subtitle, 384, 196);
+      ctx.fillStyle = '#fff5c2';
       ctx.fillText(subtitle, 384, 196);
     }
     return toTexture(c, { repeat: false });
   });
 }
 
-/** 門聯：紅底金字直書（七言） */
+/** 門聯：紅底泥金書法直書（七言） */
 export function coupletTexture(text: string) {
-  return cached(`couplet_${text}`, () => {
+  return cached(`couplet_v2_${text}`, () => {
     const chars = Array.from(text).slice(0, 9);
     const W = 160;
     const H = 120 * chars.length + 60;
     const [c, ctx] = makeCanvas(W, H);
     const g = ctx.createLinearGradient(0, 0, W, 0);
     g.addColorStop(0, '#8e1d17');
-    g.addColorStop(0.5, '#b3261e');
+    g.addColorStop(0.5, '#b8251d');
     g.addColorStop(1, '#8e1d17');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#e0b14a';
-    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#ffd966';
+    ctx.lineWidth = 7;
     ctx.strokeRect(8, 8, W - 16, H - 16);
-    speckle(ctx, W, H, 600, seeded(text.length * 13 + 7), 0.07);
-    ctx.fillStyle = '#f6d36b';
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 4;
+    speckle(ctx, W, H, 600, seeded(text.length * 13 + 7), 0.06);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `900 96px ${SERIF}`;
-    chars.forEach((ch, i) => ctx.fillText(ch, W / 2, 30 + 120 * (i + 0.5)));
+    ctx.lineJoin = 'round';
+    ctx.font = `900 98px ${SERIF}`;
+    ctx.shadowColor = 'rgba(0,0,0,0.65)';
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = '#3b0805';
+    ctx.lineWidth = 10;
+    chars.forEach((ch, i) => {
+      const y = 30 + 120 * (i + 0.5);
+      ctx.strokeText(ch, W / 2, y);
+      ctx.fillStyle = '#fff19e';
+      ctx.fillText(ch, W / 2, y);
+    });
     return toTexture(c, { repeat: false });
   });
 }
 
-/** 直式紅布旗幟 */
+/** 直式紅布旗幟（亮金標楷書法字） */
 export function bannerTexture(text: string) {
-  return cached(`banner_${text}`, () => {
+  return cached(`banner_v2_${text}`, () => {
     const [c, ctx] = makeCanvas(128, 512);
     ctx.fillStyle = '#a3241f';
     ctx.fillRect(0, 0, 128, 512);
     ctx.fillStyle = '#7d1a16';
     ctx.fillRect(0, 0, 128, 40);
-    ctx.strokeStyle = '#e0b14a';
+    ctx.strokeStyle = '#ffd966';
     ctx.lineWidth = 6;
     ctx.strokeRect(10, 50, 108, 430);
-    ctx.fillStyle = '#f6d36b';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
     const chars = Array.from(text).slice(0, 4);
     const step = 400 / Math.max(chars.length, 1);
-    ctx.font = `900 ${Math.min(78, step * 0.82)}px ${SERIF}`;
-    chars.forEach((ch, i) => ctx.fillText(ch, 64, 70 + step * (i + 0.5)));
+    ctx.font = `900 ${Math.min(82, step * 0.85)}px ${SERIF}`;
+    ctx.strokeStyle = '#3b0805';
+    ctx.lineWidth = 9;
+    chars.forEach((ch, i) => {
+      const y = 70 + step * (i + 0.5);
+      ctx.strokeText(ch, 64, y);
+      ctx.fillStyle = '#fff2a6';
+      ctx.fillText(ch, 64, y);
+    });
     // 下緣流蘇
     for (let x = 6; x < 128; x += 12) {
-      ctx.fillStyle = '#e0b14a';
+      ctx.fillStyle = '#ffd966';
       ctx.fillRect(x, 486, 4, 26);
     }
     return toTexture(c, { repeat: false });

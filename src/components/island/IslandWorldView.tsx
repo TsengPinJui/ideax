@@ -1106,7 +1106,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         onPointerCancel={(e) => handlePointerEnd(e, false)}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* 左上角返回圓鈕 */}
+        {/* 左上角返回圓鈕 ＋ 兩種模式切換（3D地圖 ⇄ 實境漫遊） */}
         <div className="island-top-left-back island-ui-interactive">
           <button
             type="button"
@@ -1120,23 +1120,28 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           >
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
-            className="island-enter-3d-btn"
-            title="走進 3D 五島：第一人稱漫遊，可多人同遊"
-          >
-            <Footprints size={16} strokeWidth={2.2} />
-            <span>進入 3D 漫遊</span>
-          </button>
+          <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
+            <span className="island-mode-pill is-active" aria-current="page">
+              3D地圖
+            </span>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
+              className="island-mode-pill is-switch"
+              title="切換至實境漫遊（第一人稱漫遊，可多人同遊）"
+            >
+              <Footprints size={15} strokeWidth={2.2} />
+              <span>實境漫遊</span>
+            </button>
+          </div>
         </div>
 
-        {/* 頂部中間：IdeaX 創點源 — 島覽 — */}
+        {/* 頂部中間：IdeaX 創點源 — 3D地圖 — */}
         <div className="island-top-center-brand">
           <div className="island-brand-text-center">
             <h1 className="island-map-main-title">IdeaX 創點源</h1>
             <div className="island-subtitle-row">
-              <p className="island-map-subtitle">— 島覽 —</p>
+              <p className="island-map-subtitle">— 3D地圖 —</p>
             </div>
           </div>
         </div>
@@ -3221,7 +3226,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                     setShowIntroVideoModal(true);
                   }}
                   className="guide-modal-video-replay-btn"
-                  title="觀看創點島導覽影片"
+                  title="觀看創點源導覽影片"
                 >
                   <Film size={14} />
                   <span>導覽影片</span>
@@ -3424,7 +3429,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       )}
 
       {/* ============================================================
-          首次進入創點島導覽影片彈窗 (Intro Video Modal)
+          首次進入創點源導覽影片彈窗 (Intro Video Modal)
           ============================================================ */}
       {showIntroVideoModal && (
         <div

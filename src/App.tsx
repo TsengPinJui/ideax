@@ -2580,6 +2580,11 @@ function MainContent() {
               kingdomReturnTabRef.current = null;
               setActiveTab(back || 'explore');
             }}
+            onSwitchToIslandMap={() => {
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('island_explorer');
+            }}
             onNavigateToModule={(mod) => {
               setSelectedQuestion(null);
               setSelectedSolver(null);

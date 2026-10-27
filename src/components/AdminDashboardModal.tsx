@@ -586,7 +586,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           >
             <span>
               <span className="block font-extrabold text-sm sm:text-base text-purple-950">進階權限與功能展示設定</span>
-              <span className="block text-xs text-purple-900/70 mt-0.5">首頁輪播與熱度榜默認顯示分類、創點島入口、卡片瀏覽數可見範圍與一般用戶一鍵上架</span>
+              <span className="block text-xs text-purple-900/70 mt-0.5">首頁輪播與熱度榜默認顯示分類、創點源入口、卡片瀏覽數可見範圍與一般用戶一鍵上架</span>
             </span>
             <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-purple-800">
               {isOtherDisplayExpanded ? '收合' : '展開'}
@@ -599,7 +599,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               <div className="lg:col-span-2">
                 <AdminHomeDefaultCategoryCard />
               </div>
-              {/* 創點島開關 (公開 / 隱藏) */}
+              {/* 創點源開關 (公開 / 隱藏) */}
               {(() => {
                 const isIslandOpen = localPublicMetrics.showIslandMap !== false;
                 const setIslandOpen = (nextOpen: boolean) => {
@@ -611,7 +611,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-xs text-purple-950">創點島開關</span>
+                          <span className="font-extrabold text-xs text-purple-950">創點源開關</span>
                           {isIslandOpen ? (
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs">公開</span>
                           ) : (
@@ -619,17 +619,17 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                           )}
                         </div>
                         <p className="text-[11px] text-stone-600 mt-1">
-                          {isIslandOpen ? '公開中 · 全站頂部導覽列與首頁展示「創點島」地圖入口' : '已隱藏 · 創點島地圖入口對全站一般用戶隱藏'}
+                          {isIslandOpen ? '公開中 · 全站頂部導覽列與首頁展示「創點源•3D島覽」入口' : '已隱藏 · 創點源•3D島覽入口對全站一般用戶隱藏'}
                         </p>
                       </div>
                       <button
                         type="button"
                         role="switch"
                         aria-checked={isIslandOpen}
-                        aria-label="創點島開關"
+                        aria-label="創點源開關"
                         onClick={() => setIslandOpen(!isIslandOpen)}
                         className={`w-12 h-6.5 flex items-center rounded-full p-1 transition-all cursor-pointer shrink-0 shadow-xs ${isIslandOpen ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-stone-300'}`}
-                        title={isIslandOpen ? '點擊將創點島設為「隱藏」' : '點擊將創點島設為「公開」'}
+                        title={isIslandOpen ? '點擊將創點源設為「隱藏」' : '點擊將創點源設為「公開」'}
                       >
                         <span className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform ${isIslandOpen ? 'translate-x-5.5' : 'translate-x-0'}`} />
                       </button>

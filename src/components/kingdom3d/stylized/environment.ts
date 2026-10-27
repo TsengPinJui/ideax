@@ -1,4 +1,4 @@
-import { WaterLife, WeatherType } from './waterLife';
+import { WaterLife, WeatherType, isUnderRoof } from './waterLife';
 import * as THREE from 'three';
 import { disposeStreetMaterials } from './streets';
 import { REGION_CONFIGS } from '../regionConfigs';
@@ -961,10 +961,15 @@ export class StylizedWorld {
       else if (rx < -30) x += 60;
       if (rz > 30) z -= 60;
       else if (rz < -30) z += 60;
+      // 屋內與地下室不飄落花瓣或螢火蟲
+      if (isUnderRoof(x, y, z)) {
+        y = 11 + (i % 5);
+      }
       arr[i * 3] = x;
       arr[i * 3 + 1] = y;
       arr[i * 3 + 2] = z;
     }
+    this.petals.visible = cam.y > -1.5;
     pos.needsUpdate = true;
     this.life.update(dt, cam);
   }

@@ -19,7 +19,8 @@ import { FirstPersonControls, isTypingTarget } from './FirstPersonControls';
 import { PhysicsController } from './PhysicsController';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
-import { KingdomSideDrawer, DrawerState, findStreetProp } from './KingdomSideDrawer';
+import { KingdomSideDrawer, DrawerState, findStreetProp, stallItems, hotStallItems } from './KingdomSideDrawer';
+import { drawShopCarouselTexture, drawStreetDiscussionBoardTexture, StallContent } from './stylized/streets';
 import { useSosoJobs, SosoJob, SosoState } from './useSosoJobs';
 import { drawJobScrollTexture } from './stylized/jobScroll';
 import { pickTargetOf, PickTarget } from './picking';
@@ -62,6 +63,7 @@ import {
 
 interface FirstPersonKingdomViewProps {
   onExit: () => void;
+  onSwitchToIslandMap?: () => void;
   onNavigateToModule?: (targetModule: string) => void;
   /** 在 3D 裡點某則內容（例如創點樓的痛點）時打開它 */
   onOpenQuestion?: (q: Question) => void;
@@ -122,7 +124,7 @@ function hallTower(b: BuildingInteractable): Tower {
 function floorLabel(b: BuildingInteractable, level: number) {
   if (b.exterior === 'tulou') return (PAIN_FLOORS[level] || PAIN_FLOORS[0]).label;
   const h = hallOf(b.id);
-  if (h) return level < 0 ? '地下主展場' : h.lobby;
+  if (h) return level < 0 ? (h.kind === 'library' ? '地下圖書館' : '地下主展場') : h.lobby;
   return '';
 }
 
@@ -161,6 +163,7 @@ function samplePath(pts: THREE.Vector3[], t: number) {
 
 export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   onExit,
+  onSwitchToIslandMap,
   onNavigateToModule,
   onOpenQuestion,
   initialRegionId = 'region-home',
@@ -192,6 +195,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const tw = towersRef.current.get(b.id)!;
       const inside = storyRef.current.towerId === b.id || storyRef.current.level !== 0;
       setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level + tw.basements } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
+    } else if (hallOf(b.id) && storyRef.current.level < 0 && storyRef.current.towerId === b.id) {
+      setDrawer({ kind: 'hallZone', buildingId: b.id, zone: 0 });
     } else {
       setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
     }
@@ -286,7 +291,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       old?.dispose();
     });
   }, []);
-  /** 創點樓各層懸賞牆：換上真實痛點 */
+  /** 創點樓各層懸賞牆：換上真實痛點（正反面與迴廊各面佈告欄皆能張貼展示） */
   const refreshPainBoards = useCallback(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -296,13 +301,94 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const mesh = o as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
       const off = info.offset || 0;
-      const cards = painForFloor(questionsRef.current, info.level)
-        .slice(off, off + (info.count || 8))
-        .map((q) => ({ id: q.id, title: q.title, category: q.category, bounty: q.bounty }));
+      const cnt = info.count || 8;
+      const all = painForFloor(questionsRef.current, info.level);
+      const picked =
+        all.length > 0
+          ? Array.from({ length: Math.min(cnt, all.length) }, (_, i) => all[(off + i) % all.length])
+          : [];
+      const cards = picked.map((q) => ({ id: q.id, title: q.title, category: q.category, bounty: q.bounty }));
       const old = mat.map;
       mat.map = drawPainBoardTexture(info.level, cards, false, info.layout);
       mat.needsUpdate = true;
       old?.dispose();
+    });
+  }, []);
+  const carouselTickRef = useRef(0);
+  /** 百工坊與茶藝街：街道旁兩排佈告欄張貼各種討論＋各類店鋪門楣「熱門討論輪播」走馬燈 */
+  const refreshStreetBoardsAndCarousels = useCallback((slideTick = carouselTickRef.current) => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.traverse((o) => {
+      const boardInfo = o.userData?.discBoard as
+        | { propId: string; title: string; content: StallContent; offset: number; face: 'front' | 'back' }
+        | undefined;
+      if (boardInfo) {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const all = stallItems(questionsRef.current, boardInfo.content);
+        const faceShift = boardInfo.face === 'back' ? 2 : 0;
+        const picked =
+          all.length > 0
+            ? Array.from({ length: Math.min(4, all.length) }, (_, i) => all[(boardInfo.offset + faceShift + i) % all.length])
+            : [];
+        const cards = picked.map((q) => ({
+          id: q.id,
+          title: q.title,
+          category: q.subcategory || q.category,
+          author: q.authorName,
+          likes: (q.likes || 0) + (q.meTooCount || 0),
+          comments: q.comments?.length || 0,
+        }));
+        const key = `db_${boardInfo.content}_${boardInfo.offset}_${boardInfo.face}_${cards.map((c) => `${c.id}:${c.likes}:${c.comments}`).join('|')}`;
+        if (o.userData.drawnKey !== key) {
+          o.userData.drawnKey = key;
+          const old = mat.map;
+          const nextTex = drawStreetDiscussionBoardTexture(boardInfo.title, cards);
+          mat.map = nextTex;
+          mat.emissiveMap = nextTex;
+          mat.needsUpdate = true;
+          old?.dispose();
+        }
+      }
+
+      const carouselInfo = o.userData?.shopCarousel as
+        | { propId: string; shopName: string; categorySub: string; content: StallContent }
+        | undefined;
+      if (carouselInfo) {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const hotList = hotStallItems(questionsRef.current, carouselInfo.content, 5);
+        const total = Math.max(1, hotList.length);
+        let hash = 0;
+        for (let i = 0; i < carouselInfo.propId.length; i++) hash += carouselInfo.propId.charCodeAt(i);
+        const slideIdx = (slideTick + hash) % total;
+        const cur = hotList[slideIdx];
+        const item = cur
+          ? {
+              title: cur.title,
+              author: cur.authorName,
+              likes: (cur.likes || 0) + (cur.meTooCount || 0),
+              comments: cur.comments?.length || 0,
+            }
+          : undefined;
+        const key = `sc_${carouselInfo.propId}_${slideIdx}_${cur?.id || 'empty'}_${item?.likes || 0}_${item?.comments || 0}`;
+        if (o.userData.drawnKey !== key) {
+          o.userData.drawnKey = key;
+          const old = mat.map;
+          const nextTex = drawShopCarouselTexture(
+            carouselInfo.shopName,
+            carouselInfo.categorySub,
+            item,
+            slideIdx,
+            total,
+          );
+          mat.map = nextTex;
+          mat.emissiveMap = nextTex;
+          mat.needsUpdate = true;
+          old?.dispose();
+        }
+      }
     });
   }, []);
   const mountRef = useRef<HTMLDivElement>(null);
@@ -563,8 +649,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     sceneRef.current = scene;
 
     const initialManifest = REGION_CONFIGS[initialRegionId] || REGION_CONFIGS['region-home'];
-    // 2. Camera（遠景山脈與天空需要較遠的可視距離）
-    const camera = new THREE.PerspectiveCamera(68, width / height, 0.15, 1000);
+    // 2. Camera（直式螢幕自動放寬垂直視角，避免水平視野過窄）
+    const computeFov = (w: number, h: number) =>
+      w < h ? Math.min(82, Math.round(68 / Math.pow(Math.max(0.4, w / Math.max(1, h)), 0.3))) : 68;
+    const camera = new THREE.PerspectiveCamera(computeFov(width, height), width / height, 0.15, 1000);
     cameraRef.current = camera;
 
     // 3. Renderer
@@ -665,6 +753,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     regionManager.onRegionReady = () => {
       refreshPainBoards();
       refreshHallBooths();
+      refreshStreetBoardsAndCarousels();
       collectPickables();
     };
     regionManager.onError = (err) => {
@@ -687,6 +776,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (!container || !renderer || !camera) return;
       const w = container.clientWidth || window.innerWidth;
       const h = container.clientHeight || window.innerHeight;
+      camera.fov = computeFov(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -1039,11 +1129,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
   }, [initialRegionId, playSoundEffect]);
 
-  // 痛點有新增或更新時，懸賞牆跟著換；作品有新增時，地下主展場的攤位跟著換
+  // 痛點有新增或更新時，懸賞牆跟著換；作品有新增時，地下主展場的攤位跟著換；討論島佈告欄與店鋪輪播同步更新
   useEffect(() => {
     refreshPainBoards();
     refreshHallBooths();
-  }, [questions, refreshPainBoards, refreshHallBooths]);
+    refreshStreetBoardsAndCarousels();
+  }, [questions, refreshPainBoards, refreshHallBooths, refreshStreetBoardsAndCarousels]);
+
+  // 百工坊與茶藝街各店鋪「熱門討論輪播」每 4 秒自動切換下一則熱門討論
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      carouselTickRef.current = (carouselTickRef.current + 1) % 60;
+      refreshStreetBoardsAndCarousels(carouselTickRef.current);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [refreshStreetBoardsAndCarousels]);
 
   // 有新提案或貼文時：主廣場大燈泡閃爍跳躍，並發出清脆音效（剛進來載入資料時不算）
   const mountedAtRef = useRef(Date.now());
@@ -1164,20 +1264,32 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     }
     const h = hallOf(b.id);
     if (!h) return [];
+    const isLib = h.kind === 'library';
+    const unit = isLib ? ' 冊' : ' 件';
     const zones = HALL_ZONES[h.kind].map((z, i) => ({ z, i, n: hallZoneItems(b.id, i, questions).length }));
     const total = zones.reduce((a, x) => a + x.n, 0);
     return [
-      { key: 'lobby', tag: '1F', name: h.lobby, count: total, unit: ' 件', level: 0, current: here(0) },
-      ...zones.map(({ z, i, n }) => ({ key: `b1-${i}`, tag: 'B1', name: z.name, count: n, unit: ' 件', level: -1, zone: i, child: true, current: false })),
+      { key: 'lobby', tag: '1F', name: h.lobby, count: total, unit, level: 0, current: here(0) },
+      ...zones.map(({ z, i, n }) => ({
+        key: `b1-${i}`,
+        tag: isLib ? `${i + 1}層` : 'B1',
+        name: isLib ? z.name.replace(/^.*・/, '') : z.name,
+        count: n,
+        unit,
+        level: -1,
+        zone: i,
+        child: true,
+        current: false,
+      })),
     ];
   }, [dirId, floorLevel, storyTowerId, questions]);
 
   return (
-    <div className="relative w-full h-screen bg-stone-950 overflow-hidden select-none font-sans">
+    <div className="fixed inset-0 w-full h-[100dvh] bg-stone-950 overflow-hidden select-none font-sans touch-none">
       {/* 3D Canvas Mount Point */}
       <div
         ref={mountRef}
-        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 w-full h-full touch-none cursor-grab active:cursor-grabbing"
       />
 
       {/* 載入畫面（水墨風） */}
@@ -1241,6 +1353,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleDevStats={() => setIsDevStatsOpen(!isDevStatsOpen)}
         onExit={handleExit}
+        onSwitchToIslandMap={onSwitchToIslandMap}
         onJoystickMove={(vx, vy) => {
           if (controlsRef.current) {
             controlsRef.current.touchStick.active = true;

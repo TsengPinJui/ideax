@@ -116,6 +116,8 @@ export function WorldMapContent({
               <g key={p.id} transform={`translate(${p.x} ${p.z}) rotate(${(-p.yaw * 180) / Math.PI})`}>
                 {p.kind === 'gate' ? (
                   <rect x={-p.w / 2} y={-0.5} width={p.w} height={1} fill="#b3261e" stroke={INK} strokeWidth={0.4} />
+                ) : p.kind === 'board' ? (
+                  <rect x={-p.w / 2} y={-p.d / 2} width={p.w} height={p.d} fill="#8a4b22" stroke="#f5d07a" strokeWidth={0.35} rx={0.2} />
                 ) : (
                   <rect x={-p.w / 2} y={-p.d / 2} width={p.w} height={p.d} fill={p.kind === 'shop' ? '#b86b3c' : '#d9a94a'} stroke={INK} strokeWidth={0.5} rx={0.4} />
                 )}
@@ -131,7 +133,7 @@ export function WorldMapContent({
                 .filter((p) => p.kind === 'gate')
                 .map((p) => (
                   <text key={`${p.id}-t`} x={p.x} y={p.z - 15} textAnchor="middle" fontSize={3.6} fill={INK} className="kx-serif" fontWeight={700}>
-                    {p.name}市集
+                    {p.regionId === 'region-creative' ? `${p.name}市集` : p.name}
                   </text>
                 ))}
             {full &&

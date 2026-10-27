@@ -1,7 +1,59 @@
 import * as THREE from 'three';
 import { getGlobalWalkableZones, WORLD_BRIDGES } from '../regionConfigs';
 import { FARMLANDS, LOTUS_PATCHES, MOUNTAIN_RING } from './basinLayout';
+import { REGION_CONFIGS } from '../regionConfigs';
+import { STREET_PROPS } from './streets';
+import { TULOU_RADIUS, RING } from './tulou';
 import { glowTexture } from './textures';
+
+/** 判斷座標 (x, y, z) 是否在建築屋頂下方、室內、土樓迴廊或店鋪遮簷內（屋內不可淋雨） */
+export function isUnderRoof(x: number, y: number, z: number): boolean {
+  if (y < 0) return true;
+  for (const r of Object.values(REGION_CONFIGS)) {
+    for (const b of r.buildings) {
+      const dx = x - b.position.x;
+      const dz = z - b.position.z;
+      if (b.exterior === 'tulou') {
+        const dist = Math.hypot(dx, dz);
+        // 土樓外牆與環形迴廊屋頂範圍（留中央露天天井，但中庭戲台與佈告欄也有屋頂）
+        if (dist <= TULOU_RADIUS + 1.8 && dist >= RING.RI - 0.9 && y <= 14.5) return true;
+        // 土樓內中庭後方戲台與兩座有頂佈告欄
+        const c = Math.cos(-b.facingYaw);
+        const s = Math.sin(-b.facingYaw);
+        const lx = dx * c - dz * s;
+        const lz = dx * s + dz * c;
+        if (Math.abs(lx) <= 3.8 && Math.abs(lz + 11.2) <= 2.1 && y <= 4.5) return true;
+        for (const side of [-1, 1]) {
+          if (Math.hypot(lx - side * 9.9, lz - 5.4) <= 2.8 && y <= 3.8) return true;
+        }
+        continue;
+      }
+      const c = Math.cos(-b.facingYaw);
+      const s = Math.sin(-b.facingYaw);
+      const lx = dx * c - dz * s;
+      const lz = dx * s + dz * c;
+      const hw = b.width / 2 + 1.25;
+      const hd = b.depth / 2 + 1.25;
+      const roofH = b.height + (b.tiers || 1) * 2.2 + 0.8;
+      if (Math.abs(lx) <= hw && Math.abs(lz) <= hd && y <= roofH) return true;
+    }
+    for (const p of STREET_PROPS[r.id] || []) {
+      const dx = x - p.x;
+      const dz = z - p.z;
+      const c = Math.cos(-p.yaw);
+      const s = Math.sin(-p.yaw);
+      const lx = dx * c - dz * s;
+      const lz = dx * s + dz * c;
+      const pad = p.kind === 'shop' ? 0.95 : 0.6;
+      const topY = p.kind === 'shop' ? 7.2 : 3.8;
+      if (Math.abs(lx) <= p.w / 2 + pad && Math.abs(lz) <= p.d / 2 + pad && y <= topY) return true;
+    }
+  }
+  // 湖心亭屋頂
+  if (Math.hypot(x, z - 64) <= 5.0 && y <= 7.2) return true;
+  return false;
+}
+
 import type { TimeOfDay } from './environment';
 
 /**
@@ -437,7 +489,7 @@ export class WaterLife {
     // 在地下室時不下雨
     this.rain.visible = this.weather === 'rain' && cam.y > -1.5;
     if (this.rain.visible) {
-      // 雨絲跟著玩家
+      // 雨絲跟著玩家，但遇到建築屋頂、室內、迴廊與店鋪遮簷即刻遮擋，屋內絕不下雨
       const pos = this.rain.geometry.attributes.position as THREE.BufferAttribute;
       const arr = pos.array as Float32Array;
       for (let i = 0; i < this.rainSpeed.length; i++) {
@@ -445,7 +497,7 @@ export class WaterLife {
         let x = arr[o];
         let y = arr[o + 1] - this.rainSpeed[i] * dt;
         let z = arr[o + 2];
-        if (y < cam.y - 4) {
+        if (y < cam.y - 4 || isUnderRoof(x, y - 0.7, z)) {
           y = cam.y + 18 + Math.random() * 6;
           x = cam.x + (Math.random() - 0.5) * 60;
           z = cam.z + (Math.random() - 0.5) * 60;
@@ -454,11 +506,12 @@ export class WaterLife {
         else if (x - cam.x < -30) x += 60;
         if (z - cam.z > 30) z -= 60;
         else if (z - cam.z < -30) z += 60;
+        const sheltered = isUnderRoof(x, y, z) || isUnderRoof(x, y - 0.7, z);
         arr[o] = x;
         arr[o + 1] = y;
         arr[o + 2] = z;
-        arr[o + 3] = x + 0.05;
-        arr[o + 4] = y - 0.7;
+        arr[o + 3] = sheltered ? x : x + 0.05;
+        arr[o + 4] = sheltered ? y : y - 0.7;
         arr[o + 5] = z;
       }
       pos.needsUpdate = true;

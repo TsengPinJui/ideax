@@ -307,7 +307,7 @@ function nameTagTexture(name: string) {
   c.width = 256;
   c.height = 64;
   const ctx = c.getContext('2d')!;
-  ctx.font = '700 30px "Noto Serif TC","PMingLiU",serif';
+  ctx.font = '700 30px "DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
   const w = Math.min(244, ctx.measureText(name).width + 28);
   ctx.fillStyle = 'rgba(28,16,8,0.78)';
   const x0 = (256 - w) / 2;

@@ -1,14 +1,15 @@
 /* 3D 五島介面：深色漆木＋金色描邊的東方風格 */
-.kx-root {
+.kx-root,
+.kx-root * {
   --kx-gold: #e2b85a;
   --kx-gold-soft: rgba(226, 184, 90, 0.55);
   --kx-ink: #f6e7c4;
   --kx-lacquer: rgba(30, 17, 10, 0.72);
   --kx-lacquer-strong: rgba(30, 17, 10, 0.9);
-  font-family: 'LXGW WenKai TC', 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  font-family: 'DFKai-SB', 'BiauKai', 'Kaiti TC', 'STKaiti', 'KaiTi', 'LXGW WenKai TC', 'CWTeXKai', 'Noto Serif TC', serif;
 }
 .kx-serif {
-  font-family: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  font-family: 'DFKai-SB', 'BiauKai', 'Kaiti TC', 'STKaiti', 'KaiTi', 'LXGW WenKai TC', 'CWTeXKai', 'Noto Serif TC', serif;
 }
 .kx-panel {
   position: relative;
@@ -45,7 +46,7 @@
   border-bottom-right-radius: 6px;
 }
 .kx-title {
-  font-family: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  font-family: 'DFKai-SB', 'BiauKai', 'Kaiti TC', 'STKaiti', 'KaiTi', 'LXGW WenKai TC', 'CWTeXKai', 'Noto Serif TC', serif;
   font-weight: 900;
   color: #fbe3a4;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 10px rgba(255, 190, 90, 0.25);

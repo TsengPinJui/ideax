@@ -1128,7 +1128,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* 創點島地圖入口：所有傳統頁面都能從右上角進入探索模式（取消背框、放大圖示） */}
+          {/* 創點源•3D島覽合併入口：手機版導覽列僅留下地圖圖示入口，電腦版顯示「3D島覽」 */}
           {publicMetricsConfig.showIslandMap !== false && (
             <button
               type="button"
@@ -1138,40 +1138,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setSelectedSolver(null);
               }}
               className={`flex items-center gap-1.5 p-1 transition-transform hover:scale-105 active:scale-95 cursor-pointer shrink-0 ${
-                activeTab === 'island_explorer'
+                activeTab === 'island_explorer' || activeTab === 'kingdom_fp'
                   ? 'text-emerald-950'
                   : 'text-emerald-900 hover:text-emerald-950'
               }`}
-              title="開啟創點島互動地圖"
-              aria-label="開啟創點島互動地圖"
+              title="開啟創點源•3D島覽（3D地圖／實境漫遊）"
+              aria-label="開啟創點源•3D島覽"
             >
               <IdeaIslandIcon size={28} />
-              <span className="hidden sm:inline text-xs font-black">創點島</span>
+              <span className="hidden sm:inline text-xs font-black">3D島覽</span>
             </button>
           )}
-
-          {/* 創點國 3D 第一人稱步行探索原型入口 */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('kingdom_fp');
-              setSelectedQuestion(null);
-              setSelectedSolver(null);
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 border ${
-              activeTab === 'kingdom_fp'
-                ? 'bg-amber-400 text-stone-950 border-amber-500 font-black shadow-xs'
-                : 'bg-amber-50/90 hover:bg-amber-100 text-amber-900 border-amber-300/80 shadow-2xs'
-            }`}
-            title="開啟 IdeaX 創點國 3D 第一人稱探索原型"
-            aria-label="開啟 IdeaX 創點國 3D 第一人稱探索原型"
-          >
-            <span className="text-sm">🏯</span>
-            <span className="text-xs font-black">3D 探索</span>
-            <span className="hidden xl:inline text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950">
-              FPS
-            </span>
-          </button>
 
           {/* 我的案件 (電腦版顯示，無冗餘外框) */}
           <button

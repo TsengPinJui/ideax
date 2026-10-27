@@ -1067,18 +1067,21 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   // 門聯：與建築功能有關的七言詩句（面向大門時上聯在右）；沒有設定的才用館名旗幟
   const couplet = DOOR_COUPLETS[b.id];
   const bannerText = (b.name || '').replace(/[（(].*$/, '').replace(/[^\p{Script=Han}A-Za-z]/gu, '').slice(0, 4) || '創點';
-  const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTexture(bannerText), roughness: 0.9, side: THREE.DoubleSide });
+  const bannerTex = bannerTexture(bannerText);
+  const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, emissive: 0xffffff, emissiveMap: bannerTex, emissiveIntensity: 0.52, roughness: 0.85, side: THREE.DoubleSide });
   const bannerH = Math.min(couplet ? 3.1 : 2.6, wallH - 0.6, doorH - 0.15);
   for (const sx of [-1, 1]) {
     const x = sx * (doorW / 2 + Math.min(1.25, wingW * 0.55));
     if (Math.abs(x) + 0.5 > w / 2) continue;
-    const mat = couplet ? new THREE.MeshStandardMaterial({ map: coupletTexture(sx > 0 ? couplet[0] : couplet[1]), roughness: 0.85 }) : bannerMat;
+    const cTex = couplet ? coupletTexture(sx > 0 ? couplet[0] : couplet[1]) : null;
+    const mat = cTex ? new THREE.MeshStandardMaterial({ map: cTex, emissive: 0xffffff, emissiveMap: cTex, emissiveIntensity: 0.55, roughness: 0.8 }) : bannerMat;
     const ban = new THREE.Mesh(new THREE.PlaneGeometry(couplet ? 0.62 : 0.85, bannerH), mat);
     ban.position.set(x, plinthH + 0.35 + bannerH / 2, d / 2 + thick / 2 + 0.03);
     ban.userData.noMerge = true;
     root.add(ban);
   }
-  const signMat = new THREE.MeshStandardMaterial({ map: signboardTexture(b.name, b.previewBadge), roughness: 0.55, metalness: 0.1 });
+  const sTex = signboardTexture(b.name, b.previewBadge);
+  const signMat = new THREE.MeshStandardMaterial({ map: sTex, emissive: 0xffffff, emissiveMap: sTex, emissiveIntensity: 0.58, roughness: 0.45, metalness: 0.12 });
   const signH = Math.min(1.25, Math.max(0.8, h - doorH - 0.05));
   const signW = Math.min(doorW + 1.6, signH * 3);
   const sign = new THREE.Mesh(new THREE.BoxGeometry(signW, signH, 0.14), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, signMat, mats.darkWood]);
@@ -1121,7 +1124,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
       inner.add(p);
     }
   }
-  const boardMat = new THREE.MeshStandardMaterial({ map: signboardTexture(b.name, b.previewBadge), roughness: 0.6 });
+  const bTex = signboardTexture(b.name, b.previewBadge);
+  const boardMat = new THREE.MeshStandardMaterial({ map: bTex, emissive: 0xffffff, emissiveMap: bTex, emissiveIntensity: 0.58, roughness: 0.5 });
   const board = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(5.2, w - 2), Math.min(5.2, w - 2) / 3), boardMat);
   board.position.set(0, Math.min(3.1, h - 1.4), -d / 2 + thick / 2 + 0.04);
   board.userData.noMerge = true;
@@ -1255,7 +1259,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
     const brushRest = addMesh(top, new THREE.CylinderGeometry(0.014, 0.022, 0.36, 6), mats.darkWood, 0.25, 0.915, 0.18);
     brushRest.rotation.z = Math.PI / 2;
-    const plaqueMat = new THREE.MeshStandardMaterial({ map: signboardTexture('佈告桌', '在這裡填寫痛點'), roughness: 0.55 });
+    const pTex = signboardTexture('佈告桌', '在這裡填寫痛點');
+    const plaqueMat = new THREE.MeshStandardMaterial({ map: pTex, emissive: 0xffffff, emissiveMap: pTex, emissiveIntensity: 0.58, roughness: 0.45 });
     const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.05), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, plaqueMat, mats.darkWood]);
     plaque.position.set(-0.15, 1.06, -0.38);
     plaque.rotation.x = -0.25;
