@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { isRealRegisteredUser } from '../data/mockData';
 import { getCachedRealTrafficStats } from './AdminSiteTrafficChart';
-import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift, Trophy, Flame, Dices } from 'lucide-react';
-import { Category, Question } from '../types';
+import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp, Gift, Trophy, Flame, Dices, Lightbulb, Gamepad2 } from 'lucide-react';
+import { Category, HomeShowcaseCategory, Question } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
@@ -10,6 +10,8 @@ import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
 import { HomeShowcasePlayer, useShowcaseSlides } from './HomeShowcasePlayer';
 import { FeaturedGamesBoard, HotGamesRankingBoard } from './HomeHeroSideBoards';
 import { RandomGameDrawModal } from './RandomGameDrawModal';
+import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
+import { isShowcaseGameQuestion } from '../data/hotGamesData';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -55,8 +57,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   } = useApp();
 
   const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
-  // 首頁創點子播放區：管理員啟用且有可播放的內容時，取代創點子標誌
-  const showcaseSlides = useShowcaseSlides();
+  const [showcaseCategory, setShowcaseCategory] = useState<HomeShowcaseCategory>(() =>
+    homeShowcaseConfig.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games'
+  );
+  useEffect(() => {
+    setShowcaseCategory(homeShowcaseConfig.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games');
+  }, [homeShowcaseConfig.defaultCategory]);
+
+  // 首頁創點子播放區：管理員啟用且有可播放的內容時，依當前選擇分類（「提案與軟體」或「遊戲」）播放
+  const showcaseSlides = useShowcaseSlides(showcaseCategory);
 
   // 今日不重複訪客（瀏覽統計更新時跟著變）
   const utc8Today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -300,30 +309,85 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   const visibleMetrics = isMetricsExpanded ? allMetricItems : allMetricItems.slice(0, 4);
 
-  const handleGameClick = (game: Question) => {
+  const handleGameClick = (item: Question) => {
+    const hasDemoUrl = Boolean(item.demoUrl || (item as any).vibeCodingData?.demoUrl);
+    if (showcaseCategory === 'proposals_software' && !hasDemoUrl && !isShowcaseGameQuestion(item)) {
+      try {
+        window.dispatchEvent(new CustomEvent(OPEN_QUESTION_EVENT, { detail: { id: item.id } }));
+      } catch {}
+      return;
+    }
     if (onOpenAppEmbed) {
-      onOpenAppEmbed(game);
+      onOpenAppEmbed(item);
     } else {
       try {
-        window.dispatchEvent(new CustomEvent('IDEAX_OPEN_APP_EMBED', { detail: { app: game } }));
+        window.dispatchEvent(new CustomEvent('IDEAX_OPEN_APP_EMBED', { detail: { app: item } }));
       } catch {}
     }
   };
+
+  const hotMode =
+    showcaseCategory === 'proposals_software'
+      ? homeShowcaseConfig.hotProposalsMode || 'custom'
+      : homeShowcaseConfig.hotGamesMode || 'custom';
+  const hotCustomIds =
+    showcaseCategory === 'proposals_software'
+      ? homeShowcaseConfig.hotProposalIds || []
+      : homeShowcaseConfig.hotGameIds || [];
 
   return (
     <section className="relative pt-3 pb-1.5 sm:pt-6 sm:pb-2.5 lg:pt-7 lg:pb-3 overflow-hidden">
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
-          {/* 首頁三大展示核心：左側「精選遊戲 TOP 10」、中間「首頁輪播展示」、右側「熱度榜（嚴格對應圖一）」 */}
+          {/* 首頁輪播與熱度榜分類切換：「提案與軟體」 vs 「遊戲」 */}
+          <div className="w-full flex flex-col items-center mb-2 sm:mb-2.5">
+            <div
+              role="tablist"
+              aria-label="首頁輪播與熱度榜分類切換"
+              className="inline-flex items-center p-1 rounded-2xl bg-white/85 backdrop-blur-md border border-amber-200/90 shadow-xs gap-1"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={showcaseCategory === 'proposals_software'}
+                onClick={() => setShowcaseCategory('proposals_software')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  showcaseCategory === 'proposals_software'
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-amber-50/70'
+                }`}
+              >
+                <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                <span>提案與軟體</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={showcaseCategory === 'games'}
+                onClick={() => setShowcaseCategory('games')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  showcaseCategory === 'games'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-amber-50/70'
+                }`}
+              >
+                <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                <span>遊戲</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 首頁三大展示核心：左側「精選 TOP 10」、中間「首頁輪播展示」、右側「熱度榜 TOP 10」 */}
           <div className="w-full mb-3 sm:mb-4">
             <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-2.5 lg:gap-3 xl:gap-4 w-full">
-              {/* 左邊：精選遊戲（收窄版面，留約一半寬度，嚴格按照首頁輪播順序） */}
+              {/* 左邊：精選榜（依當前分類顯示「精選提案軟體」或「精選遊戲」） */}
               <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
                 <FeaturedGamesBoard
                   questions={questions}
                   carouselQuestions={showcaseSlides.map((s) => s.q)}
                   onSelectGame={handleGameClick}
+                  category={showcaseCategory}
                 />
               </div>
 
@@ -333,7 +397,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   沒上榜？別氣餒 ✨ IdeaX 收錄的都是百里挑一的佳作，加油！💪
                 </p>
                 {showcaseSlides.length > 0 ? (
-                  <div data-home-showcase-slot={homeShowcaseConfig.modes.join(',')} className="relative w-full">
+                  <div data-home-showcase-slot={`${showcaseCategory}:${homeShowcaseConfig.modes.join(',')}`} className="relative w-full">
                     <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
                     <HomeShowcasePlayer slides={showcaseSlides} />
                   </div>
@@ -356,14 +420,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 )}
               </div>
 
-              {/* 右邊：熱度榜（收窄版面，留約一半寬度） */}
+              {/* 右邊：熱度榜（依當前分類顯示「提案與軟體」或「遊戲」熱度榜） */}
               <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
-                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} mode={homeShowcaseConfig.hotGamesMode} customIds={homeShowcaseConfig.hotGameIds} />
+                <HotGamesRankingBoard
+                  questions={questions}
+                  onSelectGame={handleGameClick}
+                  mode={hotMode}
+                  customIds={hotCustomIds}
+                  category={showcaseCategory}
+                />
               </div>
             </div>
 
-            {/* 行動裝置 / 平板 (lg:hidden)：Tab 切換瀏覽精選遊戲與熱度榜 */}
-            <div className="lg:hidden w-full max-w-[260px] mx-auto mt-1 sm:mt-2">
+            {/* 行動裝置 / 平板 (lg:hidden)：輪播 + Tab 切換瀏覽精選榜與熱度榜 */}
+            <div className="lg:hidden w-full max-w-[300px] mx-auto mt-1 sm:mt-2 space-y-2.5">
+              {showcaseSlides.length > 0 && (
+                <div className="w-full">
+                  <HomeShowcasePlayer slides={showcaseSlides} />
+                </div>
+              )}
               <div className="flex items-center justify-center p-1 rounded-2xl bg-amber-100/70 max-w-xs mx-auto mb-2 text-xs font-black shadow-2xs">
                 <button
                   type="button"
@@ -375,7 +450,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   }`}
                 >
                   <Trophy className="w-3.5 h-3.5 text-amber-600" />
-                  <span>精選遊戲</span>
+                  <span>{showcaseCategory === 'proposals_software' ? '精選提案軟體' : '精選遊戲'}</span>
                 </button>
                 <button
                   type="button"
@@ -396,28 +471,51 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   questions={questions}
                   carouselQuestions={showcaseSlides.map((s) => s.q)}
                   onSelectGame={handleGameClick}
+                  category={showcaseCategory}
                 />
               ) : (
-                <HotGamesRankingBoard questions={questions} onSelectGame={handleGameClick} mode={homeShowcaseConfig.hotGamesMode} customIds={homeShowcaseConfig.hotGameIds} />
+                <HotGamesRankingBoard
+                  questions={questions}
+                  onSelectGame={handleGameClick}
+                  mode={hotMode}
+                  customIds={hotCustomIds}
+                  category={showcaseCategory}
+                />
               )}
             </div>
           </div>
 
-          {/* 首頁隨機抽 3 款遊戲按鈕（桌面與手機通用核心展示） */}
+          {/* 首頁隨機看3個提案 / 隨機抽 3 款遊戲按鈕（桌面與手機通用核心展示） */}
           <div className="my-2 sm:my-3 flex items-center justify-center">
             <button
               type="button"
               onClick={() => setIsRandomDrawOpen(true)}
-              className="group relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs sm:text-sm shadow-md shadow-amber-200/70 hover:shadow-lg hover:shadow-amber-300/80 active:scale-95 transition-all cursor-pointer border border-amber-300/50"
-              title="想不到玩什麼？隨機抽取 3 款遊戲，立即線上試玩！"
+              className={`group relative inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer border ${
+                showcaseCategory === 'proposals_software'
+                  ? 'bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-600 hover:from-sky-600 hover:to-indigo-600 shadow-sky-200/70 hover:shadow-sky-300/80 border-sky-300/50'
+                  : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 shadow-amber-200/70 hover:shadow-amber-300/80 border-amber-300/50'
+              }`}
+              title={
+                showcaseCategory === 'proposals_software'
+                  ? '隨機抽取 3 個提案與軟體，立即探索靈感！'
+                  : '想不到玩什麼？隨機抽取 3 款遊戲，立即線上試玩！'
+              }
             >
               <span className="p-1 rounded-full bg-white/20 group-hover:rotate-180 transition-transform duration-500 shrink-0">
                 <Dices className="w-4 h-4 text-white" />
               </span>
-              <span>隨機抽 3 款遊戲</span>
-              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-black/20 text-amber-100 flex items-center gap-0.5">
-                <Sparkles className="w-3 h-3 text-amber-200" />
-                想不到玩什麼？
+              <span>{showcaseCategory === 'proposals_software' ? '隨機看3個提案' : '隨機抽 3 款遊戲'}</span>
+              <span
+                className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-black/20 flex items-center gap-0.5 ${
+                  showcaseCategory === 'proposals_software' ? 'text-sky-100' : 'text-amber-100'
+                }`}
+              >
+                <Sparkles
+                  className={`w-3 h-3 ${
+                    showcaseCategory === 'proposals_software' ? 'text-sky-200' : 'text-amber-200'
+                  }`}
+                />
+                {showcaseCategory === 'proposals_software' ? '探索創新靈感' : '想不到玩什麼？'}
               </span>
             </button>
           </div>
@@ -445,7 +543,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <div className="flex items-center gap-2 text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Gift className="h-5 w-5" /></span>
                   <div>
-                    <p className="text-sm sm:text-base font-black text-stone-900">新用戶註冊即贈 <span className="text-amber-700">100 平台點</span></p>
+                    <div className="text-sm sm:text-base font-black text-stone-900 flex items-center gap-1.5">
+                      <span>新用戶註冊即贈 <span className="text-amber-700">100 平台點</span></span>
+                      <HelpTooltip
+                        title="平台點數與賞金說明"
+                        content={
+                          <div className="space-y-1.5 text-left">
+                            <p className="text-stone-700 font-medium">
+                              點數可於平台懸賞與使用付費功能或用於未來兌換合作商服務
+                            </p>
+                            <p className="text-amber-800 font-bold bg-amber-50/90 p-1.5 rounded-lg border border-amber-200/80 text-[11px]">
+                              註：答題獲得的賞金、提出痛點獲得的打賞，可於未來兌換現金
+                            </p>
+                          </div>
+                        }
+                      />
+                    </div>
                     <p className="text-[10px] sm:text-xs text-stone-500">分享推薦碼 +100 點/人 · 發文再享 +100~300 點</p>
                   </div>
                 </div>
@@ -507,12 +620,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         )}
       </div>
 
-      {/* 隨機抽 3 款遊戲彈窗 */}
+      {/* 隨機看3個提案 / 隨機抽 3 款遊戲彈窗 */}
       <RandomGameDrawModal
         isOpen={isRandomDrawOpen}
         onClose={() => setIsRandomDrawOpen(false)}
         questions={questions}
         onSelectGame={handleGameClick}
+        category={showcaseCategory}
       />
     </section>
   );

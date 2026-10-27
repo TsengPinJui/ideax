@@ -1,5 +1,6 @@
 // IdeaX 創點子 - Progressive Web App Service Worker
-const CACHE_NAME = 'ideax-pwa-v12';
+const CACHE_NAME = 'ideax-pwa-v13';
+const MEDIA_CACHE_PREFIX = 'ideax-island-media-';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -60,7 +61,8 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys.map((key) => {
-            if (key !== CACHE_NAME) {
+            // 保留當前版本快取與已下載至裝置的島覽影片永久快取
+            if (key !== CACHE_NAME && !key.startsWith(MEDIA_CACHE_PREFIX)) {
               return caches.delete(key);
             }
           })
@@ -72,6 +74,31 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // 若為創點島導覽影片請求，優先從裝置本地永久快取讀取，避免每次重新下載
+  if (
+    event.request.method === 'GET' &&
+    (url.pathname === '/api/media/island-intro-video' ||
+      url.pathname === '/__firestore_media__/island_intro_video_v1.mp4')
+  ) {
+    event.respondWith(
+      (async () => {
+        try {
+          const mediaCache = await caches.open('ideax-island-media-v1');
+          const cachedVideo =
+            (await mediaCache.match('/__firestore_media__/island_intro_video_v1.mp4')) ||
+            (await mediaCache.match(event.request));
+          if (cachedVideo) {
+            return cachedVideo;
+          }
+        } catch (e) {
+          // ignore cache read error
+        }
+        return fetch(event.request);
+      })()
+    );
+    return;
+  }
 
   // Skip non-GET, non-http(s) (e.g. chrome-extension), and API proxy requests
   if (

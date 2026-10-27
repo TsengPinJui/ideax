@@ -5125,18 +5125,43 @@ app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) 
     if (!au) return res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' });
     if (!(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, error: '這個帳號沒有管理員權限' });
     const raw = req.body?.config || {};
-    const list: unknown[] = Array.isArray(raw.modes) ? raw.modes : [];
-    const modes = ['excellent', 'paid', 'custom'].filter((m) => list.includes(m)); // 可複選
-    // 管理員自選的作品 ID：只收合法格式、去重、最多 30 個
-    const customIds = (Array.isArray(raw.customIds) ? raw.customIds : [])
-      .map((x: unknown) => String(x || '').trim())
-      .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
-      .slice(0, 30);
-    const hotGameIds = (Array.isArray(raw.hotGameIds) ? raw.hotGameIds : [])
-      .map((x: unknown) => String(x || '').trim())
-      .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
-      .slice(0, 10);
-    const config = { enabled: raw.enabled === true, modes, customIds, includeSimulated: raw.includeSimulated !== false, hideHeroTitles: raw.hideHeroTitles === true, hotGamesMode: raw.hotGamesMode === 'views' ? 'views' : 'custom', hotGameIds, updatedAt: new Date().toISOString() };
+    const sanitizeModes = (arr: unknown, fallback: string[]) => {
+      if (!Array.isArray(arr)) return fallback;
+      return ['excellent', 'paid', 'custom'].filter((m) => arr.includes(m));
+    };
+    const sanitizeIds = (arr: unknown, max: number) =>
+      (Array.isArray(arr) ? arr : [])
+        .map((x: unknown) => String(x || '').trim())
+        .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
+        .slice(0, max);
+
+    const modes = sanitizeModes(raw.modes, ['excellent']);
+    const customIds = sanitizeIds(raw.customIds, 30);
+    const proposalModes = Array.isArray(raw.proposalModes) ? sanitizeModes(raw.proposalModes, modes) : undefined;
+    const proposalCustomIds = Array.isArray(raw.proposalCustomIds) ? sanitizeIds(raw.proposalCustomIds, 30) : undefined;
+    const gameModes = Array.isArray(raw.gameModes) ? sanitizeModes(raw.gameModes, modes) : undefined;
+    const gameCustomIds = Array.isArray(raw.gameCustomIds) ? sanitizeIds(raw.gameCustomIds, 30) : undefined;
+    const hotGameIds = sanitizeIds(raw.hotGameIds, 10);
+    const hotProposalIds = sanitizeIds(raw.hotProposalIds, 10);
+    const defaultCategory = raw.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games';
+
+    const config: Record<string, any> = {
+      enabled: raw.enabled === true,
+      defaultCategory,
+      modes,
+      customIds,
+      ...(proposalModes !== undefined ? { proposalModes } : {}),
+      ...(proposalCustomIds !== undefined ? { proposalCustomIds } : {}),
+      ...(gameModes !== undefined ? { gameModes } : {}),
+      ...(gameCustomIds !== undefined ? { gameCustomIds } : {}),
+      includeSimulated: raw.includeSimulated !== false,
+      hideHeroTitles: raw.hideHeroTitles === true,
+      hotGamesMode: raw.hotGamesMode === 'views' ? 'views' : 'custom',
+      hotGameIds,
+      hotProposalsMode: raw.hotProposalsMode === 'views' ? 'views' : 'custom',
+      hotProposalIds,
+      updatedAt: new Date().toISOString(),
+    };
     await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err: any) {

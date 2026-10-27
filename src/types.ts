@@ -1502,24 +1502,49 @@ export interface BidirectionalHandshakeMatch {
  * - custom：管理員自選
  */
 export type HomeShowcaseMode = 'excellent' | 'paid' | 'custom';
+export type HomeShowcaseCategory = 'proposals_software' | 'games';
 export interface HomeShowcaseConfig {
   enabled: boolean;
-  /** 可複選：要播放哪幾種內容 */
+  /** 首頁默認先顯示哪一類：'proposals_software'（提案與軟體）或 'games'（遊戲），預設 'games' */
+  defaultCategory?: HomeShowcaseCategory;
+  /** 可複選：要播放哪幾種內容（共用預設） */
   modes: HomeShowcaseMode[];
   /** 管理員自選：要播放的作品（問題／提案）ID，最多 30 個，依勾選順序 */
   customIds: string[];
+  /** 「提案與軟體」輪播：可複選播放模式 */
+  proposalModes?: HomeShowcaseMode[];
+  /** 「提案與軟體」輪播：管理員自選作品 ID，最多 30 個 */
+  proposalCustomIds?: string[];
+  /** 「遊戲」輪播：可複選播放模式 */
+  gameModes?: HomeShowcaseMode[];
+  /** 「遊戲」輪播：管理員自選遊戲 ID，最多 30 個 */
+  gameCustomIds?: string[];
   /** 優秀作品、付費推播也播放虛擬（模擬）卡片；真實作品夠多後可以關掉。預設開 */
   includeSimulated?: boolean;
   /** 隱藏首頁的大標題「一個問題，找到更多可能。」與小標題（只是視覺上隱藏，搜尋引擎仍讀得到） */
   hideHeroTitles?: boolean;
-  /** 首頁熱度榜排序方式：管理員自選順序，或依遊戲作品瀏覽次數排序 */
+  /** 首頁「遊戲」熱度榜排序方式：管理員自選順序，或依遊戲作品瀏覽次數排序 */
   hotGamesMode?: 'custom' | 'views';
-  /** 熱度榜管理員自選遊戲 ID，依排序順序顯示，最多 10 個 */
+  /** 熱度榜管理員自選「遊戲」ID，依排序順序顯示，最多 10 個 */
   hotGameIds?: string[];
+  /** 首頁「提案與軟體」熱度榜排序方式：管理員自選順序，或依作品瀏覽次數排序 */
+  hotProposalsMode?: 'custom' | 'views';
+  /** 熱度榜管理員自選「提案與軟體」ID，依排序順序顯示，最多 10 個 */
+  hotProposalIds?: string[];
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
-export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [], includeSimulated: true };
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = {
+  enabled: false,
+  defaultCategory: 'games',
+  modes: ['excellent'],
+  customIds: [],
+  includeSimulated: true,
+  hotGamesMode: 'custom',
+  hotGameIds: [],
+  hotProposalsMode: 'custom',
+  hotProposalIds: [],
+};
 export const HOME_SHOWCASE_MAX_CUSTOM = 30;
 
 /** 心智圖：中心主題往外分支，最多 3 層、40 個節點 */

@@ -430,3 +430,170 @@ export function getRandomThreeGames(
 
   return shuffled.slice(0, 3);
 }
+
+/**
+ * 判斷卡片是否屬於首頁「遊戲」分類
+ */
+export function isShowcaseGameQuestion(q: Question): boolean {
+  if (!q || q.status === 'delisted' || q.status === 'closed') return false;
+  if (q.id?.startsWith('game-hot-')) return true;
+  const text = `${q.title || ''} ${q.description || ''}`;
+  return (
+    isGameQuestion(q) ||
+    (q.category as string) === '遊戲' ||
+    q.subcategory === '遊戲' ||
+    Boolean(q.subcategories?.includes('遊戲')) ||
+    Boolean(q.tags?.some((tag) => ['遊戲', '小遊戲', '桌遊'].includes(tag))) ||
+    /遊戲|桌遊|game|rpg/i.test(text)
+  );
+}
+
+/**
+ * 判斷卡片是否屬於首頁「提案與軟體」分類（僅限「創新提案」與「遊戲以外軟體」，排除遊戲與一般提問/痛點/討論）
+ */
+export function isShowcaseProposalOrSoftwareQuestion(q: Question): boolean {
+  if (!q || q.status === 'delisted' || q.status === 'closed') return false;
+  if (isShowcaseGameQuestion(q)) return false;
+  return (
+    q.postType === 'innovation_proposal' ||
+    q.postType === 'vibecoding_app' ||
+    q.specialZone === 'vibecoding' ||
+    q.category === '網站程式'
+  );
+}
+
+function formatHeatCount(val: number): string {
+  if (val >= 1000) {
+    const k = val / 1000;
+    return `${k >= 10 ? Math.round(k) : Number(k.toFixed(1))}k`;
+  }
+  return String(Math.max(0, Math.round(val)));
+}
+
+/**
+ * 取得「提案與軟體」熱度榜前 10 名清單（僅含「創新提案」與「遊戲以外軟體」）
+ */
+export function getHotRankedProposalsAndSoftware(
+  allQuestions: Question[] = [],
+  mode: 'custom' | 'views' = 'custom',
+  customIds: string[] = []
+): { question: Question; heat: string; rank: number }[] {
+  const liveAll = (allQuestions || []).filter(isShowcaseProposalOrSoftwareQuestion);
+  const qMap = new Map(liveAll.map((q) => [q.id, q]));
+
+  const getPopularity = (q: Question) => {
+    const v = Number(q.viewsCount ?? q.views ?? 0);
+    const l = Number(q.likes ?? 0) * 15;
+    const s = Number(q.secondedCount ?? 0) * 20;
+    const sp = Number(q.supportPoints ?? 0) * 2;
+    return v + l + s + sp;
+  };
+
+  const defaults = [...liveAll]
+    .sort((a, b) => getPopularity(b) - getPopularity(a))
+    .slice(0, 15)
+    .map((q) => {
+      const rawHeat = Number(q.viewsCount ?? q.views ?? 0) || Math.max(120, getPopularity(q));
+      return { question: q, heat: formatHeatCount(rawHeat) };
+    });
+
+  let ranked: Array<{ question: Question; heat: string }> = [];
+  if (mode === 'views') {
+    const viewCount = (q: Question) => Number(q.viewsCount ?? q.views ?? 0);
+    ranked = [...liveAll]
+      .sort((a, b) => {
+        const diff = viewCount(b) - viewCount(a);
+        return diff !== 0 ? diff : getPopularity(b) - getPopularity(a);
+      })
+      .slice(0, 10)
+      .map((question) => ({
+        question,
+        heat: formatHeatCount(viewCount(question) || getPopularity(question)),
+      }));
+  } else {
+    ranked = (customIds || [])
+      .map((id) => {
+        const question = qMap.get(id);
+        if (!question || !isShowcaseProposalOrSoftwareQuestion(question)) return null;
+        const v = Number(question.viewsCount ?? question.views ?? 0);
+        return {
+          question,
+          heat: formatHeatCount(v || getPopularity(question)),
+        };
+      })
+      .filter((item): item is { question: Question; heat: string } => Boolean(item));
+  }
+
+  const seen = new Set(ranked.map((item) => item.question.id));
+  for (const item of defaults) {
+    if (ranked.length >= 10) break;
+    if (!seen.has(item.question.id)) {
+      seen.add(item.question.id);
+      ranked.push(item);
+    }
+  }
+
+  return ranked.slice(0, 10).map((item, index) => ({ ...item, rank: index + 1 }));
+}
+
+/**
+ * 取得精選「提案與軟體」（前 10 名，僅含「創新提案」與「遊戲以外軟體」）
+ */
+export function getFeaturedProposalsAndSoftware(
+  allQuestions: Question[] = []
+): { question: Question; score: number; rank: number }[] {
+  const pool = (allQuestions || []).filter(isShowcaseProposalOrSoftwareQuestion);
+
+  const sorted = [...pool].sort((a, b) => {
+    const aFeatured = a.isFeatured || a.isStarSeason || a.starSeasonProposalId ? 1 : 0;
+    const bFeatured = b.isFeatured || b.isStarSeason || b.starSeasonProposalId ? 1 : 0;
+    if (aFeatured !== bFeatured) return bFeatured - aFeatured;
+    const aScore =
+      (a.experienceScore || 88) * 5 +
+      (a.likes || 0) * 3 +
+      (a.secondedCount || 0) * 4 +
+      (a.supportPoints || 0) * 0.5 +
+      (a.viewsCount ?? a.views ?? 0) * 0.05;
+    const bScore =
+      (b.experienceScore || 88) * 5 +
+      (b.likes || 0) * 3 +
+      (b.secondedCount || 0) * 4 +
+      (b.supportPoints || 0) * 0.5 +
+      (b.viewsCount ?? b.views ?? 0) * 0.05;
+    return bScore - aScore;
+  });
+
+  return sorted.slice(0, 10).map((question, idx) => ({
+    question,
+    score: question.experienceScore || Math.max(85, 99 - idx),
+    rank: idx + 1,
+  }));
+}
+
+/**
+ * 隨機從全站「提案與軟體」（創新提案、遊戲以外軟體）池中抽取 3 個不重複項目
+ */
+export function getRandomThreeProposals(
+  allQuestions: Question[] = [],
+  excludeIds: string[] = []
+): Question[] {
+  const pool = (allQuestions || []).filter(isShowcaseProposalOrSoftwareQuestion);
+  if (pool.length === 0) return [];
+
+  const excludeSet = new Set(excludeIds);
+  let candidates = pool.filter((q) => !excludeSet.has(q.id));
+  if (candidates.length < 3) {
+    candidates = [...pool];
+  }
+
+  const shuffled = [...candidates];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled.slice(0, 3);
+}
+
+
+

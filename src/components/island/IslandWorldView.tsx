@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Clock,
   CloudRain,
   Compass,
@@ -79,7 +81,10 @@ import {
   CityWeatherAndTime,
 } from '../../data/cityData';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
-import { loadIslandIntroVideoUrl } from '../../services/islandIntroVideoService';
+import {
+  getCachedIslandIntroVideoUrlSync,
+  loadIslandIntroVideoUrl,
+} from '../../services/islandIntroVideoService';
 import './IslandWorldView.css';
 
 interface IslandWorldViewProps {
@@ -208,8 +213,24 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       return true;
     }
   });
-  const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(null);
-  const [introVideoLoadProgress, setIntroVideoLoadProgress] = useState<number>(0);
+  const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(() =>
+    getCachedIslandIntroVideoUrlSync()
+  );
+  const [introVideoLoadProgress, setIntroVideoLoadProgress] = useState<number>(() =>
+    getCachedIslandIntroVideoUrlSync() ? 100 : 0
+  );
+  const introVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const attemptAutoPlayIntroVideo = useCallback((videoEl: HTMLVideoElement | null) => {
+    if (!videoEl) return;
+    const playPromise = videoEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        videoEl.muted = true;
+        videoEl.play().catch(() => {});
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!showIntroVideoModal && introVideoSrc) return;
@@ -1631,6 +1652,158 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* 東西南北（上下左右按鍵，中間是主島）跳島導航按鍵組 — 位於貿易街下方及各島頂層 */}
+                {selectedIsland &&
+                  (!selectedDistrict ||
+                    (selectedIsland.id === 'pain' && selectedStand?.id !== 'pain-posting-desk')) && (
+                    <div className="mt-3.5 p-3.5 rounded-2xl bg-gradient-to-b from-amber-50/85 to-stone-50/90 border border-amber-900/15 shadow-2xs">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-amber-950">
+                          <Compass size={14} className="text-amber-700 shrink-0" />
+                          <span>跳島導航（東西南北）</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-stone-500">
+                          點選方位跳至對應島嶼
+                        </span>
+                      </div>
+
+                      <div
+                        className="grid grid-cols-3 gap-2 items-stretch"
+                        role="group"
+                        aria-label="東西南北跳島方向鍵"
+                      >
+                        {/* 左上空位 */}
+                        <div className="pointer-events-none flex items-center justify-center">
+                          <span className="w-6 h-6 border-t border-l border-amber-900/15 rounded-tl-lg opacity-60" />
+                        </div>
+
+                        {/* 上（北）：痛點島 */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusIsland('pain')}
+                          className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            selectedIsland.id === 'pain'
+                              ? 'bg-amber-800 text-white border-amber-900 shadow-sm ring-2 ring-amber-600/30'
+                              : 'bg-white hover:bg-amber-50/90 text-stone-800 border-amber-900/20 hover:border-amber-700/50 shadow-2xs'
+                          }`}
+                          title="往北（上）跳至痛點島"
+                        >
+                          <span
+                            className={`inline-flex items-center gap-0.5 text-[10px] font-black leading-none mb-1 ${
+                              selectedIsland.id === 'pain' ? 'text-amber-200' : 'text-amber-800'
+                            }`}
+                          >
+                            <ChevronUp size={13} strokeWidth={2.6} />
+                            <span>北</span>
+                          </span>
+                          <strong className="text-xs font-black leading-tight">痛點島</strong>
+                        </button>
+
+                        {/* 右上空位 */}
+                        <div className="pointer-events-none flex items-center justify-center">
+                          <span className="w-6 h-6 border-t border-r border-amber-900/15 rounded-tr-lg opacity-60" />
+                        </div>
+
+                        {/* 左（西）：創意島 */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusIsland('creative')}
+                          className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            selectedIsland.id === 'creative'
+                              ? 'bg-amber-800 text-white border-amber-900 shadow-sm ring-2 ring-amber-600/30'
+                              : 'bg-white hover:bg-amber-50/90 text-stone-800 border-amber-900/20 hover:border-amber-700/50 shadow-2xs'
+                          }`}
+                          title="往西（左）跳至創意島"
+                        >
+                          <span
+                            className={`inline-flex items-center gap-0.5 text-[10px] font-black leading-none mb-1 ${
+                              selectedIsland.id === 'creative' ? 'text-amber-200' : 'text-amber-800'
+                            }`}
+                          >
+                            <ChevronLeft size={13} strokeWidth={2.6} />
+                            <span>西</span>
+                          </span>
+                          <strong className="text-xs font-black leading-tight">創意島</strong>
+                        </button>
+
+                        {/* 中間：主島 */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusIsland('home')}
+                          className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            selectedIsland.id === 'home'
+                              ? 'bg-gradient-to-b from-amber-700 to-amber-900 text-white border-amber-950 shadow-sm ring-2 ring-amber-500/40'
+                              : 'bg-amber-100/75 hover:bg-amber-200/80 text-amber-950 border-amber-900/30 hover:border-amber-800 shadow-2xs'
+                          }`}
+                          title="回到中央主島"
+                        >
+                          <span
+                            className={`text-[10px] font-black leading-none mb-1 ${
+                              selectedIsland.id === 'home' ? 'text-amber-200' : 'text-amber-800'
+                            }`}
+                          >
+                            中樞
+                          </span>
+                          <strong className="text-xs font-black leading-tight">主島</strong>
+                        </button>
+
+                        {/* 右（東）：討論島 */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusIsland('discussion')}
+                          className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            selectedIsland.id === 'discussion'
+                              ? 'bg-amber-800 text-white border-amber-900 shadow-sm ring-2 ring-amber-600/30'
+                              : 'bg-white hover:bg-amber-50/90 text-stone-800 border-amber-900/20 hover:border-amber-700/50 shadow-2xs'
+                          }`}
+                          title="往東（右）跳至討論島"
+                        >
+                          <span
+                            className={`inline-flex items-center gap-0.5 text-[10px] font-black leading-none mb-1 ${
+                              selectedIsland.id === 'discussion' ? 'text-amber-200' : 'text-amber-800'
+                            }`}
+                          >
+                            <span>東</span>
+                            <ChevronRight size={13} strokeWidth={2.6} />
+                          </span>
+                          <strong className="text-xs font-black leading-tight">討論島</strong>
+                        </button>
+
+                        {/* 左下空位 */}
+                        <div className="pointer-events-none flex items-center justify-center">
+                          <span className="w-6 h-6 border-b border-l border-amber-900/15 rounded-bl-lg opacity-60" />
+                        </div>
+
+                        {/* 下（南）：徵才島 */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusIsland('career')}
+                          className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            selectedIsland.id === 'career'
+                              ? 'bg-amber-800 text-white border-amber-900 shadow-sm ring-2 ring-amber-600/30'
+                              : 'bg-white hover:bg-amber-50/90 text-stone-800 border-amber-900/20 hover:border-amber-700/50 shadow-2xs'
+                          }`}
+                          title="往南（下）跳至徵才島"
+                        >
+                          <strong className="text-xs font-black leading-tight mb-1">徵才島</strong>
+                          <span
+                            className={`inline-flex items-center gap-0.5 text-[10px] font-black leading-none ${
+                              selectedIsland.id === 'career' ? 'text-amber-200' : 'text-amber-800'
+                            }`}
+                          >
+                            <span>南</span>
+                            <ChevronDown size={13} strokeWidth={2.6} />
+                          </span>
+                        </button>
+
+                        {/* 右下空位 */}
+                        <div className="pointer-events-none flex items-center justify-center">
+                          <span className="w-6 h-6 border-b border-r border-amber-900/15 rounded-br-lg opacity-60" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 {/* 創意島 > 展覽館：第一層「展場清單」 */}
                 {selectedDistrict &&
@@ -3244,18 +3417,26 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             </button>
             {introVideoSrc ? (
               <video
+                ref={introVideoRef}
                 key={introVideoSrc}
                 src={introVideoSrc}
                 className="island-intro-video-player"
                 controls
                 autoPlay
                 playsInline
+                preload="auto"
+                onLoadedData={(e) => attemptAutoPlayIntroVideo(e.currentTarget)}
+                onCanPlay={(e) => attemptAutoPlayIntroVideo(e.currentTarget)}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 px-8 text-amber-100/90 gap-4 min-h-[280px]">
                 <Film size={32} className="text-amber-300 animate-pulse" />
-                <div className="text-sm font-bold tracking-wider">
-                  正在從雲端資料庫載入創點島導覽影片... {introVideoLoadProgress}%
+                <div className="text-sm font-bold tracking-wider flex items-center justify-center flex-wrap gap-1 text-center">
+                  <span>載入島覽影片...(可跳過,可在下方</span>
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-400/20 border border-amber-300/60 text-amber-300 mx-0.5">
+                    <HelpCircle size={13} />
+                  </span>
+                  <span>查看)</span>
                 </div>
                 <div className="w-56 h-2 rounded-full bg-white/15 overflow-hidden">
                   <div

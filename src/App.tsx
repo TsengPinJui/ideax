@@ -50,6 +50,10 @@ import {
   IslandOnlineUserRecord,
 } from './utils/islandPresence';
 import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
+import {
+  isRunningAsInstalledApp,
+  preloadIslandIntroVideoToDevice,
+} from './services/islandIntroVideoService';
 
 const ONBOARDING_STORAGE_KEY = 'ideax_app_onboarding_completed_v1';
 
@@ -83,11 +87,17 @@ const AiCrmView = lazyNamed<typeof import('./components/AiCrmView').AiCrmView>((
 const MembershipAndTopupFullPage = lazyNamed<typeof import('./components/MembershipAndTopupFullPage').MembershipAndTopupFullPage>(() => import('./components/MembershipAndTopupFullPage'), 'MembershipAndTopupFullPage');
 const ChatView = lazyNamed<typeof import('./components/ChatView').ChatView>(() => import('./components/ChatView'), 'ChatView');
 const StarSeasonView = lazyNamed<typeof import('./components/challenge/StarSeasonView').StarSeasonView>(() => import('./components/challenge/StarSeasonView'), 'StarSeasonView');
-// 首頁載入完成、瀏覽器閒置後，在背景預先下載最常點擊的畫面（問題詳情、創點島、發布、登入、創星季、私訊、個人中心）
+// 若用戶以 App 模式開啟，立即在背景將創點島影片與模組下載並永久儲存至裝置本機
+if (typeof window !== 'undefined' && isRunningAsInstalledApp()) {
+  IslandWorldView.preload();
+  preloadIslandIntroVideoToDevice();
+}
+// 首頁載入完成、瀏覽器閒置後，在背景預先下載最常點擊的畫面與島覽影片至裝置本機
 preloadWhenIdle([
   QuestionDetailModal.preload,
   AuthModal.preload,
   IslandWorldView.preload,
+  preloadIslandIntroVideoToDevice,
   CreateQuestionModal.preload,
   StarSeasonView.preload,
   ChatView.preload,
@@ -1415,23 +1425,41 @@ function MainContent() {
   }, [currentUser.id, activeTab, allowGuestPosting, promptLogin]);
 
   const prevSelectedQuestionIdRef = React.useRef<string | null>(null);
+  const hasInitialUrlParsedRef = React.useRef<boolean>(false);
+
+  const INITIAL_HOME_CARD_LIMIT = 20;
+  const [homeCardLimit, setHomeCardLimit] = useState<number>(INITIAL_HOME_CARD_LIMIT);
+
+  useEffect(() => {
+    setHomeCardLimit(INITIAL_HOME_CARD_LIMIT);
+  }, [specialZone, selectedCategory, selectedSubcategory, searchQuery, sortBy]);
 
   // Read URL query parameter ?q= or ?questionId= or ?question= or /question/:id on load/change to support direct links & refresh
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const parseAndOpenQuestion = () => {
+    const parseAndOpenQuestion = (isNavigationEvent = false) => {
+      const isInitialMount = !hasInitialUrlParsedRef.current;
+      hasInitialUrlParsedRef.current = true;
+      const shouldSyncTabFromPath = isInitialMount || isNavigationEvent;
+
       let targetQId: string | null = null;
 
       const ideaId = parseIdeaDetailPath();
-      setCreateIdeasDetailId(ideaId);
       if (ideaId) {
+        setCreateIdeasDetailId(ideaId);
         setSelectedQuestion(null);
         setSpecialZone('create_ideas');
         setActiveTab('explore');
         return;
+      } else if (shouldSyncTabFromPath) {
+        setCreateIdeasDetailId(null);
       }
-      if (window.history.state?.zone === 'create_ideas' || new URLSearchParams(window.location.search).get('zone') === 'create_ideas') {
+
+      if (
+        shouldSyncTabFromPath &&
+        (window.history.state?.zone === 'create_ideas' || new URLSearchParams(window.location.search).get('zone') === 'create_ideas')
+      ) {
         // 從提案頁按上一頁回到列表時，停在搜尋區
         const el = document.getElementById('create-ideas-search');
         if (!el) setTimeout(() => document.getElementById('create-ideas-search')?.scrollIntoView({ block: 'center' }), 120);
@@ -1442,13 +1470,15 @@ function MainContent() {
       const searchParams = new URLSearchParams(window.location.search);
       const zoneParam = (searchParams.get('zone') || '').toLowerCase();
       const tabParam = (searchParams.get('tab') || '').toLowerCase();
+      const subTabParam = (searchParams.get('subTab') || searchParams.get('subtab') || '').toLowerCase();
 
-      // 若當前子網址為痛點集或 L0 討論區專區，直接確保選取對應專區並重設題目選取
+      // 若當前子網址為痛點集或 L0 討論區專區，僅於初次載入或瀏覽器前進後退時切換分頁
       if (
-        normalizedPath === '/painpoints' ||
-        normalizedPath === '/pain-points' ||
-        normalizedPath === '/painpoint' ||
-        normalizedPath === '/pain-point'
+        shouldSyncTabFromPath &&
+        (normalizedPath === '/painpoints' ||
+          normalizedPath === '/pain-points' ||
+          normalizedPath === '/painpoint' ||
+          normalizedPath === '/pain-point')
       ) {
         setSelectedQuestion(null);
         setActiveTab('explore');
@@ -1456,11 +1486,12 @@ function MainContent() {
         return;
       }
       if (
-        normalizedPath === '/l0-discussion' ||
-        normalizedPath === '/l0_discussion' ||
-        normalizedPath === '/l0' ||
-        normalizedPath === '/discussions' ||
-        normalizedPath === '/discussion'
+        shouldSyncTabFromPath &&
+        (normalizedPath === '/l0-discussion' ||
+          normalizedPath === '/l0_discussion' ||
+          normalizedPath === '/l0' ||
+          normalizedPath === '/discussions' ||
+          normalizedPath === '/discussion')
       ) {
         setSelectedQuestion(null);
         setActiveTab('explore');
@@ -1559,8 +1590,8 @@ function MainContent() {
         return;
       }
 
-      // 若非題目詳情頁，同步瀏覽器網址至對應主分頁與子網址
-      if (!targetQId) {
+      // 若非題目詳情頁，僅在初次載入或瀏覽器導覽事件時同步網址至對應主分頁，避免背景資料更新時跳回首頁
+      if (!targetQId && shouldSyncTabFromPath) {
         setSelectedQuestion(null);
         if (
           normalizedPath === '/vibecoding' ||
@@ -1681,10 +1712,28 @@ function MainContent() {
           setActiveTab('chat');
         } else if (normalizedPath === '/ai-crm' || normalizedPath === '/ai_crm' || tabParam === 'ai_crm') {
           setActiveTab('ai_crm');
+        } else if (
+          normalizedPath === '/user-analytics' ||
+          normalizedPath === '/user_analytics' ||
+          tabParam === 'admin_user_analytics'
+        ) {
+          setUserDashboardTab('admin_user_analytics');
+          setActiveTab('user_dashboard');
         } else if (normalizedPath === '/user_dashboard' || normalizedPath === '/dashboard' || tabParam === 'user_dashboard') {
+          if (subTabParam) {
+            setUserDashboardTab(subTabParam as any);
+          }
           setActiveTab('user_dashboard');
         } else if (normalizedPath === '/admin_dashboard' || normalizedPath === '/admin' || tabParam === 'admin_dashboard') {
           setActiveTab('admin_dashboard');
+        } else if (
+          normalizedPath === '/island' ||
+          normalizedPath === '/island-explorer' ||
+          normalizedPath === '/island_explorer' ||
+          tabParam === 'island_explorer' ||
+          tabParam === 'island'
+        ) {
+          setActiveTab('island_explorer');
         } else if (normalizedPath === '/membership' || normalizedPath === '/plans' || tabParam === 'membership') {
           setActiveTab('membership');
         } else if (normalizedPath === '/topup' || normalizedPath === '/recharge' || tabParam === 'topup' || tabParam === 'recharge') {
@@ -1699,10 +1748,11 @@ function MainContent() {
       }
     };
 
-    parseAndOpenQuestion();
+    parseAndOpenQuestion(false);
 
-    window.addEventListener('popstate', parseAndOpenQuestion);
-    window.addEventListener('hashchange', parseAndOpenQuestion);
+    const handleNavigationChange = () => parseAndOpenQuestion(true);
+    window.addEventListener('popstate', handleNavigationChange);
+    window.addEventListener('hashchange', handleNavigationChange);
 
     const handleOpenRecharge = () => {
       setSelectedQuestion(null);
@@ -1713,8 +1763,8 @@ function MainContent() {
     window.addEventListener('ideax_open_recharge', handleOpenRecharge);
 
     return () => {
-      window.removeEventListener('popstate', parseAndOpenQuestion);
-      window.removeEventListener('hashchange', parseAndOpenQuestion);
+      window.removeEventListener('popstate', handleNavigationChange);
+      window.removeEventListener('hashchange', handleNavigationChange);
       window.removeEventListener('ideax_open_recharge', handleOpenRecharge);
     };
   }, [questions.length]);
@@ -3210,7 +3260,8 @@ function MainContent() {
                 ) : (
                   (() => {
                     const isGuest = isGuestUser(currentUser);
-                    const visibleQuestions = isGuest ? filteredQuestions.slice(0, GUEST_VISIBLE_COUNT) : filteredQuestions;
+                    const effectiveLimit = isGuest ? GUEST_VISIBLE_COUNT : homeCardLimit;
+                    const visibleQuestions = filteredQuestions.slice(0, effectiveLimit);
                     if (isGuest) registerGuestListExposure(filteredQuestions);
                     const blurredQuestions = isGuest && filteredQuestions.length > GUEST_VISIBLE_COUNT ? filteredQuestions.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
                     const boardDisplayName =
@@ -3267,6 +3318,27 @@ function MainContent() {
                             );
                           })}
                         </div>
+
+                        {!isGuest && filteredQuestions.length > homeCardLimit && (
+                          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setHomeCardLimit((prev) => prev + 20)}
+                              className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+                            >
+                              載入更多卡片（目前顯示 {visibleQuestions.length} / 共 {filteredQuestions.length} 則）
+                            </button>
+                            {filteredQuestions.length - homeCardLimit > 20 && (
+                              <button
+                                type="button"
+                                onClick={() => setHomeCardLimit(filteredQuestions.length)}
+                                className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs sm:text-sm transition-all cursor-pointer"
+                              >
+                                顯示全部 ({filteredQuestions.length})
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {isGuest && filteredQuestions.length > GUEST_VISIBLE_COUNT && (
                           <GuestBoardGateBlurOverlay

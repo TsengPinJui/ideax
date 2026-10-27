@@ -37,7 +37,7 @@ import { loadAllDataFromFirestore } from '../services/firestoreSync';
 import { computeCityDistributionStats } from '../data/cityData';
 
 export const AdminUserAnalyticsTab: React.FC = () => {
-  const { availableUsers, setAvailableUsers, isDemoMode } = useApp();
+  const { availableUsers, setAvailableUsers, isDemoMode, pullAllDataFromFirestore } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -124,20 +124,46 @@ export const AdminUserAnalyticsTab: React.FC = () => {
 
   // 每次進入頁面自動匯入最新資料庫用戶資料與統計數據 (不發起 AI API 請求)
   useEffect(() => {
-    loadAllDataFromFirestore().then((cloudData) => {
-      if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        setAvailableUsers(cloudData.users);
-      }
-    }).catch((err) => console.error(err));
+    if (typeof pullAllDataFromFirestore === 'function') {
+      pullAllDataFromFirestore().catch((err) => console.error(err));
+    } else {
+      loadAllDataFromFirestore()
+        .then((cloudData) => {
+          if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length > 0) {
+            setAvailableUsers((prev) => {
+              const map = new Map(prev.map((u) => [u.id, u]));
+              cloudData.users!.forEach((u) => {
+                if (u && u.id) {
+                  map.set(u.id, { ...map.get(u.id), ...u });
+                }
+              });
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch((err) => console.error(err));
+    }
   }, []);
 
   // 手動按需刷新用戶資料快照
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const cloudData = await loadAllDataFromFirestore();
-      if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        setAvailableUsers(cloudData.users);
+      if (typeof pullAllDataFromFirestore === 'function') {
+        await pullAllDataFromFirestore();
+      } else {
+        const cloudData = await loadAllDataFromFirestore();
+        if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length > 0) {
+          setAvailableUsers((prev) => {
+            const map = new Map(prev.map((u) => [u.id, u]));
+            cloudData.users!.forEach((u) => {
+              if (u && u.id) {
+                map.set(u.id, { ...map.get(u.id), ...u });
+              }
+            });
+            return Array.from(map.values());
+          });
+        }
       }
       setLastRefreshedAt(
         new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -404,7 +430,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     };
     validUsers.forEach((u) => {
       const s = realSurvey(u)?.desiredServices;
-      if (s && s.length > 0) {
+      if (Array.isArray(s) && s.length > 0) {
         s.forEach((item) => {
           if (counts[item] !== undefined) counts[item] = counts[item] + 1;
         });
@@ -432,11 +458,14 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   const domainStats = useMemo(() => {
     const counts: Record<string, number> = {};
     validUsers.forEach((u) => {
-      const domains = realSurvey(u)?.relatedDomains?.length
-        ? realSurvey(u)!.relatedDomains!
+      const rawDomains = realSurvey(u)?.relatedDomains;
+      const domains = Array.isArray(rawDomains) && rawDomains.length
+        ? rawDomains
         : (isDemoMode ? [u.domain || '創新創業'] : [UNFILLED_LABEL]); // 沒填問卷：歸到「未填寫」
       domains.forEach((d) => {
-        counts[d] = (counts[d] || 0) + 1;
+        if (typeof d === 'string' && d) {
+          counts[d] = (counts[d] || 0) + 1;
+        }
       });
     });
     return Object.entries(counts)
@@ -591,12 +620,12 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     const q = searchTerm.toLowerCase();
     return validUsers.filter((u) => {
       return (
-        u.name.toLowerCase().includes(q) ||
-        (u.email && u.email.toLowerCase().includes(q)) ||
-        (u.industry && u.industry.toLowerCase().includes(q)) ||
-        (u.jobTitle && u.jobTitle.toLowerCase().includes(q)) ||
-        (u.title && u.title.toLowerCase().includes(q)) ||
-        (u.company && u.company.toLowerCase().includes(q))
+        String(u.name || '').toLowerCase().includes(q) ||
+        String(u.email || '').toLowerCase().includes(q) ||
+        String(u.industry || '').toLowerCase().includes(q) ||
+        String(u.jobTitle || '').toLowerCase().includes(q) ||
+        String(u.title || '').toLowerCase().includes(q) ||
+        String(u.company || '').toLowerCase().includes(q)
       );
     });
   }, [validUsers, searchTerm]);
@@ -1308,7 +1337,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                     </td>
                     {/* 2. 年齡 */}
                     <td className="p-3 text-stone-600 tabular-nums text-[11px]">
-                      {u.ageGroup
+                      {typeof u.ageGroup === 'string' && u.ageGroup
                         ? u.ageGroup.replace('under_18', '<18歲').replace('55_above', '>55歲').replace('_', '~') + '歲'
                         : '25~34歲'}
                     </td>
@@ -1415,7 +1444,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-3 text-[11px] text-stone-500 tabular-nums">
-                      {s.updatedAt?.split('T')[0] || s.completedAt?.split('T')[0] || u.joinedDate}
+                      {(typeof s.updatedAt === 'string' ? s.updatedAt.split('T')[0] : '') ||
+                        (typeof s.completedAt === 'string' ? s.completedAt.split('T')[0] : '') ||
+                        (typeof u.joinedDate === 'string' ? u.joinedDate : '-')}
                     </td>
                   </tr>
                 );

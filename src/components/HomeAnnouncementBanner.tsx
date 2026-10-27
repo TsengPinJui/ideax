@@ -21,6 +21,7 @@ import { ShareReferralModal } from './ShareReferralModal';
 import { RedeemReferralCodeModal } from './RedeemReferralCodeModal';
 import { getUserReferralCode, copyPureReferralCode } from '../services/referralService';
 import { IdeaIslandIcon } from './island/IdeaIslandIcon';
+import { HelpTooltip } from './HelpTooltip';
 
 interface HomeAnnouncementBannerProps {
   onOpenRegister: () => void;
@@ -89,6 +90,19 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
               <div className="flex items-center justify-between gap-1.5 w-full sm:w-auto">
                 <h2 className="text-xs sm:text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
                   <span className="text-amber-800">推廣送好禮</span>
+                  <HelpTooltip
+                    title="平台點數與賞金說明"
+                    content={
+                      <div className="space-y-1.5 text-left">
+                        <p className="text-stone-700 font-medium">
+                          點數可於平台懸賞與使用付費功能或用於未來兌換合作商服務
+                        </p>
+                        <p className="text-amber-800 font-bold bg-amber-50/90 p-1.5 rounded-lg border border-amber-200/80 text-[11px]">
+                          註：答題獲得的賞金、提出痛點獲得的打賞，可於未來兌換現金
+                        </p>
+                      </div>
+                    }
+                  />
                   <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-800 text-[10px] font-bold">
                     <Sparkles className="w-2.5 h-2.5 text-amber-600" />
                     <span>持續收錄全球各地優秀作品~ (以中文地區為主)</span>

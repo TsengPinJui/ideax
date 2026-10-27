@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Sparkles,
   Users,
+  Map,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
@@ -86,16 +87,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">平台導覽</h4>
             <ul className="space-y-1.5 text-stone-400">
               <li>
-                <a
-                  href="/challenge"
-                  onClick={spaClick(() => onNavClick('star_season'))}
-                  className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>創星季挑戰賽</span>
-                </a>
-              </li>
-              <li>
                 <button
                   type="button"
                   onClick={() => {
@@ -112,13 +103,31 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 </button>
               </li>
               <li>
-                <a href="/explore" onClick={spaClick(() => onNavClick('explore'))} className="hover:text-white transition-colors cursor-pointer text-left">
-                  探索問題市場
+                <a
+                  href="/island"
+                  onClick={spaClick(() => {
+                    onNavClick('island_explorer');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  })}
+                  className="hover:text-cyan-300 transition-colors text-left font-semibold text-cyan-400 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Map className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span>創點島•互動島覽</span>
                 </a>
               </li>
               <li>
-                <a href="/create" onClick={spaClick(onPostClick)} className="hover:text-white transition-colors text-left cursor-pointer">
-                  發布問題需求
+                <a
+                  href="/challenge"
+                  onClick={spaClick(() => onNavClick('star_season'))}
+                  className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>創星季挑戰賽</span>
+                </a>
+              </li>
+              <li>
+                <a href="/explore" onClick={spaClick(() => onNavClick('explore'))} className="hover:text-white transition-colors cursor-pointer text-left">
+                  探索問題市場
                 </a>
               </li>
               <li>
@@ -131,18 +140,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   匯職缺・AI 找工作
                 </a>
               </li>
-              <li>
-                <button
-                  onClick={() => onNavClick('leaderboard')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
-                  榮譽排行榜
-                </button>
-              </li>
             </ul>
           </div>
 
-          {/* 關於我們 */}
+          {/* 關於與支援 */}
           <div className="space-y-2.5">
             <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">關於與支援</h4>
             <ul className="space-y-1.5 text-stone-400">
@@ -157,18 +158,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               <li>
                 <button
                   onClick={() => onNavClick('about', 'ip_agents')}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1"
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
                 >
-                  <Users className="w-3 h-3 text-amber-400 shrink-0" />
+                  <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>原創IP與Agent</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavClick('about', 'tiers')}
-                  className="hover:text-white transition-colors text-left cursor-pointer"
-                >
-                  L0–L4 分級說明
                 </button>
               </li>
               <li>
@@ -176,15 +169,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   onClick={() => setIsPointsGuideOpen(true)}
                   className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  點數與幣別怎麼用
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavClick('about', 'terms')}
-                  className="hover:text-white transition-colors text-left cursor-pointer"
-                >
-                  服務條款與聲明
+                  點數與幣別說明
                 </button>
               </li>
               <li>
@@ -197,10 +182,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
-                  onClick={() => triggerDirectAppDownloadOrInstall(openPwaInstallModal)}
-                  className="hover:text-amber-300 transition-colors text-left font-semibold text-amber-400 cursor-pointer flex items-center gap-1"
+                  onClick={() => onNavClick('about', 'terms')}
+                  className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  <Download className="w-3 h-3 shrink-0" />
+                  服務條款與聲明
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => triggerDirectAppDownloadOrInstall(openPwaInstallModal)}
+                  className="hover:text-amber-300 transition-colors text-left font-semibold text-amber-400 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" />
                   <span>安裝手機 App</span>
                 </button>
               </li>

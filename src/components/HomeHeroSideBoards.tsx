@@ -1,7 +1,12 @@
 import React from 'react';
-import { Flame, Play, Trophy, Dices } from 'lucide-react';
-import type { Question } from '../types';
-import { getHotRankedGames, getFeaturedGames } from '../data/hotGamesData';
+import { Flame, Trophy } from 'lucide-react';
+import type { HomeShowcaseCategory, Question } from '../types';
+import {
+  getHotRankedGames,
+  getFeaturedGames,
+  getHotRankedProposalsAndSoftware,
+  getFeaturedProposalsAndSoftware,
+} from '../data/hotGamesData';
 
 interface HomeHeroSideBoardsProps {
   questions: Question[];
@@ -10,14 +15,15 @@ interface HomeHeroSideBoardsProps {
 }
 
 /**
- * 首頁輪播區左側：精選遊戲（收窄版面，留約一半寬度，文字超出以 ... 截斷）
+ * 首頁輪播區左側：精選榜（支援「提案與軟體」與「遊戲」兩類切換）
  */
 export const FeaturedGamesBoard: React.FC<{
   questions: Question[];
   onSelectGame: (game: Question) => void;
   carouselQuestions?: Question[];
-}> = ({ questions, onSelectGame, carouselQuestions = [] }) => {
-  // 按照首頁輪播展示順序排列，不足 10 款則由精選庫依序補滿
+  category?: HomeShowcaseCategory;
+}> = ({ questions, onSelectGame, carouselQuestions = [], category = 'games' }) => {
+  // 按照首頁輪播展示順序排列，不足 10 款則由該分類精選庫依序補滿
   const carouselList: Question[] = [];
   const seenIds = new Set<string>();
 
@@ -28,7 +34,10 @@ export const FeaturedGamesBoard: React.FC<{
   }
 
   if (carouselList.length < 10) {
-    const fallbackList = getFeaturedGames(questions);
+    const fallbackList =
+      category === 'proposals_software'
+        ? getFeaturedProposalsAndSoftware(questions)
+        : getFeaturedGames(questions);
     for (const item of fallbackList) {
       if (carouselList.length >= 10) break;
       if (!seenIds.has(item.question.id)) {
@@ -38,14 +47,28 @@ export const FeaturedGamesBoard: React.FC<{
     }
   }
 
-  const featuredList = carouselList.slice(0, 10).map((question, idx) => ({
-    question: {
-      ...question,
-      demoUrl: question.demoUrl || (question as any).vibeCodingData?.demoUrl || 'https://4388.fun/',
-      previewMode: 'embed' as const,
-    },
-    rank: idx + 1,
-  }));
+  const featuredList = carouselList.slice(0, 10).map((question, idx) => {
+    const existingDemoUrl = question.demoUrl || (question as any).vibeCodingData?.demoUrl || '';
+    return {
+      question:
+        category === 'games'
+          ? {
+              ...question,
+              demoUrl: existingDemoUrl || 'https://4388.fun/',
+              previewMode: 'embed' as const,
+            }
+          : existingDemoUrl
+          ? {
+              ...question,
+              demoUrl: existingDemoUrl,
+              previewMode: 'embed' as const,
+            }
+          : question,
+      rank: idx + 1,
+    };
+  });
+
+  const boardTitle = category === 'proposals_software' ? '精選提案軟體' : '精選遊戲';
 
   return (
     <div className="w-full h-full flex flex-col rounded-2xl bg-white/90 backdrop-blur-md border border-amber-200/80 shadow-xs p-2 sm:p-2.5 transition-all hover:shadow-sm overflow-hidden">
@@ -56,7 +79,7 @@ export const FeaturedGamesBoard: React.FC<{
             <Trophy className="w-3 h-3" />
           </div>
           <h2 className="text-xs font-black text-stone-900 tracking-tight truncate">
-            精選遊戲
+            {boardTitle}
           </h2>
         </div>
         <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 shrink-0">
@@ -72,11 +95,11 @@ export const FeaturedGamesBoard: React.FC<{
 
           return (
             <button
-              key={`feat-${question.id}-${rank}`}
+              key={`feat-${category}-${question.id}-${rank}`}
               type="button"
               onClick={() => onSelectGame(question)}
               className="group w-full py-1 px-1 rounded-lg flex items-center gap-1.5 hover:bg-amber-50/80 active:scale-[0.99] transition-all text-left cursor-pointer overflow-hidden"
-              title={`點擊全螢幕試玩：《${question.title}》`}
+              title={`點擊查看：《${question.title}》`}
             >
               <span
                 className={`w-3.5 text-center font-mono font-black text-[11px] shrink-0 ${
@@ -97,15 +120,19 @@ export const FeaturedGamesBoard: React.FC<{
 };
 
 /**
- * 首頁輪播區右側：熱度榜（收窄版面，留約一半寬度，文字超出以 ... 截斷）
+ * 首頁輪播區右側：熱度榜（支援「提案與軟體」與「遊戲」兩類切換）
  */
 export const HotGamesRankingBoard: React.FC<{
   questions: Question[];
   onSelectGame: (game: Question) => void;
   mode?: 'custom' | 'views';
   customIds?: string[];
-}> = ({ questions, onSelectGame, mode = 'custom', customIds = [] }) => {
-  const hotList = getHotRankedGames(questions, mode, customIds);
+  category?: HomeShowcaseCategory;
+}> = ({ questions, onSelectGame, mode = 'custom', customIds = [], category = 'games' }) => {
+  const hotList =
+    category === 'proposals_software'
+      ? getHotRankedProposalsAndSoftware(questions, mode, customIds)
+      : getHotRankedGames(questions, mode, customIds);
 
   return (
     <div className="w-full h-full flex flex-col rounded-2xl bg-white/90 backdrop-blur-md border border-amber-200/80 shadow-xs p-2 sm:p-2.5 transition-all hover:shadow-sm overflow-hidden">
@@ -124,20 +151,20 @@ export const HotGamesRankingBoard: React.FC<{
         </span>
       </div>
 
-      {/* 列表清單（按照圖一之 10 款提案，塞不下自動以 ... 截斷） */}
+      {/* 列表清單（10 款熱門項目，塞不下自動以 ... 截斷） */}
       <div className="flex-1 flex flex-col justify-between divide-y divide-stone-100/70 text-left overflow-hidden">
         {hotList.map(({ question, rank }) => {
           const isTop3 = rank <= 3;
 
           return (
             <button
-              key={`hot-${question.id}-${rank}`}
+              key={`hot-${category}-${question.id}-${rank}`}
               type="button"
               onClick={() => onSelectGame(question)}
               className="group w-full py-1 px-1 rounded-lg flex items-center gap-1.5 hover:bg-rose-50/70 active:scale-[0.99] transition-all text-left cursor-pointer overflow-hidden"
-              title={`點擊全螢幕體驗：《${question.title}》`}
+              title={`點擊查看：《${question.title}》`}
             >
-              {/* 前三名紅色，4-10名灰色，完全遵照圖一 */}
+              {/* 前三名紅色，4-10名灰色 */}
               <span
                 className={`w-3.5 text-center font-mono font-black text-[11px] shrink-0 ${
                   isTop3 ? 'text-red-700 font-black' : 'text-stone-400 font-bold'
@@ -155,3 +182,4 @@ export const HotGamesRankingBoard: React.FC<{
     </div>
   );
 };
+

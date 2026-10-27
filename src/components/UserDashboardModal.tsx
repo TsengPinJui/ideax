@@ -151,7 +151,7 @@ import {
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
 import { DuohuiPeek } from './agents/DuohuiPeek';
-import { AdminHomeShowcaseCard, AdminHotGamesConfigCard } from './AdminHomeShowcaseCard';
+import { AdminHomeDefaultCategoryCard, AdminHomeShowcaseCard, AdminHotGamesConfigCard } from './AdminHomeShowcaseCard';
 import { AdminSettingsSearch } from './AdminSettingsSearch';
 import { DEMO_ACCOUNTS } from '../services/accountGuard';
 import { AiCrmView } from './AiCrmView';
@@ -2799,14 +2799,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('subscriptions')}
-                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] sm:text-xs font-semibold border border-stone-200 flex items-center gap-1 transition-all cursor-pointer shrink-0 self-end sm:self-center"
-                  >
-                    <span>費率管理</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_user_analytics')}
+                      className="px-2 sm:px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] sm:text-xs font-semibold border border-stone-200 flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <span>用戶分佈與習慣統計</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('subscriptions')}
+                      className="px-2 sm:px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] sm:text-xs font-semibold border border-stone-200 flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <span>費率管理</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* 各方案人數卡片 Grid (手機 2 欄並排，電腦 4 欄) */}
@@ -2898,7 +2908,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <AdminHomeShowcaseCard />
               <AdminHotGamesConfigCard />
 
-              {/* 紫色獨立控制專區：卡片瀏覽次數、創點島開關、一般用戶智慧上架（移至首頁公開運營數據展示控制上方） */}
+              {/* 紫色獨立控制專區：卡片瀏覽次數、創點島開關、一般用戶智慧上架、首頁輪播與熱度榜默認分類（移至首頁公開運營數據展示控制上方） */}
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/60 border-2 border-purple-300 shadow-xs space-y-3.5 transition-all">
                 <div
                   onClick={() => setIsAdvancedPermissionsExpanded(!isAdvancedPermissionsExpanded)}
@@ -2915,7 +2925,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           {isAdvancedPermissionsExpanded ? '點擊收合' : '默認收合 · 點擊展開'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-purple-900/70 mt-0.5">獨立控制卡片瀏覽數範圍、創點島地圖公開性與一般用戶一鍵智慧上架</p>
+                      <p className="text-[11px] text-purple-900/70 mt-0.5">獨立控制首頁輪播與熱度榜默認顯示分類、卡片瀏覽數範圍、創點島地圖公開性與一般用戶一鍵智慧上架</p>
                     </div>
                   </div>
                   <button
@@ -2929,6 +2939,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 {isAdvancedPermissionsExpanded && (
                   <>
+                    {/* 0. 首頁輪播與熱度榜・默認先顯示分類 */}
+                    <AdminHomeDefaultCategoryCard />
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       {/* 1. 卡片內頁瀏覽次數 */}
                       {(() => {
@@ -9551,7 +9564,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   setPendingSwitchUser(null);
                   setCurrentUser(target);
                   if (target.role === 'admin') {
-                    setActiveTab('admin_management');
+                    setActiveTab('overview');
                     setMsg(`已成功切換登入帳號為：${target.name}（平台管理員），已直接為您開啟「平台數據與顯示」！`);
                   } else {
                     setMsg(`已成功切換登入帳號為：${target.name}（${target.role === 'solver' ? '解答者' : '提問者'}）`);

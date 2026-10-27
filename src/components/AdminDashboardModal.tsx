@@ -10,6 +10,7 @@ import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
 import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
 import { openDashboardTab } from '../utils/adminShortcuts';
+import { AdminHomeDefaultCategoryCard, AdminHomeShowcaseCard, AdminHotGamesConfigCard } from './AdminHomeShowcaseCard';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -571,7 +572,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
         </div>
 
-        {/* 進階權限與功能展示設定：創點島入口、瀏覽數可見範圍與一般用戶一鍵上架入口（移至首頁公開運營數據展示控制上方） */}
+        {/* 首頁輪播&精選榜與熱度榜設定 */}
+        <AdminHomeShowcaseCard />
+        <AdminHotGamesConfigCard />
+
+        {/* 進階權限與功能展示設定：首頁輪播與熱度榜默認分類、創點島入口、瀏覽數可見範圍與一般用戶一鍵上架入口（移至首頁公開運營數據展示控制上方） */}
         <section className="p-5 rounded-2xl bg-purple-50/50 border border-purple-200 space-y-3">
           <button
             type="button"
@@ -581,7 +586,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           >
             <span>
               <span className="block font-extrabold text-sm sm:text-base text-purple-950">進階權限與功能展示設定</span>
-              <span className="block text-xs text-purple-900/70 mt-0.5">創點島入口、卡片瀏覽數可見範圍與一般用戶一鍵上架</span>
+              <span className="block text-xs text-purple-900/70 mt-0.5">首頁輪播與熱度榜默認顯示分類、創點島入口、卡片瀏覽數可見範圍與一般用戶一鍵上架</span>
             </span>
             <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-purple-800">
               {isOtherDisplayExpanded ? '收合' : '展開'}
@@ -591,6 +596,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
           {isOtherDisplayExpanded && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 animate-in fade-in duration-200 pt-1">
+              <div className="lg:col-span-2">
+                <AdminHomeDefaultCategoryCard />
+              </div>
               {/* 創點島開關 (公開 / 隱藏) */}
               {(() => {
                 const isIslandOpen = localPublicMetrics.showIslandMap !== false;

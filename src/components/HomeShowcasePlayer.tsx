@@ -1,12 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Trophy, Megaphone, Star, Play } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import type { HomeShowcaseMode, Question } from '../types';
+import type { HomeShowcaseCategory, HomeShowcaseMode, Question } from '../types';
 import { getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
+import {
+  HOT_GAMES_DEFS,
+  createHotGameQuestion,
+  getFeaturedGames,
+  getFeaturedProposalsAndSoftware,
+  isShowcaseGameQuestion,
+  isShowcaseProposalOrSoftwareQuestion,
+} from '../data/hotGamesData';
 
 /**
- * 首頁創點子播放區：依管理員在儀表板勾選的內容輪流播放（可複選，照「優秀作品 → 付費推播 → 自選」的順序串起來）
+ * 首頁創點子播放區：依管理員在儀表板勾選的內容輪流播放（分成「提案與軟體」、「遊戲」兩類）
  * - 優秀作品：創星季參賽作品，依按讚、附議、支持點數排出前 8 名
  * - 付費推播：發布時加購推播（大聲公）且仍在招募中的卡片；卡片上標「推播」
  * - 管理員自選：照勾選順序（虛擬卡片也能選）
@@ -20,8 +28,8 @@ const MODE_META: Record<HomeShowcaseMode, { label: string; icon: React.ReactNode
   custom: { label: '精選', icon: <Star className="w-3 h-3" />, cls: 'bg-sky-500 text-white' },
 };
 const TYPE_LABEL: Record<string, string> = {
-  innovation_proposal: '創點子提案',
-  vibecoding_app: '軟體網站作品',
+  innovation_proposal: '創新提案',
+  vibecoding_app: '軟體作品',
   pain_point: '痛點',
   seek_solution: '提問',
   chat_discussion: '討論',
@@ -50,15 +58,61 @@ const imageOf = (q: Question): { image: string; isVideo: boolean } => {
 const isLive = (q: Question) => q.status !== 'delisted' && q.status !== 'closed';
 const score = (q: Question) => (q.likes || 0) * 2 + (q.secondedCount || 0) * 2 + (q.supporterCount || 0) + (q.supportPoints || 0) / 50 + (q.views || 0) / 100;
 
-export function useShowcaseSlides(): Slide[] {
+export function useShowcaseSlides(categoryOverride?: HomeShowcaseCategory): Slide[] {
   const { questions, homeShowcaseConfig } = useApp();
   return useMemo(() => {
     const cfg = homeShowcaseConfig;
-    if (!cfg?.enabled || !cfg.modes?.length) return [];
-    const all = (questions || []).filter(isLive);
+    if (!cfg?.enabled) return [];
+    const activeCat: HomeShowcaseCategory =
+      categoryOverride || (cfg.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games');
+
+    const activeModes: HomeShowcaseMode[] =
+      activeCat === 'proposals_software'
+        ? Array.isArray(cfg.proposalModes)
+          ? cfg.proposalModes
+          : cfg.modes || []
+        : Array.isArray(cfg.gameModes)
+        ? cfg.gameModes
+        : cfg.modes || [];
+
+    if (!activeModes.length) return [];
+
+    const liveQuestions = (questions || []).filter(isLive);
+    const seedGames = HOT_GAMES_DEFS.map(createHotGameQuestion);
+    const byId = new Map<string, Question>();
+    liveQuestions.forEach((q) => byId.set(q.id, q));
+    seedGames.forEach((g) => {
+      if (!byId.has(g.id)) byId.set(g.id, g);
+    });
+
+    const allWithSeeds = [...byId.values()];
+    const categoryPool = allWithSeeds.filter((q) =>
+      activeCat === 'games' ? isShowcaseGameQuestion(q) : isShowcaseProposalOrSoftwareQuestion(q)
+    );
+
     // 虛擬（模擬）卡片：管理員打開「包含虛擬卡片」時，優秀作品、付費推播也會播放
-    const real = cfg.includeSimulated === false ? all.filter((q) => !q.isSimulated && !q.simulatedBatchId) : all;
-    const byId = new Map(all.map((q) => [q.id, q]));
+    const real =
+      cfg.includeSimulated === false
+        ? categoryPool.filter((q) => !q.isSimulated && !q.simulatedBatchId)
+        : categoryPool;
+
+    const rawCustomIds: string[] =
+      activeCat === 'proposals_software'
+        ? Array.isArray(cfg.proposalCustomIds)
+          ? cfg.proposalCustomIds
+          : cfg.customIds || []
+        : Array.isArray(cfg.gameCustomIds)
+        ? cfg.gameCustomIds
+        : cfg.customIds || [];
+
+    const activeCustomIds: string[] = rawCustomIds.filter((id) => {
+      const item = byId.get(id);
+      if (!item) return false;
+      return activeCat === 'games'
+        ? isShowcaseGameQuestion(item)
+        : isShowcaseProposalOrSoftwareQuestion(item);
+    });
+
     const out: Slide[] = [];
     const seen = new Set<string>();
     const push = (q: Question | undefined, mode: HomeShowcaseMode) => {
@@ -70,21 +124,38 @@ export function useShowcaseSlides(): Slide[] {
     // 優先順序：自選（custom）作品最優先播放！確保管理員在後台調整的排序（#1, #2...）精確直接反映在輪播前端
     const modePriority: HomeShowcaseMode[] = ['custom', 'paid', 'excellent'];
     for (const mode of modePriority) {
-      if (!cfg.modes.includes(mode)) continue;
+      if (!activeModes.includes(mode)) continue;
       if (mode === 'custom') {
-        // 管理員親手挑選與排序的作品：完全照 customIds 設定之順序播放
-        (cfg.customIds || []).forEach((id) => push(byId.get(id), 'custom'));
+        activeCustomIds.forEach((id) => push(byId.get(id), 'custom'));
       } else if (mode === 'paid') {
-        real.filter((q) => q.isFeatured && q.status === 'open').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 8).forEach((q) => push(q, 'paid'));
+        real
+          .filter((q) => q.isFeatured && q.status === 'open')
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+          .slice(0, 8)
+          .forEach((q) => push(q, 'paid'));
       } else if (mode === 'excellent') {
-        real.filter((q) => q.isStarSeason || q.starSeasonProposalId).sort((a, b) => score(b) - score(a)).slice(0, 8).forEach((q) => push(q, 'excellent'));
+        const starItems = real
+          .filter((q) => q.isStarSeason || q.starSeasonProposalId)
+          .sort((a, b) => score(b) - score(a))
+          .slice(0, 8);
+        if (starItems.length > 0) {
+          starItems.forEach((q) => push(q, 'excellent'));
+        } else if (activeCat === 'games') {
+          getFeaturedGames(real)
+            .slice(0, 8)
+            .forEach((item) => push(item.question, 'excellent'));
+        } else {
+          getFeaturedProposalsAndSoftware(real)
+            .slice(0, 8)
+            .forEach((item) => push(item.question, 'excellent'));
+        }
       }
     }
     return out;
-  }, [questions, homeShowcaseConfig]);
+  }, [questions, homeShowcaseConfig, categoryOverride]);
 }
 
-export const HomeShowcasePlayer: React.FC<{ slides: Slide[] }> = ({ slides }) => {
+export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q: Question) => void }> = ({ slides, onSelectSlide }) => {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -100,6 +171,10 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[] }> = ({ slides }) =>
   }, [paused, reduceMotion, n, go]);
 
   const open = (q: Question) => {
+    if (onSelectSlide) {
+      onSelectSlide(q);
+      return;
+    }
     try { window.dispatchEvent(new CustomEvent(OPEN_QUESTION_EVENT, { detail: { id: q.id } })); } catch {}
   };
 

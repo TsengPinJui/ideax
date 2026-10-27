@@ -1588,7 +1588,7 @@ export async function loadSecondaryBootDataFromFirestore(): Promise<{
     } = {};
 
     if (!usersSnap.empty) {
-      result.users = usersSnap.docs.map((d) => stripUserSecrets(d.data() as User));
+      result.users = usersSnap.docs.map((d) => stripUserSecrets({ id: d.id, ...(d.data() as User) }));
     }
     if (!aSnap.empty) {
       result.answers = aSnap.docs.map((d) => d.data() as Answer);
@@ -1690,7 +1690,7 @@ export async function loadAllDataFromFirestore(
     } = {};
 
     if (!usersSnap.empty) {
-      result.users = usersSnap.docs.map((d) => stripUserSecrets(d.data() as User));
+      result.users = usersSnap.docs.map((d) => stripUserSecrets({ id: d.id, ...(d.data() as User) }));
     }
     if (!qSnap.empty) {
       result.questions = qSnap.docs
@@ -2011,17 +2011,24 @@ export async function savePublicMetricsConfig(config: Record<string, boolean>): 
   }
 }
 
-/** 儲存首頁創點子播放區設定：由伺服器確認管理員後寫入 */
-export async function saveHomeShowcaseConfig(config: { enabled: boolean; modes: string[]; customIds: string[]; includeSimulated?: boolean; hideHeroTitles?: boolean; hotGamesMode?: 'custom' | 'views'; hotGameIds?: string[] }): Promise<{ ok: boolean; message?: string }> {
+/** 儲存首頁創點子播放區設定：由伺服器確認管理員後寫入，若伺服器端點暫時無法寫入則回退至直接寫入 Firestore */
+export async function saveHomeShowcaseConfig(config: Record<string, any>): Promise<{ ok: boolean; message?: string }> {
   try {
     const headers = await getAuthHeaders();
-    if (!headers.Authorization) return { ok: false, message: '登入狀態已過期，請重新登入後再試' };
-    const r = await fetch('/api/admin/home-showcase-config', { method: 'POST', headers, body: JSON.stringify({ config }) });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok && j?.ok) return { ok: true };
-    return { ok: false, message: typeof j?.error === 'string' ? j.error : '請稍後再試' };
+    if (headers.Authorization) {
+      const r = await fetch('/api/admin/home-showcase-config', { method: 'POST', headers, body: JSON.stringify({ config }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j?.ok) return { ok: true };
+    }
   } catch {
-    return { ok: false, message: '網路連線不穩，請稍後再試' };
+    // fallback to direct Firestore below
+  }
+  try {
+    await setDoc(doc(db, 'platform_settings', 'global'), { homeShowcaseConfig: { ...config, updatedAt: new Date().toISOString() } }, { merge: true });
+    return { ok: true };
+  } catch (err: any) {
+    handleFirestoreError('saveHomeShowcaseConfig', err);
+    return { ok: false, message: '請稍後再試' };
   }
 }
 

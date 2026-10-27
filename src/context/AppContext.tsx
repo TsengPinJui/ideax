@@ -149,9 +149,47 @@ function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
   // 舊版只存單一 mode：轉成陣列
   const list: unknown[] = Array.isArray(raw?.modes) ? raw.modes : raw?.mode ? [raw.mode] : ['excellent'];
   const modes = HOME_SHOWCASE_MODES.filter((m) => list.includes(m));
-  const customIds = Array.isArray(raw?.customIds) ? raw.customIds.filter((x: unknown) => typeof x === 'string' && x).slice(0, 30) : [];
-  const hotGameIds = Array.isArray(raw?.hotGameIds) ? raw.hotGameIds.map((x: unknown) => String(x || '').trim()).filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i).slice(0, 10) : [];
-  return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, hideHeroTitles: raw?.hideHeroTitles === true, hotGamesMode: raw?.hotGamesMode === 'views' ? 'views' : 'custom', hotGameIds, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
+  const sanitizeIds = (arr: unknown, max: number) =>
+    Array.isArray(arr)
+      ? arr
+          .map((x: unknown) => String(x || '').trim())
+          .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
+          .slice(0, max)
+      : [];
+  const customIds = sanitizeIds(raw?.customIds, 30);
+  const proposalModes = Array.isArray(raw?.proposalModes)
+    ? HOME_SHOWCASE_MODES.filter((m) => raw.proposalModes.includes(m))
+    : undefined;
+  const proposalCustomIds = Array.isArray(raw?.proposalCustomIds)
+    ? sanitizeIds(raw.proposalCustomIds, 30)
+    : undefined;
+  const gameModes = Array.isArray(raw?.gameModes)
+    ? HOME_SHOWCASE_MODES.filter((m) => raw.gameModes.includes(m))
+    : undefined;
+  const gameCustomIds = Array.isArray(raw?.gameCustomIds)
+    ? sanitizeIds(raw.gameCustomIds, 30)
+    : undefined;
+  const hotGameIds = sanitizeIds(raw?.hotGameIds, 10);
+  const hotProposalIds = sanitizeIds(raw?.hotProposalIds, 10);
+  const defaultCategory = raw?.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games';
+
+  return {
+    enabled: raw?.enabled === true,
+    defaultCategory,
+    modes,
+    customIds,
+    ...(proposalModes !== undefined ? { proposalModes } : {}),
+    ...(proposalCustomIds !== undefined ? { proposalCustomIds } : {}),
+    ...(gameModes !== undefined ? { gameModes } : {}),
+    ...(gameCustomIds !== undefined ? { gameCustomIds } : {}),
+    includeSimulated: raw?.includeSimulated !== false,
+    hideHeroTitles: raw?.hideHeroTitles === true,
+    hotGamesMode: raw?.hotGamesMode === 'views' ? 'views' : 'custom',
+    hotGameIds,
+    hotProposalsMode: raw?.hotProposalsMode === 'views' ? 'views' : 'custom',
+    hotProposalIds,
+    updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined,
+  };
 }
 import { getStoredTickets } from '../services/customerSupportService';
 import { claimFirstPostBonus } from '../services/signupBonusService';
@@ -2000,7 +2038,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     homeShowcaseSavingRef.current += 1;
     try {
-      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated, hideHeroTitles: next.hideHeroTitles, hotGamesMode: next.hotGamesMode, hotGameIds: next.hotGameIds });
+      const r = await saveHomeShowcaseConfig({
+        enabled: next.enabled,
+        defaultCategory: next.defaultCategory,
+        modes: next.modes,
+        customIds: next.customIds,
+        ...(next.proposalModes !== undefined ? { proposalModes: next.proposalModes } : {}),
+        ...(next.proposalCustomIds !== undefined ? { proposalCustomIds: next.proposalCustomIds } : {}),
+        ...(next.gameModes !== undefined ? { gameModes: next.gameModes } : {}),
+        ...(next.gameCustomIds !== undefined ? { gameCustomIds: next.gameCustomIds } : {}),
+        includeSimulated: next.includeSimulated,
+        hideHeroTitles: next.hideHeroTitles,
+        hotGamesMode: next.hotGamesMode,
+        hotGameIds: next.hotGameIds,
+        hotProposalsMode: next.hotProposalsMode,
+        hotProposalIds: next.hotProposalIds,
+      });
       if (!r.ok) {
         setHomeShowcaseConfig(before);
         try {
