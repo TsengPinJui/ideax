@@ -1200,10 +1200,37 @@ function MainContent() {
     try {
       const curPath = window.location.pathname + window.location.search + window.location.hash;
       trackPageView(curPath || '/', document.title);
-      // 各大功能使用統計（每位訪客每天每個功能算一次）
+      // 各大功能使用統計（每位訪客每天每個功能算一次，各項目可重疊不衝突）
       trackFeature(featureFromPath(window.location.pathname, Boolean(selectedQuestion?.id)));
+      if (specialZone === 'create_ideas') trackFeature('innovation_proposal');
+      if (specialZone === 'vibecoding') trackFeature('vibecoding');
+      if (specialZone === 'pain_points') trackFeature('painpoints');
+      if (specialZone === 'l0_discussion') trackFeature('discussion');
+      if (selectedQuestion) {
+        if (selectedQuestion.postType === 'innovation_proposal') {
+          trackFeature('innovation_proposal');
+        }
+        if (isVibeCodingAppQuestion(selectedQuestion)) {
+          trackFeature('vibecoding');
+        }
+        if (isGameQuestion(selectedQuestion)) {
+          trackFeature('games');
+        }
+        if (isPainPointQuestion(selectedQuestion)) {
+          trackFeature('painpoints');
+        }
+        if (isL0DiscussionQuestion(selectedQuestion)) {
+          trackFeature('discussion');
+        }
+      }
+      if (fullscreenEmbedApp) {
+        trackFeature('vibecoding');
+        if (isGameQuestion(fullscreenEmbedApp)) {
+          trackFeature('games');
+        }
+      }
     } catch {}
-  }, [activeTab, specialZone, selectedQuestion?.id]);
+  }, [activeTab, specialZone, selectedQuestion?.id, fullscreenEmbedApp?.id]);
 
   const handleNavigateToSitelink = (item: GoogleSitelinkItem) => {
     setSelectedQuestion(null);

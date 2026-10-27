@@ -98,7 +98,7 @@ const CustomShowcasePicker: React.FC<{
   };
 
   const full = ids.length >= HOME_SHOWCASE_MAX_CUSTOM;
-  const catLabel = category === 'proposals_software' ? '提案與軟體' : '遊戲';
+  const catLabel = category === 'proposals_software' ? '創新與軟體' : '遊戲';
 
   return (
     <div className="rounded-xl border border-sky-200 bg-white p-3 space-y-2.5">
@@ -300,7 +300,7 @@ const CustomShowcasePicker: React.FC<{
 };
 
 /**
- * 管理員後台顯示設定：選擇首頁輪播與熱度榜默認先顯示「提案與軟體」或「遊戲」（置於進階權限與功能展示設定內）
+ * 管理員後台顯示設定：選擇首頁輪播與熱度榜默認先顯示「創新與軟體」或「遊戲」（置於進階權限與功能展示設定內）
  */
 export const AdminHomeDefaultCategoryCard: React.FC = () => {
   const { homeShowcaseConfig, updateHomeShowcaseConfig } = useApp();
@@ -324,7 +324,7 @@ export const AdminHomeDefaultCategoryCard: React.FC = () => {
             <span>首頁輪播與熱度榜・默認先顯示分類</span>
           </span>
           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white shadow-2xs">
-            目前默認：{defaultCat === 'proposals_software' ? '提案與軟體' : '遊戲'}
+            目前默認：{defaultCat === 'proposals_software' ? '創新與軟體' : '遊戲'}
           </span>
           {saving && <span className="text-[10px] font-bold text-purple-700">儲存中…</span>}
         </div>
@@ -345,7 +345,7 @@ export const AdminHomeDefaultCategoryCard: React.FC = () => {
           }`}
         >
           <Lightbulb className="w-3 h-3" />
-          <span>提案與軟體</span>
+          <span>創新與軟體</span>
         </button>
         <button
           type="button"
@@ -453,7 +453,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
     }
   };
 
-  const editingCatLabel = editingCategory === 'proposals_software' ? '提案與軟體' : '遊戲';
+  const editingCatLabel = editingCategory === 'proposals_software' ? '創新與軟體' : '遊戲';
   const chosen = MODES.filter((m) => activeModes.includes(m.id))
     .map((m) => (m.id === 'custom' ? `「${m.name}（${activeCustomIds.length} 個）」` : `「${m.name}」`))
     .join('、');
@@ -474,17 +474,17 @@ export const AdminHomeShowcaseCard: React.FC = () => {
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${enabled && (proposalSlides.length || gameSlides.length) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-stone-500 border-stone-200'}`}>
                 {!enabled
                   ? '未啟用'
-                  : `播放中・提案軟體 ${proposalSlides.length} 個 / 遊戲 ${gameSlides.length} 個`}
+                  : `播放中・創新與軟體 ${proposalSlides.length} 個 / 遊戲 ${gameSlides.length} 個`}
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                首頁默認：{defaultCat === 'proposals_software' ? '提案與軟體' : '遊戲'}
+                首頁默認：{defaultCat === 'proposals_software' ? '創新與軟體' : '遊戲'}
               </span>
               <span className="text-[10px] text-sky-700/70 font-normal">
                 {isExpanded ? '（點擊收合）' : '（點擊展開設定）'}
               </span>
             </h4>
             <p className="text-xs text-sky-900/70 mt-0.5 line-clamp-1">
-              分為「提案與軟體」與「遊戲」兩類，可自由切換編輯任一邊的輪播與精選推薦內容。
+              分為「創新與軟體」與「遊戲」兩類，可自由切換編輯任一邊的輪播與精選推薦內容。
             </p>
           </div>
         </div>
@@ -533,7 +533,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
                   }`}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
-                  <span>編輯「提案與軟體」</span>
+                  <span>編輯「創新與軟體」</span>
                 </button>
                 <button
                   type="button"
@@ -741,7 +741,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
   };
 
   const title = (q: Question) => stripAppNameFromTitle(q.title, q.appName);
-  const editingCatLabel = editingCategory === 'proposals_software' ? '提案與軟體' : '遊戲';
+  const editingCatLabel = editingCategory === 'proposals_software' ? '創新與軟體' : '遊戲';
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 shadow-2xs transition-all">
@@ -757,7 +757,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
             <h4 className="font-black text-sm sm:text-base text-rose-950 flex items-center gap-2 flex-wrap">
               <span>首頁熱度榜設定</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-rose-800 border border-rose-200">
-                提案與軟體：{homeShowcaseConfig.hotProposalsMode === 'views' ? '依瀏覽數' : `自選 ${(homeShowcaseConfig.hotProposalIds || []).length}/10`}
+                創新與軟體：{homeShowcaseConfig.hotProposalsMode === 'views' ? '依瀏覽數' : `自選 ${(homeShowcaseConfig.hotProposalIds || []).length}/10`}
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-rose-800 border border-rose-200">
                 遊戲：{homeShowcaseConfig.hotGamesMode === 'views' ? '依瀏覽數' : `自選 ${(homeShowcaseConfig.hotGameIds || []).length}/10`}
@@ -767,7 +767,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
               </span>
             </h4>
             <p className="text-xs text-rose-900/70 mt-0.5 line-clamp-1">
-              分為「提案與軟體」與「遊戲」兩類，可分別設定首頁熱度榜排序方式與自選 TOP 10 順序。
+              分為「創新與軟體」與「遊戲」兩類，可分別設定首頁熱度榜排序方式與自選 TOP 10 順序。
             </p>
           </div>
         </div>
@@ -802,7 +802,7 @@ export const AdminHotGamesConfigCard: React.FC = () => {
                   }`}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
-                  <span>編輯「提案與軟體」</span>
+                  <span>編輯「創新與軟體」</span>
                 </button>
                 <button
                   type="button"

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PublishedPlatformsBadges, usePlatformLinkChooser, platformLinksOf } from './PublishedPlatforms';
 import { Question, MarketViewMode, SpecialZone } from '../types';
 import { useApp } from '../context/AppContext';
+import { trackFeature } from '../services/featureUsage';
 import {
   Search,
   Plus,
@@ -167,6 +168,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     }
     if (selectedSubcat === '遊戲') {
       setSortBy((prev) => (['latest', 'popular', 'rating', 'bookmarks'].includes(prev) ? prev : 'latest'));
+      trackFeature('games');
     }
   }, [selectedSubcat]);
 

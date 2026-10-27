@@ -340,7 +340,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
-          {/* 首頁輪播與熱度榜分類切換：「提案與軟體」 vs 「遊戲」 */}
+          {/* 首頁輪播與熱度榜分類切換：「創新與軟體」 vs 「遊戲」 */}
           <div className="w-full flex flex-col items-center mb-2 sm:mb-2.5">
             <div
               role="tablist"
@@ -359,7 +359,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 }`}
               >
                 <Lightbulb className="w-3.5 h-3.5 shrink-0" />
-                <span>提案與軟體</span>
+                <span>創新與軟體</span>
               </button>
               <button
                 type="button"
@@ -420,7 +420,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 )}
               </div>
 
-              {/* 右邊：熱度榜（依當前分類顯示「提案與軟體」或「遊戲」熱度榜） */}
+              {/* 右邊：熱度榜（依當前分類顯示「創新與軟體」或「遊戲」熱度榜） */}
               <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
                 <HotGamesRankingBoard
                   questions={questions}
@@ -497,7 +497,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               }`}
               title={
                 showcaseCategory === 'proposals_software'
-                  ? '隨機抽取 3 個提案與軟體，立即探索靈感！'
+                  ? '隨機抽取 3 個創新與軟體，立即探索靈感！'
                   : '想不到玩什麼？隨機抽取 3 款遊戲，立即線上試玩！'
               }
             >

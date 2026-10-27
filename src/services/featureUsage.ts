@@ -3,8 +3,22 @@
  * 不送任何個人資料，只送功能代號。
  */
 export type FeatureKey =
-  | 'explore' | 'question' | 'jobs' | 'vibecoding' | 'painpoints' | 'create' | 'discussion' | 'solvers'
-  | 'challenge' | 'membership' | 'my_projects' | 'agents' | 'mascot_chat' | 'customer_service';
+  | 'explore'
+  | 'question'
+  | 'innovation_proposal'
+  | 'vibecoding'
+  | 'games'
+  | 'jobs'
+  | 'painpoints'
+  | 'create'
+  | 'discussion'
+  | 'solvers'
+  | 'challenge'
+  | 'membership'
+  | 'my_projects'
+  | 'agents'
+  | 'mascot_chat'
+  | 'customer_service';
 
 const KEY = 'ideax_feature_usage_day_v1';
 
@@ -34,6 +48,7 @@ export function featureFromPath(path: string, hasOpenQuestion: boolean): Feature
   const p = (path || '/').toLowerCase();
   if (p.startsWith('/jobs')) return 'jobs';
   if (p.startsWith('/vibecoding')) return 'vibecoding';
+  if (p.startsWith('/create-ideas') || p.startsWith('/createideas') || p.startsWith('/ideas/')) return 'innovation_proposal';
   if (p.startsWith('/painpoints')) return 'painpoints';
   if (p.startsWith('/create')) return 'create';
   if (p.startsWith('/l0-discussion')) return 'discussion';

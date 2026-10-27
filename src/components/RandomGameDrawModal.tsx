@@ -273,7 +273,7 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
                         <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
                           {game.description ||
                             (isProposalMode
-                              ? '這是一項極具創意與落地價值的提案與軟體作品，歡迎點擊深入了解！'
+                              ? '這是一項極具創意與落地價值的創新與軟體作品，歡迎點擊深入了解！'
                               : '這是一款趣味又好上手的精選互動小遊戲，隨點即玩免下載！')}
                         </p>
                       </div>

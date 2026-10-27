@@ -11,8 +11,10 @@ import { hasAdminCredentials } from './competitionService';
 export const FEATURE_LABELS: Record<string, string> = {
   explore: '首頁探索',
   question: '卡片內容頁',
+  innovation_proposal: '創新提案',
+  vibecoding: '軟體作品',
+  games: '遊戲',
   jobs: '匯職缺',
-  vibecoding: 'VibeCoding 展場',
   painpoints: '痛點',
   create: '發布創點子',
   discussion: '討論區',
@@ -38,15 +40,26 @@ function twDay(d = new Date()): string {
 }
 
 export async function recordFeatureUse(feature: unknown): Promise<boolean> {
-  const f = String(feature || '');
-  if (!(f in FEATURE_LABELS)) return false;
+  const list = Array.isArray(feature) ? feature : [feature];
+  const valid = Array.from(
+    new Set(
+      list
+        .map((x) => String(x || ''))
+        .filter((f) => f in FEATURE_LABELS)
+    )
+  );
+  if (valid.length === 0) return false;
   const conn = await getDb();
   if (!conn) return false;
   const { db, FieldValue } = conn;
   const day = twDay();
+  const inc: Record<string, any> = {};
+  for (const f of valid) {
+    inc[f] = FieldValue.increment(1);
+  }
   await Promise.all([
-    db.collection('feature_usage').doc(day).set({ day, counts: { [f]: FieldValue.increment(1) } }, { merge: true }),
-    db.collection('feature_usage').doc('_total').set({ counts: { [f]: FieldValue.increment(1) }, updatedAt: new Date().toISOString() }, { merge: true }),
+    db.collection('feature_usage').doc(day).set({ day, counts: inc }, { merge: true }),
+    db.collection('feature_usage').doc('_total').set({ counts: inc, updatedAt: new Date().toISOString() }, { merge: true }),
   ]);
   return true;
 }
