@@ -479,27 +479,27 @@ const painBuildings: BuildingInteractable[] = [
     id: 'pain-innovation-tower',
     name: '創點樓',
     subtitle: '痛點島・樓內設有懸賞牆（分門別類瀏覽與刊登）與佈告桌（撰寫痛點表單並刊登）',
-    position: new THREE.Vector3(-72, 0, -52),
-    facingYaw: Math.PI * 0.2,
-    width: 18.0,
-    depth: 14.0,
-    // 每層挑高 4.5 公尺：地面以上三層
+    // 放在痛點島中央，大門朝向主島過來的石拱橋
+    position: new THREE.Vector3(-68, 0, -48),
+    facingYaw: 0.995,
+    // 圓形土樓：外徑 44 公尺（判斷是否在樓內、互動距離用）
+    width: 44.0,
+    depth: 44.0,
+    // 每層挑高 4.5 公尺，共三層環形迴廊
     height: 13.5,
-    floors: 4,
-    basements: 1,
+    floors: 3,
     exterior: 'tulou',
     doorWidth: 4.8,
     tiers: 3,
     colorHex: 0xdc2626,
     interactionRadius: 6.5,
-    description: '走進創點樓，於「懸賞牆」分門別類查看痛點，或於「佈告桌」撰寫並刊登痛點。',
+    description: '圓形土樓：沿著環形迴廊逛各樓層的懸賞牆，或在中庭的佈告桌刊登痛點、在提案台寫創新提案。',
     targetModule: 'pain_points',
-    previewBadge: '四層樓・懸賞牆',
+    previewBadge: '圓形土樓・三層迴廊',
     previewFeatures: [
-      '地下一樓創新創業、一樓日常疑難、二樓專業問題、三樓學術探討',
-      '每層的後牆、兩側牆與前牆都有懸賞牆，張貼更多則痛點',
-      '頂樓前面與兩側開窗，可以眺望整個盆地',
-      '沿兩側樓梯上下樓；點牆面可逐則查看，一樓書桌案台可直接填寫並刊登痛點',
+      '整棟是客家圓形土樓：一、二、三樓都是環形迴廊，沿牆掛滿懸賞牆，可以一路逛痛點',
+      '一樓日常疑難（中庭佈告欄＋一樓迴廊）、二樓專業問題、三樓學術探討；迴廊裡有樓梯上下樓',
+      '中間是露天中庭：桌椅、創點舞台、提案台，以及刊登痛點的佈告桌',
     ],
     mockData: {
       stats: '樓內分區：懸賞牆、佈告桌',
@@ -609,13 +609,14 @@ const creativeBuildings: BuildingInteractable[] = [
     id: 'creative-exhibition',
     name: '展覽館',
     subtitle: '創意島・作品、AI 工具與創新提案主題展館',
-    position: new THREE.Vector3(-82, 0, 44),
+    // 貼著創意島西緣；地下是很大的主展場（從館內的樓層表或下樓入口進入）
+    position: new THREE.Vector3(-88, 0, 48),
     facingYaw: Math.PI / 2,
-    width: 16.0,
-    depth: 11.5,
-    height: 6.0,
+    width: 26.0,
+    depth: 18.0,
+    height: 8.5,
     exterior: 'exhibition',
-    doorWidth: 4.6,
+    doorWidth: 6.4,
     tiers: 2,
     colorHex: 0x0284c7,
     interactionRadius: 5.5,
@@ -623,6 +624,7 @@ const creativeBuildings: BuildingInteractable[] = [
     targetModule: 'vibecoding',
     previewBadge: '創意島',
     previewFeatures: [
+      '地下一樓是很大的主展場：三條展區走道、一個攤位展示一件真實作品，點攤位就能看作品',
       'AI 工具展場（小艾）：生成式 AI、智慧自動化、影像視覺與多媒體創作攤位',
       '軟體應用展場（程程）：網站平台、生活實用、商業營運與數位系統攤位',
       '創新提案展場（提提）：資訊科技、商業模式、日常生活文創、生醫療材提案攤位',
@@ -637,13 +639,14 @@ const creativeBuildings: BuildingInteractable[] = [
     id: 'creative-arcade',
     name: '電玩城',
     subtitle: '創意島・依照遊戲種類分設展區，點選各展區體驗精選作品',
-    position: new THREE.Vector3(-60, 0, 58),
+    // 貼著創意島南緣
+    position: new THREE.Vector3(-64, 0, 66),
     facingYaw: Math.PI,
-    width: 15.5,
-    depth: 11.0,
-    height: 5.8,
+    width: 22.0,
+    depth: 16.0,
+    height: 8.0,
     exterior: 'arcade',
-    doorWidth: 4.6,
+    doorWidth: 5.6,
     tiers: 2,
     colorHex: 0x9333ea,
     interactionRadius: 5.5,
@@ -840,8 +843,8 @@ export const REGION_HOME: RegionManifest = {
   colliders: [
     // 橋上的釣客（坐著，繞過去就好）
     ...bridgeAnglerSpots().map((p) => ({ id: p.id, type: 'cylinder' as const, x: p.x, z: p.z, radius: 0.55 })),
-    // 大燈泡雕像（石座＋一圈望柱，半徑約 5 公尺）
-    { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 4.6 },
+    // 大燈泡雕像（八角石座，半徑約 3 公尺）
+    { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 3.0 },
     ...homeBuildings.flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
@@ -868,9 +871,9 @@ export const REGION_PAIN: RegionManifest = {
   islandRadiusZ: 28,
   plazaRadius: 14,
   defaultSpawn: {
-    // 土樓正門前（門朝東北）
-    position: [-58.1, 0, -33.4],
-    yaw: Math.PI * 0.2,
+    // 土樓正門前（門朝石拱橋）
+    position: [-45.7, 0, -33.6],
+    yaw: 0.995,
   },
   ambientColor: 0xfef2f2,
   sunColor: 0xfde68a,
@@ -881,7 +884,8 @@ export const REGION_PAIN: RegionManifest = {
   plazaColorHex: 0xe7e5e4,
   walkableZones: getGlobalWalkableZones(),
   colliders: [
-    ...painBuildings.flatMap(generateBuildingWallColliders),
+    // 圓形土樓的牆另外由土樓模型提供（不用方形牆）
+    ...painBuildings.filter((b) => b.exterior !== 'tulou').flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
   buildings: painBuildings,

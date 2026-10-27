@@ -101,9 +101,12 @@ export function WorldMapContent({
             {r.buildings
               .filter((b) => b.exterior === 'tulou')
               .map((b) => (
-                <circle key={`${b.id}-tulou`} cx={b.position.x} cy={b.position.z} r={TULOU_RADIUS} fill="#c9a47a" stroke={INK} strokeWidth={0.9} />
+                <g key={`${b.id}-tulou`}>
+                  <circle cx={b.position.x} cy={b.position.z} r={TULOU_RADIUS} fill="#c9a47a" stroke={INK} strokeWidth={0.9} />
+                  <circle cx={b.position.x} cy={b.position.z} r={11} fill="#efe6cf" stroke={INK} strokeWidth={0.6} />
+                </g>
               ))}
-            {r.buildings.map((b) => (
+            {r.buildings.filter((b) => b.exterior !== 'tulou').map((b) => (
               <g key={b.id} transform={`translate(${b.position.x} ${b.position.z}) rotate(${(-b.facingYaw * 180) / Math.PI})`}>
                 <rect x={-b.width / 2} y={-b.depth / 2} width={b.width} height={b.depth} fill="#9b3a2c" stroke={INK} strokeWidth={0.8} rx={0.8} />
                 <rect x={-b.width / 2 + 1.2} y={-b.depth / 2 + 1.2} width={b.width - 2.4} height={b.depth - 2.4} fill="none" stroke="#d9a94a" strokeWidth={0.5} />

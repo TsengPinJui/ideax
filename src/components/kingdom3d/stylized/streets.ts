@@ -74,11 +74,11 @@ const HOME_SHOPS = ringProps('region-home', 'shop', 6, 4.4, 3.0, [
 
 /** 創意島北側：創意集市集（五個攤位＋牌坊） */
 const CREATIVE_STALLS = ringProps('region-creative', 'stall', 3.6, 2.4, (rx, rz) => [rx * 0.76, rz * 0.76], [
-  { deg: -130, name: '新品攤', sub: '最新上架的作品與提案', goods: 'sweets', content: 'new' },
-  { deg: -112, name: '提案攤', sub: '創新提案', goods: 'ink', content: 'proposal' },
-  { deg: -94, name: '遊戲攤', sub: '遊戲作品', goods: 'toys', content: 'game' },
-  { deg: -76, name: '軟體攤', sub: '軟體應用與 AI 工具', goods: 'crafts', content: 'app' },
-  { deg: -58, name: '人氣攤', sub: '瀏覽最多的作品與提案', goods: 'lanterns', content: 'hot' },
+  { deg: -124, name: '新品攤', sub: '最新上架的作品與提案', goods: 'sweets', content: 'new' },
+  { deg: -107, name: '提案攤', sub: '創新提案', goods: 'ink', content: 'proposal' },
+  { deg: -90, name: '遊戲攤', sub: '遊戲作品', goods: 'toys', content: 'game' },
+  { deg: -73, name: '軟體攤', sub: '軟體應用與 AI 工具', goods: 'crafts', content: 'app' },
+  { deg: -56, name: '人氣攤', sub: '瀏覽最多的作品與提案', goods: 'lanterns', content: 'hot' },
 ]);
 
 const CREATIVE_GATE: StreetProp = (() => {

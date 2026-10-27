@@ -29,6 +29,8 @@ import { DOOR_COUPLETS } from '../couplets';
 import { bridgeRailRange } from '../regionConfigs';
 import { drawJobScrollTexture } from './jobScroll';
 import { createSosoNpc } from './npcs';
+import { hallOf, createHallStairEntrance } from './exhibitHall';
+import type { BuildingInteractable } from '../types';
 import { drawPainBoardTexture, deskPaperTexture, MAIN_BOARD, SIDE_BOARD, PainBoardLayout } from './painBoard';
 
 /* =====================================================================
@@ -919,12 +921,12 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
       }
     }
     addMesh(body, new THREE.SphereGeometry(0.35, 12, 10), mats.gold, 0, rimY + 0.36 + domeH + 0.1, 0);
-    // 門前繽紛直立展旗（紅、藍、粉、金）
-    [-1.6, -0.6, 0.6, 1.6].forEach((k, i) => {
-      const fx = k * (doorW / 2 + 0.9) / 1.6 + Math.sign(k) * 0.4;
-      addMesh(body, new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mats.darkWood, fx, 1.7, d / 2 + 1.6);
+    // 繽紛直立展旗（紅、藍、粉、金）：靠在正面兩側牆角、貼著牆，不擋大門的視線
+    [-1, -1, 1, 1].forEach((side, i) => {
+      const fx = side * (w / 2 - 0.5 - (i % 2) * 1.1);
+      addMesh(body, new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mats.darkWood, fx, 1.7, d / 2 + 0.35);
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 1.6), em!.flags[i]);
-      flag.position.set(fx + 0.3, 2.45, d / 2 + 1.6);
+      flag.position.set(fx - side * 0.3, 2.45, d / 2 + 0.36);
       flag.userData.noMerge = true;
       root.add(flag);
     });
@@ -1266,6 +1268,9 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     lanterns.addHanging(1.4, dy + 2.3, deskZ + 0.2, 0.6);
     // 點書桌就能填寫痛點
     root.add(makePickProxy(2.6, 1.6, 1.6, 0, deskZ, 0, { kind: 'desk', buildingId: b.id }, dy));
+  } else if (hallOf(b.id)) {
+    // 展覽館、電玩城：大廳中央是往地下主展場的下樓口（不放寶珠台）
+    root.add(createHallStairEntrance(b as BuildingInteractable, deskZ));
   } else {
     addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);
     addMesh(inner, new THREE.CylinderGeometry(0.55, 0.7, 0.75, 12), mats.redLacquer, 0, 0.85, deskZ);
@@ -1591,14 +1596,6 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     const lg = new THREE.Group();
     lg.position.set(lm.x - cx, 0, lm.z - cz);
     lg.scale.setScalar(S);
-    const stud = new THREE.Group();
-    // 四周八根望柱＋金色柱頭
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-      addMesh(stud, new THREE.CylinderGeometry(0.14, 0.16, 0.78, 8), mats.stoneLight, Math.cos(a) * 3.3, 0.39, Math.sin(a) * 3.3);
-      addMesh(stud, new THREE.SphereGeometry(0.18, 8, 8), mats.gold, Math.cos(a) * 3.3, 0.85, Math.sin(a) * 3.3);
-    }
-    lg.add(stud);
     addMesh(lg, new THREE.CylinderGeometry(1.95, 2.05, 0.2, 8), mats.stone, 0, 0.1, 0);
     addMesh(lg, new THREE.CylinderGeometry(1.55, 1.85, 1.2, 8), mats.pedestalDark, 0, 0.8, 0);
     addMesh(lg, new THREE.CylinderGeometry(1.72, 1.78, 0.18, 8), mats.gold, 0, 0.33, 0);

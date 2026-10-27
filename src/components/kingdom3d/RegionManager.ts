@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import { makePickProxy } from './picking';
 import { createVillagers } from './stylized/villagers';
-import { createTulouShell, TULOU_RADIUS } from './stylized/tulou';
+import { createRingTower, TULOU_RADIUS } from './stylized/tulou';
+import { createExhibitHall } from './stylized/exhibitHall';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -102,6 +103,7 @@ export class RegionManager {
           seed: 101 + i * 17,
           groundHoles: manifest.buildings
             .map((b) => {
+              if (b.exterior === 'tulou') return null;
               const lay = getStoryLayout(b);
               return lay ? groundStairwell(b, lay) : null;
             })
@@ -174,17 +176,15 @@ export class RegionManager {
     // 2. Walk-In Hollow Main Buildings (主要建築物內皆可走入)
     const extraColliders: Collider[] = [];
     for (const b of manifest.buildings) {
-      const bld = createStyledBuilding(b);
+      // 創點樓整棟就是圓形土樓（環形迴廊＋露天中庭），其他建築照原本的樓閣
+      const bld = b.exterior === 'tulou' ? createRingTower(b) : createStyledBuilding(b);
       group.add(bld);
-      // 創點樓外圍的圓形土樓
-      if (b.exterior === 'tulou') {
-        const shell = createTulouShell(b);
-        group.add(shell);
-        extraColliders.push(...(shell.userData.colliders as Collider[]));
-      }
-      // 點畫面上的建築就能打開左側介紹
-      group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
+      // 點畫面上的建築就能打開左側介紹（土樓自己帶點擊範圍）
+      if (b.exterior !== 'tulou') group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
+      // 展覽館、電玩城的地下主展場（只在走進去時才畫；碰撞由樓層系統各自處理）
+      const hall = createExhibitHall(b);
+      if (hall) group.add(hall);
       // 讓出主執行緒，載入時畫面不會卡住
       await new Promise((r) => setTimeout(r, 0));
     }

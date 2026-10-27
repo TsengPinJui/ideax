@@ -4,12 +4,12 @@ import * as THREE from 'three';
  * 創點樓各樓層要展示的痛點分類（由下往上：地下一樓、一樓、二樓、三樓）。
  * 陣列索引就是樓層編號；地面層（大門那層）是 PAIN_BASEMENTS。
  */
-export const PAIN_BASEMENTS = 1;
+export const PAIN_BASEMENTS = 0;
+// 痛點不再有「創新創業」分類；以前分在創新創業的痛點，和新的一樣歸到二樓專業問題
 export const PAIN_FLOORS: { label: string; short: string; sub: string; categories?: string[] }[] = [
-  { label: '地下一樓・創新創業', short: 'B1', sub: '創業、商業模式與新點子', categories: ['創新創業'] },
-  { label: '一樓・日常疑難', short: '1F', sub: '生活中遇到的大小麻煩', categories: ['日常疑難'] },
-  { label: '二樓・專業問題', short: '2F', sub: '各行各業的專業難題', categories: ['專業問題'] },
-  { label: '三樓・學術探討', short: '3F', sub: '研究、理論與學術問題', categories: ['學術探討'] },
+  { label: '一樓・日常疑難', short: '1F', sub: '中庭佈告欄與一樓迴廊：生活中的大小麻煩', categories: ['日常疑難'] },
+  { label: '二樓・專業問題', short: '2F', sub: '二樓迴廊：各行各業的專業難題', categories: ['專業問題', '創新創業'] },
+  { label: '三樓・學術探討', short: '3F', sub: '三樓迴廊：研究、理論與學術問題', categories: ['學術探討'] },
 ];
 
 export interface PainCard {

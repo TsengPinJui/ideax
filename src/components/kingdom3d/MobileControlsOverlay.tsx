@@ -304,7 +304,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           </span>
         </button>
 
-        {multiplayer && multiplayer.status !== 'off' && !menuOpen && (
+        {multiplayer && !menuOpen && (
           <div className="kx-panel mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11.5px]" title="多人同遊">
             <Users className="w-3.5 h-3.5 text-amber-200" />
             <span className="kx-sub">
@@ -316,6 +316,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                 ? '登入後可和其他人一起逛'
                 : multiplayer.status === 'connecting'
                 ? '正在連線其他旅人…'
+                : multiplayer.status === 'off'
+                ? '多人同遊尚未開通'
                 : '多人連線暫時無法使用'}
             </span>
           </div>

@@ -9,6 +9,7 @@ import { PAIN_FLOORS } from './stylized/painBoard';
 import { STREET_PROPS, StreetProp, StallContent } from './stylized/streets';
 import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO } from './buildingActions';
 import { isTypingTarget } from './FirstPersonControls';
+import { hallOf, hallZoneItems, HALL_ZONES } from './stylized/exhibitHall';
 import './kingdomUi.css';
 
 /** 左側面板目前顯示的內容（照 /island：點畫面上的東西，細節在左側彈出） */
@@ -21,7 +22,9 @@ export type DrawerState =
   | { kind: 'jobs' }
   | { kind: 'job'; index: number }
   | { kind: 'feature'; id: 'stage' | 'proposal' }
-  | { kind: 'question'; question: Question; back: DrawerState | null };
+  | { kind: 'question'; question: Question; back: DrawerState | null }
+  /** 展覽館、電玩城地下主展場的某個展區：列出全部作品 */
+  | { kind: 'hallZone'; buildingId: string; zone: number };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
 export const findStreetProp = (id: string) => ALL_PROPS.find((p) => p.id === id) || null;
@@ -260,7 +263,7 @@ export const KingdomSideDrawer: React.FC<{
       <>
         <Header title={`創點樓・${floor.label}`} badge="懸賞牆" sub={`${floor.sub}・共 ${list.length} 則`} onClose={close} />
         <div className="px-4 pt-3">
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             {actions.map((a, i) => (
               <button
                 key={a.label}
@@ -328,6 +331,49 @@ export const KingdomSideDrawer: React.FC<{
               <Store className="w-4 h-4 shrink-0 mt-0.5 text-amber-300" />
               {p.note || '主島商店街的店面目前是街景，還沒有開放買賣。想逛平台內容，可以到中央廣場的「探索看板」，或去創意島的創意集市集。'}
             </p>
+          </div>
+        </>
+      );
+    }
+  } else if (state?.kind === 'hallZone') {
+    const h = hallOf(state.buildingId);
+    const zones = h ? HALL_ZONES[h.kind] : [];
+    const zone = zones[state.zone];
+    const list = hallZoneItems(state.buildingId, state.zone, questions);
+    if (h && zone) {
+      body = (
+        <>
+          <Header title={zone.name} badge={h.title} sub={`${zone.sub}・共 ${list.length} 件`} onClose={close} />
+          <div className="px-4 pt-3">
+            <div className={`grid gap-1.5 ${zones.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              {zones.map((z, i) => (
+                <button
+                  key={z.key}
+                  type="button"
+                  onClick={() => onChange({ kind: 'hallZone', buildingId: state.buildingId, zone: i })}
+                  className="rounded-md px-1 py-1.5 text-[12px] cursor-pointer truncate"
+                  style={{
+                    background: i === state.zone ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
+                    border: `1px solid ${i === state.zone ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
+                    color: '#f6e7c4',
+                  }}
+                >
+                  {z.name.replace(/展場|展區/, '')}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            <QuestionRows list={list.slice(0, 80)} onPick={openQ} empty="這個展區還沒有作品，歡迎上架第一件！" />
+          </div>
+          <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
+            <button
+              type="button"
+              onClick={() => onAction({ kind: 'module', module: zone.key === 'proposal' ? 'create_proposal' : 'create_app' })}
+              className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer"
+            >
+              <PenLine className="w-4 h-4" /> {zone.key === 'proposal' ? '發表創新提案' : '上架作品'}
+            </button>
           </div>
         </>
       );
@@ -507,10 +553,10 @@ export const KingdomSideDrawer: React.FC<{
   } else if (state?.kind === 'desk') {
     body = (
       <>
-        <Header title="佈告桌" badge="創點樓・一樓" sub="在書桌案台上寫下你的痛點，張貼到懸賞牆" onClose={close} />
+        <Header title="佈告桌" badge="創點樓・中庭" sub="在佈告桌寫下你的痛點，張貼到懸賞牆" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <p className="kx-sub text-[13.5px] leading-relaxed">
-            寫下你遇到的麻煩、希望怎樣解決，也可以設定懸賞。刊登後會依分類貼到對應樓層：地下一樓創新創業、一樓日常疑難、二樓專業問題、三樓學術探討。
+            寫下你遇到的麻煩、希望怎樣解決，也可以設定懸賞。刊登後會依分類貼到對應的地方：日常疑難貼在中庭佈告欄與一樓迴廊、專業問題貼在二樓迴廊、學術探討貼在三樓迴廊。
           </p>
           <button
             type="button"

@@ -9,7 +9,11 @@ export type PickTarget =
   | { kind: 'npc'; id: 'soso' }
   | { kind: 'jobScroll' }
   | { kind: 'feature'; id: 'stage' | 'proposal' }
-  | { kind: 'bulb' };
+  | { kind: 'bulb' }
+  /** 展覽館、電玩城地下主展場的攤位 */
+  | { kind: 'booth'; buildingId: string; zone: number; index: number }
+  /** 換樓層：一樓大廳的下樓口（level -1）、地下室的上樓梯（level 0） */
+  | { kind: 'goFloor'; buildingId: string; level: number };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 
