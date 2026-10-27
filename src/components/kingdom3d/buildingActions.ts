@@ -1,0 +1,81 @@
+import type { RegionId } from './types';
+
+/**
+ * 每棟建築在左側面板裡可以直接點選的功能按鈕。
+ * - module：離開 3D 前往平台上的對應頁面（App 會轉成島覽的同一套動作）
+ * - painFloor：在面板裡直接打開創點樓某一層的痛點
+ * - region：瞬移到另一座島
+ * - map：打開全島地圖
+ */
+export type KingdomAction =
+  | { kind: 'module'; module: string }
+  | { kind: 'painFloor'; level: number }
+  | { kind: 'region'; regionId: RegionId }
+  | { kind: 'map' };
+
+export interface KingdomActionButton {
+  label: string;
+  hint?: string;
+  action: KingdomAction;
+  primary?: boolean;
+}
+
+const mod = (module: string) => ({ kind: 'module', module }) as KingdomAction;
+
+export const BUILDING_ACTIONS: Record<string, KingdomActionButton[]> = {
+  'home-explore': [
+    { label: '看全站最新內容', hint: '問題、痛點、討論、作品一次逛', action: mod('home'), primary: true },
+    { label: '痛點懸賞牆', hint: '大家正在找解法的痛點', action: mod('pain_feed') },
+    { label: '交流討論', hint: '各主題的討論串', action: mod('discussion_feed') },
+    { label: '作品展', hint: '軟體、遊戲與 AI 工具', action: mod('vibecoding_feed') },
+    { label: '創點子提案', hint: '創新提案專區', action: mod('ideas_feed') },
+  ],
+  'home-map': [
+    { label: '打開全島地圖', hint: '點島就能瞬移', action: { kind: 'map' }, primary: true },
+    { label: '前往痛點島', action: { kind: 'region', regionId: 'region-pain' } },
+    { label: '前往討論島', action: { kind: 'region', regionId: 'region-discussion' } },
+    { label: '前往創意島', action: { kind: 'region', regionId: 'region-creative' } },
+    { label: '前往徵才島', action: { kind: 'region', regionId: 'region-career' } },
+  ],
+  'home-agents': [{ label: '查看 AI 角色介紹', hint: '職位、出沒地點與虛擬身分證', action: mod('agents'), primary: true }],
+  'pain-innovation-tower': [
+    { label: '一樓・懸賞牆', hint: '最新刊登的痛點', action: { kind: 'painFloor', level: 0 }, primary: true },
+    { label: '二樓・創業與專業', hint: '創新創業、專業問題', action: { kind: 'painFloor', level: 1 } },
+    { label: '三樓・學術與生活', hint: '學術探討、日常疑難、網站程式', action: { kind: 'painFloor', level: 2 } },
+    { label: '刊登痛點', action: mod('create_pain_point') },
+    { label: '痛點專區', hint: '在平台上看全部痛點', action: mod('pain_feed') },
+  ],
+  'discussion-library': [
+    { label: '逛交流討論', action: mod('discussion_feed'), primary: true },
+    { label: '發起討論', action: mod('create_discussion') },
+  ],
+  'discussion-workshop': [
+    { label: '逛交流討論', action: mod('discussion_feed'), primary: true },
+    { label: '發起討論', action: mod('create_discussion') },
+  ],
+  'discussion-street': [
+    { label: '逛交流討論', action: mod('discussion_feed'), primary: true },
+    { label: '發起討論', action: mod('create_discussion') },
+  ],
+  'creative-exhibition': [
+    { label: '逛作品展', hint: '軟體應用、AI 工具與遊戲', action: mod('vibecoding_feed'), primary: true },
+    { label: '創點子提案', action: mod('ideas_feed') },
+    { label: '上架作品', action: mod('create_app') },
+    { label: '發表創新提案', action: mod('create_proposal') },
+  ],
+  'creative-arcade': [
+    { label: '逛遊戲與作品', action: mod('vibecoding_feed'), primary: true },
+    { label: '上架遊戲作品', action: mod('create_app') },
+  ],
+  'career-academy': [{ label: '找專家', hint: '翰林院各領域專家', action: mod('experts'), primary: true }],
+  'career-temple': [{ label: '找職缺', hint: '比對全網匯職缺', action: mod('jobs'), primary: true }],
+  'hanlin-headhunter': [{ label: '委託專家媒合', action: mod('experts'), primary: true }],
+};
+
+/** 沒有特別設定的建築：依原本的 targetModule 給一個前往按鈕 */
+export function actionsForBuilding(id: string, targetModule?: string, label?: string): KingdomActionButton[] {
+  const list = BUILDING_ACTIONS[id];
+  if (list) return list;
+  if (!targetModule) return [];
+  return [{ label: label || '前往', action: mod(targetModule), primary: true }];
+}

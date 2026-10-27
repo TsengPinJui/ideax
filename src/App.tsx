@@ -631,13 +631,16 @@ function MainContent() {
     return () => window.removeEventListener('IDEAX_OPEN_APP_EMBED', handleEmbedEvent);
   }, []);
 
+  const kingdomReturnTabRef = useRef<AppTab | null>(null);
   useEffect(() => {
     const handlePopState = () => {
       if (fullscreenEmbedApp) {
         setFullscreenEmbedApp(null);
       }
     };
-    const handleOpenKingdom3D = () => {
+    const handleOpenKingdom3D = (e: Event) => {
+      // 從島覽進來的，離開 3D 時回到島覽
+      kingdomReturnTabRef.current = (e as CustomEvent)?.detail?.from === 'island' ? 'island_explorer' : null;
       setActiveTab('kingdom_fp');
       setSelectedQuestion(null);
       setSelectedSolver(null);
@@ -1087,6 +1090,10 @@ function MainContent() {
         if (activeTab === 'island_explorer') {
           if (curPath !== '/island') {
             window.history.pushState({ tab: 'island_explorer' }, '', '/island');
+          }
+        } else if (activeTab === 'kingdom_fp') {
+          if (curPath !== '/kingdom' && curPath !== '/kingdom3d') {
+            window.history.pushState({ tab: 'kingdom_fp' }, '', '/kingdom');
           }
         } else if (activeTab === 'star_season') {
           if (!curPath.startsWith('/challenge') && !curPath.startsWith('/proposal')) {
@@ -2533,7 +2540,9 @@ function MainContent() {
             onExit={() => {
               setSelectedQuestion(null);
               setSelectedSolver(null);
-              setActiveTab('explore');
+              const back = kingdomReturnTabRef.current;
+              kingdomReturnTabRef.current = null;
+              setActiveTab(back || 'explore');
             }}
             onNavigateToModule={(mod) => {
               setSelectedQuestion(null);
@@ -2551,8 +2560,30 @@ function MainContent() {
                 setActiveTab('topup');
               } else if (mod === 'job_explorer') {
                 setActiveTab('job_explorer');
-              } else if (mod === 'create_pain_point') {
-                handleIslandAction('create_pain_point');
+              } else if (mod === 'agents') {
+                window.dispatchEvent(new CustomEvent('ideax_open_agents'));
+              } else if (
+                [
+                  'home',
+                  'pain_feed',
+                  'discussion_feed',
+                  'vibecoding_feed',
+                  'ideas_feed',
+                  'jobs',
+                  'experts',
+                  'create_pain_point',
+                  'create_discussion',
+                  'create_app',
+                  'create_proposal',
+                ].includes(mod)
+              ) {
+                handleIslandAction(mod as IslandAction);
+              } else if (mod === 'pain_points') {
+                handleIslandAction('pain_feed');
+              } else if (mod === 'l0_discussion') {
+                handleIslandAction('discussion_feed');
+              } else if (mod === 'vibecoding') {
+                handleIslandAction('vibecoding_feed');
               } else {
                 setActiveTab('explore');
               }

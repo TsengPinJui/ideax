@@ -33,6 +33,7 @@ import {
   Volume2,
   VolumeX,
   X,
+  Footprints,
 } from 'lucide-react';
 import {
   HANLIN_EXPERT_ROSTER,
@@ -1118,6 +1119,15 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             aria-label="返回前頁"
           >
             <ArrowLeft size={20} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
+            className="island-enter-3d-btn"
+            title="走進 3D 五島：第一人稱漫遊，可多人同遊"
+          >
+            <Footprints size={16} strokeWidth={2.2} />
+            <span>進入 3D 漫遊</span>
           </button>
         </div>
 

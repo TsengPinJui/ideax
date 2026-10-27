@@ -19,9 +19,13 @@ import { FirstPersonControls } from './FirstPersonControls';
 import { PhysicsController } from './PhysicsController';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
-import { BuildingInteractionModal } from './BuildingInteractionModal';
+import { KingdomSideDrawer, DrawerState, findStreetProp } from './KingdomSideDrawer';
+import { pickTargetOf, PickTarget } from './picking';
+import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
+import type { KingdomAction } from './buildingActions';
+import { ancientJiangnanBgm } from '../../utils/ancientBgm';
 import { DevStatsPanel } from './DevStatsPanel';
-import { PainFloorModal, painForFloor } from './PainFloorModal';
+import { painForFloor } from './PainFloorModal';
 import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
 import { drawPainBoardTexture, PAIN_FLOORS } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
@@ -65,6 +69,10 @@ type StoryState = {
   tween: null | { pts: THREE.Vector3[]; t: number; dur: number; toLevel: number; towerId: string };
 };
 
+const REGION_BUILDINGS = new Map<string, BuildingInteractable>(
+  Object.values(REGION_CONFIGS).flatMap((r) => r.buildings.map((b) => [b.id, b] as [string, BuildingInteractable]))
+);
+
 /** 沿折線取點（t 為 0~1） */
 function samplePath(pts: THREE.Vector3[], t: number) {
   const lens: number[] = [];
@@ -88,12 +96,43 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   onOpenQuestion,
   initialRegionId = 'region-home',
 }) => {
-  const { questions } = useApp();
+  const { questions, currentUser } = useApp();
   const questionsRef = useRef<Question[]>(questions);
   questionsRef.current = questions;
   const storyRef = useRef<StoryState>({ towerId: null, level: 0, armed: true, tween: null });
   const [floorLevel, setFloorLevel] = useState(0);
-  const [painFloorOpen, setPainFloorOpen] = useState<number | null>(null);
+  // 左側面板（照 /island：點畫面上的建築、攤位、懸賞牆，細節在左側彈出）
+  const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const drawerRef = useRef<DrawerState | null>(null);
+  drawerRef.current = drawer;
+  const [bgmMuted, setBgmMuted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ideax_kingdom_bgm_muted') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [mpStatus, setMpStatus] = useState<MultiplayerStatus>(multiplayerConfigured ? 'connecting' : 'off');
+  const [onlineOthers, setOnlineOthers] = useState(0);
+  const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
+  const openForBuilding = useCallback((b: BuildingInteractable) => {
+    if (towersRef.current.has(b.id)) {
+      const inside = storyRef.current.towerId === b.id || storyRef.current.level > 0;
+      setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
+    } else {
+      setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
+    }
+  }, []);
+  const openForTarget = useCallback((t: PickTarget) => {
+    if (t.kind === 'building') {
+      const b = REGION_BUILDINGS.get(t.id);
+      if (b) setDrawer({ kind: 'building', building: b });
+    } else if (t.kind === 'painBoard') {
+      setDrawer({ kind: 'painFloor', level: t.level });
+    } else if (t.kind === 'street') {
+      if (findStreetProp(t.id)) setDrawer({ kind: 'street', propId: t.id });
+    }
+  }, []);
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
     for (const r of Object.values(REGION_CONFIGS)) {
@@ -173,7 +212,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Proximity interactables
   const [nearBuilding, setNearBuilding] = useState<BuildingInteractable | null>(null);
   const [nearPortal] = useState<Portal | null>(null);
-  const [activeModalBuilding, setActiveModalBuilding] = useState<BuildingInteractable | null>(null);
   const nearBuildingRef = useRef<BuildingInteractable | null>(null);
 
   // Settings & Dev stats
@@ -281,6 +319,57 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     [playSoundEffect]
   );
 
+  const [mapSignal, setMapSignal] = useState(0);
+  const tapRef = useRef<((x: number, y: number) => boolean) | null>(null);
+  const currentUserNameRef = useRef(currentUser?.name || '');
+  currentUserNameRef.current = currentUser?.name || '';
+  const currentUserIdRef = useRef(currentUser?.id || '');
+  currentUserIdRef.current = currentUser?.id || '';
+  const handleDrawerAction = useCallback(
+    (a: KingdomAction) => {
+      if (a.kind === 'module') {
+        rememberPose();
+        setDrawer(null);
+        onNavigateToModule?.(a.module);
+      } else if (a.kind === 'region') {
+        setDrawer(null);
+        handleSelectRegion(a.regionId);
+      } else if (a.kind === 'map') {
+        setDrawer(null);
+        setMapSignal((n) => n + 1);
+      } else if (a.kind === 'painFloor') {
+        setDrawer({ kind: 'painFloor', level: a.level });
+      }
+    },
+    [rememberPose, onNavigateToModule, handleSelectRegion]
+  );
+
+  // 古風背景樂（和 /island 同一首），進 3D 自動播放、離開時停止
+  useEffect(() => {
+    ancientJiangnanBgm.start();
+    ancientJiangnanBgm.setMuted(bgmMuted);
+    return () => ancientJiangnanBgm.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const toggleBgm = useCallback(() => {
+    setBgmMuted((m) => {
+      const next = !m;
+      ancientJiangnanBgm.setMuted(next);
+      if (!next) ancientJiangnanBgm.start();
+      try {
+        localStorage.setItem('ideax_kingdom_bgm_muted', next ? '1' : '0');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // 暱稱有變時同步給其他玩家
+  useEffect(() => {
+    multiplayerRef.current?.setName(currentUser?.name || '');
+  }, [currentUser?.name]);
+
   // Initialize Three.js Scene, Controls, RegionManager
   useEffect(() => {
     const container = mountRef.current;
@@ -368,7 +457,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
     };
 
-    regionManager.onRegionReady = () => refreshPainBoards();
+    // 可以點的東西（建築、攤位、懸賞牆）：每座島組好後重新收集
+    const pickables: THREE.Object3D[] = [];
+    const collectPickables = () => {
+      pickables.length = 0;
+      scene.traverse((o) => {
+        if (o.userData?.pick || o.userData?.painBoard) pickables.push(o);
+      });
+    };
+    regionManager.onRegionReady = () => {
+      refreshPainBoards();
+      collectPickables();
+    };
     regionManager.onError = (err) => {
       setErrorMessage(err);
       controls.unlockPointer();
@@ -401,13 +501,76 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (e.code === 'KeyE') {
         if (nearBuildingRef.current) {
           playSoundEffect('interact');
-          if (towersRef.current.has(nearBuildingRef.current.id)) setPainFloorOpen(storyRef.current.level);
-          else setActiveModalBuilding(nearBuildingRef.current);
+          openForBuilding(nearBuildingRef.current);
           controls.unlockPointer();
         }
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
+
+    // 點畫面上的東西 → 左側彈出細節（滑鼠點一下、沒拖曳；鎖定視角時以畫面中央為準）
+    const raycaster = new THREE.Raycaster();
+    raycaster.far = 70;
+    const ndc = new THREE.Vector2();
+    const pickAt = (clientX: number | null, clientY: number | null): PickTarget | null => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (clientX === null || clientY === null) ndc.set(0, 0);
+      else ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(pickables, false);
+      for (const h of hits) {
+        const t = pickTargetOf(h.object);
+        if (t) return t;
+      }
+      return null;
+    };
+    const tapAt = (clientX: number | null, clientY: number | null) => {
+      const t = pickAt(clientX, clientY);
+      if (!t) return false;
+      playSoundEffect('interact');
+      openForTarget(t);
+      controls.unlockPointer();
+      return true;
+    };
+    tapRef.current = (x, y) => tapAt(x, y);
+    let downAt: { x: number; y: number; t: number } | null = null;
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      if (controls.isLocked) {
+        tapAt(null, null);
+        return;
+      }
+      downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+    };
+    const onUp = (e: MouseEvent) => {
+      if (!downAt || e.button !== 0) return;
+      const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+      const dt = performance.now() - downAt.t;
+      downAt = null;
+      if (moved < 6 && dt < 450) tapAt(e.clientX, e.clientY);
+    };
+    let hoverTick = 0;
+    const onHover = (e: MouseEvent) => {
+      if (controls.isLocked || e.buttons) return;
+      const now = performance.now();
+      if (now - hoverTick < 120) return;
+      hoverTick = now;
+      renderer.domElement.style.cursor = pickAt(e.clientX, e.clientY) ? 'pointer' : '';
+    };
+    renderer.domElement.addEventListener('mousedown', onDown);
+    window.addEventListener('mouseup', onUp);
+    renderer.domElement.addEventListener('mousemove', onHover);
+
+    // 多人同遊：其他玩家的人偶＋同步自己的位置
+    const remoteView = new RemotePlayersView(scene);
+    const mp = new KingdomMultiplayer(currentUserNameRef.current, currentUserIdRef.current || 'guest');
+    multiplayerRef.current = mp;
+    mp.onStatus = (st) => setMpStatus(st);
+    mp.onPlayers = (list) => {
+      remoteView.setPlayers(list);
+      setOnlineOthers(list.length);
+    };
+    mp.start();
 
     // 9. Animation & Physics Game Loop
     const clock = new THREE.Clock();
@@ -434,7 +597,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           story.armed = false;
           setFloorLevel(story.level);
         }
-      } else if (!activeModalBuilding && regionManager.status === 'active') {
+      } else if (regionManager.status === 'active') {
         const tower = story.level > 0 && story.towerId ? towersRef.current.get(story.towerId) || null : null;
         const desiredVelocity = controls.getDesiredVelocity();
         const activeColliders = tower ? tower.cols[story.level] : regionManager.getAllColliders();
@@ -519,6 +682,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         setNearBuilding(foundBuilding);
       }
 
+      mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
+      remoteView.update(delta);
+
       const dbgY = (window as any).__kingdomCamY;
       if (typeof dbgY === 'number') camera.position.y = dbgY;
       world.update(delta, camera.position);
@@ -587,6 +753,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       if (resumeClearTimer) window.clearTimeout(resumeClearTimer);
+      renderer.domElement.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mouseup', onUp);
+      renderer.domElement.removeEventListener('mousemove', onHover);
+      tapRef.current = null;
+      mp.dispose();
+      multiplayerRef.current = null;
+      remoteView.dispose();
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleGlobalKeyDown);
 
@@ -754,8 +927,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onInteract={() => {
           if (nearBuilding) {
             playSoundEffect('interact');
-            if (towersRef.current.has(nearBuilding.id)) setPainFloorOpen(storyRef.current.level);
-            else setActiveModalBuilding(nearBuilding);
+            openForBuilding(nearBuilding);
             controlsRef.current?.unlockPointer();
           }
         }}
@@ -779,6 +951,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onTouchLookDelta={(dx, dy) => {
           controlsRef.current?.applyTouchLookDelta(dx, dy);
         }}
+        onTapScreen={(x, y) => tapRef.current?.(x, y) ?? false}
+        openMapSignal={mapSignal}
+        bgmMuted={bgmMuted}
+        onToggleBgm={toggleBgm}
+        multiplayer={{ status: mpStatus, others: onlineOthers }}
         isDesktopPointerLocked={isDesktopPointerLocked}
         onDesktopRequestLock={() => {
           controlsRef.current?.lockPointer();
@@ -811,36 +988,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
       />
 
-      {/* 創點樓：這一層的痛點 */}
-      <PainFloorModal
-        open={painFloorOpen !== null}
-        level={painFloorOpen ?? 0}
+      {/* 左側面板：建築介紹與功能按鈕、創點樓各層痛點、市集攤位、內容預覽 */}
+      <KingdomSideDrawer
+        state={drawer}
         questions={questions}
-        onClose={() => setPainFloorOpen(null)}
+        onChange={setDrawer}
+        onAction={handleDrawerAction}
         onOpenQuestion={(q) => {
-          setPainFloorOpen(null);
           rememberPose();
+          setDrawer(null);
           onOpenQuestion?.(q);
-        }}
-        onCreate={() => {
-          setPainFloorOpen(null);
-          rememberPose();
-          onNavigateToModule?.('create_pain_point');
-        }}
-      />
-
-      {/* Building Interaction Preview Modal */}
-      <BuildingInteractionModal
-        building={activeModalBuilding}
-        onClose={() => {
-          setActiveModalBuilding(null);
-        }}
-        onNavigateToModule={(mod) => {
-          setActiveModalBuilding(null);
-          if (onNavigateToModule) {
-            rememberPose();
-            onNavigateToModule(mod);
-          }
         }}
       />
 
