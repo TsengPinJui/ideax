@@ -1,0 +1,253 @@
+import React from 'react';
+import { X } from 'lucide-react';
+import { RegionId } from './types';
+import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
+
+/** 遠景地標（與 StylizedWorld 的位置一致） */
+const LANDMARKS = {
+  pagoda: { x: 0, z: -122, rx: 25, rz: 17, name: '瀑布塔崖' },
+  west: { x: -152, z: 4, rx: 14, rz: 22, name: '西瀑岩' },
+  east: { x: 154, z: -2, rx: 14, rz: 22, name: '東瀑岩' },
+  lake: { x: 0, z: 64, name: '湖心亭' },
+};
+
+const INK = '#4a3420';
+const LAND = '#d9dfb4';
+const LAND_EDGE = '#6b5a3a';
+
+function Pagoda({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <path key={i} d={`M ${-6 + i} ${-i * 4} L ${6 - i} ${-i * 4} L ${4.5 - i} ${-i * 4 - 2.4} L ${-4.5 + i} ${-i * 4 - 2.4} Z`} fill="#8e2a20" stroke={INK} strokeWidth={0.5} />
+      ))}
+      <line x1={0} y1={-20} x2={0} y2={-24} stroke="#b8862b" strokeWidth={0.9} />
+    </g>
+  );
+}
+
+function Pavilion({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M -6 -1 Q 0 -7 6 -1 L 4 -3 Q 0 -6 -4 -3 Z" fill="#2c5a50" stroke={INK} strokeWidth={0.5} />
+      <line x1={-3} y1={-1} x2={-3} y2={3} stroke="#8e2a20" strokeWidth={0.9} />
+      <line x1={3} y1={-1} x2={3} y2={3} stroke="#8e2a20" strokeWidth={0.9} />
+      <line x1={-4.5} y1={3} x2={4.5} y2={3} stroke={INK} strokeWidth={0.8} />
+    </g>
+  );
+}
+
+/** 共用的地圖內容（世界座標 x、z 直接當 SVG 座標） */
+export function WorldMapContent({
+  activeRegionId,
+  onSelectRegion,
+  detail,
+}: {
+  activeRegionId: RegionId;
+  onSelectRegion?: (id: RegionId) => void;
+  detail: 'full' | 'mini';
+}) {
+  const full = detail === 'full';
+  return (
+    <g>
+      {/* 遠方地標 */}
+      <ellipse cx={LANDMARKS.pagoda.x} cy={LANDMARKS.pagoda.z} rx={LANDMARKS.pagoda.rx} ry={LANDMARKS.pagoda.rz} fill="#b5ad98" stroke={LAND_EDGE} strokeWidth={1.2} />
+      <Pagoda x={LANDMARKS.pagoda.x} y={LANDMARKS.pagoda.z + 4} s={full ? 1.1 : 1.4} />
+      {[-9, 6].map((dx) => (
+        <path key={dx} d={`M ${dx} ${LANDMARKS.pagoda.z + 15} q 1 6 0 12`} stroke="#5fa6c4" strokeWidth={2.2} fill="none" strokeLinecap="round" />
+      ))}
+      {[LANDMARKS.west, LANDMARKS.east].map((l) => (
+        <g key={l.name}>
+          <ellipse cx={l.x} cy={l.z} rx={l.rx} ry={l.rz} fill="#b5ad98" stroke={LAND_EDGE} strokeWidth={1.2} />
+          <Pavilion x={l.x} y={l.z - 6} s={full ? 1 : 1.3} />
+        </g>
+      ))}
+      <ellipse cx={LANDMARKS.lake.x} cy={LANDMARKS.lake.z} rx={22} ry={11} fill="rgba(110,160,90,0.18)" />
+      {Array.from({ length: 16 }).map((_, i) => (
+        <circle key={i} cx={Math.cos(i * 2.4) * (8 + (i % 4) * 4)} cy={LANDMARKS.lake.z + Math.sin(i * 2.4) * (4 + (i % 3) * 2.5)} r={1.6} fill="#5f8f45" opacity={0.85} />
+      ))}
+      <Pavilion x={LANDMARKS.lake.x} y={LANDMARKS.lake.z} s={full ? 1.1 : 1.4} />
+
+      {/* 石拱橋 */}
+      {WORLD_BRIDGES.map((b) => (
+        <g key={b.id}>
+          <line x1={b.x1} y1={b.z1} x2={b.x2} y2={b.z2} stroke={INK} strokeWidth={b.halfWidth * 2 + 1.6} strokeLinecap="round" />
+          <line x1={b.x1} y1={b.z1} x2={b.x2} y2={b.z2} stroke="#e8dcc0" strokeWidth={b.halfWidth * 2 - 0.6} strokeLinecap="round" />
+        </g>
+      ))}
+
+      {/* 五島 */}
+      {ALL_REGION_IDS.map((rid) => {
+        const r = REGION_CONFIGS[rid];
+        const [cx, cz] = r.center;
+        const isAct = rid === activeRegionId;
+        return (
+          <g key={rid} onClick={onSelectRegion ? () => onSelectRegion(rid) : undefined} style={{ cursor: onSelectRegion ? 'pointer' : undefined }}>
+            <ellipse cx={cx} cy={cz} rx={r.islandRadiusX + 6} ry={r.islandRadiusZ + 6} fill="#a8bf86" stroke={LAND_EDGE} strokeWidth={1.4} />
+            <ellipse cx={cx} cy={cz} rx={r.islandRadiusX} ry={r.islandRadiusZ} fill={LAND} stroke={isAct ? '#b3261e' : 'rgba(107,90,58,0.6)'} strokeWidth={isAct ? 2.2 : 0.8} strokeDasharray={isAct ? undefined : '3 2'} />
+            <circle cx={cx} cy={cz} r={r.plazaRadius} fill="#efe6cf" stroke="rgba(107,90,58,0.45)" strokeWidth={0.8} />
+            {rid === 'region-career' && <rect x={48} y={28} width={48} height={40} fill="none" stroke="#8a7a62" strokeWidth={1.4} />}
+            {r.buildings.map((b) => (
+              <g key={b.id} transform={`translate(${b.position.x} ${b.position.z}) rotate(${(-b.facingYaw * 180) / Math.PI})`}>
+                <rect x={-b.width / 2} y={-b.depth / 2} width={b.width} height={b.depth} fill="#9b3a2c" stroke={INK} strokeWidth={0.8} rx={0.8} />
+                <rect x={-b.width / 2 + 1.2} y={-b.depth / 2 + 1.2} width={b.width - 2.4} height={b.depth - 2.4} fill="none" stroke="#d9a94a" strokeWidth={0.5} />
+              </g>
+            ))}
+            {full &&
+              r.buildings.map((b) => (
+                <text key={`${b.id}-t`} x={b.position.x} y={b.position.z + Math.max(b.width, b.depth) / 2 + 4.5} textAnchor="middle" fontSize={3.6} fill={INK} className="kx-serif" fontWeight={700}>
+                  {b.name.replace(/[（(].*$/, '')}
+                </text>
+              ))}
+            {r.landmark && <circle cx={r.landmark.x} cy={r.landmark.z} r={2.2} fill="#f2c94c" stroke={INK} strokeWidth={0.6} />}
+            <text x={cx} y={cz - r.islandRadiusZ - 9} textAnchor="middle" fontSize={full ? 9 : 13} fill={isAct ? '#8e1f17' : INK} fontWeight={900} className="kx-serif">
+              {r.name}
+            </text>
+          </g>
+        );
+      })}
+      {full && (
+        <g className="kx-serif" fontSize={5} fill={INK} fontWeight={700} textAnchor="middle">
+          <text x={LANDMARKS.pagoda.x} y={LANDMARKS.pagoda.z - 21}>{LANDMARKS.pagoda.name}</text>
+          <text x={LANDMARKS.west.x} y={LANDMARKS.west.z + 30}>{LANDMARKS.west.name}</text>
+          <text x={LANDMARKS.east.x} y={LANDMARKS.east.z + 30}>{LANDMARKS.east.name}</text>
+          <text x={LANDMARKS.lake.x} y={LANDMARKS.lake.z + 15}>{LANDMARKS.lake.name}</text>
+        </g>
+      )}
+    </g>
+  );
+}
+
+function PlayerArrow({ x, y, yawRad, size = 6 }: { x: number; y: number; yawRad: number; size?: number }) {
+  // 前進方向（世界）＝(-sin yaw, -cos yaw)；SVG 的 y 就是世界 z
+  const deg = (Math.atan2(-Math.cos(yawRad), -Math.sin(yawRad)) * 180) / Math.PI + 90;
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${deg})`}>
+      <circle r={size * 1.25} fill="rgba(179,38,30,0.18)" />
+      <path d={`M 0 ${-size * 1.2} L ${size * 0.75} ${size * 0.8} L 0 ${size * 0.35} L ${-size * 0.75} ${size * 0.8} Z`} fill="#b3261e" stroke="#fff4d6" strokeWidth={size * 0.18} strokeLinejoin="round" />
+    </g>
+  );
+}
+
+/** 右上角的圓形小地圖：以玩家為中心、面向方向朝上（像羅盤） */
+export function CompassMinimap({
+  playerPos,
+  yawRad,
+  activeRegionId,
+  size,
+  onOpen,
+}: {
+  playerPos: { x: number; z: number };
+  yawRad: number;
+  activeRegionId: RegionId;
+  size: number;
+  onOpen: () => void;
+}) {
+  const R = 46; // 半徑（世界公尺）
+  const yawDeg = (yawRad * 180) / Math.PI;
+  const labels: [string, number][] = [
+    ['北', 0],
+    ['東', 90],
+    ['南', 180],
+    ['西', 270],
+  ];
+  return (
+    <button type="button" onClick={onOpen} className="kx-minimap block relative" style={{ width: size, height: size }} title="開啟全島地圖">
+      <svg viewBox={`${-R} ${-R} ${R * 2} ${R * 2}`} width={size} height={size} className="block">
+        <defs>
+          <clipPath id="kx-mini-clip">
+            <circle r={R} />
+          </clipPath>
+          <radialGradient id="kx-sea" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#3c7c84" />
+            <stop offset="100%" stopColor="#1d4a55" />
+          </radialGradient>
+        </defs>
+        <g clipPath="url(#kx-mini-clip)">
+          <circle r={R} fill="url(#kx-sea)" />
+          <g transform={`rotate(${yawDeg}) translate(${-playerPos.x} ${-playerPos.z})`}>
+            <WorldMapContent activeRegionId={activeRegionId} detail="mini" />
+          </g>
+        </g>
+        {/* 外圈刻度與方位 */}
+        <circle r={R - 1} fill="none" stroke="rgba(30,17,10,0.55)" strokeWidth={5} />
+        {Array.from({ length: 24 }).map((_, i) => {
+          const a = (i / 24) * Math.PI * 2 + yawRad;
+          return <line key={i} x1={Math.sin(a) * (R - 3.5)} y1={-Math.cos(a) * (R - 3.5)} x2={Math.sin(a) * (R - (i % 6 === 0 ? 0.5 : 1.6))} y2={-Math.cos(a) * (R - (i % 6 === 0 ? 0.5 : 1.6))} stroke="#e2b85a" strokeWidth={i % 6 === 0 ? 1.2 : 0.6} />;
+        })}
+        {labels.map(([t, deg]) => {
+          const a = (deg * Math.PI) / 180 + yawRad;
+          return (
+            <text key={t} x={Math.sin(a) * (R - 9)} y={-Math.cos(a) * (R - 9) + 3} textAnchor="middle" fontSize={8} fontWeight={900} fill={t === '北' ? '#ffcf6a' : '#f6e7c4'} className="kx-serif" style={{ paintOrder: 'stroke' }} stroke="rgba(20,10,5,0.8)" strokeWidth={2}>
+              {t}
+            </text>
+          );
+        })}
+        <PlayerArrow x={0} y={0} yawRad={0} size={5} />
+      </svg>
+    </button>
+  );
+}
+
+/** 全島地圖（羊皮紙水墨風），點島嶼可直接前往 */
+export function WorldMapModal({
+  open,
+  onClose,
+  activeRegionId,
+  playerPos,
+  yawRad,
+  onSelectRegion,
+}: {
+  open: boolean;
+  onClose: () => void;
+  activeRegionId: RegionId;
+  playerPos: { x: number; z: number };
+  yawRad: number;
+  onSelectRegion: (id: RegionId) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="kx-root fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/55 backdrop-blur-sm pointer-events-auto" onClick={onClose}>
+      <div className="kx-parchment relative w-full max-w-4xl rounded-2xl p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-1 pb-2">
+          <div>
+            <h3 className="kx-serif text-xl sm:text-2xl font-black tracking-wider" style={{ color: '#5a2a14' }}>
+              創點源・五島全圖
+            </h3>
+            <p className="text-[12.5px]" style={{ color: '#6b5236' }}>
+              點一座島就能直接前往；紅色箭頭是你現在的位置與面向
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <svg viewBox="-185 -160 370 285" className="w-full h-auto block rounded-xl" style={{ maxHeight: '72vh' }}>
+          <defs>
+            <pattern id="kx-waves" width="22" height="12" patternUnits="userSpaceOnUse">
+              <path d="M 0 9 Q 5.5 3 11 9 Q 16.5 15 22 9" fill="none" stroke="rgba(70,110,120,0.22)" strokeWidth="0.8" />
+            </pattern>
+          </defs>
+          <rect x={-185} y={-160} width={370} height={285} fill="rgba(160,200,200,0.28)" />
+          <rect x={-185} y={-160} width={370} height={285} fill="url(#kx-waves)" />
+          <WorldMapContent
+            activeRegionId={activeRegionId}
+            detail="full"
+            onSelectRegion={(id) => {
+              onSelectRegion(id);
+              onClose();
+            }}
+          />
+          <PlayerArrow x={playerPos.x} y={playerPos.z} yawRad={yawRad} size={4.5} />
+          {/* 羅盤 */}
+          <g transform="translate(160 100)" className="kx-serif">
+            <circle r={15} fill="rgba(255,248,230,0.7)" stroke={INK} strokeWidth={0.8} />
+            <path d="M 0 -13 L 3 0 L 0 13 L -3 0 Z" fill="#8e1f17" />
+            <path d="M -13 0 L 0 3 L 13 0 L 0 -3 Z" fill={INK} opacity={0.75} />
+            <text y={-16.5} textAnchor="middle" fontSize={6} fontWeight={900} fill="#8e1f17">北</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  );
+}
