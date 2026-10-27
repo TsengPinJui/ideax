@@ -22,6 +22,8 @@ import {
   foamTexture,
   seeded,
 } from './textures';
+import { getStoryLayout, levelColliders } from './multiStory';
+import { drawPainBoardTexture } from './painBoard';
 
 /* =====================================================================
  * 共用材質（整個世界共用一份；晝夜切換時調整燈籠、窗紙的亮度）
@@ -575,6 +577,7 @@ export interface StyledBuildingInput {
   height: number;
   doorWidth?: number;
   tiers?: number;
+  floors?: number;
   colorHex: number;
 }
 
@@ -646,6 +649,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const plinthH = 0.45;
   const wallH = h - plinthH;
   const lanterns = new LanternBatch();
+  const lay = getStoryLayout(b);
 
   const body = new THREE.Group();
   root.add(body);
@@ -663,7 +667,14 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   // 牆：下段石台基＋上段木構立面（與原本白模牆的位置、厚度相同）
   const wall = (lenX: number, lenZ: number, x: number, z: number) => {
     addMesh(body, scaledBox(lenX + (lenX > lenZ ? 0.1 : 0.25), plinthH, lenZ + (lenZ > lenX ? 0.1 : 0.25), 2, plinthH, 2), mats.stone, x, plinthH / 2, z);
-    addMesh(body, scaledBox(lenX, wallH, lenZ, 3.2, wallH, 3.2), facade, x, plinthH + wallH / 2, z);
+    const wg = scaledBox(lenX, wallH, lenZ, 3.2, lay ? lay.floorH : wallH, 3.2);
+    if (lay) {
+      // 多樓層：讓每層的彩繪樑枋剛好落在樓板下方，而不是腳邊
+      const uv = wg.attributes.uv as THREE.BufferAttribute;
+      const nm = wg.attributes.normal as THREE.BufferAttribute;
+      for (let i = 0; i < uv.count; i++) if (Math.abs(nm.getY(i)) < 0.5) uv.setY(i, uv.getY(i) + plinthH / lay.floorH);
+    }
+    addMesh(body, wg, facade, x, plinthH + wallH / 2, z);
   };
   wall(w, thick, 0, -d / 2);
   wall(thick, d, -w / 2, 0);
@@ -818,6 +829,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
       extraColliders.push({ id: `${b.id}-pot-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.45 });
     }
   }
+  // 多樓層：一樓樓梯的扶手碰撞
+  if (lay) extraColliders.push(...(levelColliders(b as any, lay, 0) as any));
   root.userData.colliders = extraColliders;
 
   // 門口一對大燈籠、兩側旗幟、牌匾
@@ -844,7 +857,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
 
   // 室內：掛畫、內牆牌匾、中央發光寶珠台
   const inner = new THREE.Group();
-  for (const sx of [-1, 1]) {
+  for (const sx of lay ? [] : [-1, 1]) {
     for (let k = 0; k < 2; k++) {
       const pm = new THREE.MeshStandardMaterial({ map: scrollPaintingTexture(hv % 7 + k + (sx > 0 ? 3 : 0)), roughness: 0.9 });
       const p = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.2), pm);
@@ -858,7 +871,66 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(5.2, w - 2), Math.min(5.2, w - 2) / 3), boardMat);
   board.position.set(0, Math.min(3.1, h - 1.4), -d / 2 + thick / 2 + 0.04);
   board.userData.noMerge = true;
-  inner.add(board);
+  if (!lay) inner.add(board);
+  if (lay) {
+    const fh = lay.floorH;
+    // 樓板（留樓梯井）與樓梯井欄杆
+    for (let k = 1; k < lay.floors; k++) {
+      const y = k * fh;
+      const f = lay.flights[k - 1];
+      const hx0 = f.lx - f.laneW / 2;
+      const hx1 = f.lx + f.laneW / 2;
+      const xmin = -w / 2 + 0.22;
+      const xmax = w / 2 - 0.22;
+      const zmin = -d / 2 + 0.22;
+      const zmax = d / 2 - 0.22;
+      const pieces: [number, number, number, number][] = [
+        [xmin, hx0, zmin, zmax],
+        [hx1, xmax, zmin, zmax],
+        [Math.max(xmin, hx0), Math.min(xmax, hx1), zmin, f.z1],
+        [Math.max(xmin, hx0), Math.min(xmax, hx1), f.z0, zmax],
+      ];
+      for (const [x0, x1, z0, z1] of pieces) {
+        if (x1 - x0 < 0.05 || z1 - z0 < 0.05) continue;
+        addMesh(inner, scaledBox(x1 - x0, 0.26, z1 - z0, 2.5, 0.26, 2.5), mats.woodFloor, (x0 + x1) / 2, y - 0.13, (z0 + z1) / 2);
+      }
+      const inner0 = f.lx - f.side * (f.laneW / 2);
+      const outer0 = f.lx + f.side * (f.laneW / 2);
+      const railLen = f.z0 - f.z1;
+      addMesh(inner, new THREE.BoxGeometry(0.1, 0.1, railLen), mats.redLacquer, inner0, y + 0.95, (f.z0 + f.z1) / 2);
+      addMesh(inner, new THREE.BoxGeometry(Math.abs(outer0 - inner0), 0.1, 0.1), mats.redLacquer, (inner0 + outer0) / 2, y + 0.95, f.z0);
+      for (let q = 0; q <= 6; q++) addMesh(inner, new THREE.BoxGeometry(0.08, 0.95, 0.08), mats.redLacquer, inner0, y + 0.475, f.z1 + (railLen * q) / 6);
+    }
+    // 樓梯（每段 12 階）與扶手
+    for (const f of lay.flights) {
+      const yBase = f.k * fh;
+      const n = 12;
+      const L = f.z0 - f.z1;
+      for (let i = 0; i < n; i++) {
+        const top = ((i + 1) * fh) / n;
+        addMesh(inner, scaledBox(f.laneW, top, L / n + 0.02, 1.5, 1.5, 1.5), mats.woodFloor, f.lx, yBase + top / 2, f.z0 - ((i + 0.5) * L) / n);
+      }
+      const innerX = f.lx - f.side * (f.laneW / 2);
+      const railLen = Math.hypot(L, fh);
+      const rail = addMesh(inner, new THREE.BoxGeometry(0.1, 0.1, railLen), mats.redLacquer, innerX, yBase + fh / 2 + 0.95, (f.z0 + f.z1) / 2);
+      rail.rotation.x = Math.atan2(fh, L);
+      for (let q = 0; q <= 4; q++) {
+        const t = q / 4;
+        addMesh(inner, new THREE.BoxGeometry(0.08, 0.95, 0.08), mats.redLacquer, innerX, yBase + t * fh + 0.475, f.z0 - t * L);
+      }
+    }
+    // 每層後牆的懸賞牆（內容由畫面載入後填入真實痛點）
+    const bw = Math.min(10, w - 2 * (2.0 + 1.4));
+    for (let k = 0; k < lay.floors; k++) {
+      const pm = new THREE.MeshStandardMaterial({ map: drawPainBoardTexture(k, [], true), roughness: 0.75 });
+      const pb = new THREE.Mesh(new THREE.PlaneGeometry(bw, bw * 0.275), pm);
+      pb.position.set(0, k * fh + 2.05, -d / 2 + thick / 2 + 0.05);
+      pb.userData.noMerge = true;
+      pb.userData.painBoard = { level: k, buildingId: b.id };
+      inner.add(pb);
+      if (k < lay.floors - 1) for (const sx of [-1, 1]) lanterns.addHanging(sx * w * 0.2, k * fh + fh - 0.75, -d * 0.1, 0.7);
+    }
+  }
   const deskZ = -d * 0.25;
   addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);
   addMesh(inner, new THREE.CylinderGeometry(0.55, 0.7, 0.75, 12), mats.redLacquer, 0, 0.85, deskZ);

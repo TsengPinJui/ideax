@@ -2529,6 +2529,7 @@ function MainContent() {
       <main className={`flex-1 ${activeTab === 'island_explorer' || activeTab === 'kingdom_fp' ? 'pb-0' : 'pb-16 lg:pb-0'}`}>
         {activeTab === 'kingdom_fp' && (
           <FirstPersonKingdomView
+            onOpenQuestion={(q) => setSelectedQuestion(q)}
             onExit={() => {
               setSelectedQuestion(null);
               setSelectedSolver(null);
@@ -2550,6 +2551,8 @@ function MainContent() {
                 setActiveTab('topup');
               } else if (mod === 'job_explorer') {
                 setActiveTab('job_explorer');
+              } else if (mod === 'create_pain_point') {
+                handleIslandAction('create_pain_point');
               } else {
                 setActiveTab('explore');
               }

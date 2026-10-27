@@ -31,6 +31,8 @@ interface MobileControlsOverlayProps {
   onCycleTimeOfDay?: () => void;
   isFancy?: boolean;
   onToggleFancy?: () => void;
+  /** 例如在創點樓二樓時顯示「創點樓・二樓・創業與專業」 */
+  placeOverride?: string;
 }
 
 export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
@@ -55,6 +57,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onCycleTimeOfDay,
   isFancy,
   onToggleFancy,
+  placeOverride,
 }) => {
   // Mobile Virtual Joystick State
   const [joystickActive, setJoystickActive] = useState(false);
@@ -247,7 +250,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   const todLabel = timeOfDay === 'night' ? '夜晚' : timeOfDay === 'day' ? '白天' : '黃昏';
   const closeMenu = () => setMenuOpen(false);
   const inner = (spaceLabel.match(/（(.*)）/) || [])[1] || '';
-  const placeText = spaceLabel.startsWith('橋上')
+  const placeText = placeOverride
+    ? placeOverride
+    : spaceLabel.startsWith('橋上')
     ? `石拱橋・${inner}`
     : spaceLabel.startsWith('主要建築物內')
     ? `${inner}・室內`

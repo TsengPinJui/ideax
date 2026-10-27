@@ -21,6 +21,12 @@ import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { BuildingInteractionModal } from './BuildingInteractionModal';
 import { DevStatsPanel } from './DevStatsPanel';
+import { PainFloorModal, painForFloor } from './PainFloorModal';
+import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
+import { drawPainBoardTexture, PAIN_FLOORS } from './stylized/painBoard';
+import { useApp } from '../../context/AppContext';
+import type { Question } from '../../types';
+import type { Collider } from './types';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
 import { setTextureAnisotropy } from './stylized/textures';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -45,14 +51,74 @@ import {
 interface FirstPersonKingdomViewProps {
   onExit: () => void;
   onNavigateToModule?: (targetModule: string) => void;
+  /** 在 3D 裡點某則內容（例如創點樓的痛點）時打開它 */
+  onOpenQuestion?: (q: Question) => void;
   initialRegionId?: RegionId;
+}
+
+type Tower = { b: BuildingInteractable; lay: StoryLayout; cols: Collider[][] };
+type StoryState = {
+  towerId: string | null;
+  level: number;
+  armed: boolean;
+  tween: null | { pts: THREE.Vector3[]; t: number; dur: number; toLevel: number; towerId: string };
+};
+
+/** 沿折線取點（t 為 0~1） */
+function samplePath(pts: THREE.Vector3[], t: number) {
+  const lens: number[] = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const l = pts[i].distanceTo(pts[i - 1]);
+    lens.push(l);
+    total += l;
+  }
+  let d = t * total;
+  for (let i = 0; i < lens.length; i++) {
+    if (d <= lens[i] || i === lens.length - 1) return pts[i].clone().lerp(pts[i + 1], Math.min(1, d / (lens[i] || 1)));
+    d -= lens[i];
+  }
+  return pts[pts.length - 1].clone();
 }
 
 export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   onExit,
   onNavigateToModule,
+  onOpenQuestion,
   initialRegionId = 'region-home',
 }) => {
+  const { questions } = useApp();
+  const questionsRef = useRef<Question[]>(questions);
+  questionsRef.current = questions;
+  const storyRef = useRef<StoryState>({ towerId: null, level: 0, armed: true, tween: null });
+  const [floorLevel, setFloorLevel] = useState(0);
+  const [painFloorOpen, setPainFloorOpen] = useState<number | null>(null);
+  const towersRef = useRef<Map<string, Tower>>(new Map());
+  if (towersRef.current.size === 0) {
+    for (const r of Object.values(REGION_CONFIGS)) {
+      for (const b of r.buildings) {
+        const lay = getStoryLayout(b);
+        if (lay) towersRef.current.set(b.id, { b, lay, cols: Array.from({ length: lay.floors }, (_, k) => levelColliders(b, lay, k)) });
+      }
+    }
+  }
+  const floorNameCache = useRef<Map<string, BuildingInteractable>>(new Map());
+  /** 創點樓各層懸賞牆：換上真實痛點 */
+  const refreshPainBoards = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.traverse((o) => {
+      const info = o.userData?.painBoard as { level: number } | undefined;
+      if (!info) return;
+      const mesh = o as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const cards = painForFloor(questionsRef.current, info.level).slice(0, 8).map((q) => ({ id: q.id, title: q.title, category: q.category, bounty: q.bounty }));
+      const old = mat.map;
+      mat.map = drawPainBoardTexture(info.level, cards);
+      mat.needsUpdate = true;
+      old?.dispose();
+    });
+  }, []);
   const mountRef = useRef<HTMLDivElement>(null);
 
   // Core 3D engine refs
@@ -178,6 +244,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
       try {
         playSoundEffect('portal');
+        storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
+        setFloorLevel(0);
         await regionManagerRef.current.loadRegion(targetRegionId);
         controlsRef.current.setSpawn(
           new THREE.Vector3(...manifest.defaultSpawn.position),
@@ -259,6 +327,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
     };
 
+    regionManager.onRegionReady = () => refreshPainBoards();
     regionManager.onError = (err) => {
       setErrorMessage(err);
       controls.unlockPointer();
@@ -291,7 +360,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (e.code === 'KeyE') {
         if (nearBuildingRef.current) {
           playSoundEffect('interact');
-          setActiveModalBuilding(nearBuildingRef.current);
+          if (towersRef.current.has(nearBuildingRef.current.id)) setPainFloorOpen(storyRef.current.level);
+          else setActiveModalBuilding(nearBuildingRef.current);
           controls.unlockPointer();
         }
       }
@@ -309,9 +379,24 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const delta = Math.min(clock.getDelta(), 0.08);
       setIsDesktopPointerLocked(controls.isLocked);
 
-      if (!activeModalBuilding && regionManager.status === 'active') {
+      const story = storyRef.current;
+      if (story.tween && regionManager.status === 'active') {
+        // 上下樓：沿樓梯走一段（約 1.8 秒）
+        const tw = story.tween;
+        tw.t += delta / tw.dur;
+        controls.position.copy(samplePath(tw.pts, Math.min(1, tw.t)));
+        controls.updateCameraTransform(delta);
+        if (tw.t >= 1) {
+          story.level = tw.toLevel;
+          story.towerId = tw.toLevel > 0 ? tw.towerId : null;
+          story.tween = null;
+          story.armed = false;
+          setFloorLevel(story.level);
+        }
+      } else if (!activeModalBuilding && regionManager.status === 'active') {
+        const tower = story.level > 0 && story.towerId ? towersRef.current.get(story.towerId) || null : null;
         const desiredVelocity = controls.getDesiredVelocity();
-        const activeColliders = regionManager.getAllColliders();
+        const activeColliders = tower ? tower.cols[story.level] : regionManager.getAllColliders();
 
         const newPos = PhysicsController.movePlayer(
           controls.position,
@@ -319,11 +404,41 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           delta,
           activeColliders,
           globalWalkableZones,
-          WORLD_BRIDGES
+          tower ? [] : WORLD_BRIDGES,
+          tower ? story.level * FLOOR_H : 0
         );
 
         controls.position.copy(newPos);
         controls.updateCameraTransform(delta);
+
+        // 多樓層建築：走到樓梯口就上下樓
+        {
+          const here = tower || (() => {
+            const sp = detectPlayerSpatialContext(controls.position.x, controls.position.z);
+            return sp.insideBuilding ? towersRef.current.get(sp.insideBuilding.id) || null : null;
+          })();
+          if (here) {
+            const [lx, lz] = toLocal(here.b, controls.position.x, controls.position.z);
+            const up = upTrigger(here.lay, story.level, lx, lz);
+            const down = downTrigger(here.lay, story.level, lx, lz);
+            if (!up && !down) story.armed = true;
+            else if (story.armed) {
+              const k = story.level;
+              const fh = here.lay.floorH;
+              const P = (x: number, z: number, y: number) => {
+                const [wx, wz] = toWorld(here.b, x, z);
+                return new THREE.Vector3(wx, y, wz);
+              };
+              const pts = up
+                ? [controls.position.clone(), P(up.lx, up.z0 + 0.2, k * fh), P(up.lx, up.z1, (k + 1) * fh), P(up.lx, up.z1 - 1.0, (k + 1) * fh)]
+                : [controls.position.clone(), P(down!.lx, down!.z1, k * fh), P(down!.lx, down!.z0, (k - 1) * fh), P(down!.lx, down!.z0 + 1.2, (k - 1) * fh)];
+              story.tween = { pts, t: 0, dur: 1.8, toLevel: up ? k + 1 : k - 1, towerId: here.b.id };
+              playSoundEffect('interact');
+            }
+          } else {
+            story.armed = true;
+          }
+        }
 
         // Detect which island the player is on and whether inside a building
         const spatial = detectPlayerSpatialContext(
@@ -347,6 +462,17 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               break;
             }
           }
+        }
+        // 多樓層建築：提示顯示目前在第幾樓
+        if (foundBuilding && towersRef.current.has(foundBuilding.id)) {
+          const lvl = story.level;
+          const key = `${foundBuilding.id}-${lvl}`;
+          let named = floorNameCache.current.get(key);
+          if (!named) {
+            named = { ...foundBuilding, name: `${foundBuilding.name}・${(PAIN_FLOORS[lvl] || PAIN_FLOORS[0]).label}` };
+            floorNameCache.current.set(key, named);
+          }
+          foundBuilding = named;
         }
         nearBuildingRef.current = foundBuilding;
         setNearBuilding(foundBuilding);
@@ -399,11 +525,17 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     if (/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) {
       (window as any).__kingdom = {
         teleport: (x: number, z: number, yaw: number, pitch = 0) => {
+          storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
           controls.setSpawn(new THREE.Vector3(x, 0, z), yaw);
           controls.pitch = pitch;
           controls.updateCameraTransform(0);
         },
-        getPos: () => ({ x: controls.position.x, z: controls.position.z, yaw: controls.yaw }),
+        getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
+        place: (x: number, z: number, yaw: number) => {
+          controls.position.x = x;
+          controls.position.z = z;
+          controls.yaw = yaw;
+        },
         setTimeOfDay: (t: TimeOfDay) => {
           world.setTimeOfDay(t);
           setTimeOfDay(t);
@@ -431,6 +563,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       renderer.dispose();
     };
   }, [initialRegionId, playSoundEffect]);
+
+  // 痛點有新增或更新時，懸賞牆跟著換
+  useEffect(() => {
+    refreshPainBoards();
+  }, [questions, refreshPainBoards]);
 
   // Handle quality settings change
   const handleChangeQuality = (updated: Partial<QualitySettings>) => {
@@ -575,7 +712,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onInteract={() => {
           if (nearBuilding) {
             playSoundEffect('interact');
-            setActiveModalBuilding(nearBuilding);
+            if (towersRef.current.has(nearBuilding.id)) setPainFloorOpen(storyRef.current.level);
+            else setActiveModalBuilding(nearBuilding);
             controlsRef.current?.unlockPointer();
           }
         }}
@@ -615,6 +753,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
           handleChangeQuality({ fancy: next, shadows: next });
         }}
+        placeOverride={floorLevel > 0 ? `創點樓・${(PAIN_FLOORS[floorLevel] || PAIN_FLOORS[0]).label}` : undefined}
         timeOfDay={timeOfDay}
         onCycleTimeOfDay={() => {
           const order: TimeOfDay[] = ['day', 'dusk', 'night'];
@@ -627,6 +766,22 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           handleChangeQuality({
             moveSpeedMultiplier: isFastWalk ? 1.0 : 1.75,
           });
+        }}
+      />
+
+      {/* 創點樓：這一層的痛點 */}
+      <PainFloorModal
+        open={painFloorOpen !== null}
+        level={painFloorOpen ?? 0}
+        questions={questions}
+        onClose={() => setPainFloorOpen(null)}
+        onOpenQuestion={(q) => {
+          setPainFloorOpen(null);
+          onOpenQuestion?.(q);
+        }}
+        onCreate={() => {
+          setPainFloorOpen(null);
+          onNavigateToModule?.('create_pain_point');
         }}
       />
 

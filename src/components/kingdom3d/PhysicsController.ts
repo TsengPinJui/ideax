@@ -210,7 +210,8 @@ export class PhysicsController {
     delta: number,
     colliders: Collider[],
     walkableZones: WalkableZone[],
-    bridges: BridgeZone[]
+    bridges: BridgeZone[],
+    baseGround = 0
   ): THREE.Vector3 {
     const nextPos = currentPos.clone();
 
@@ -265,7 +266,7 @@ export class PhysicsController {
     this.resolvePenetration(nextPos, colliders, walkableZones);
 
     // Smooth ground height adaptation across flat plazas and arched bridges
-    const targetY = this.getGroundHeight(nextPos.x, nextPos.z, bridges, 0);
+    const targetY = this.getGroundHeight(nextPos.x, nextPos.z, bridges, baseGround);
     nextPos.y = THREE.MathUtils.lerp(nextPos.y, targetY, Math.min(1, delta * 20));
 
     return nextPos;
