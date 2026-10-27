@@ -6,15 +6,15 @@
       ".read": true,
       "$uid": {
         "$sid": {
-          ".write": "((auth != null && auth.uid === $uid) || ($uid.beginsWith('guest_') && $uid.length <= 40)) && $sid.length <= 40",
+          ".write": "$uid.length <= 64 && $sid.length <= 40",
           ".validate": "!newData.exists() || newData.hasChildren(['n', 'x', 'z', 'r', 't'])",
-          "n": { ".validate": "newData.isString() && newData.val().length <= 24" },
+          "n": { ".validate": "newData.isString() && newData.val().length <= 40" },
           "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 64" },
-          "x": { ".validate": "newData.isNumber() && newData.val() > -1000 && newData.val() < 1000" },
-          "y": { ".validate": "newData.isNumber() && newData.val() > -50 && newData.val() < 100" },
-          "z": { ".validate": "newData.isNumber() && newData.val() > -1000 && newData.val() < 1000" },
+          "x": { ".validate": "newData.isNumber() && newData.val() > -5000 && newData.val() < 5000" },
+          "y": { ".validate": "newData.isNumber() && newData.val() > -500 && newData.val() < 500" },
+          "z": { ".validate": "newData.isNumber() && newData.val() > -5000 && newData.val() < 5000" },
           "r": { ".validate": "newData.isNumber()" },
-          "t": { ".validate": "newData.val() === now" },
+          "t": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
         }
       }

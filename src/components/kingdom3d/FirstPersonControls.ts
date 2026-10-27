@@ -30,8 +30,9 @@ export class FirstPersonControls {
 
   // Limits
   public static readonly PITCH_LIMIT = 1.30; // ~74.5 degrees
-  public static readonly WALK_SPEED = 2.8; // meters/sec (stroll pace)
-  public static readonly SPRINT_MULTIPLIER = 2.1;
+  public static readonly WALK_SPEED = 3.3; // meters/sec
+  public static readonly RUN_SPEED = 8.5; // meters/sec
+  public static readonly SPRINT_MULTIPLIER = 8.5 / 3.3;
   public static readonly MOUSE_SENSITIVITY = 0.0022;
 
   // Desktop keyboard & mouse
@@ -248,10 +249,10 @@ export class FirstPersonControls {
     const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (len > 0.05) {
       this.isMoving = true;
-      const speedMult =
-        (this.keys.sprint ? FirstPersonControls.SPRINT_MULTIPLIER : 1.0) *
-        (this.settings.moveSpeedMultiplier || 1.0);
-      const speed = FirstPersonControls.WALK_SPEED * speedMult;
+      const isSprinting = this.keys.sprint || (this.settings.moveSpeedMultiplier || 1.0) > 1.2;
+      const speed = isSprinting
+        ? FirstPersonControls.RUN_SPEED
+        : FirstPersonControls.WALK_SPEED;
 
       const normX = (inputX / (len > 1 ? len : 1)) * speed;
       const normZ = (inputZ / (len > 1 ? len : 1)) * speed;
@@ -276,8 +277,8 @@ export class FirstPersonControls {
     let bobOffset = 0;
     if (this.settings.headBob && this.isMoving) {
       const sprinting = this.keys.sprint || (this.settings.moveSpeedMultiplier || 1.0) > 1.2;
-      this.bobTimer += delta * (sprinting ? 11.5 : 7.2);
-      bobOffset = Math.sin(this.bobTimer) * (sprinting ? 0.036 : 0.022);
+      this.bobTimer += delta * (sprinting ? 13 : 7.2);
+      bobOffset = Math.sin(this.bobTimer) * (sprinting ? 0.042 : 0.022);
     } else {
       this.bobTimer = 0;
     }

@@ -1,21 +1,21 @@
 import * as THREE from 'three';
 import { getDatabase, ref, set, onValue, onDisconnect, remove, serverTimestamp, Database, Unsubscribe } from 'firebase/database';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { app, auth, firebaseConfig } from '../../services/firebase';
+import { app, auth, firebaseConfig, resolveDatabaseUrl } from '../../services/firebase';
 
 /**
  * 3D 五島多人同遊：用 Firebase Realtime Database 交換每位玩家的位置（每秒最多 5 次，停著不動就不送）。
- * - 優先使用環境變數 VITE_FIREBASE_DATABASE_URL，未設定時自動使用專案預設的 Realtime Database 網址
+ * - 優先使用環境變數 VITE_FIREBASE_DATABASE_URL（自動正規化為資料庫根網址，去除多餘子路徑）
  * - 已登入會員與未登入訪客都能出現在世界裡、彼此看得到；只傳暱稱與位置
  * - 離線（關分頁、斷線）時伺服器自動把自己移除
  * - 位置存在 kingdomPresence/{uid 或 guest_id}/{這個分頁的 session}：同一個瀏覽器開多個分頁、
  *   或管理員切換示範帳號時，彼此也看得到
  */
 
-const DB_URL: string | undefined =
-  (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL ||
-  firebaseConfig.databaseURL ||
-  'https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app';
+const DB_URL: string = resolveDatabaseUrl(
+  (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL,
+  firebaseConfig.databaseURL
+);
 const PATH = 'kingdomPresence';
 const SEND_INTERVAL_MS = 200;
 const HEARTBEAT_MS = 15000;
@@ -51,6 +51,15 @@ function getOrCreateGuestUid(): string {
   }
 }
 
+function toPresenceUid(rawUid?: string | null): string {
+  if (rawUid) {
+    const clean = rawUid.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 28);
+    if (clean.startsWith('guest_') && clean.length <= 40) return clean;
+    if (clean) return `guest_u_${clean}`;
+  }
+  return getOrCreateGuestUid();
+}
+
 export class KingdomMultiplayer {
   private db: Database | null = null;
   private user: FirebaseUser | null = null;
@@ -59,6 +68,8 @@ export class KingdomMultiplayer {
   private unsubAuth: (() => void) | null = null;
   private unsubPlayers: Unsubscribe | null = null;
   private unsubOffset: Unsubscribe | null = null;
+  private restPollTimer: number | null = null;
+  private wsConnected = false;
   private lastSent = 0;
   private last = { x: NaN, y: NaN, z: NaN, yaw: NaN };
   private serverOffset = 0;
@@ -90,16 +101,26 @@ export class KingdomMultiplayer {
     try {
       this.db = getDatabase(app, DB_URL);
     } catch (e) {
-      console.warn('[kingdom] 多人連線初始化失敗', e);
-      this.setStatus('error');
-      return;
+      console.warn('[kingdom] 多人連線 WebSocket 初始化失敗，改用 REST 同步', e);
     }
-    this.unsubAuth = onAuthStateChanged(auth, (u) => {
-      this.detach();
-      this.user = u;
-      this.activeUid = u ? u.uid : getOrCreateGuestUid();
-      this.attach();
-    });
+    // 立即先用現有帳號或訪客身分連線，不必等 onAuthStateChanged
+    this.user = auth.currentUser;
+    this.activeUid = toPresenceUid(this.user?.uid);
+    this.attach();
+
+    try {
+      this.unsubAuth = onAuthStateChanged(auth, (u) => {
+        const nextUid = toPresenceUid(u?.uid);
+        this.user = u;
+        if (nextUid !== this.activeUid || !this.attached) {
+          this.detach();
+          this.activeUid = nextUid;
+          this.attach();
+        }
+      });
+    } catch {
+      // 忽略 auth 監聽異常，維持訪客連線
+    }
   }
 
   private setStatus(s: MultiplayerStatus) {
@@ -107,70 +128,165 @@ export class KingdomMultiplayer {
     this.onStatus?.(s);
   }
 
+  private parsePresenceTree(raw: Record<string, Record<string, any>> | null | undefined, uid: string): RemotePlayerState[] {
+    const now = Date.now() + this.serverOffset;
+    const list: RemotePlayerState[] = [];
+    if (!raw || typeof raw !== 'object') return list;
+    for (const [userKey, userObj] of Object.entries(raw)) {
+      if (!userObj || typeof userObj !== 'object') continue;
+      for (const [childKey, v] of Object.entries(userObj)) {
+        if (!v || (userKey === uid && childKey === this.sid)) continue;
+        if (typeof v.t !== 'number' || now - v.t > STALE_MS) continue;
+        if (![v.x, v.z, v.r].every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) continue;
+        list.push({
+          id: `${userKey}/${childKey}`,
+          name: String(v.n || '旅人').slice(0, 20),
+          color: Number(v.c) || 0,
+          x: v.x,
+          y: Number(v.y) || 0,
+          z: v.z,
+          yaw: v.r,
+          t: v.t,
+        });
+      }
+    }
+    return list;
+  }
+
+  private async restFetchPlayers(uid: string) {
+    if (!DB_URL || !this.attached) return;
+    try {
+      const res = await fetch(`${DB_URL}/${PATH}.json`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!this.attached) return;
+      const list = this.parsePresenceTree(data, uid);
+      if (this.status !== 'online') this.setStatus('online');
+      this.onPlayers?.(list);
+    } catch {
+      // ignore transient network errors
+    }
+  }
+
+  private async restWritePose(uid: string, payload: { n: string; c: number; x: number; y: number; z: number; r: number }) {
+    if (!DB_URL || !this.attached) return;
+    try {
+      const res = await fetch(`${DB_URL}/${PATH}/${encodeURIComponent(uid)}/${encodeURIComponent(this.sid)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, t: { '.sv': 'timestamp' } }),
+      });
+      if (res.ok && this.status !== 'online') {
+        this.setStatus('online');
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   private attach() {
-    if (!this.db || !this.activeUid) return;
+    if (!this.activeUid) return;
     const uid = this.activeUid;
     this.attached = true;
+    this.wsConnected = false;
     this.lastSent = 0;
     this.last.x = NaN;
     this.setStatus('connecting');
-    const db = this.db;
-    this.unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
-      this.serverOffset = Number(snap.val()) || 0;
-    });
-    const mine = ref(db, `${PATH}/${uid}/${this.sid}`);
-    onDisconnect(mine)
-      .remove()
-      .catch(() => {});
-    this.unsubPlayers = onValue(
-      ref(db, PATH),
-      (snap) => {
-        const now = Date.now() + this.serverOffset;
-        const list: RemotePlayerState[] = [];
-        snap.forEach((userNode) => {
-          userNode.forEach((child) => {
-            const v = child.val();
-            if (!v || (userNode.key === uid && child.key === this.sid)) return;
-            if (typeof v.t !== 'number' || now - v.t > STALE_MS) return;
-            if (![v.x, v.z, v.r].every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) return;
-            list.push({ id: `${userNode.key}/${child.key}`, name: String(v.n || '旅人').slice(0, 20), color: Number(v.c) || 0, x: v.x, y: Number(v.y) || 0, z: v.z, yaw: v.r, t: v.t });
-          });
-        });
-        if (this.status !== 'online') this.setStatus('online');
-        this.onPlayers?.(list);
-      },
-      (err) => {
-        console.warn('[kingdom] 讀取其他玩家失敗', err?.message);
-        this.setStatus('error');
+
+    // 先透過 HTTPS REST 立即拉一次線上旅人，確保即使 WebSocket 被擋也能在 1 秒內連上線
+    void this.restFetchPlayers(uid);
+    this.restPollTimer = window.setInterval(() => {
+      if (!this.wsConnected) {
+        void this.restFetchPlayers(uid);
       }
-    );
+    }, 2500);
+
+    if (!this.db) return;
+    const db = this.db;
+    try {
+      this.unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+        this.serverOffset = Number(snap.val()) || 0;
+      });
+      const mine = ref(db, `${PATH}/${uid}/${this.sid}`);
+      onDisconnect(mine)
+        .remove()
+        .catch(() => {});
+      this.unsubPlayers = onValue(
+        ref(db, PATH),
+        (snap) => {
+          this.wsConnected = true;
+          const list = this.parsePresenceTree(snap.val(), uid);
+          if (this.status !== 'online') this.setStatus('online');
+          this.onPlayers?.(list);
+        },
+        (err) => {
+          console.warn('[kingdom] WebSocket 讀取旅人受阻，使用 HTTPS 同步', err?.message);
+          this.wsConnected = false;
+          void this.restFetchPlayers(uid);
+        }
+      );
+    } catch {
+      this.wsConnected = false;
+    }
   }
 
   private detach() {
+    const prevUid = this.activeUid;
     this.attached = false;
+    this.wsConnected = false;
+    if (this.restPollTimer !== null) {
+      window.clearInterval(this.restPollTimer);
+      this.restPollTimer = null;
+    }
     this.unsubPlayers?.();
     this.unsubPlayers = null;
     this.unsubOffset?.();
     this.unsubOffset = null;
-    if (this.db && this.activeUid) remove(ref(this.db, `${PATH}/${this.activeUid}/${this.sid}`)).catch(() => {});
+    if (prevUid) {
+      if (this.db) remove(ref(this.db, `${PATH}/${prevUid}/${this.sid}`)).catch(() => {});
+      if (DB_URL) {
+        fetch(`${DB_URL}/${PATH}/${encodeURIComponent(prevUid)}/${encodeURIComponent(this.sid)}.json`, {
+          method: 'DELETE',
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
     this.last.x = NaN;
   }
 
   /** 每一幀呼叫：位置有變（或太久沒送）才寫入 */
   update(x: number, y: number, z: number, yaw: number) {
-    if (!this.db || !this.activeUid || !this.attached || this.status === 'error') return;
+    if (!this.activeUid || !this.attached) return;
     const now = performance.now();
     if (now - this.lastSent < SEND_INTERVAL_MS) return;
+    const normYaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
     const moved =
-      !(Math.abs(x - this.last.x) < 0.12 && Math.abs(z - this.last.z) < 0.12 && Math.abs(y - this.last.y) < 0.12 && Math.abs(yaw - this.last.yaw) < 0.05);
+      !(Math.abs(x - this.last.x) < 0.12 && Math.abs(z - this.last.z) < 0.12 && Math.abs(y - this.last.y) < 0.12 && Math.abs(normYaw - this.last.yaw) < 0.05);
     if (!moved && now - this.lastSent < HEARTBEAT_MS) return;
     this.lastSent = now;
-    this.last = { x, y, z, yaw };
+    this.last = { x, y, z, yaw: normYaw };
     const r2 = (n: number) => Math.round(n * 100) / 100;
-    set(ref(this.db, `${PATH}/${this.activeUid}/${this.sid}`), { n: this.name, c: this.color, x: r2(x), y: r2(y), z: r2(z), r: r2(yaw), t: serverTimestamp() }).catch((err) => {
-      console.warn('[kingdom] 位置同步失敗', err?.message);
-      this.setStatus('error');
-    });
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    const payload = {
+      n: this.name.slice(0, 20),
+      c: Math.max(0, Math.min(63, Math.floor(this.color))),
+      x: r2(clamp(x, -999, 999)),
+      y: r2(clamp(y, -49, 99)),
+      z: r2(clamp(z, -999, 999)),
+      r: r2(normYaw),
+    };
+    const uid = this.activeUid;
+
+    if (this.db && this.wsConnected) {
+      set(ref(this.db, `${PATH}/${uid}/${this.sid}`), { ...payload, t: serverTimestamp() }).catch(() => {
+        void this.restWritePose(uid, payload);
+      });
+    } else {
+      void this.restWritePose(uid, payload);
+      if (this.db) {
+        set(ref(this.db, `${PATH}/${uid}/${this.sid}`), { ...payload, t: serverTimestamp() }).catch(() => {});
+      }
+    }
   }
 
   dispose() {

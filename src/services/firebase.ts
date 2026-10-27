@@ -82,15 +82,36 @@ function resolveAuthDomain(): string {
   return firebaseConfigJson.authDomain;
 }
 
+const DEFAULT_RTDB_URL = 'https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app';
+
+export function resolveDatabaseUrl(...candidates: Array<string | undefined | null>): string {
+  for (const raw of candidates) {
+    if (!raw || typeof raw !== 'string') continue;
+    const cleaned = raw.trim().replace(/^['"]+|['"]+$/g, '').trim();
+    if (!cleaned) continue;
+    try {
+      const parsed = new URL(cleaned);
+      const host = parsed.hostname.toLowerCase();
+      if (host.endsWith('.firebaseio.com') || host.endsWith('.firebasedatabase.app')) {
+        return `https://${host}`;
+      }
+    } catch {
+      // ignore malformed URL and try next candidate
+    }
+  }
+  return DEFAULT_RTDB_URL;
+}
+
 export const firebaseConfig = {
   apiKey: firebaseConfigJson.apiKey,
   // 手機瀏覽器會隔離不同網域的資料，社群登入改走自己的網域（/__/auth 由 Vercel 轉送到 Firebase）。
   // 需先在 Facebook／Google 後台加入 https://<網域>/__/auth/handler，再於 Vercel 設定 VITE_FIREBASE_AUTH_DOMAIN。
   authDomain: resolveAuthDomain(),
-  databaseURL:
-    (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL ||
-    (firebaseConfigJson as any).databaseURL ||
-    'https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app',
+  databaseURL: resolveDatabaseUrl(
+    (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL,
+    (firebaseConfigJson as any).databaseURL,
+    DEFAULT_RTDB_URL
+  ),
   projectId: firebaseConfigJson.projectId,
   storageBucket: firebaseConfigJson.storageBucket,
   messagingSenderId: firebaseConfigJson.messagingSenderId,
