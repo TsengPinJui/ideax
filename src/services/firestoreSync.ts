@@ -362,11 +362,13 @@ export async function deleteUsersFromFirestore(userIds: string[]): Promise<void>
     userIds.forEach((uid) => {
       if (uid) {
         batch.delete(doc(db, 'users', uid));
+        batch.delete(doc(db, 'solvers', uid));
+        batch.delete(doc(db, 'user_private', uid));
       }
     });
     await batch.commit();
   } catch (err) {
-    handleFirestoreError(`Failed to batch delete duplicate users`, err);
+    handleFirestoreError(`Failed to batch delete users and solvers`, err);
   }
 }
 

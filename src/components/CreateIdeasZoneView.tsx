@@ -33,6 +33,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { StarSeasonProposal, STAR_SEASON_TRACKS, OFFICIAL_COMPETITION_TRACKS } from '../types/competition';
+import { deriveInnovationProposalName, stripAppNameFromTitle } from '../utils/titleFormat';
 import { getInnovationProgressStageMeta } from '../types';
 import { useApp } from '../context/AppContext';
 import { mapQuestionsToStarSeasonProposals, isCardViewsVisible } from '../utils/questionUtils';
@@ -917,7 +918,18 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                       </span>
                     </div>
                     <h3 className="text-sm sm:text-base font-black text-stone-900 truncate group-hover:text-amber-600 transition-colors">
-                      {proposal.title}
+                      {(() => {
+                        const pName = (proposal.appName || deriveInnovationProposalName(proposal)).trim();
+                        const cleanT = stripAppNameFromTitle(proposal.title, pName) || proposal.title;
+                        return pName ? (
+                          <>
+                            <span className="text-blue-600 font-black">{pName}：</span>
+                            <span>{cleanT}</span>
+                          </>
+                        ) : (
+                          proposal.title
+                        );
+                      })()}
                     </h3>
                     <p className="text-xs text-stone-500 line-clamp-1">
                       {proposal.summary}
@@ -1045,7 +1057,18 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   <div className="p-3 flex-1 flex flex-col justify-between gap-2">
                     <div className="space-y-1">
                       <h3 className="text-xs sm:text-sm font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
-                        {proposal.title}
+                        {(() => {
+                          const pName = (proposal.appName || deriveInnovationProposalName(proposal)).trim();
+                          const cleanT = stripAppNameFromTitle(proposal.title, pName) || proposal.title;
+                          return pName ? (
+                            <>
+                              <span className="text-blue-600 font-black">{pName}：</span>
+                              <span>{cleanT}</span>
+                            </>
+                          ) : (
+                            proposal.title
+                          );
+                        })()}
                       </h3>
                       <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
                         {proposal.summary}
@@ -1162,7 +1185,18 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
                   <div className="space-y-2">
                     <h3 className="text-sm sm:text-base font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
-                      {proposal.title}
+                      {(() => {
+                        const pName = (proposal.appName || deriveInnovationProposalName(proposal)).trim();
+                        const cleanT = stripAppNameFromTitle(proposal.title, pName) || proposal.title;
+                        return pName ? (
+                          <>
+                            <span className="text-blue-600 font-black">{pName}：</span>
+                            <span>{cleanT}</span>
+                          </>
+                        ) : (
+                          proposal.title
+                        );
+                      })()}
                     </h3>
                     <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
                       {proposal.summary}

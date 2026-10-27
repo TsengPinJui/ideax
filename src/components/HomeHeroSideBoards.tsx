@@ -7,6 +7,7 @@ import {
   getHotRankedProposalsAndSoftware,
   getFeaturedProposalsAndSoftware,
 } from '../data/hotGamesData';
+import { deriveInnovationProposalName } from '../utils/titleFormat';
 
 interface HomeHeroSideBoardsProps {
   questions: Question[];
@@ -91,7 +92,11 @@ export const FeaturedGamesBoard: React.FC<{
       <div className="flex-1 flex flex-col justify-between divide-y divide-stone-100/70 text-left overflow-hidden">
         {featuredList.map(({ question, rank }) => {
           const isTop3 = rank <= 3;
-          const displayTitle = question.appName || question.title.split('—')[0]?.split('|')[0]?.trim() || question.title;
+          const displayTitle =
+            question.appName ||
+            deriveInnovationProposalName(question) ||
+            question.title.split('—')[0]?.split('|')[0]?.trim() ||
+            question.title;
 
           return (
             <button
@@ -173,7 +178,11 @@ export const HotGamesRankingBoard: React.FC<{
                 {rank}
               </span>
               <span className="text-xs font-medium text-stone-800 truncate min-w-0 flex-1 group-hover:text-red-700 transition-colors">
-                {question.title}
+                {question.appName
+                  ? `${question.appName}：${question.title}`
+                  : deriveInnovationProposalName(question)
+                  ? `${deriveInnovationProposalName(question)}：${question.title}`
+                  : question.title}
               </span>
             </button>
           );

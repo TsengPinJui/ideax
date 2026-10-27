@@ -1,4 +1,5 @@
 import { Question } from '../types';
+import { deriveInnovationProposalName } from './titleFormat';
 
 /**
  * 1. 判斷該提問是否屬於「提出痛點」(pain_point)
@@ -160,6 +161,7 @@ export const questionToStarSeasonProposal = (q: Question): import('../types/comp
 
   return {
     id: q.id,
+    appName: q.appName || deriveInnovationProposalName(q),
     title: q.title,
     stage: q.postType === 'pain_point' ? 'pain_point' : 'solution',
     track,

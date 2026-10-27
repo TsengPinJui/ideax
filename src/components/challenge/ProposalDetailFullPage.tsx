@@ -29,6 +29,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { AdminDelistModal } from '../AdminDelistModal';
+import { deriveInnovationProposalName, stripAppNameFromTitle } from '../../utils/titleFormat';
 import {
   StarSeasonProposal,
   ProposalComment,
@@ -310,7 +311,11 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               <span>/</span>
               <span className="text-stone-600">{isFromCreate ? "創點子" : "創星季提案"}</span>
               <span>/</span>
-              <span className="text-stone-900 font-bold truncate max-w-[200px]">{proposal.title}</span>
+              <span className="text-stone-900 font-bold truncate max-w-[200px]">
+                {proposal.stage !== 'pain_point' && (proposal.appName || deriveInnovationProposalName(proposal))
+                  ? `${proposal.appName || deriveInnovationProposalName(proposal)}：${stripAppNameFromTitle(proposal.title, proposal.appName || deriveInnovationProposalName(proposal)) || proposal.title}`
+                  : proposal.title}
+              </span>
             </div>
           </div>
 
@@ -502,7 +507,19 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
           {/* 提案主標題 */}
           <h1 className="text-xl sm:text-3xl font-black text-stone-900 leading-snug tracking-tight">
-            {proposal.title}
+            {(() => {
+              if (proposal.stage === 'pain_point') return proposal.title;
+              const pName = (proposal.appName || deriveInnovationProposalName(proposal)).trim();
+              const cleanT = stripAppNameFromTitle(proposal.title, pName) || proposal.title;
+              return pName ? (
+                <>
+                  <span className="text-blue-600 font-black">{pName}：</span>
+                  <span>{cleanT}</span>
+                </>
+              ) : (
+                proposal.title
+              );
+            })()}
           </h1>
 
           {/* 提案作者與所屬學校 */}

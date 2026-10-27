@@ -24,6 +24,8 @@ import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, P
 import { isMockQuestionId } from './data/mockData';
 import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
+import { isGameQuestion } from './utils/gameClassification';
+import { isComingSoonWork } from './utils/experienceRating';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem, getQuestionShareUrl } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
 import { trackFeature, featureFromPath } from './services/featureUsage';
@@ -564,6 +566,28 @@ function MainContent() {
   const [fullscreenEmbedApp, setFullscreenEmbedApp] = useState<Question | null>(null);
 
   const handleOpenAppEmbed = (app: Question) => {
+    // 非遊戲的軟體作品優先進入詳細內容頁，而非直接全螢幕瀏覽該網站
+    if (!isGameQuestion(app)) {
+      handleViewAppDescription(app);
+      return;
+    }
+
+    // 遊戲優先全螢幕瀏覽；若無法進入（無有效網址、即將上架、或設定僅外部開啟）則先返回詳情頁
+    const rawUrl = (
+      app.demoUrl ||
+      app.externalLink ||
+      (app as any).vibeCodingData?.demoUrl ||
+      (app as any).vibeCodingData?.externalLink ||
+      ''
+    ).trim();
+    const isValidWebUrl = /^https?:\/\//i.test(rawUrl);
+    const isExternalOnly =
+      app.previewMode === 'external' || (app as any).vibeCodingData?.previewMode === 'external';
+    if (!isValidWebUrl || isExternalOnly || isComingSoonWork(app)) {
+      handleViewAppDescription(app);
+      return;
+    }
+
     recordUserViewedQuestion(currentUser.id, app);
     recordQuestionViewClick(app.id, app.views || 0);
     incrementQuestionViews(app.id);
@@ -1348,6 +1372,10 @@ function MainContent() {
       const id = String((e as CustomEvent).detail?.id || '');
       const found = id ? questions.find((q) => q.id === id) : undefined;
       if (!found) return;
+      if (isGameQuestion(found)) {
+        handleOpenAppEmbed(found);
+        return;
+      }
       if (found.postType === 'innovation_proposal' || found.specialZone === 'create_ideas') {
         setSpecialZone('all');
       }
@@ -2456,7 +2484,13 @@ function MainContent() {
         {activeTab === 'island_explorer' && (
           <IslandWorldView
             questions={questions}
-            onOpenQuestion={handleViewAppDescription}
+            onOpenQuestion={(q) => {
+              if (isGameQuestion(q)) {
+                handleOpenAppEmbed(q);
+              } else {
+                handleViewAppDescription(q);
+              }
+            }}
             onAction={handleIslandAction}
             onBack={() => {
               setSelectedQuestion(null);

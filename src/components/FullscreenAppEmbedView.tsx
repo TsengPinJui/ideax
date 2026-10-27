@@ -244,14 +244,12 @@ export const FullscreenAppEmbedView: React.FC<FullscreenAppEmbedViewProps> = ({
 
   const isFailed = status === 'blocked' || status === 'timeout' || status === 'error';
 
-  // 全螢幕內嵌體驗無法載入時，直接在目前分頁開啟作品網站。
-  // 使用 assign 保留瀏覽器上一頁，方便使用者返回 IdeaX。
+  // 全螢幕內嵌體驗無法進入或載入失敗時，優先自動返回作品詳情頁
   useEffect(() => {
-    if (!isFailed || !isValidWebUrl) return;
-    const destination = openUrl || targetRawUrl;
-    if (!destination) return;
-    window.location.assign(destination);
-  }, [isFailed, isValidWebUrl, openUrl, targetRawUrl]);
+    if (!isValidWebUrl || isFailed) {
+      onViewDescription(question);
+    }
+  }, [isFailed, isValidWebUrl, onViewDescription, question]);
 
   return (
     <div className="fixed inset-0 z-[150] w-screen h-screen bg-stone-950 flex flex-col overflow-hidden text-stone-100 select-none animate-in fade-in duration-200">

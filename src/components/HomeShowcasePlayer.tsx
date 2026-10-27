@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Trophy, Megaphone, Star, Play } from 'lucide
 import { useApp } from '../context/AppContext';
 import type { HomeShowcaseCategory, HomeShowcaseMode, Question } from '../types';
 import { getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
+import { deriveInnovationProposalName } from '../utils/titleFormat';
 import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
 import {
   HOT_GAMES_DEFS,
@@ -226,7 +227,14 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q:
                 {meta.icon}{meta.label}
               </span>
               <span className="absolute inset-x-0 bottom-0 p-3 sm:p-5 pb-6 sm:pb-8">
-                <span className="block text-[10px] sm:text-xs font-bold text-amber-200">{TYPE_LABEL[s.q.postType || ''] || '創點子'}{s.q.appName ? `・${s.q.appName}` : ''}</span>
+                {(() => {
+                  const pName = s.q.appName || (s.q.postType === 'innovation_proposal' ? deriveInnovationProposalName(s.q) : '');
+                  return (
+                    <span className="block text-[10px] sm:text-xs font-bold text-amber-200">
+                      {TYPE_LABEL[s.q.postType || ''] || '創點子'}{pName ? `・${pName}` : ''}
+                    </span>
+                  );
+                })()}
                 <span className="block text-sm sm:text-xl font-black text-white leading-snug line-clamp-2 drop-shadow">{s.q.title}</span>
                 <span className="block text-[10px] sm:text-xs text-white/75 mt-0.5 truncate">{s.q.authorName}</span>
               </span>

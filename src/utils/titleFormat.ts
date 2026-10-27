@@ -106,13 +106,123 @@ export function stripAppNameFromTitle(title: string | undefined | null, appName?
 }
 
 /**
- * 自動校驗並規範化 Question 物件中的標題（確保標題不含重複之作品名稱）
+ * 預設與現有創新提案之標準簡短「提案名稱」對照表
  */
-export function sanitizeQuestionTitle<T extends { title?: string; appName?: string }>(question: T): T {
+export const CANONICAL_INNOVATION_PROPOSAL_NAMES: Record<string, string> = {
+  'q-vp-idea-ideax': 'IdeaX 創點子',
+  'q-vp-idea-gosun': 'GoSun 晴享傘',
+  'q-vp-idea-deeperdigger': 'DeeperDigger 深度挖掘',
+  'q-vp-idea-nexsight': 'NexSight 洞鑑',
+  'q-vp-idea-pace': 'PACE 一人行銷工作台',
+  'q-vp-idea-aiyaya': 'AI壓呀',
+  'q-vp-idea-stallmatch': 'StallMatch 攤車通',
+  'q-vp-idea-01': '早餐店語音接單通',
+  'q-vp-idea-02': '校園穿搭盲盒',
+  'q-vp-idea-03': '民宿離線NFC門鎖',
+  'q-vp-idea-04': '四色多語防呆藥袋',
+  'q-vp-idea-05': '遠距新人求救膠囊',
+  'q-vp-idea-06': 'LoRa 溫室環控黑盒',
+  'q-vp-idea-07': 'NFC 感溫封箱貼紙',
+  'q-vp-idea-08': '工廠碳足跡快篩盒',
+  'q-vp-idea-09': '扁平書本包鮮食',
+  'q-vp-idea-10': '裝潢追加款雙簽存證',
+  'q-vp-idea-11': '深夜無人共讀室',
+  'q-vp-idea-12': '社區藥局測肌力墊',
+  'q-vp-idea-13': '超市動態惜食價牌',
+  'q-vp-idea-14': '社區充電智慧排程盒',
+  'q-vp-idea-15': '醜蔬果微醺氣泡禮盒',
+  'q-vp-idea-16': '懷舊桌遊家族有聲書',
+  'q-vp-idea-17': '公益物資掃碼回報貼',
+  'q-vp-idea-agent-bulb': '一句話智慧分流',
+  'q-vp-idea-agent-sousou': '一份履歷投全網',
+  'q-vp-idea-agent-baimiao': '提案自動貼標籤',
+};
+
+/**
+ * 自動為創新提案（或一般提案物件）擷取或產生簡短「提案名稱」
+ */
+export function deriveInnovationProposalName(item?: {
+  id?: string;
+  title?: string;
+  appName?: string;
+  vibeCodingData?: { appName?: string };
+  postType?: string;
+  category?: string;
+  specialZone?: string;
+} | null): string {
+  if (!item) return '';
+  if (item.id && CANONICAL_INNOVATION_PROPOSAL_NAMES[item.id]) {
+    return CANONICAL_INNOVATION_PROPOSAL_NAMES[item.id];
+  }
+  const existing = (item.appName || item.vibeCodingData?.appName || '').trim();
+  if (existing) {
+    return existing.includes(' — ') ? existing.split(' — ')[0].trim() : existing;
+  }
+
+  const rawTitle = (item.title || '').trim();
+  if (!rawTitle) return '';
+
+  // 1. 若有《名稱》或【名稱】或「名稱」
+  const bracketMatch = rawTitle.match(/^[《【「\[]([^》】」\]]{2,16})[》】」\]]/);
+  if (bracketMatch && bracketMatch[1]) {
+    return bracketMatch[1].trim();
+  }
+
+  // 2. 若有「名稱：副標」或「名稱｜副標」或「名稱 - 副標」
+  const sepMatch = rawTitle.match(/^([^:：|｜\-─—–，,。！？!?]{2,16})\s*[:：|｜\-─—–]\s*.+$/);
+  if (sepMatch && sepMatch[1]) {
+    return sepMatch[1].trim();
+  }
+
+  // 3. 從標題去除常見動詞前綴後擷取核心名詞短語（控制在 4~10 字內）
+  let core = rawTitle
+    .replace(/^(把|將|讓|給|結合|打造|建立|推出|建立一套|設計一套|開發一套|透過|利用|以|在)/, '')
+    .trim();
+
+  const clauseParts = core.split(/[，,、：:｜|。！？!?；;（(]/).map((s) => s.trim()).filter(Boolean);
+  const firstClause = clauseParts[0] || core;
+
+  // 若第一子句含有「變成...的...」或「做成...」取後段關鍵名詞
+  const transformMatch = firstClause.match(/(?:變成|轉化為|做成|打造為|升級為)(.+)$/);
+  if (transformMatch && transformMatch[1] && transformMatch[1].trim().length >= 3) {
+    const target = transformMatch[1].trim().replace(/^(一個|一套|一座|一間|可|能)/, '');
+    return target.slice(0, 10);
+  }
+
+  return firstClause.slice(0, 10);
+}
+
+/**
+ * 自動校驗並規範化 Question 物件中的標題（確保標題不含重複之作品名稱，且創新提案自動具備 appName）
+ */
+export function sanitizeQuestionTitle<
+  T extends {
+    id?: string;
+    title?: string;
+    appName?: string;
+    postType?: string;
+    category?: string;
+    specialZone?: string;
+  }
+>(question: T): T {
   if (!question || !question.title) return question;
-  const cleanTitle = stripAppNameFromTitle(question.title, question.appName);
-  if (cleanTitle !== question.title) {
-    return { ...question, title: cleanTitle };
+  const isInnovation =
+    question.postType === 'innovation_proposal' ||
+    question.category === '創新提案' ||
+    question.specialZone === 'create_ideas' ||
+    Boolean(question.id && CANONICAL_INNOVATION_PROPOSAL_NAMES[question.id]);
+
+  const resolvedAppName =
+    question.appName?.trim() ||
+    (isInnovation ? deriveInnovationProposalName(question) : '');
+
+  const cleanTitle = stripAppNameFromTitle(question.title, resolvedAppName || question.appName);
+  if (cleanTitle !== question.title || (resolvedAppName && resolvedAppName !== question.appName)) {
+    return {
+      ...question,
+      ...(resolvedAppName ? { appName: resolvedAppName } : {}),
+      title: cleanTitle,
+    };
   }
   return question;
 }

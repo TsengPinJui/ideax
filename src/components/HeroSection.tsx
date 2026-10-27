@@ -310,8 +310,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const visibleMetrics = isMetricsExpanded ? allMetricItems : allMetricItems.slice(0, 4);
 
   const handleGameClick = (item: Question) => {
-    const hasDemoUrl = Boolean(item.demoUrl || (item as any).vibeCodingData?.demoUrl);
-    if (showcaseCategory === 'proposals_software' && !hasDemoUrl && !isShowcaseGameQuestion(item)) {
+    // 非遊戲作品（創新提案、軟體網站等）優先進入詳細內容頁，遊戲優先全螢幕瀏覽
+    if (!isShowcaseGameQuestion(item)) {
       try {
         window.dispatchEvent(new CustomEvent(OPEN_QUESTION_EVENT, { detail: { id: item.id } }));
       } catch {}
@@ -399,7 +399,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {showcaseSlides.length > 0 ? (
                   <div data-home-showcase-slot={`${showcaseCategory}:${homeShowcaseConfig.modes.join(',')}`} className="relative w-full">
                     <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
-                    <HomeShowcasePlayer slides={showcaseSlides} />
+                    <HomeShowcasePlayer slides={showcaseSlides} onSelectSlide={handleGameClick} />
                   </div>
                 ) : (
                   <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative group inline-flex w-full justify-center">
@@ -436,7 +436,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="lg:hidden w-full max-w-[300px] mx-auto mt-1 sm:mt-2 space-y-2.5">
               {showcaseSlides.length > 0 && (
                 <div className="w-full">
-                  <HomeShowcasePlayer slides={showcaseSlides} />
+                  <HomeShowcasePlayer slides={showcaseSlides} onSelectSlide={handleGameClick} />
                 </div>
               )}
               <div className="flex items-center justify-center p-1 rounded-2xl bg-amber-100/70 max-w-xs mx-auto mb-2 text-xs font-black shadow-2xs">

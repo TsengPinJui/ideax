@@ -84,7 +84,7 @@ import {
 } from '../data/virtualProposalsSeed';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
-import { stripAppNameFromTitle, sanitizeQuestionTitle } from '../utils/titleFormat';
+import { stripAppNameFromTitle, sanitizeQuestionTitle, deriveInnovationProposalName } from '../utils/titleFormat';
 import { getEffectiveTertiaryCategory, isGameQuestion, GAME_TERTIARY_CATEGORIES } from '../utils/gameClassification';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
@@ -891,8 +891,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const cleanList = prev
         .filter((u) => !disposableTestAccountIds.includes(u.id));
 
-      // 確保 1~3 個核心測試角色始終保留
+      // 確保 1~3 個核心測試角色始終保留（若已被管理員永久刪除則不加回）
+      const deletedSet = getDeletedUserIds();
       CORE_TEST_ACCOUNTS.forEach((cta) => {
+        const aliasId = USER_ALIAS_MAP[cta.id];
+        if (deletedSet.has(cta.id) || (aliasId && deletedSet.has(aliasId))) return;
         if (!cleanList.some((u) => u.id === cta.id)) {
           cleanList.push(cta);
         }
@@ -963,13 +966,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (enabled) {
       // 1. 隱藏拋棄式模擬帳號，但永久保留 1~3 個核心測試身分
       setAvailableUsers((prev) => {
+        const deletedSet = getDeletedUserIds();
         const filtered = prev.filter((u) => !disposableTestAccountIds.includes(u.id));
         CORE_TEST_ACCOUNTS.forEach((cta) => {
+          const aliasId = USER_ALIAS_MAP[cta.id];
+          if (deletedSet.has(cta.id) || (aliasId && deletedSet.has(aliasId))) return;
           if (!filtered.some((u) => u.id === cta.id)) {
             filtered.push(cta);
           }
         });
-        return deduplicateUsersList(filtered, getDeletedUserIds()).uniqueUsers;
+        return deduplicateUsersList(filtered, deletedSet).uniqueUsers;
       });
 
       // 2. 當前使用者若為拋棄式測試帳號才自動切換至訪客；核心測試帳號維持登入
@@ -1232,7 +1238,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // 正式模式：過濾拋棄式測試帳號，永久保留核心身分與虛擬創作者帳號（若未清除模擬資料），並自動去重
             const cleanList = usersList.filter((u: any) => !disposableTestAccountIds.includes(u.id));
             CORE_TEST_ACCOUNTS.forEach((cta) => {
-              if (deletedUsers.has(cta.id)) return;
+              const aliasId = USER_ALIAS_MAP[cta.id];
+              if (deletedUsers.has(cta.id) || (aliasId && deletedUsers.has(aliasId))) return;
               const existingIdx = cleanList.findIndex((u: any) => u.id === cta.id);
               if (existingIdx === -1) {
                 cleanList.push(cta as any);
@@ -1618,7 +1625,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : (Array.isArray(seedQ?.publishedPlatforms) ? seedQ?.publishedPlatforms : (rawQ.vibeCodingData?.publishedPlatforms || [])),
         showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
         cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
-        title: typeof q.title === 'string' ? stripAppNameFromTitle(q.title, q.appName) : '',
+        appName:
+          q.appName ||
+          ((q.postType === 'innovation_proposal' || q.category === '創新提案' || q.specialZone === 'create_ideas')
+            ? deriveInnovationProposalName(q)
+            : q.appName),
+        title: typeof q.title === 'string' ? stripAppNameFromTitle(q.title, q.appName || deriveInnovationProposalName(q)) : '',
         description: typeof q.description === 'string' ? q.description : '',
         tags: Array.isArray(q.tags) ? q.tags : [],
         bounty: typeof q.bounty === 'number' ? q.bounty : 0,
@@ -1707,14 +1719,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
     const isDemo = getInitialIsDemoMode();
+    const deletedUsers = getDeletedUserIds();
+    const isNotDeletedSolver = (s: any) => {
+      if (!s || !s.id) return false;
+      const aliasId = USER_ALIAS_MAP[s.id];
+      const userId = s.userId;
+      const userAlias = userId ? USER_ALIAS_MAP[userId] : undefined;
+      return (
+        !deletedUsers.has(s.id) &&
+        !(aliasId && deletedUsers.has(aliasId)) &&
+        !(userId && deletedUsers.has(userId)) &&
+        !(userAlias && deletedUsers.has(userAlias))
+      );
+    };
     if (!isDemo) {
-      // 非測試環境：不保留任何模擬專家資料
+      // 非測試環境：不保留任何模擬專家資料，同時過濾已永久刪除之專家
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}solvers`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            return parsed.filter((s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
+            return parsed.filter(
+              (s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id) && isNotDeletedSolver(s)
+            );
           }
         }
       } catch {
@@ -1722,20 +1749,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (TEST / DEMO)：加回所有模擬專家資料
+    // 測試環境 (TEST / DEMO)：加回所有模擬專家資料（排除已永久刪除之專家）
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}solvers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-          const customSolvers = parsed.filter((s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
-          return [...MOCK_SOLVERS, ...customSolvers];
+          const customSolvers = parsed.filter(
+            (s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id) && isNotDeletedSolver(s)
+          );
+          return [...MOCK_SOLVERS.filter(isNotDeletedSolver), ...customSolvers];
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_SOLVERS;
+    return MOCK_SOLVERS.filter(isNotDeletedSolver);
   });
 
   const [answers, setAnswers] = useState<Answer[]>(() => {
@@ -3095,7 +3124,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.solvers && cloudData.solvers.length > 0) {
-        const cleanSolvers = !isDemo ? cloudData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)) : cloudData.solvers;
+        const deletedUsers = getDeletedUserIds();
+        const cleanSolvers = (!isDemo ? cloudData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)) : cloudData.solvers).filter((s: any) => {
+          const aliasId = USER_ALIAS_MAP[s.id];
+          return !deletedUsers.has(s.id) && !(aliasId && deletedUsers.has(aliasId)) && !(s.userId && deletedUsers.has(s.userId));
+        });
         setSolvers(cleanSolvers);
       }
 
@@ -3209,6 +3242,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (typeof criticalData.settings.commissionRate === 'number') {
             setCommissionRate(criticalData.settings.commissionRate);
+          }
+          if (Array.isArray((criticalData.settings as any).permanentlyDeletedUserIds)) {
+            try {
+              const cloudDeleted: string[] = (criticalData.settings as any).permanentlyDeletedUserIds;
+              const mergedDeleted = getDeletedUserIds();
+              cloudDeleted.forEach((uid) => {
+                if (uid) mergedDeleted.add(uid);
+              });
+              localStorage.setItem(
+                `${STORAGE_KEY_PREFIX}permanently_deleted_user_ids`,
+                JSON.stringify(Array.from(mergedDeleted))
+              );
+            } catch {}
           }
         }
 
@@ -3324,18 +3370,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (connected) {
             if (missingVirtualForCloud.length > 0) {
               syncQuestionsToFirestore(missingVirtualForCloud);
-              syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
+              const deletedUsersForSeed = getDeletedUserIds();
+              const activeVirtualPersonasForCloud = VIRTUAL_PERSONA_USERS.filter(
+                (u) => !deletedUsersForSeed.has(u.id) && !(USER_ALIAS_MAP[u.id] && deletedUsersForSeed.has(USER_ALIAS_MAP[u.id]))
+              );
+              if (activeVirtualPersonasForCloud.length > 0) {
+                syncUsersToFirestore(activeVirtualPersonasForCloud);
+              }
             }
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
             } catch {}
           }
           const mergedById = new Map<string, Question>();
-          filteredQ.forEach((q) => mergedById.set(q.id, { ...q, tertiaryCategory: getEffectiveTertiaryCategory(q) }));
-          missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, { ...vq, tertiaryCategory: getEffectiveTertiaryCategory(vq) }));
+          filteredQ.forEach((q) => {
+            const isInnov = q.postType === 'innovation_proposal' || q.category === '創新提案' || q.specialZone === 'create_ideas';
+            const resolvedAppName = q.appName || (isInnov ? deriveInnovationProposalName(q) : q.appName);
+            mergedById.set(q.id, {
+              ...q,
+              ...(resolvedAppName ? { appName: resolvedAppName } : {}),
+              tertiaryCategory: getEffectiveTertiaryCategory(q),
+            });
+          });
+          missingVirtualForCloud.forEach((vq) => {
+            const isInnov = vq.postType === 'innovation_proposal' || vq.category === '創新提案' || vq.specialZone === 'create_ideas';
+            const resolvedAppName = vq.appName || (isInnov ? deriveInnovationProposalName(vq) : vq.appName);
+            mergedById.set(vq.id, {
+              ...vq,
+              ...(resolvedAppName ? { appName: resolvedAppName } : {}),
+              tertiaryCategory: getEffectiveTertiaryCategory(vq),
+            });
+          });
           const finalMergedQ = Array.from(mergedById.values());
 
-          // 確保雲端所有小遊戲皆具備合規的 7 大第三級分類，若有未標記者自動回寫雲端補正
+          // 確保雲端所有小遊戲皆具備合規的 7 大第三級分類，且所有創新提案皆具備「提案名稱」(appName) 並一併存入資料庫
           if (connected) {
             const unclassifiedGames = finalMergedQ.filter(
               (q) => isGameQuestion(q) && (!q.tertiaryCategory || !GAME_TERTIARY_CATEGORIES.includes(q.tertiaryCategory as any))
@@ -3348,6 +3416,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 tertiaryCategory: getEffectiveTertiaryCategory(g),
               }));
               syncQuestionsToFirestore(patchList);
+            }
+
+            // 檢查雲端現有創新提案是否缺少 appName，若有則重新抓取名稱並一併寫入資料庫
+            const cloudQuestionAppNameLookup = new Map(
+              (criticalData.questions || []).map((cq) => [cq.id, (cq.appName || '').trim()])
+            );
+            const proposalsNeedingAppNameSync = finalMergedQ.filter((q) => {
+              const isInnov = q.postType === 'innovation_proposal' || q.category === '創新提案' || q.specialZone === 'create_ideas';
+              if (!isInnov) return false;
+              const derived = (q.appName || deriveInnovationProposalName(q)).trim();
+              if (!derived) return false;
+              return cloudQuestionAppNameLookup.get(q.id) !== derived;
+            });
+            if (proposalsNeedingAppNameSync.length > 0) {
+              syncQuestionsToFirestore(
+                proposalsNeedingAppNameSync.map((q) => ({
+                  ...q,
+                  appName: (q.appName || deriveInnovationProposalName(q)).trim(),
+                }))
+              );
             }
           }
 
@@ -3485,10 +3573,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               setNotifications((prev) => mergeServerIntoLocal(prev, bootNotifs));
             }
             if (secondaryData.solvers && secondaryData.solvers.length > 0) {
+              const deletedUsersForSolvers = getDeletedUserIds();
+              const notDeletedSolver = (s: any) => {
+                if (!s || !s.id) return false;
+                const aliasId = USER_ALIAS_MAP[s.id];
+                return (
+                  !deletedUsersForSolvers.has(s.id) &&
+                  !(aliasId && deletedUsersForSolvers.has(aliasId)) &&
+                  !(s.userId && deletedUsersForSolvers.has(s.userId))
+                );
+              };
+              const deletedSolverIdsInCloud = secondaryData.solvers
+                .filter((s: any) => !notDeletedSolver(s))
+                .map((s: any) => s.id);
+              if (deletedSolverIdsInCloud.length > 0 && connected) {
+                deleteUsersFromFirestore(deletedSolverIdsInCloud);
+              }
               if (!isDemo) {
-                setSolvers(secondaryData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)));
+                setSolvers(
+                  secondaryData.solvers.filter(
+                    (s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id) && notDeletedSolver(s)
+                  )
+                );
               } else {
-                setSolvers(secondaryData.solvers);
+                setSolvers(secondaryData.solvers.filter(notDeletedSolver));
               }
             }
             if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
@@ -7881,12 +7989,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const aliasId = USER_ALIAS_MAP[userId];
     const idsToDelete = aliasId ? [userId, aliasId] : [userId];
 
+    let allDeletedIds: string[] = [];
     try {
       const deletedSet = getDeletedUserIds();
       idsToDelete.forEach((id) => deletedSet.add(id));
+      allDeletedIds = Array.from(deletedSet);
       localStorage.setItem(
         `${STORAGE_KEY_PREFIX}permanently_deleted_user_ids`,
-        JSON.stringify(Array.from(deletedSet))
+        JSON.stringify(allDeletedIds)
       );
     } catch {}
 
@@ -7895,6 +8005,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
         localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 同步從專家庫 (solvers) 與本機快取移除該專家，避免重新整理或雲端同步時再次出現
+    setSolvers((prev) => {
+      const next = prev.filter(
+        (s: any) => !idsToDelete.includes(s.id) && (!s.userId || !idsToDelete.includes(s.userId))
+      );
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}solvers`, JSON.stringify(next));
       } catch {}
       return next;
     });
@@ -7918,10 +8039,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     await deleteUsersFromFirestore(idsToDelete);
+    if (allDeletedIds.length > 0) {
+      syncPlatformSettingsToFirestore({ permanentlyDeletedUserIds: allDeletedIds } as any);
+    }
 
     return {
       success: true,
-      message: `已從資料庫永久刪除帳號「${targetName}」（ID: ${userId}）`,
+      message: `已從資料庫與專家庫永久刪除帳號「${targetName}」（ID: ${userId}）`,
     };
   };
 

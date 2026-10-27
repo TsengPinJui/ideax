@@ -192,8 +192,8 @@ export const HomeAnnouncementBanner: React.FC<HomeAnnouncementBannerProps> = ({
                   <IdeaIslandIcon size={34} />
                 </div>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島互動地圖</span>
-                  <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">俯視五座主題島嶼，點選開始探索</span>
+                  <span className="block text-[12px] font-black tracking-tight text-emerald-950">創點島•互動島覽地圖</span>
+                  <span className="mt-0.5 block text-[10px] font-semibold text-stone-600">五座主題島嶼，沉浸式探索網站內容</span>
                 </span>
                 <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-700 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </button>

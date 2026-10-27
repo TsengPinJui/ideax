@@ -893,6 +893,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return failWithError('【程式或網站】請輸入「作品名稱（軟體或網站名稱）」（必填）！');
     }
 
+    if (postType === 'innovation_proposal' && !appName.trim()) {
+      return failWithError('【創新提案】請輸入「提案名稱」（必填）！');
+    }
+
     if (postType === 'innovation_proposal' && !proposalProgressStage) {
       return failWithError('【創新提案】請勾選目前提案的完程度［初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)］（必填）！');
     }
@@ -1066,7 +1070,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       });
 
       const newQuestion = createQuestion({
-        appName: postType === 'vibecoding_app' ? appName.trim() : undefined,
+        appName: (postType === 'vibecoding_app' || postType === 'innovation_proposal') ? appName.trim() : undefined,
         title,
         description: finalDescription,
         category: postType === 'vibecoding_app' ? '網站程式' : (postType === 'innovation_proposal' ? '創新創業' : finalCategory),
@@ -1682,15 +1686,15 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         )}
 
-        {/* 軟體或網站名稱（作品名稱） - 程式或網站必填，藍色顯示於卡片左下角 */}
-        {postType === 'vibecoding_app' && (
+        {/* 軟體或網站名稱（作品名稱） / 創新提案名稱 - 必填 */}
+        {(postType === 'vibecoding_app' || postType === 'innovation_proposal') && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
                 <Code2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>作品名稱（軟體或網站名稱） *</span>
+                <span>{postType === 'innovation_proposal' ? '提案名稱 *' : '作品名稱（軟體或網站名稱） *'}</span>
                 <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded border text-blue-800 bg-blue-100/80 border-blue-300/80">
-                  必填 · 以藍色顯示於卡片左下角
+                  必填 · 以藍色顯示於卡片標題前
                 </span>
               </label>
               <span className="text-[11px] font-mono text-stone-400">
@@ -1706,7 +1710,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 setAppName(e.target.value);
                 if (termsError) setTermsError(null);
               }}
-              placeholder="例如：ReceiptSnap AI、VibeForm AI、MythWeaver 織夢島..."
+              placeholder={
+                postType === 'innovation_proposal'
+                  ? '例如：GoSun 晴享傘、StallMatch 攤車通、早餐店語音接單通...'
+                  : '例如：ReceiptSnap AI、VibeForm AI、MythWeaver 織夢島...'
+              }
               className="w-full px-4 py-2.5 rounded-xl border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-stone-900 text-sm font-bold outline-none transition-all bg-blue-50/20"
             />
           </div>

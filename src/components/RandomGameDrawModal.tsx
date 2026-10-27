@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { HomeShowcaseCategory, Question } from '../types';
 import { getRandomThreeGames, getRandomThreeProposals } from '../data/hotGamesData';
+import { deriveInnovationProposalName } from '../utils/titleFormat';
 
 interface RandomGameDrawModalProps {
   isOpen: boolean;
@@ -208,6 +209,7 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
                     : 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80');
                 const displayTitle =
                   game.appName ||
+                  deriveInnovationProposalName(game) ||
                   game.title.split('—')[0]?.split('|')[0]?.trim() ||
                   game.title;
 

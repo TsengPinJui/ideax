@@ -111,7 +111,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     }
     return question.tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[(question.subcategory || initialSubcat) as SoftwareCategory]?.[0] || '社群互動');
   });
-  const [appName, setAppName] = useState(question.appName || question.vibeCodingData?.appName || '');
+  const [appName, setAppName] = useState(
+    question.appName || question.vibeCodingData?.appName || ''
+  );
   const [title, setTitle] = useState(question.title || '');
   const [description, setDescription] = useState(question.description || '');
   const [referencedPainPoint, setReferencedPainPoint] = useState(question.referencedPainPoint || '');
@@ -624,7 +626,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         : (tertiaryCategory || (SOFTWARE_TERTIARY_CATEGORIES[mainSubcat as SoftwareCategory]?.[0] || ''));
 
       const res = await updateProposalContent(question.id, {
-        appName: isVibeCoding ? appName.trim() : undefined,
+        appName: appName.trim() || undefined,
         title: title.trim(),
         description: description.trim(),
         isComingSoon: isVibeCoding ? isComingSoon : undefined,
@@ -1008,21 +1010,19 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </div>
             )}
 
-            {/* App Name (for VibeCoding) */}
-            {isVibeCoding && (
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  作品名稱
-                </label>
-                <input
-                  type="text"
-                  value={appName}
-                  onChange={(e) => setAppName(e.target.value)}
-                  placeholder="例如：NexSight洞鑑"
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-900 focus:border-emerald-600 outline-none"
-                />
-              </div>
-            )}
+            {/* App Name / Proposal Name (for VibeCoding & Innovation Proposal) */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                {isVibeCoding ? '作品名稱' : '提案名稱'}
+              </label>
+              <input
+                type="text"
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                placeholder={isVibeCoding ? '例如：NexSight洞鑑' : '例如：GoSun 晴享傘、StallMatch 攤車通'}
+                className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-900 focus:border-emerald-600 outline-none"
+              />
+            </div>
 
             {/* 創新提案：要求勾選完程度（必填） */}
             {!isVibeCoding && (

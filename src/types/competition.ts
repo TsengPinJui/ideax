@@ -145,6 +145,7 @@ export interface ProposalAttachmentItem {
 
 export interface StarSeasonProposal {
   id: string;
+  appName?: string;
   title: string;
   stage: StarSeasonStage;
   track: StarSeasonTrack;

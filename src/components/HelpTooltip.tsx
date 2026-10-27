@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { HelpCircle, X, ExternalLink } from 'lucide-react';
 
 interface HelpTooltipProps {
@@ -21,20 +21,69 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
   size = 'sm',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
+  const updatePosition = () => {
+    if (!containerRef.current || typeof window === 'undefined') return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 12;
+    const width = Math.min(288, vw - margin * 2);
+
+    // Center horizontally relative to trigger button, clamped safely inside viewport
+    let left = rect.left + rect.width / 2 - width / 2;
+    left = Math.max(margin, Math.min(left, vw - width - margin));
+
+    const popupHeight = popupRef.current?.offsetHeight || 160;
+    let top = rect.bottom + 8;
+    if (top + popupHeight > vh - margin && rect.top - popupHeight - 8 >= margin) {
+      top = rect.top - popupHeight - 8;
+    } else {
+      top = Math.max(margin, Math.min(top, vh - popupHeight - margin));
+    }
+
+    setPopupStyle({
+      position: 'fixed',
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      width: `${Math.round(width)}px`,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+  }, [isOpen]);
+
+  // Close on outside click & reposition on scroll/resize
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node) &&
+        (!popupRef.current || !popupRef.current.contains(e.target as Node))
+      ) {
         setIsOpen(false);
       }
     };
 
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleScrollOrResize, { passive: true });
+    window.addEventListener('scroll', handleScrollOrResize, { passive: true, capture: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+    };
   }, [isOpen]);
 
   const sizeClasses = size === 'sm' ? 'w-4 h-4 text-[10px]' : 'w-5 h-5 text-xs';
@@ -57,8 +106,10 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
 
       {isOpen && (
         <div
+          ref={popupRef}
+          style={popupStyle}
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 top-full mt-1.5 w-64 sm:w-72 p-3 bg-white rounded-2xl shadow-xl border border-stone-200 text-stone-800 text-xs animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-[999] p-3 bg-white rounded-2xl shadow-xl border border-stone-200 text-stone-800 text-xs animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-1.5 mb-2">
             <span className="font-extrabold text-stone-900 flex items-center gap-1">

@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#220',
+    version: 'v4.1.0',
+    releaseDate: '2026.10.27',
+    releaseTime: '13:00',
+    author: 'System Architect',
+    summary: '3D 創點島瀑布水流顯現修復、軟體作品與遊戲分流體驗（非遊戲優先進詳情頁、遊戲優先全螢幕試玩並支援失敗自動返回詳情頁）與詳情頁按鈕版位調整',
+    changes: [
+      '修復 3D 創點島主島北面雙層大瀑布、東面山壁瀑布與西側瀑布被岩石階台與山峰錐體遮擋問題，讓湍急瀑布水幕、白沫與飛沫清晰呈現',
+      '調整作品進入邏輯：遊戲以外的軟體作品優先進入詳細內容頁；遊戲優先全螢幕瀏覽，若無法進入則自動返回詳情頁',
+      '詳情頁「點數支持」右側新增「開啟新分頁」按鈕，並將「更新作品」移至「收藏」下方與名稱標題右側',
+    ],
+  },
+  {
     seqNumber: '#216',
     version: 'v4.0.5',
     releaseDate: '2026.10.27',

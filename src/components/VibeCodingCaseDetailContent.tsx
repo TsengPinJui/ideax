@@ -457,30 +457,42 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           <p className="text-xs sm:text-sm text-stone-500">{meta.subtitle}</p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {onToggleBookmark && (
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            {onToggleBookmark && (
+              <button
+                type="button"
+                onClick={onToggleBookmark}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isBookmarked
+                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                    : 'bg-white hover:bg-amber-50/60 border-stone-200 text-stone-700 hover:text-amber-700'
+                }`}
+                title="⭐ 收藏此作品"
+              >
+                <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+                <span>{isBookmarked ? '已收藏' : '收藏'}</span>
+              </button>
+            )}
+            {!isFullPage && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="關閉視窗"
+                className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          {canUpdateProposal && onOpenUpdateModal && (
             <button
               type="button"
-              onClick={onToggleBookmark}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isBookmarked
-                  ? 'bg-amber-50 border-amber-300 text-amber-800'
-                  : 'bg-white hover:bg-amber-50/60 border-stone-200 text-stone-700 hover:text-amber-700'
-              }`}
-              title="⭐ 收藏此作品"
+              onClick={onOpenUpdateModal}
+              className="px-3 py-1.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
-              <span>{isBookmarked ? '已收藏' : '收藏'}</span>
-            </button>
-          )}
-          {!isFullPage && onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="關閉視窗"
-              className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
+              <FileEdit className="w-3.5 h-3.5" />
+              <span>更新作品</span>
             </button>
           )}
         </div>
@@ -675,14 +687,33 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
             <span>點數支持 ({(question.supportPoints || 0).toLocaleString()})</span>
           </button>
 
-          {canUpdateProposal && onOpenUpdateModal && (
+          {demoUrl ? (
+            <a
+              href={demoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) =>
+                platformChooser.onLinkClick(e, {
+                  title: appName || question.title,
+                  demoUrl: workUrl,
+                  platforms: question.publishedPlatforms,
+                })
+              }
+              className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="在新分頁開啟作品網站"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>開啟新分頁</span>
+            </a>
+          ) : (
             <button
               type="button"
-              onClick={onOpenUpdateModal}
-              className="px-3 py-2 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              disabled
+              className="px-3.5 py-2 rounded-lg bg-stone-100 text-stone-400 border border-stone-200 font-bold text-xs flex items-center gap-1.5 cursor-not-allowed"
+              title="此作品尚未提供外部網站連結"
             >
-              <FileEdit className="w-3.5 h-3.5" />
-              <span>更新作品</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>開啟新分頁</span>
             </button>
           )}
         </div>

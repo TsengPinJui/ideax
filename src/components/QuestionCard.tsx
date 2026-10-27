@@ -18,7 +18,7 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../u
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 import { extractYoutubeVideoId } from '../utils/youtubeUtils';
-import { stripAppNameFromTitle } from '../utils/titleFormat';
+import { stripAppNameFromTitle, deriveInnovationProposalName } from '../utils/titleFormat';
 import { isComingSoonWork, getExperienceScore } from '../utils/experienceRating';
 import { getEffectiveQuestionViews } from '../utils/proposalClicks';
 import { isGameQuestion, getEffectiveTertiaryCategory } from '../utils/gameClassification';
@@ -35,13 +35,16 @@ interface QuestionCardProps {
 }
 
 export function getFormattedAppNameAndTitle(question: Question): { appName: string; cleanTitle: string } {
-  const isVibe =
-    question.category === '網站程式' ||
-    question.postType === 'vibecoding_app' ||
-    question.specialZone === 'vibecoding' ||
-    Boolean(question.appName || question.vibeCodingData?.appName);
+  const isInnovation =
+    question.postType === 'innovation_proposal' ||
+    question.category === '創新提案' ||
+    question.specialZone === 'create_ideas';
 
-  let rawAppName = (question.appName || question.vibeCodingData?.appName || '').trim();
+  let rawAppName = (
+    question.appName ||
+    question.vibeCodingData?.appName ||
+    (isInnovation ? deriveInnovationProposalName(question) : '')
+  ).trim();
   let rawTitle = (question.title || '').trim();
 
   if (rawAppName.includes(' — ')) {
