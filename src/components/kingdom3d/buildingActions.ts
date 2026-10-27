@@ -39,9 +39,10 @@ export const BUILDING_ACTIONS: Record<string, KingdomActionButton[]> = {
   ],
   'home-agents': [{ label: '查看 AI 角色介紹', hint: '職位、出沒地點與虛擬身分證', action: mod('agents'), primary: true }],
   'pain-innovation-tower': [
-    { label: '一樓・懸賞牆', hint: '最新刊登的痛點', action: { kind: 'painFloor', level: 0 }, primary: true },
-    { label: '二樓・創業與專業', hint: '創新創業、專業問題', action: { kind: 'painFloor', level: 1 } },
-    { label: '三樓・學術與生活', hint: '學術探討、日常疑難、網站程式', action: { kind: 'painFloor', level: 2 } },
+    { label: '一樓・日常疑難', action: { kind: 'painFloor', level: 1 }, primary: true },
+    { label: '地下一樓・創新創業', action: { kind: 'painFloor', level: 0 } },
+    { label: '二樓・專業問題', action: { kind: 'painFloor', level: 2 } },
+    { label: '三樓・學術探討', action: { kind: 'painFloor', level: 3 } },
     { label: '刊登痛點', action: mod('create_pain_point') },
     { label: '痛點專區', hint: '在平台上看全部痛點', action: mod('pain_feed') },
   ],
@@ -78,4 +79,48 @@ export function actionsForBuilding(id: string, targetModule?: string, label?: st
   if (list) return list;
   if (!targetModule) return [];
   return [{ label: label || '前往', action: mod(targetModule), primary: true }];
+}
+
+/** 各功能在網站上的網址（3D 裡要跳出去瀏覽或填寫時，用新分頁開，不動到 3D 這一頁） */
+const MODULE_URLS: Record<string, string> = {
+  home: '/explore',
+  explore: '/explore',
+  pain_feed: '/painpoints',
+  pain_points: '/painpoints',
+  discussion_feed: '/l0-discussion',
+  l0_discussion: '/l0-discussion',
+  vibecoding_feed: '/vibecoding',
+  vibecoding: '/vibecoding',
+  ideas_feed: '/create-ideas',
+  create_ideas: '/create-ideas',
+  jobs: '/jobs',
+  job_explorer: '/jobs',
+  experts: '/solvers',
+  solvers: '/solvers',
+  create_pain_point: '/painpoints/create',
+  create_discussion: '/l0-discussion/create',
+  create_app: '/vibecoding/publish',
+  create_proposal: '/publish/proposal',
+  agents: '/agents',
+  topup: '/topup',
+  chat: '/chat',
+  star_season: '/challenge',
+};
+
+export function moduleUrl(module: string) {
+  return MODULE_URLS[module] || '/explore';
+}
+
+/** 開新分頁（同網站，保留登入狀態）；被瀏覽器擋下時退回在本頁開 */
+export function openInNewTab(path: string) {
+  const w = window.open(path, '_blank');
+  if (w) {
+    try {
+      w.opener = null;
+    } catch {
+      // ignore
+    }
+    return true;
+  }
+  return false;
 }

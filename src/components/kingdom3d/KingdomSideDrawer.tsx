@@ -7,6 +7,7 @@ import { painForFloor } from './PainFloorModal';
 import { PAIN_FLOORS } from './stylized/painBoard';
 import { STREET_PROPS, StreetProp, StallContent } from './stylized/streets';
 import { actionsForBuilding, KingdomAction, KingdomActionButton } from './buildingActions';
+import { isTypingTarget } from './FirstPersonControls';
 import './kingdomUi.css';
 
 /** 左側面板目前顯示的內容（照 /island：點畫面上的東西，細節在左側彈出） */
@@ -14,6 +15,7 @@ export type DrawerState =
   | { kind: 'building'; building: BuildingInteractable }
   | { kind: 'painFloor'; level: number }
   | { kind: 'street'; propId: string }
+  | { kind: 'desk' }
   | { kind: 'question'; question: Question; back: DrawerState | null };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
@@ -156,7 +158,9 @@ export const KingdomSideDrawer: React.FC<{
   onChange: (s: DrawerState | null) => void;
   onAction: (a: KingdomAction) => void;
   onOpenQuestion: (q: Question) => void;
-}> = ({ state, questions, onChange, onAction, onOpenQuestion }) => {
+  /** 有提供時，點文章直接在左側顯示完整內頁（可滑動），不用離開 3D */
+  renderQuestionPage?: (q: Question, back: () => void) => React.ReactNode;
+}> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage }) => {
   const close = () => onChange(null);
   const openQ = (q: Question) => onChange({ kind: 'question', question: q, back: state });
 
@@ -188,6 +192,7 @@ export const KingdomSideDrawer: React.FC<{
   useEffect(() => {
     if (!state) return;
     const onKey = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         if (state.kind === 'question' && state.back) onChange(state.back);
@@ -240,7 +245,7 @@ export const KingdomSideDrawer: React.FC<{
       <>
         <Header title={`創點樓・${floor.label}`} badge="懸賞牆" sub={`${floor.sub}・共 ${list.length} 則`} onClose={close} />
         <div className="px-4 pt-3">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {actions.map((a, i) => (
               <button
                 key={a.label}
@@ -253,7 +258,7 @@ export const KingdomSideDrawer: React.FC<{
                   color: '#f6e7c4',
                 }}
               >
-                {i + 1}・{a.label.replace(/・.*/, '')}
+                {i + 1}・{PAIN_FLOORS[i]?.short || a.label.replace(/・.*/, '')}
               </button>
             ))}
           </div>
@@ -312,6 +317,60 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'desk') {
+    body = (
+      <>
+        <Header title="佈告桌" badge="創點樓・一樓" sub="在書桌案台上寫下你的痛點，張貼到懸賞牆" onClose={close} />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <p className="kx-sub text-[13.5px] leading-relaxed">
+            寫下你遇到的麻煩、希望怎樣解決，也可以設定懸賞。刊登後會依分類貼到對應樓層：地下一樓創新創業、一樓日常疑難、二樓專業問題、三樓學術探討。
+          </p>
+          <button
+            type="button"
+            onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })}
+            className="kx-btn-primary w-full px-4 py-3 text-[15px] flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <PenLine className="w-5 h-5" /> 開新分頁填寫痛點
+          </button>
+          <p className="kx-sub text-[12px]">填寫頁會開在新分頁，3D 這一頁會留在原地。</p>
+          <div className="kx-divider" />
+          <p className="kx-sub text-[12.5px]">先看看各樓層已經有哪些痛點：</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {PAIN_FLOORS.map((f, i) => (
+              <button
+                key={f.label}
+                type="button"
+                onClick={() => onChange({ kind: 'painFloor', level: i })}
+                className="rounded-md px-2 py-2 text-[12.5px] cursor-pointer text-left"
+                style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.25)', color: '#f6e7c4' }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  } else if (state?.kind === 'question' && renderQuestionPage) {
+    const back = () => onChange(state.back);
+    body = (
+      <>
+        <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(226,184,90,0.3)' }}>
+          {state.back && (
+            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[13px] flex items-center gap-1 cursor-pointer">
+              <ChevronLeft className="w-4 h-4" /> 回到列表
+            </button>
+          )}
+          <span className="kx-sub text-[12.5px] truncate flex-1">{badgeOf(state.question)}</span>
+          <button type="button" onClick={close} className="kx-round w-8 h-8 shrink-0" title="關閉 (Esc)" aria-label="關閉">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain bg-white text-stone-900 font-sans">
+          {renderQuestionPage(state.question, state.back ? back : close)}
+        </div>
+      </>
+    );
   } else if (state?.kind === 'question') {
     const q = state.question;
     const img = q.cardDisplayImage || q.coverImage;
@@ -356,7 +415,7 @@ export const KingdomSideDrawer: React.FC<{
 
   return (
     <aside
-      className="kx-root absolute top-0 bottom-0 left-0 z-[45] w-[400px] max-w-[92vw] transition-transform duration-300 ease-out"
+      className={`kx-root absolute top-0 bottom-0 left-0 z-[45] ${state?.kind === 'question' && renderQuestionPage ? 'w-[720px] max-w-[100vw]' : 'w-[400px] max-w-[92vw]'} transition-[transform,width] duration-300 ease-out`}
       style={{ transform: body ? 'translateX(0)' : 'translateX(-105%)', pointerEvents: body ? 'auto' : 'none' }}
       aria-hidden={!body}
       onPointerDown={(e) => e.stopPropagation()}

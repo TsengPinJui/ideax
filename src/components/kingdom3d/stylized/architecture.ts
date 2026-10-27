@@ -22,8 +22,9 @@ import {
   foamTexture,
   seeded,
 } from './textures';
-import { getStoryLayout, levelColliders } from './multiStory';
-import { drawPainBoardTexture } from './painBoard';
+import { getStoryLayout, levelColliders, levelY } from './multiStory';
+import { makePickProxy } from '../picking';
+import { drawPainBoardTexture, deskPaperTexture, MAIN_BOARD, SIDE_BOARD, PainBoardLayout } from './painBoard';
 
 /* =====================================================================
  * 共用材質（整個世界共用一份；晝夜切換時調整燈籠、窗紙的亮度）
@@ -654,19 +655,24 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const body = new THREE.Group();
   root.add(body);
 
-  // 室內木地板、紅地毯
-  const floor = new THREE.Mesh(scaledBox(w - 0.2, 0.06, d - 0.2, 2.5, 0.06, 2.5), mats.woodFloor);
-  floor.position.y = 0.03;
-  body.add(floor);
+  // 室內木地板、紅地毯（有地下室時，地面層樓板另外蓋、留樓梯井）
+  if (!lay || lay.basements < 1) {
+    const floor = new THREE.Mesh(scaledBox(w - 0.2, 0.06, d - 0.2, 2.5, 0.06, 2.5), mats.woodFloor);
+    floor.position.y = 0.03;
+    body.add(floor);
+  }
   const rug = new THREE.Mesh(new THREE.BoxGeometry(doorW * 0.55, 0.02, d * 0.62), mats.rug);
   rug.position.set(0, 0.07, d * 0.12);
   body.add(rug);
   // 門口石階
   addMesh(body, scaledBox(doorW + 0.8, 0.12, 1.5, 1.5, 0.12, 1.5), mats.stoneLight, 0, 0.06, d / 2 + 0.2);
 
+  // 多樓層：頂樓那一層的牆另外蓋（前面與兩側開窗），下面各層是實牆
+  const wallTop = lay ? levelY(lay, lay.floors - 1) : h;
   // 牆：下段石台基＋上段木構立面（與原本白模牆的位置、厚度相同）
   const wall = (lenX: number, lenZ: number, x: number, z: number) => {
     addMesh(body, scaledBox(lenX + (lenX > lenZ ? 0.1 : 0.25), plinthH, lenZ + (lenZ > lenX ? 0.1 : 0.25), 2, plinthH, 2), mats.stone, x, plinthH / 2, z);
+    const wallH = wallTop - plinthH;
     const wg = scaledBox(lenX, wallH, lenZ, 3.2, lay ? lay.floorH : wallH, 3.2);
     if (lay) {
       // 多樓層：讓每層的彩繪樑枋剛好落在樓板下方，而不是腳邊
@@ -683,8 +689,83 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   wall(wingW, thick, -w / 2 + wingW / 2, d / 2);
   wall(wingW, thick, w / 2 - wingW / 2, d / 2);
   // 門楣
-  const lintelH = Math.max(0.6, h - doorH);
+  const lintelH = lay ? 0.6 : Math.max(0.6, h - doorH);
   addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
+  if (lay) {
+    // 門楣上方到頂樓之間的正面牆
+    const fh0 = doorH + lintelH;
+    if (wallTop - fh0 > 0.05) {
+      const fg = scaledBox(doorW + 0.1, wallTop - fh0, thick, 3.2, lay.floorH, 3.2);
+      addMesh(body, fg, facade, 0, fh0 + (wallTop - fh0) / 2, d / 2);
+    }
+    // 頂樓：後牆實牆（掛懸賞牆），前面與兩側在柱間開窗
+    const bandH = h - wallTop;
+    const sillH = 1.05;
+    const winH = Math.min(1.85, bandH - sillH - 0.45);
+    const headH = bandH - sillH - winH;
+    const band = (alongX: boolean, fixed: number, a: number, b0: number, posts: number[], solid?: [number, number]) => {
+      const piece = (c: number, len: number, y0: number, hh: number, mat: THREE.Material = facade) => {
+        if (len < 0.02 || hh < 0.02) return;
+        const geo = alongX ? scaledBox(len, hh, thick, 3.2, hh * 2, 3.2) : scaledBox(thick, hh, len, 3.2, hh * 2, 3.2);
+        addMesh(body, geo, mat, alongX ? c : fixed, y0 + hh / 2, alongX ? fixed : c);
+      };
+      piece((a + b0) / 2, b0 - a, wallTop, sillH);
+      piece((a + b0) / 2, b0 - a, wallTop + sillH + winH, headH);
+      // 每兩根柱子之間開窗；寬的開間開兩扇
+      const edges = [a, ...posts.filter((p) => p > a + 0.3 && p < b0 - 0.3).sort((m, n) => m - n), b0];
+      const windows: [number, number][] = [];
+      for (let i = 0; i < edges.length - 1; i++) {
+        const s0 = edges[i];
+        const s1 = edges[i + 1];
+        if (solid && s1 <= solid[1] + 0.01 && s0 >= solid[0] - 0.01) continue;
+        const span = s1 - s0;
+        const n = span > 4.6 ? 2 : 1;
+        const ww = Math.min(2.1, span / n - 0.9);
+        if (ww < 0.8) continue;
+        for (let k = 0; k < n; k++) {
+          const c = s0 + (span * (k + 0.5)) / n;
+          windows.push([c - ww / 2, c + ww / 2]);
+        }
+      }
+      // 窗間的牆垛
+      let cur = a;
+      for (const [w0, w1] of windows) {
+        piece((cur + w0) / 2, w0 - cur, wallTop + sillH, winH);
+        cur = w1;
+      }
+      piece((cur + b0) / 2, b0 - cur, wallTop + sillH, winH);
+      // 窗框、橫披格柵（上方一小段）
+      for (const [w0, w1] of windows) {
+        const c = (w0 + w1) / 2;
+        const ww = w1 - w0;
+        const y0 = wallTop + sillH;
+        const bar = (len: number, along: boolean, cc: number, yy: number, hh: number, mat: THREE.Material = mats.darkWood) => {
+          const g = along === alongX ? (alongX ? new THREE.BoxGeometry(len, hh, thick + 0.1) : new THREE.BoxGeometry(thick + 0.1, hh, len)) : new THREE.BoxGeometry(0.1, hh, 0.1);
+          addMesh(body, g, mat, alongX ? cc : fixed, yy, alongX ? fixed : cc);
+        };
+        const frame = (cc: number, hh: number, yy: number) => {
+          const g = alongX ? new THREE.BoxGeometry(0.1, hh, thick + 0.1) : new THREE.BoxGeometry(thick + 0.1, hh, 0.1);
+          addMesh(body, g, mats.darkWood, alongX ? cc : fixed, yy, alongX ? fixed : cc);
+        };
+        bar(ww + 0.2, alongX, c, y0, 0.12, mats.redLacquer); // 窗台
+        bar(ww + 0.2, alongX, c, y0 + winH, 0.12); // 窗楣
+        bar(ww, alongX, c, y0 + winH - 0.42, 0.07); // 橫披下緣
+        frame(w0, winH, y0 + winH / 2);
+        frame(w1, winH, y0 + winH / 2);
+        const nb = Math.max(3, Math.round(ww / 0.28));
+        for (let k = 1; k < nb; k++) frame(w0 + (ww * k) / nb, 0.36, y0 + winH - 0.21);
+      }
+    };
+    const sideCols = Array.from({ length: Math.max(0, Math.floor(d / 3.2) - 1) }, (_, i) => -d / 2 + (d * (i + 1)) / (Math.max(0, Math.floor(d / 3.2) - 1) + 1));
+    // 後牆：實牆
+    addMesh(body, scaledBox(w, bandH, thick, 3.2, bandH * 2, 3.2), facade, 0, wallTop + bandH / 2, -d / 2);
+    // 兩側：最後面一開間保留給側牆懸賞牆
+    const backBay: [number, number] = [-d / 2, sideCols[0] ?? -d / 4];
+    band(false, -w / 2, -d / 2, d / 2, sideCols, backBay);
+    band(false, w / 2, -d / 2, d / 2, sideCols, backBay);
+    // 正面：柱子在門兩側
+    band(true, d / 2, -w / 2, w / 2, [-doorW / 2 - 0.12, doorW / 2 + 0.12]);
+  }
 
   // 紅柱：四角、門兩側、沿牆每約 3.2 公尺
   const colGeo = new THREE.CylinderGeometry(0.24, 0.27, h - 0.1, 10);
@@ -830,7 +911,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
   }
   // 多樓層：一樓樓梯的扶手碰撞
-  if (lay) extraColliders.push(...(levelColliders(b as any, lay, 0) as any));
+  if (lay) extraColliders.push(...(levelColliders(b as any, lay, lay.basements) as any));
   root.userData.colliders = extraColliders;
 
   // 門口一對大燈籠、兩側旗幟、牌匾
@@ -876,7 +957,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const fh = lay.floorH;
     // 樓板（留樓梯井）與樓梯井欄杆
     for (let k = 1; k < lay.floors; k++) {
-      const y = k * fh;
+      // 地面層的樓板頂面略高於島上地面，避免和石板地面閃爍
+      const y = levelY(lay, k) + (k === lay.basements ? 0.04 : 0);
       const f = lay.flights[k - 1];
       const hx0 = f.lx - f.laneW / 2;
       const hx1 = f.lx + f.laneW / 2;
@@ -903,7 +985,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
     // 樓梯（每段 12 階）與扶手
     for (const f of lay.flights) {
-      const yBase = f.k * fh;
+      const yBase = levelY(lay, f.k);
       const n = 12;
       const L = f.z0 - f.z1;
       for (let i = 0; i < n; i++) {
@@ -919,27 +1001,110 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
         addMesh(inner, new THREE.BoxGeometry(0.08, 0.95, 0.08), mats.redLacquer, innerX, yBase + t * fh + 0.475, f.z0 - t * L);
       }
     }
-    // 每層後牆的懸賞牆（內容由畫面載入後填入真實痛點）
+    // 每層的懸賞牆（內容由畫面載入後填入真實痛點）：後牆一面大的＋兩側牆、前牆各一面小的
     const bw = Math.min(10, w - 2 * (2.0 + 1.4));
+    const firstSideCol = -d / 2 + d / (Math.max(0, Math.floor(d / 3.2) - 1) + 1);
     for (let k = 0; k < lay.floors; k++) {
-      const pm = new THREE.MeshStandardMaterial({ map: drawPainBoardTexture(k, [], true), roughness: 0.75 });
-      const pb = new THREE.Mesh(new THREE.PlaneGeometry(bw, bw * 0.275), pm);
-      pb.position.set(0, k * fh + 2.05, -d / 2 + thick / 2 + 0.05);
-      pb.userData.noMerge = true;
-      pb.userData.painBoard = { level: k, buildingId: b.id };
-      inner.add(pb);
-      if (k < lay.floors - 1) for (const sx of [-1, 1]) lanterns.addHanging(sx * w * 0.2, k * fh + fh - 0.75, -d * 0.1, 0.7);
+      const top = k === lay.floors - 1;
+      const boards: { x: number; z: number; ry: number; bw: number; layout: PainBoardLayout }[] = [
+        { x: 0, z: -d / 2 + thick / 2 + 0.05, ry: 0, bw, layout: MAIN_BOARD },
+      ];
+      // 側牆：後段（樓梯在前段），頂樓只用最後一開間（其他開窗）
+      const sz0 = -d / 2 + 0.35;
+      const sz1 = top ? firstSideCol - 0.35 : Math.min(lay.flights[0].z1 - 0.45, firstSideCol + 3.2);
+      const sideW = Math.min(4.4, sz1 - sz0);
+      if (sideW > 1.6) {
+        for (const sx of [-1, 1]) boards.push({ x: sx * (w / 2 - thick / 2 - 0.05), z: (sz0 + sz1) / 2, ry: -sx * (Math.PI / 2), bw: sideW, layout: SIDE_BOARD });
+      }
+      // 前牆內側：門扇外側（頂樓開窗所以不放）
+      if (!top) {
+        const fx0 = doorW / 2 + doorW / 2 + 0.35;
+        const fx1 = w / 2 - 0.5;
+        const fw = Math.min(3.6, fx1 - fx0);
+        if (fw > 1.6) for (const sx of [-1, 1]) boards.push({ x: sx * (fx0 + fx1) / 2, z: d / 2 - thick / 2 - 0.05, ry: Math.PI, bw: fw, layout: SIDE_BOARD });
+      }
+      let offset = 0;
+      boards.forEach((bd, bi) => {
+        const count = bd.layout.cols * bd.layout.rows;
+        const pm = new THREE.MeshStandardMaterial({ map: drawPainBoardTexture(k, [], true, bd.layout), roughness: 0.75 });
+        const aspect = bd.layout.label ? 0.275 : 0.5;
+        const pb = new THREE.Mesh(new THREE.PlaneGeometry(bd.bw, bd.bw * aspect), pm);
+        pb.position.set(bd.x, levelY(lay, k) + (bi === 0 ? 2.05 : 1.85), bd.z);
+        pb.rotation.y = bd.ry;
+        pb.userData.noMerge = true;
+        pb.userData.painBoard = { level: k, buildingId: b.id, offset, count, layout: bd.layout };
+        offset += count;
+        inner.add(pb);
+      });
+      if (k < lay.floors - 1) for (const sx of [-1, 1]) lanterns.addHanging(sx * w * 0.2, levelY(lay, k) + fh - 0.75, -d * 0.1, 0.7);
     }
   }
   const deskZ = -d * 0.25;
-  addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);
-  addMesh(inner, new THREE.CylinderGeometry(0.55, 0.7, 0.75, 12), mats.redLacquer, 0, 0.85, deskZ);
-  addMesh(inner, new THREE.TorusGeometry(0.62, 0.06, 6, 20).rotateX(Math.PI / 2), mats.gold, 0, 1.24, deskZ);
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), mats.orb);
-  orb.position.set(0, 1.7, deskZ);
-  orb.userData.noMerge = true;
-  inner.add(orb);
-  lanterns.addHanging(0, 1.7, deskZ, 0.01); // 寶珠光暈
+  if (lay) {
+    // 地下室：石牆與地板（地面以下）
+    if (lay.basements > 0) {
+      const by0 = levelY(lay, 0);
+      const bh = -by0;
+      const t = thick;
+      addMesh(inner, scaledBox(w - 0.2, 0.2, d - 0.2, 2.5, 0.2, 2.5), mats.woodFloor, 0, by0 - 0.1, 0);
+      addMesh(inner, scaledBox(w, bh, t, 2.4, 2.4, 2.4), mats.stone, 0, by0 + bh / 2, -d / 2);
+      addMesh(inner, scaledBox(w, bh, t, 2.4, 2.4, 2.4), mats.stone, 0, by0 + bh / 2, d / 2);
+      addMesh(inner, scaledBox(t, bh, d, 2.4, 2.4, 2.4), mats.stone, -w / 2, by0 + bh / 2, 0);
+      addMesh(inner, scaledBox(t, bh, d, 2.4, 2.4, 2.4), mats.stone, w / 2, by0 + bh / 2, 0);
+      // 撐住地面層樓板的木樑
+      for (const bx of [-w / 4, 0, w / 4]) addMesh(inner, new THREE.BoxGeometry(0.3, 0.32, d - 0.4), mats.darkWood, bx, -0.32, 0);
+    }
+    // 一樓的書桌案台：在這裡填寫並刊登痛點（取代原本的寶珠台）
+    const dy = levelY(lay, lay.basements) + 0.04;
+    const top = new THREE.Group();
+    top.position.set(0, dy, deskZ);
+    addMesh(top, new THREE.BoxGeometry(2.3, 0.09, 1.05), mats.redLacquer, 0, 0.84, 0);
+    addMesh(top, new THREE.BoxGeometry(2.36, 0.04, 1.1), mats.gold, 0, 0.79, 0);
+    // 兩端翹起的案頭
+    for (const sx of [-1, 1]) addMesh(top, new THREE.BoxGeometry(0.12, 0.08, 1.05), mats.redLacquer, sx * 1.12, 0.92, 0);
+    // 桌腳與側邊擋板
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) addMesh(top, new THREE.BoxGeometry(0.1, 0.8, 0.1), mats.darkWood, sx * 1.0, 0.4, sz * 0.42);
+      addMesh(top, new THREE.BoxGeometry(0.06, 0.5, 0.86), mats.darkWood, sx * 1.0, 0.5, 0);
+      addMesh(top, new THREE.BoxGeometry(0.34, 0.06, 0.96), mats.darkWood, sx * 1.0, 0.03, 0);
+    }
+    addMesh(top, new THREE.BoxGeometry(2.0, 0.14, 0.05), mats.darkWood, 0, 0.72, 0.5);
+    // 桌上：紙、硯台、筆筒與毛筆、小牌
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.62).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: deskPaperTexture(), roughness: 0.9 }));
+    paper.position.set(-0.15, 0.895, 0.08);
+    paper.userData.noMerge = true;
+    top.add(paper);
+    addMesh(top, new THREE.BoxGeometry(0.34, 0.05, 0.24), mats.ridges.slate, 0.62, 0.915, 0.12);
+    addMesh(top, new THREE.CylinderGeometry(0.1, 0.09, 0.26, 12), mats.pot, 0.78, 1.02, -0.25);
+    for (const [bx, bz, tilt] of [[0.74, -0.27, 0.12], [0.8, -0.22, -0.1], [0.82, -0.29, 0.05]] as [number, number, number][]) {
+      const brush = addMesh(top, new THREE.CylinderGeometry(0.012, 0.018, 0.42, 6), mats.darkWood, bx, 1.2, bz);
+      brush.rotation.z = tilt;
+    }
+    const brushRest = addMesh(top, new THREE.CylinderGeometry(0.014, 0.022, 0.36, 6), mats.darkWood, 0.25, 0.915, 0.18);
+    brushRest.rotation.z = Math.PI / 2;
+    const plaqueMat = new THREE.MeshStandardMaterial({ map: signboardTexture('佈告桌', '在這裡填寫痛點'), roughness: 0.55 });
+    const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.05), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, plaqueMat, mats.darkWood]);
+    plaque.position.set(-0.15, 1.06, -0.38);
+    plaque.rotation.x = -0.25;
+    plaque.userData.noMerge = true;
+    top.add(plaque);
+    // 桌後的圓凳
+    addMesh(top, new THREE.CylinderGeometry(0.26, 0.22, 0.48, 12), mats.redLacquer, 0, 0.24, -0.95);
+    inner.add(top);
+    lanterns.addHanging(-1.4, dy + 2.3, deskZ + 0.2, 0.6);
+    lanterns.addHanging(1.4, dy + 2.3, deskZ + 0.2, 0.6);
+    // 點書桌就能填寫痛點
+    root.add(makePickProxy(2.6, 1.6, 1.6, 0, deskZ, 0, { kind: 'desk', buildingId: b.id }, dy));
+  } else {
+    addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);
+    addMesh(inner, new THREE.CylinderGeometry(0.55, 0.7, 0.75, 12), mats.redLacquer, 0, 0.85, deskZ);
+    addMesh(inner, new THREE.TorusGeometry(0.62, 0.06, 6, 20).rotateX(Math.PI / 2), mats.gold, 0, 1.24, deskZ);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), mats.orb);
+    orb.position.set(0, 1.7, deskZ);
+    orb.userData.noMerge = true;
+    inner.add(orb);
+    lanterns.addHanging(0, 1.7, deskZ, 0.01); // 寶珠光暈
+  }
   for (const lz of [d * 0.18, -d * 0.4]) {
     for (const sx of [-1, 1]) lanterns.addHanging(sx * w * 0.24, h - 1.25, lz, 0.85);
   }
@@ -1125,6 +1290,36 @@ export interface StyledIslandInput {
   avoid: { x: number; z: number; r: number }[];
   landmark?: { x: number; z: number; radius: number; height: number };
   seed: number;
+  /** 地面要挖空的地方（世界座標多邊形，例如通往地下室的樓梯井） */
+  groundHoles?: [number, number][][];
+}
+
+/** 有洞的水平圓盤／橢圓盤（洞是本地座標多邊形）；uv 依 mode 設定 */
+function discWithHoles(rx: number, rz: number, holes: [number, number][][], uvOf: (x: number, z: number) => [number, number], seg = 72) {
+  const shape = new THREE.Shape();
+  for (let i = 0; i <= seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    const x = Math.cos(a) * rx;
+    const z = Math.sin(a) * rz;
+    if (i === 0) shape.moveTo(x, -z);
+    else shape.lineTo(x, -z);
+  }
+  for (const h of holes) {
+    const path = new THREE.Path();
+    h.forEach(([x, z], i) => (i === 0 ? path.moveTo(x, -z) : path.lineTo(x, -z)));
+    path.closePath();
+    shape.holes.push(path);
+  }
+  const g = new THREE.ShapeGeometry(shape, 1);
+  g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position as THREE.BufferAttribute;
+  const uv = g.attributes.uv as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const [u, v] = uvOf(p.getX(i), p.getZ(i));
+    uv.setXY(i, u, v);
+  }
+  g.computeVertexNormals();
+  return g;
 }
 
 export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, grass?: GrassBatch): THREE.Group {
@@ -1139,11 +1334,23 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
   const rim = 7;
   const parts = new THREE.Group();
 
-  addMesh(parts, ellipseDisc(rx + 0.4, rz + 0.4), mats.paving, 0, 0, 0);
+  // 地面要挖洞的地方（轉成本島座標；只取完全落在範圍內的）
+  const localHoles = (inp.groundHoles || []).map((h) => h.map(([x, z]) => [x - cx, z - cz] as [number, number]));
+  const inEllipse = (h: [number, number][], ex: number, ez: number) => h.every(([x, z]) => (x / ex) ** 2 + (z / ez) ** 2 < 0.98);
+  const pavingHoles = localHoles.filter((h) => inEllipse(h, rx + 0.4, rz + 0.4));
+  if (pavingHoles.length) addMesh(parts, discWithHoles(rx + 0.4, rz + 0.4, pavingHoles, (x, z) => [x / 3.5, z / 3.5]), mats.paving, 0, 0, 0);
+  else addMesh(parts, ellipseDisc(rx + 0.4, rz + 0.4), mats.paving, 0, 0, 0);
   addMesh(parts, ellipseRing(rx + 0.35, rz + 0.35, rx + rim, rz + rim, 96, 3.5, 0.08, inp.seed), mats.grass, 0, -0.04, 0);
   addMesh(parts, cliffGeometry(rx + rim, rz + rim, rx + rim + 3.5, rz + rim + 3.5, 9, inp.seed + 3), mats.rock, 0, -0.04, 0);
   // 廣場
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(inp.plazaRadius, 64).rotateX(-Math.PI / 2), mats.plaza);
+  const R = inp.plazaRadius;
+  const plazaHoles = localHoles.filter((h) => inEllipse(h, R, R));
+  const plaza = new THREE.Mesh(
+    plazaHoles.length
+      ? discWithHoles(R, R, plazaHoles, (x, z) => [(x / R + 1) / 2, (-z / R + 1) / 2], 64)
+      : new THREE.CircleGeometry(R, 64).rotateX(-Math.PI / 2),
+    mats.plaza
+  );
   plaza.position.y = 0.012;
   parts.add(plaza);
   addMesh(parts, new THREE.RingGeometry(inp.plazaRadius - 0.35, inp.plazaRadius + 0.15, 64).rotateX(-Math.PI / 2), mats.stoneLight, 0, 0.02, 0);

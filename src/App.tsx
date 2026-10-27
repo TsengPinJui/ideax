@@ -2537,6 +2537,42 @@ function MainContent() {
         {activeTab === 'kingdom_fp' && (
           <FirstPersonKingdomView
             onOpenQuestion={(q) => setSelectedQuestion(q)}
+            renderQuestionPage={(q, { back }) => (
+              // 3D 左側直接顯示貼文內頁；要跳出去的操作一律開新分頁，3D 這一頁不動
+              <QuestionDetailModal
+                isFullPage={true}
+                question={questions.find((x) => x.id === q.id) || q}
+                onClose={back}
+                onNavigateToChallengeSubmit={(cq) => {
+                  try {
+                    sessionStorage.setItem(
+                      'ideax_challenge_prefill_topic',
+                      JSON.stringify({ id: cq.id, title: cq.title, serial: cq.id, summary: cq.description })
+                    );
+                  } catch {}
+                  window.open('/challenge/submit', '_blank');
+                }}
+                onOpenSubmitAnswer={() => {
+                  if (currentUser.id === 'user-guest') {
+                    promptLogin('訪客模式請先登入帳號以提出方案');
+                    return;
+                  }
+                  window.open(`/question/${encodeURIComponent(q.id)}`, '_blank');
+                }}
+                onSelectSolver={() => {
+                  window.open('/solvers', '_blank');
+                }}
+                onOpenChatWithUser={() => {
+                  window.open('/chat', '_blank');
+                }}
+                onSelectCategory={() => {
+                  window.open('/explore', '_blank');
+                }}
+                onSearchTag={() => {
+                  window.open('/explore', '_blank');
+                }}
+              />
+            )}
             onExit={() => {
               setSelectedQuestion(null);
               setSelectedSolver(null);

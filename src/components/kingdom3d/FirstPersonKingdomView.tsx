@@ -15,19 +15,20 @@ import {
   detectPlayerSpatialContext,
 } from './regionConfigs';
 import { RegionManager } from './RegionManager';
-import { FirstPersonControls } from './FirstPersonControls';
+import { FirstPersonControls, isTypingTarget } from './FirstPersonControls';
 import { PhysicsController } from './PhysicsController';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { KingdomSideDrawer, DrawerState, findStreetProp } from './KingdomSideDrawer';
 import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
+import { moduleUrl, openInNewTab } from './buildingActions';
 import type { KingdomAction } from './buildingActions';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
 import { DevStatsPanel } from './DevStatsPanel';
 import { painForFloor } from './PainFloorModal';
 import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
-import { drawPainBoardTexture, PAIN_FLOORS } from './stylized/painBoard';
+import { drawPainBoardTexture, PAIN_FLOORS, PAIN_BASEMENTS, PainBoardLayout } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
 import type { Question } from '../../types';
 import type { Collider } from './types';
@@ -59,6 +60,11 @@ interface FirstPersonKingdomViewProps {
   /** 在 3D 裡點某則內容（例如創點樓的痛點）時打開它 */
   onOpenQuestion?: (q: Question) => void;
   initialRegionId?: RegionId;
+  /**
+   * 在左側直接顯示文章完整內頁。leave() 會先記住 3D 位置再關掉面板，
+   * 內頁裡的操作需要離開 3D（例如提方案、看專家）時先呼叫它。
+   */
+  renderQuestionPage?: (q: Question, ctx: { back: () => void; leave: () => void }) => React.ReactNode;
 }
 
 type Tower = { b: BuildingInteractable; lay: StoryLayout; cols: Collider[][] };
@@ -95,6 +101,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   onNavigateToModule,
   onOpenQuestion,
   initialRegionId = 'region-home',
+  renderQuestionPage,
 }) => {
   const { questions, currentUser } = useApp();
   const questionsRef = useRef<Question[]>(questions);
@@ -117,8 +124,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
   const openForBuilding = useCallback((b: BuildingInteractable) => {
     if (towersRef.current.has(b.id)) {
-      const inside = storyRef.current.towerId === b.id || storyRef.current.level > 0;
-      setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
+      // story.level 是相對地面的樓層（0＝地面層、-1＝地下一樓）；懸賞牆的樓層編號要加上地下層數
+      const tw = towersRef.current.get(b.id)!;
+      const inside = storyRef.current.towerId === b.id || storyRef.current.level !== 0;
+      setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level + tw.lay.basements } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
     } else {
       setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
     }
@@ -131,6 +140,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'painFloor', level: t.level });
     } else if (t.kind === 'street') {
       if (findStreetProp(t.id)) setDrawer({ kind: 'street', propId: t.id });
+    } else if (t.kind === 'desk') {
+      setDrawer({ kind: 'desk' });
     }
   }, []);
   const towersRef = useRef<Map<string, Tower>>(new Map());
@@ -148,13 +159,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const scene = sceneRef.current;
     if (!scene) return;
     scene.traverse((o) => {
-      const info = o.userData?.painBoard as { level: number } | undefined;
+      const info = o.userData?.painBoard as { level: number; offset?: number; count?: number; layout?: PainBoardLayout } | undefined;
       if (!info) return;
       const mesh = o as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      const cards = painForFloor(questionsRef.current, info.level).slice(0, 8).map((q) => ({ id: q.id, title: q.title, category: q.category, bounty: q.bounty }));
+      const off = info.offset || 0;
+      const cards = painForFloor(questionsRef.current, info.level)
+        .slice(off, off + (info.count || 8))
+        .map((q) => ({ id: q.id, title: q.title, category: q.category, bounty: q.bounty }));
       const old = mat.map;
-      mat.map = drawPainBoardTexture(info.level, cards);
+      mat.map = drawPainBoardTexture(info.level, cards, false, info.layout);
       mat.needsUpdate = true;
       old?.dispose();
     });
@@ -328,9 +342,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const handleDrawerAction = useCallback(
     (a: KingdomAction) => {
       if (a.kind === 'module') {
-        rememberPose();
-        setDrawer(null);
-        onNavigateToModule?.(a.module);
+        // 用新分頁開，3D 這一頁維持原狀；被擋下時才在本頁開（並記住位置）
+        if (!openInNewTab(moduleUrl(a.module))) {
+          rememberPose();
+          setDrawer(null);
+          onNavigateToModule?.(a.module);
+        }
       } else if (a.kind === 'region') {
         setDrawer(null);
         handleSelectRegion(a.regionId);
@@ -434,7 +451,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       controls.setSpawn(new THREE.Vector3(resume.x, resume.y, resume.z), resume.yaw);
       controls.pitch = resume.pitch;
       controls.updateCameraTransform(0);
-      if (resume.level > 0 && resume.towerId && towersRef.current.has(resume.towerId)) {
+      if (resume.level !== 0 && resume.towerId && towersRef.current.has(resume.towerId)) {
         storyRef.current = { towerId: resume.towerId, level: resume.level, armed: false, tween: null };
         setFloorLevel(resume.level);
       }
@@ -498,6 +515,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     // 8. Keydown for E Interaction
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (e.code === 'KeyE') {
         if (nearBuildingRef.current) {
           playSoundEffect('interact');
@@ -520,7 +538,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const hits = raycaster.intersectObjects(pickables, false);
       for (const h of hits) {
         const t = pickTargetOf(h.object);
-        if (t) return t;
+        if (!t) continue;
+        // 樓板不擋射線：只認玩家所在這一層的懸賞牆與書桌
+        if (t.kind === 'painBoard') {
+          const tw = towersRef.current.get(t.buildingId);
+          if (t.level !== storyRef.current.level + (tw?.lay.basements || 0)) continue;
+        }
+        if (t.kind === 'desk' && storyRef.current.level !== 0) continue;
+        return t;
       }
       return null;
     };
@@ -592,15 +617,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         controls.updateCameraTransform(delta);
         if (tw.t >= 1) {
           story.level = tw.toLevel;
-          story.towerId = tw.toLevel > 0 ? tw.towerId : null;
+          story.towerId = tw.toLevel !== 0 ? tw.towerId : null;
           story.tween = null;
           story.armed = false;
           setFloorLevel(story.level);
         }
       } else if (regionManager.status === 'active') {
-        const tower = story.level > 0 && story.towerId ? towersRef.current.get(story.towerId) || null : null;
+        // story.level：相對地面的樓層（0＝有大門的地面層，負數是地下）
+        const tower = story.level !== 0 && story.towerId ? towersRef.current.get(story.towerId) || null : null;
         const desiredVelocity = controls.getDesiredVelocity();
-        const activeColliders = tower ? tower.cols[story.level] : regionManager.getAllColliders();
+        const activeColliders = tower ? tower.cols[story.level + tower.lay.basements] || [] : regionManager.getAllColliders();
 
         const newPos = PhysicsController.movePlayer(
           controls.position,
@@ -623,8 +649,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           })();
           if (here) {
             const [lx, lz] = toLocal(here.b, controls.position.x, controls.position.z);
-            const up = upTrigger(here.lay, story.level, lx, lz);
-            const down = downTrigger(here.lay, story.level, lx, lz);
+            const idx = story.level + here.lay.basements;
+            const up = upTrigger(here.lay, idx, lx, lz);
+            const down = downTrigger(here.lay, idx, lx, lz);
             if (!up && !down) story.armed = true;
             else if (story.armed) {
               const k = story.level;
@@ -636,7 +663,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               const pts = up
                 ? [controls.position.clone(), P(up.lx, up.z0 + 0.2, k * fh), P(up.lx, up.z1, (k + 1) * fh), P(up.lx, up.z1 - 1.0, (k + 1) * fh)]
                 : [controls.position.clone(), P(down!.lx, down!.z1, k * fh), P(down!.lx, down!.z0, (k - 1) * fh), P(down!.lx, down!.z0 + 1.2, (k - 1) * fh)];
-              story.tween = { pts, t: 0, dur: 1.8, toLevel: up ? k + 1 : k - 1, towerId: here.b.id };
+              story.tween = { pts, t: 0, dur: 2.1, toLevel: up ? k + 1 : k - 1, towerId: here.b.id };
               playSoundEffect('interact');
             }
           } else {
@@ -673,7 +700,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           const key = `${foundBuilding.id}-${lvl}`;
           let named = floorNameCache.current.get(key);
           if (!named) {
-            named = { ...foundBuilding, name: `${foundBuilding.name}・${(PAIN_FLOORS[lvl] || PAIN_FLOORS[0]).label}` };
+            const bs = towersRef.current.get(foundBuilding.id)?.lay.basements || 0;
+            named = { ...foundBuilding, name: `${foundBuilding.name}・${(PAIN_FLOORS[lvl + bs] || PAIN_FLOORS[0]).label}` };
             floorNameCache.current.set(key, named);
           }
           foundBuilding = named;
@@ -972,7 +1000,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
           handleChangeQuality({ fancy: next, shadows: next });
         }}
-        placeOverride={floorLevel > 0 ? `創點樓・${(PAIN_FLOORS[floorLevel] || PAIN_FLOORS[0]).label}` : undefined}
+        placeOverride={floorLevel !== 0 ? `創點樓・${(PAIN_FLOORS[floorLevel + PAIN_BASEMENTS] || PAIN_FLOORS[0]).label}` : undefined}
         timeOfDay={timeOfDay}
         onCycleTimeOfDay={() => {
           const order: TimeOfDay[] = ['day', 'dusk', 'night'];
@@ -999,6 +1027,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           setDrawer(null);
           onOpenQuestion?.(q);
         }}
+        renderQuestionPage={
+          renderQuestionPage
+            ? (q, back) =>
+                renderQuestionPage(q, {
+                  back,
+                  leave: () => {
+                    rememberPose();
+                    setDrawer(null);
+                  },
+                })
+            : undefined
+        }
       />
 
       {/* Developer Performance & Spatial Collision Panel */}

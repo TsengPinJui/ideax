@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import { makePickProxy } from './picking';
+import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
   RegionStatus,
@@ -97,6 +98,12 @@ export class RegionManager {
           ],
           landmark: manifest.landmark,
           seed: 101 + i * 17,
+          groundHoles: manifest.buildings
+            .map((b) => {
+              const lay = getStoryLayout(b);
+              return lay ? groundStairwell(b, lay) : null;
+            })
+            .filter((h): h is [number, number][] => Boolean(h)),
         },
         trees,
         grass
