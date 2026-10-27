@@ -35,6 +35,7 @@ import { HALL_BUILDINGS, HALL_ZONES, hallOf, hallArrival, hallZoneItems, drawBoo
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
+import { fetchCityWeather, getCityConfig, getStoredUserCityId } from '../../data/cityData';
 import type { Question } from '../../types';
 import type { Collider } from './types';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
@@ -586,6 +587,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const world = new StylizedWorld(scene, renderer);
     world.setShadows(fancyRef.current);
     worldRef.current = world;
+    // 天氣跟著所在城市的即時天氣（和 /island 一樣）：晴天才有漁船、遊船、水燈、天燈
+    let weatherAlive = true;
+    fetchCityWeather(getCityConfig(getStoredUserCityId()))
+      .then((d) => {
+        if (weatherAlive) world.setWeather(d.weather);
+      })
+      .catch(() => {});
     setTextureAnisotropy(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
 
     // 精緻畫質：HDR＋反鋸齒的後製（燈籠、窗紙、寶珠會泛光）
@@ -993,6 +1001,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.position.z = z;
           controls.yaw = yaw;
         },
+        setWeather: (w: 'clear' | 'rain') => world.setWeather(w),
         setTimeOfDay: (t: TimeOfDay) => {
           world.setTimeOfDay(t);
           setTimeOfDay(t);
@@ -1002,6 +1011,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      weatherAlive = false;
       if (resumeClearTimer) window.clearTimeout(resumeClearTimer);
       renderer.domElement.removeEventListener('mousedown', onDown);
       window.removeEventListener('mouseup', onUp);

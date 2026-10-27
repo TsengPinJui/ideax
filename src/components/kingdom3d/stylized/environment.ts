@@ -1,3 +1,4 @@
+import { WaterLife, WeatherType } from './waterLife';
 import * as THREE from 'three';
 import { disposeStreetMaterials } from './streets';
 import { REGION_CONFIGS } from '../regionConfigs';
@@ -242,6 +243,7 @@ export class StylizedWorld {
   private waterwheels: THREE.Group[] = [];
   private lotusPadMat: THREE.MeshStandardMaterial | null = null;
   private ownedTextures: THREE.Texture[] = [];
+  private life!: WaterLife;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     this.scene = scene;
@@ -362,7 +364,20 @@ export class StylizedWorld {
     this.petals.frustumCulled = false;
     this.root.add(this.petals);
 
+    // 漁船／遊船、水燈、天燈與細雨
+    this.life = new WaterLife();
+    this.root.add(this.life.root);
+
     this.setTimeOfDay('dusk');
+  }
+
+  /** 天氣：晴天才有漁船、遊船、水燈與天燈；下雨時飄細雨 */
+  setWeather(w: WeatherType) {
+    this.life.setWeather(w);
+  }
+
+  get weather(): WeatherType {
+    return this.life.currentWeather;
   }
 
   /** 山的剖面：寬山腳、往上收窄、圓頂（可疊成連綿山牆） */
@@ -838,6 +853,7 @@ export class StylizedWorld {
 
   setTimeOfDay(t: TimeOfDay) {
     this.timeOfDay = t;
+    this.life?.setTimeOfDay(t);
     const p = PRESETS[t];
     const mats = getStyleMaterials();
     const sd = new THREE.Vector3(...p.sunDir).normalize();
@@ -950,6 +966,7 @@ export class StylizedWorld {
       arr[i * 3 + 2] = z;
     }
     pos.needsUpdate = true;
+    this.life.update(dt, cam);
   }
 
   dispose() {
