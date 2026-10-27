@@ -161,6 +161,8 @@ export interface IslandLabelOverlay {
   tier?: 1 | 2 | 3;
 }
 
+export const TOTAL_ISLAND_EASTER_EGGS = 29;
+
 interface IslandScene3DProps {
   view: IslandViewTransform;
   timePhase: TimeOfDayPhase;
@@ -173,6 +175,7 @@ interface IslandScene3DProps {
   buildingStats?: Record<IslandBuildingId, IslandBuildingStats>;
   onSelectIsland: (islandId: string, districtId?: string, streetId?: string) => void;
   onFocusIsland?: (islandId: string) => void;
+  onEasterEggTriggered?: (verse: string) => void;
 }
 
 // 一級地名：島名標籤（< 75% 遠景俯瞰時顯示；點擊島名自動聚焦到 100% 並顯示建築物與分展區）
@@ -246,6 +249,7 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     id: 'bldg-home-explore',
     islandId: 'home',
     districtId: 'main-plaza',
+    streetId: 'main-latest-street',
     title: '探索看板',
     worldPos: [-4.6, 8.4, -2.8],
     imgPos: [46.5, 36.2],
@@ -257,6 +261,8 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     id: 'bldg-home-map',
     islandId: 'home',
     districtId: 'main-plaza',
+    streetId: 'main-quick-street',
+    buildingId: 'home-map',
     title: '島覽地圖',
     worldPos: [4.6, 8.4, -2.8],
     imgPos: [54.5, 36.2],
@@ -268,6 +274,7 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     id: 'bldg-home-agents',
     islandId: 'home',
     districtId: 'main-plaza',
+    streetId: 'main-agents-street',
     title: '角色介紹',
     worldPos: [0, 8.8, 3.8],
     imgPos: [50.4, 42.5],
@@ -674,6 +681,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
   buildingStats,
   onSelectIsland,
   onFocusIsland,
+  onEasterEggTriggered,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const labelRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -685,12 +693,18 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
   const [easterEggToast, setEasterEggToast] = useState<{ verse: string; key: number } | null>(null);
   const easterEggTimerRef = useRef<number | null>(null);
 
+  const onEasterEggTriggeredRef = useRef(onEasterEggTriggered);
+  onEasterEggTriggeredRef.current = onEasterEggTriggered;
+
   const triggerEasterEggRef = useRef<(verse: string) => void>(() => {});
   triggerEasterEggRef.current = (verse: string) => {
     if (easterEggTimerRef.current !== null) {
       window.clearTimeout(easterEggTimerRef.current);
     }
     setEasterEggToast({ verse, key: Date.now() });
+    if (onEasterEggTriggeredRef.current) {
+      onEasterEggTriggeredRef.current(verse);
+    }
     easterEggTimerRef.current = window.setTimeout(() => {
       setEasterEggToast(null);
       easterEggTimerRef.current = null;
@@ -3878,7 +3892,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     // =========================================================
-    // 6. BOTTOM-RIGHT ISLAND (徵才島 · 翰林院 · 求職廟)
+    // 6. BOTTOM-RIGHT ISLAND (徵才島 · 翰林院 · 求職廟 · 江南園林庭院與月洞門)
     // =========================================================
     const careerBase = createIslandBase('career', 32, 24, 15.4, 13.8, 3.4);
     const careerY = careerBase.topY;
@@ -3982,25 +3996,510 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     censer.position.set(0, 0.95, 3.85);
     templeGroup.add(censer);
 
-    const paifang = new THREE.Group();
-    paifang.position.set(-2.2, careerY, 5.5);
-    paifang.rotation.y = -Math.PI / 6;
-    careerBase.group.add(paifang);
+    // =========================================================
+    // 6B. 徵才島與翰林院「江南園林庭院圍牆、月洞門、紅牆壺門、飛簷游廊與曲水竹石」
+    //     將翰林院（西苑）與求職廟（東苑）圍塑為一體成形的蘇式江南園林庭院
+    // =========================================================
+    const gardenCourtyard = new THREE.Group();
+    gardenCourtyard.position.set(-0.6, careerY, 0.4);
+    gardenCourtyard.rotation.y = -Math.PI / 6;
+    careerBase.group.add(gardenCourtyard);
 
-    [-2.1, -0.75, 0.75, 2.1].forEach((px) => {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 3.2, 8), mats.vermilion);
-      pillar.position.set(px, 1.6, 0);
-      paifang.add(pillar);
+    // (1) 江南園林青石板庭院鋪地與十字花街石徑（參照圖1、圖4濕潤青石板庭院）
+    const courtyardPaving = new THREE.Mesh(
+      new THREE.BoxGeometry(15.2, 0.08, 10.6),
+      mats.stonePlaza,
+    );
+    courtyardPaving.position.set(0, 0.04, -0.4);
+    gardenCourtyard.add(courtyardPaving);
+
+    // 青石板分格條紋與中軸步石（營造圖1、圖4青石磚縫質感）
+    for (let sx = -6.8; sx <= 6.8; sx += 1.7) {
+      const seamLine = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.095, 10.4),
+        mats.stoneGrey,
+      );
+      seamLine.position.set(sx, 0.045, -0.4);
+      gardenCourtyard.add(seamLine);
+    }
+    for (let sz = -5.2; sz <= 4.4; sz += 1.6) {
+      const crossSeam = new THREE.Mesh(
+        new THREE.BoxGeometry(15.0, 0.095, 0.08),
+        mats.stoneGrey,
+      );
+      crossSeam.position.set(0, 0.045, sz);
+      gardenCourtyard.add(crossSeam);
+    }
+
+    // (2) 園林曲水荷花池與三折青石平橋（位於西苑翰林院前方庭院，參照圖3江南水榭曲廊意境）
+    const gardenPondGroup = new THREE.Group();
+    gardenPondGroup.position.set(-4.5, 0.06, 2.35);
+    gardenCourtyard.add(gardenPondGroup);
+
+    const pondWater = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.35, 2.35, 0.09, 14),
+      mats.roofJade,
+    );
+    pondWater.scale.set(1.25, 1, 0.82);
+    pondWater.position.y = 0.02;
+    gardenPondGroup.add(pondWater);
+
+    // 池岸疊石駁岸（青灰湖石圍邊）
+    for (let r = 0; r < 14; r++) {
+      const ang = (r / 14) * Math.PI * 2;
+      const rimStone = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.34 + (r % 3) * 0.08, 0),
+        r % 2 === 0 ? mats.stoneGrey : mats.mountainRock,
+      );
+      rimStone.position.set(Math.cos(ang) * 2.82, 0.18, Math.sin(ang) * 1.85);
+      rimStone.scale.set(1.2, 0.68, 1.0);
+      rimStone.rotation.y = ang;
+      gardenPondGroup.add(rimStone);
+    }
+
+    // 園林池面九曲折橋（連接西苑月洞門與翰林院正門）
+    const zigzagBridge1 = new THREE.Mesh(
+      new THREE.BoxGeometry(1.15, 0.16, 2.1),
+      mats.stoneStep,
+    );
+    zigzagBridge1.position.set(-0.32, 0.14, -0.82);
+    zigzagBridge1.rotation.y = 0.28;
+    gardenPondGroup.add(zigzagBridge1);
+
+    const zigzagBridge2 = new THREE.Mesh(
+      new THREE.BoxGeometry(1.15, 0.16, 2.1),
+      mats.stoneStep,
+    );
+    zigzagBridge2.position.set(-0.32, 0.14, 0.82);
+    zigzagBridge2.rotation.y = -0.28;
+    gardenPondGroup.add(zigzagBridge2);
+
+    // 池內碧綠荷葉與粉嫩荷花
+    [
+      [-1.35, -0.35],
+      [1.15, 0.42],
+      [1.45, -0.48],
+      [-1.2, 0.65],
+    ].forEach(([lx, lz], lIdx) => {
+      const leaf = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.32, 0.03, 10),
+        mats.grassLush,
+      );
+      leaf.position.set(lx, 0.08, lz);
+      gardenPondGroup.add(leaf);
+      if (lIdx % 2 === 0) {
+        const lotus = new THREE.Mesh(
+          new THREE.ConeGeometry(0.14, 0.22, 6),
+          mats.sakuraPink,
+        );
+        lotus.position.set(lx, 0.18, lz);
+        gardenPondGroup.add(lotus);
+      }
     });
-    const beam1 = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.32, 0.45), mats.goldTrim);
-    beam1.position.y = 2.75;
-    paifang.add(beam1);
 
-    const topArchRoof = createChineseRoof(5.2, 1.3, 0.85, mats.roofJade);
-    topArchRoof.position.y = 3.1;
-    paifang.add(topArchRoof);
+    // (3) 立體「江南月洞門（月亮門）」建模函式（100% 參照圖1、圖2：圓洞穿堂、青石滾邊、題額石匾、黛瓦壓頂、門畔盆栽棕竹）
+    const createMoonGateWallSegment = (
+      width: number,
+      height = 2.75,
+      wallMaterial: THREE.Material = mats.wallCream,
+      withPlaque = true,
+      withPottedPlants = true,
+    ) => {
+      const mgGroup = new THREE.Group();
+      const holeRadius = 1.08;
+      const holeCenterY = 1.24;
+      const halfW = width * 0.5;
 
-    // 牌坊正前方下山青石階梯（參照圖中徵才島牌坊前寬闊石階）
+      // 使用 ExtrudeGeometry 打造真正鏤空圓洞的園林月洞門牆體
+      const wallShape = new THREE.Shape();
+      wallShape.moveTo(-halfW, 0);
+      wallShape.lineTo(halfW, 0);
+      wallShape.lineTo(halfW, height);
+      wallShape.lineTo(1.55, height);
+      // 門洞上方微微升起的「雲牆」弧頂（參照圖1）
+      wallShape.quadraticCurveTo(0, height + 0.58, -1.55, height);
+      wallShape.lineTo(-halfW, height);
+      wallShape.closePath();
+
+      // 月洞圓拱鏤空內孔（底部平接青石門檻）
+      const holePath = new THREE.Path();
+      const baseHalfX = Math.sqrt(Math.max(0.1, holeRadius * holeRadius - (holeCenterY - 0.52) * (holeCenterY - 0.52)));
+      const startAng = Math.atan2(0.02 - holeCenterY, baseHalfX);
+      const endAng = Math.PI - startAng;
+      holePath.moveTo(baseHalfX, 0.02);
+      holePath.absarc(0, holeCenterY, holeRadius, startAng, endAng, false);
+      holePath.lineTo(-baseHalfX, 0.02);
+      holePath.closePath();
+      wallShape.holes.push(holePath);
+
+      const wallThick = 0.36;
+      const extrudeGeo = new THREE.ExtrudeGeometry(wallShape, {
+        depth: wallThick,
+        bevelEnabled: false,
+        curveSegments: 24,
+      });
+      extrudeGeo.translate(0, 0, -wallThick * 0.5);
+      const wallMesh = new THREE.Mesh(extrudeGeo, wallMaterial);
+      mgGroup.add(wallMesh);
+
+      // 牆腳深青灰石裙（勒腳，參照圖1、圖4底部深灰石基）
+      [-1, 1].forEach((dir) => {
+        const sideSkirtW = Math.max(0.4, halfW - baseHalfX - 0.05);
+        const skirt = new THREE.Mesh(
+          new THREE.BoxGeometry(sideSkirtW, 0.36, wallThick + 0.06),
+          mats.stoneGrey,
+        );
+        skirt.position.set(dir * (baseHalfX + sideSkirtW * 0.5), 0.18, 0);
+        mgGroup.add(skirt);
+
+        // 月洞門兩側門枕抱鼓方石（參照圖1圓門底部兩側青石方墩）
+        const plinth = new THREE.Mesh(
+          new THREE.BoxGeometry(0.38, 0.42, wallThick + 0.14),
+          mats.stoneGrey,
+        );
+        plinth.position.set(dir * (baseHalfX + 0.12), 0.21, 0);
+        mgGroup.add(plinth);
+      });
+
+      // 月洞門圓弧青石框圈（參照圖1精緻雙層青石圓框）
+      const frameRing = new THREE.Mesh(
+        new THREE.TorusGeometry(holeRadius + 0.04, 0.075, 10, 32, Math.PI * 1.56),
+        mats.stoneGrey,
+      );
+      frameRing.position.set(0, holeCenterY, 0);
+      frameRing.rotation.z = -Math.PI * 0.28;
+      frameRing.scale.set(1, 1, 2.9);
+      mgGroup.add(frameRing);
+
+      // 月洞門正上方扇形／長方青石題額匾（參照圖1月洞門上方石刻匾額）
+      if (withPlaque) {
+        const plaqueFrame = new THREE.Mesh(
+          new THREE.BoxGeometry(1.38, 0.42, wallThick + 0.08),
+          mats.stoneGrey,
+        );
+        plaqueFrame.position.set(0, height - 0.12, 0);
+        mgGroup.add(plaqueFrame);
+
+        const plaqueInner = new THREE.Mesh(
+          new THREE.BoxGeometry(1.18, 0.28, wallThick + 0.11),
+          mats.stoneStep,
+        );
+        plaqueInner.position.set(0, height - 0.12, 0);
+        mgGroup.add(plaqueInner);
+      }
+
+      // 粉牆頂部黛瓦壓頂與正中雲牆升起筒瓦脊（參照圖1竹筒瓦壓頂）
+      [-1, 1].forEach((dir) => {
+        const wingLen = Math.max(0.5, halfW - 1.45);
+        const wingRoof = new THREE.Mesh(
+          new THREE.BoxGeometry(wingLen + 0.2, 0.18, wallThick + 0.24),
+          mats.roofSlate,
+        );
+        wingRoof.position.set(dir * (1.45 + wingLen * 0.5), height + 0.06, 0);
+        mgGroup.add(wingRoof);
+      });
+
+      // 中央月洞門上方弧形黛瓦頂蓋與筒瓦脊
+      const archCap = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.65, 1.65, wallThick + 0.28, 16, 1, false, -0.36, 0.72),
+        mats.roofSlate,
+      );
+      archCap.rotation.x = Math.PI / 2;
+      archCap.rotation.z = Math.PI / 2;
+      archCap.position.set(0, height - 1.18, 0);
+      mgGroup.add(archCap);
+
+      for (let t = -5; t <= 5; t++) {
+        const tileNode = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.065, 0.065, wallThick + 0.3, 6),
+          mats.roofSlate,
+        );
+        tileNode.rotation.x = Math.PI / 2;
+        tileNode.position.set(t * 0.26, height + 0.34 - Math.abs(t) * 0.045, 0);
+        mgGroup.add(tileNode);
+      }
+
+      // 月洞門兩側古樸黑陶盆栽棕竹（100% 還原圖1門洞左右兩盆青翠盆栽）
+      if (withPottedPlants) {
+        [-1.52, 1.52].forEach((px) => {
+          [-0.38, 0.38].forEach((pz) => {
+            const pot = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.22, 0.15, 0.28, 8),
+              mats.roofSlate,
+            );
+            pot.position.set(px, 0.14, pz);
+            mgGroup.add(pot);
+
+            for (let f = 0; f < 5; f++) {
+              const frond = new THREE.Mesh(
+                new THREE.ConeGeometry(0.18, 0.55, 5),
+                mats.grassLush,
+              );
+              const fAng = (f / 5) * Math.PI * 2;
+              frond.position.set(
+                px + Math.cos(fAng) * 0.08,
+                0.42,
+                pz + Math.sin(fAng) * 0.08,
+              );
+              frond.rotation.z = Math.cos(fAng) * 0.35;
+              frond.rotation.x = Math.sin(fAng) * 0.35;
+              mgGroup.add(frond);
+            }
+          });
+        });
+      }
+
+      return mgGroup;
+    };
+
+    // (4) 江南粉牆黛瓦園林圍牆段（含冰裂紋雕花漏窗，參照圖1、圖3、圖4）
+    const createGardenWallSegment = (
+      x1: number,
+      z1: number,
+      x2: number,
+      z2: number,
+      wallH = 2.45,
+      withLatticeWindows = true,
+      wallMat: THREE.Material = mats.wallCream,
+    ) => {
+      const segGrp = new THREE.Group();
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.2) return segGrp;
+
+      segGrp.position.set((x1 + x2) * 0.5, 0, (z1 + z2) * 0.5);
+      segGrp.rotation.y = Math.atan2(dx, dz) + Math.PI / 2;
+
+      const thick = 0.32;
+      // 底部深青灰石裙
+      const baseSkirt = new THREE.Mesh(
+        new THREE.BoxGeometry(len, 0.36, thick + 0.05),
+        mats.stoneGrey,
+      );
+      baseSkirt.position.y = 0.18;
+      segGrp.add(baseSkirt);
+
+      // 白牆／紅牆主體
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(len, wallH - 0.36, thick),
+        wallMat,
+      );
+      body.position.y = 0.36 + (wallH - 0.36) * 0.5;
+      segGrp.add(body);
+
+      // 頂部黛瓦壓頂與滴水瓦當
+      const coping = new THREE.Mesh(
+        new THREE.BoxGeometry(len + 0.16, 0.2, thick + 0.22),
+        mats.roofSlate,
+      );
+      coping.position.y = wallH + 0.06;
+      segGrp.add(coping);
+
+      const ridge = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.07, len + 0.18, 8),
+        mats.roofSlate,
+      );
+      ridge.rotation.z = Math.PI / 2;
+      ridge.position.y = wallH + 0.18;
+      segGrp.add(ridge);
+
+      // 江南園林漏窗（花窗）點綴
+      if (withLatticeWindows && len >= 3.2) {
+        const winCount = Math.max(1, Math.floor(len / 3.4));
+        for (let w = 0; w < winCount; w++) {
+          const wx = ((w + 0.5) / winCount - 0.5) * (len * 0.76);
+          const latticeFrame = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.52, 0.52, thick + 0.06, 8),
+            mats.stoneGrey,
+          );
+          latticeFrame.rotation.x = Math.PI / 2;
+          latticeFrame.position.set(wx, wallH * 0.56, 0);
+          segGrp.add(latticeFrame);
+
+          const latticeCore = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.42, 0.42, thick + 0.08, 6),
+            mats.roofSlate,
+          );
+          latticeCore.rotation.x = Math.PI / 2;
+          latticeCore.position.set(wx, wallH * 0.56, 0);
+          segGrp.add(latticeCore);
+        }
+      }
+
+      return segGrp;
+    };
+
+    // (5) 江南園林「飛簷抄手游廊」建模函式（參照圖3：深木廊柱、美人靠雕花欄杆、黛瓦飛簷廊頂）
+    const createGardenCoveredCorridor = (
+      x1: number,
+      z1: number,
+      x2: number,
+      z2: number,
+    ) => {
+      const corrGrp = new THREE.Group();
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.5) return corrGrp;
+
+      corrGrp.position.set((x1 + x2) * 0.5, 0, (z1 + z2) * 0.5);
+      corrGrp.rotation.y = Math.atan2(dx, dz) + Math.PI / 2;
+
+      const corrWidth = 1.65;
+      const colH = 2.25;
+
+      // 游廊青石台基
+      const deck = new THREE.Mesh(
+        new THREE.BoxGeometry(len, 0.24, corrWidth),
+        mats.stoneStep,
+      );
+      deck.position.y = 0.12;
+      corrGrp.add(deck);
+
+      // 對稱深木廊柱與「美人靠」雕花坐檻欄杆
+      const bayCount = Math.max(2, Math.round(len / 2.4));
+      for (let i = 0; i <= bayCount; i++) {
+        const px = (i / bayCount - 0.5) * (len - 0.24);
+        [-corrWidth * 0.42, corrWidth * 0.42].forEach((pz) => {
+          const col = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.085, 0.095, colH, 8),
+            mats.woodDark,
+          );
+          col.position.set(px, 0.24 + colH * 0.5, pz);
+          corrGrp.add(col);
+        });
+      }
+
+      // 內側美人靠坐欄與頂部掛落花牙子
+      const benchRail = new THREE.Mesh(
+        new THREE.BoxGeometry(len - 0.2, 0.42, 0.14),
+        mats.woodWarm,
+      );
+      benchRail.position.set(0, 0.46, corrWidth * 0.42);
+      corrGrp.add(benchRail);
+
+      const topFrieze = new THREE.Mesh(
+        new THREE.BoxGeometry(len - 0.2, 0.26, 0.1),
+        mats.woodDark,
+      );
+      topFrieze.position.set(0, colH + 0.1, corrWidth * 0.42);
+      corrGrp.add(topFrieze);
+
+      // 游廊雙坡黛瓦頂與兩端飛簷翹角
+      const corrRoof = createChineseRoof(len + 0.65, corrWidth + 0.65, 0.78, mats.roofSlate);
+      corrRoof.position.y = 0.24 + colH;
+      corrGrp.add(corrRoof);
+
+      return corrGrp;
+    };
+
+    // (6) 組裝圍合「翰林院」與「求職廟」的江南園林四面院牆與三座特色園門：
+    // A. 南側正門：粉牆黛瓦「月洞門」（正對下山青石階梯，取代舊牌坊，完美呈現圖1月洞門）
+    const southMainMoonGate = createMoonGateWallSegment(5.4, 2.85, mats.wallCream, true, true);
+    southMainMoonGate.position.set(-1.6, 0, 5.1);
+    gardenCourtyard.add(southMainMoonGate);
+
+    // 南側月洞門左右延伸粉牆黛瓦漏窗院牆（把求職廟與翰林院前方完整圍出庭院）
+    gardenCourtyard.add(createGardenWallSegment(-8.2, 5.1, -4.3, 5.1, 2.45, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(1.1, 5.1, 8.2, 5.1, 2.45, true, mats.wallCream));
+
+    // B. 西北迎橋門：粉牆黛瓦「迎客月洞門」（正對主島通往徵才島的青石拱橋頭，過橋即入月洞門）
+    const bridgeWestMoonGate = createMoonGateWallSegment(4.8, 2.75, mats.wallCream, true, true);
+    bridgeWestMoonGate.position.set(-8.2, 0, -2.2);
+    bridgeWestMoonGate.rotation.y = Math.PI / 2;
+    gardenCourtyard.add(bridgeWestMoonGate);
+
+    // 西側南北兩段粉牆圍牆（與迎客月洞門無縫相接）
+    gardenCourtyard.add(createGardenWallSegment(-8.2, -5.8, -8.2, -4.6, 2.45, false, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(-8.2, 0.2, -8.2, 5.1, 2.45, true, mats.wallCream));
+
+    // C. 北側後院：粉牆黛瓦圍牆 + 江南飛簷抄手游廊（參照圖3游廊緊貼北側白牆）
+    gardenCourtyard.add(createGardenWallSegment(-8.2, -5.8, 8.2, -5.8, 2.55, true, mats.wallCream));
+    const northCorridor = createGardenCoveredCorridor(-7.4, -5.0, 7.4, -5.0);
+    gardenCourtyard.add(northCorridor);
+
+    // D. 東側院牆：粉牆黛瓦圍牆 + 東側飛簷游廊
+    gardenCourtyard.add(createGardenWallSegment(8.2, -5.8, 8.2, 5.1, 2.45, true, mats.wallCream));
+    const eastCorridor = createGardenCoveredCorridor(7.4, -4.6, 7.4, 4.3);
+    gardenCourtyard.add(eastCorridor);
+
+    // E. 中庭分隔景牆（位於「翰林院」與「求職廟」之間 x = -0.85，參照圖4朱紅園林雲牆 + 月洞門，將兩者圍成東西相通的雙進園林庭院）
+    const innerDividerGate = createMoonGateWallSegment(4.6, 2.68, mats.vermilion, true, false);
+    innerDividerGate.position.set(-0.85, 0, 1.45);
+    innerDividerGate.rotation.y = Math.PI / 2;
+    gardenCourtyard.add(innerDividerGate);
+
+    // 中庭北段朱紅景牆（連接北游廊與中庭月洞門，參照圖4紅牆黛瓦與青石地面）
+    gardenCourtyard.add(createGardenWallSegment(-0.85, -4.8, -0.85, -0.85, 2.38, true, mats.vermilion));
+    gardenCourtyard.add(createGardenWallSegment(-0.85, 3.75, -0.85, 5.1, 2.38, false, mats.vermilion));
+
+    // (7) 園林翠竹叢與弧形石砌花壇假山（100% 參照圖2：月洞門旁修竹掩映、太湖石假山與弧形矮石欄花壇）
+    const createBambooGroveWithPlanter = (bx: number, bz: number, stalkCount = 11) => {
+      const bGrp = new THREE.Group();
+      bGrp.position.set(bx, 0, bz);
+
+      // 弧形石砌矮花壇（參照圖2右下角弧形磚石花台）
+      const planterRim = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.18, 1.24, 0.34, 12),
+        mats.cliffRock,
+      );
+      planterRim.position.y = 0.17;
+      bGrp.add(planterRim);
+
+      const planterSoil = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.02, 1.02, 0.38, 12),
+        mats.grassLush,
+      );
+      planterSoil.position.y = 0.18;
+      bGrp.add(planterSoil);
+
+      // 太湖石假山點綴
+      const taihuMain = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.68, 1),
+        mats.stoneGrey,
+      );
+      taihuMain.position.set(-0.42, 0.62, 0.28);
+      taihuMain.scale.set(0.95, 1.45, 0.82);
+      bGrp.add(taihuMain);
+
+      // 修長翠竹與金竹交錯叢生
+      const bambooGreenMat = new THREE.MeshStandardMaterial({ color: 0x4d7c3f, roughness: 0.55 });
+      const bambooGoldMat = new THREE.MeshStandardMaterial({ color: 0xb89635, roughness: 0.55 });
+      for (let i = 0; i < stalkCount; i++) {
+        const ang = (i / stalkCount) * Math.PI * 2;
+        const rad = 0.25 + (i % 3) * 0.24;
+        const sx = Math.cos(ang) * rad;
+        const sz = Math.sin(ang) * rad;
+        const sh = 3.2 + (i % 4) * 0.45;
+        const stalk = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.045, 0.06, sh, 6),
+          i % 3 === 0 ? bambooGoldMat : bambooGreenMat,
+        );
+        stalk.position.set(sx, 0.25 + sh * 0.5, sz);
+        stalk.rotation.z = (sx * 0.08);
+        stalk.rotation.x = (sz * 0.08);
+        bGrp.add(stalk);
+
+        // 竹葉簇
+        const crown = new THREE.Mesh(
+          new THREE.ConeGeometry(0.42, 0.85, 6),
+          mats.grassLush,
+        );
+        crown.position.set(sx * 1.12, 0.25 + sh, sz * 1.12);
+        bGrp.add(crown);
+      }
+
+      return bGrp;
+    };
+
+    // 在南側月洞門畔、西北迎客月洞門畔、中庭紅牆轉角與東北廊角佈置翠竹假山花壇
+    gardenCourtyard.add(createBambooGroveWithPlanter(-4.2, 4.15, 11));
+    gardenCourtyard.add(createBambooGroveWithPlanter(0.95, 4.15, 9));
+    gardenCourtyard.add(createBambooGroveWithPlanter(-6.8, -4.1, 10));
+    gardenCourtyard.add(createBambooGroveWithPlanter(6.4, -3.8, 10));
+
+    // 南側月洞門正前方下山青石階梯（與南側月洞門無縫對齊）
     for (let s = 0; s < 6; s++) {
       const step = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.72), mats.stoneStep);
       step.position.set(-2.2 - s * 0.35, careerY - s * 0.24, 6.8 + s * 0.58);
@@ -4008,16 +4507,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       careerBase.group.add(step);
     }
 
-    const careerRockBamboo = createTaihuRockAndBamboo(1.1);
-    careerRockBamboo.position.set(6.8, careerY, -5.2);
+    const careerRockBamboo = createTaihuRockAndBamboo(1.15);
+    careerRockBamboo.position.set(9.2, careerY, -6.2);
     careerBase.group.add(careerRockBamboo);
 
-    // 徵才島平地樹木：江南垂柳 + 桃花樹
+    // 徵才島圍牆外圍水岸垂柳與桃花樹點綴
     [
-      [8.2, 3.8, 1.2],
-      [-7.8, 2.2, 1.15],
-      [6.5, -5.8, 1.1],
-      [-5.2, -6.8, 1.05],
+      [10.2, 3.8, 1.2],
+      [-10.2, 2.8, 1.15],
+      [9.5, -5.8, 1.1],
+      [-6.8, -8.5, 1.08],
     ].forEach(([tx, tz, sc], idx) => {
       const tree = idx % 2 === 0 ? createWillowTree(sc) : createSakuraTree(sc);
       tree.position.set(tx, careerY, tz);
@@ -7662,6 +8161,13 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         frontAngle: 0,
         frontSpread: Math.PI * 1.6,
       },
+      'home-map': {
+        center: [4.6, homeY + 0.25, -2.8],
+        outsideRadius: [1.6, 2.8],
+        insideRadius: [0.45, 1.2],
+        frontAngle: 0,
+        frontSpread: Math.PI * 1.4,
+      },
       'home-trade-street': {
         center: [0, homeY + 0.15, -13.2],
         outsideRadius: [1.8, 3.2],
@@ -9318,10 +9824,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           const isClearNightNow = isNightNow && weatherRef.current !== 'rain';
 
           if (foundEasterEggKind === 'boat' && isNightNow) {
-            // 夜晚水上漁船換成遊船，點擊遊船出現《湖心亭看雪》名句
-            triggerEasterEggRef.current(
-              '「是日更定矣，余拏一小舟，擁毳衣爐火，獨往湖心亭看雪。」',
-            );
+            // 夜晚水上漁船換成遊船，點擊遊船出現「夜半鐘聲到客船」
+            triggerEasterEggRef.current('「夜半鐘聲到客船」');
             return;
           }
           if (

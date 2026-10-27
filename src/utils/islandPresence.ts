@@ -4,6 +4,7 @@ export type IslandBuildingId =
   | 'discussion-workshop'
   | 'discussion-street'
   | 'home-plaza'
+  | 'home-map'
   | 'home-trade-street'
   | 'creative-exhibition'
   | 'creative-arcade'
@@ -54,6 +55,7 @@ export const ALL_BUILDING_IDS: IslandBuildingId[] = [
   'discussion-workshop',
   'discussion-street',
   'home-plaza',
+  'home-map',
   'home-trade-street',
   'creative-exhibition',
   'creative-arcade',
@@ -104,7 +106,9 @@ export function resolveIslandBuildingFromSelection(
         return 'home-trade-street';
       case 'main-plaza':
       case 'home-plaza':
-        return 'home-plaza';
+      case 'home-map':
+        // 用戶在看創點源時算入「島覽地圖」的人數，不算入「中央廣場」
+        return 'home-map';
       case 'creative-arcade':
         return 'creative-arcade';
       case 'creative-exhibition':
@@ -133,7 +137,8 @@ export function resolveIslandBuildingFromSelection(
       return 'career-temple';
     case 'home':
     default:
-      return 'home-plaza';
+      // 用戶在看創點源時算入「島覽地圖」的人數，不算入「中央廣場」
+      return 'home-map';
   }
 }
 
@@ -154,8 +159,8 @@ function createEmptyStatsMap(): Record<IslandBuildingId, IslandBuildingStats> {
 }
 
 export const BASELINE_ONLINE_EXPLORERS: IslandOnlineUserRecord[] = [
-  { userId: 'sim_01', sessionId: 'sim_01', displayName: '林書豪', buildingId: 'home-plaza', activity: 'browsing', updatedAt: Date.now() },
-  { userId: 'sim_02', sessionId: 'sim_02', displayName: '陳思穎', buildingId: 'home-plaza', activity: 'using', updatedAt: Date.now() },
+  { userId: 'sim_01', sessionId: 'sim_01', displayName: '林書豪', buildingId: 'home-map', activity: 'browsing', updatedAt: Date.now() },
+  { userId: 'sim_02', sessionId: 'sim_02', displayName: '陳思穎', buildingId: 'home-map', activity: 'using', updatedAt: Date.now() },
   { userId: 'sim_03', sessionId: 'sim_03', displayName: '張維哲', buildingId: 'pain-innovation-tower', activity: 'browsing', updatedAt: Date.now() },
   { userId: 'sim_04', sessionId: 'sim_04', displayName: '線上創客 #108', buildingId: 'pain-innovation-tower', activity: 'using', updatedAt: Date.now() },
   { userId: 'sim_05', sessionId: 'sim_05', displayName: '黃柏翰', buildingId: 'pain-innovation-tower', activity: 'using', updatedAt: Date.now() },
@@ -198,7 +203,12 @@ export function computeIslandPresenceAllocation(
   rawOnlineUsers.forEach((u) => {
     const k = u.sessionId || u.userId || 'anonymous';
     if (k.startsWith('sim_') || k.startsWith('exp_')) return;
-    realUsersMap.set(k, u);
+    // 若當前用戶在看創點源，確保算入島覽地圖 (home-map)，不算入中央廣場 (home-plaza)
+    const normalizedBuildingId: IslandBuildingId =
+      (k === mySessionId || u.isCurrentSession) && u.buildingId === 'home-plaza'
+        ? 'home-map'
+        : u.buildingId;
+    realUsersMap.set(k, { ...u, buildingId: normalizedBuildingId });
   });
 
   const combinedList: IslandOnlineUserRecord[] = Array.from(realUsersMap.values());
@@ -211,7 +221,7 @@ export function computeIslandPresenceAllocation(
             userId: mySessionId,
             sessionId: mySessionId,
             displayName: '我（線上）',
-            buildingId: 'home-plaza',
+            buildingId: 'home-map',
             activity: 'browsing',
             updatedAt: Date.now(),
             isCurrentSession: true,
@@ -222,7 +232,7 @@ export function computeIslandPresenceAllocation(
   const statsMap = createEmptyStatsMap();
 
   for (const u of normalizedUsers) {
-    const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home-plaza';
+    const bId = ALL_BUILDING_IDS.includes(u.buildingId) ? u.buildingId : 'home-map';
     if (u.activity === 'using') {
       statsMap[bId].usingCount += 1;
     } else {

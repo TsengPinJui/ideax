@@ -53,6 +53,7 @@ import {
   TIME_OF_DAY_CONFIGS,
   TimeOfDayMode,
   TimeOfDayPhase,
+  TOTAL_ISLAND_EASTER_EGGS,
   WeatherMode,
   WeatherType,
 } from './IslandScene3D';
@@ -125,10 +126,12 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const [weatherMode, setWeatherMode] = useState<WeatherMode>('auto');
   const [showAtmosphereMenu, setShowAtmosphereMenu] = useState(false);
 
-  // 古風背景雅樂狀態（地圖開啟時自動播放，離開地圖時停止）
-  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(() => ancientJiangnanBgm.getMuted());
+  // 古風背景雅樂狀態（默認打開 BGM，地圖開啟時自動播放，離開地圖時停止）
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
 
   useEffect(() => {
+    ancientJiangnanBgm.setMuted(false);
+    setIsBgmMuted(false);
     ancientJiangnanBgm.start();
     return () => {
       ancientJiangnanBgm.stop();
@@ -195,6 +198,81 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [searchText, setSearchText] = useState('');
+
+  // 彩蛋收集冊（首次觸發即依發現順序刊登於收集冊格子，並記錄解鎖時間）
+  const EASTER_EGG_STORAGE_KEY = 'ideax_island_easter_egg_book_v1';
+  const [collectedEasterEggs, setCollectedEasterEggs] = useState<
+    Array<{ verse: string; unlockedAt: string }>
+  >(() => {
+    try {
+      const raw = localStorage.getItem('ideax_island_easter_egg_book_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (item) => item && typeof item.verse === 'string' && typeof item.unlockedAt === 'string',
+          );
+        }
+      }
+    } catch {
+      // Ignore storage error
+    }
+    return [];
+  });
+  const [showEasterEggBook, setShowEasterEggBook] = useState(false);
+  const [recentUnlockedEggToast, setRecentUnlockedEggToast] = useState<{
+    slotIndex: number;
+    verse: string;
+    unlockedAt: string;
+  } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  const handleEasterEggTriggered = React.useCallback((rawVerse: string) => {
+    const trimmed = (rawVerse || '').trim();
+    if (!trimmed) return;
+    const normalized = trimmed.replace(/^[「『]+|[」』]+$/g, '').trim();
+    if (!normalized) return;
+    const displayVerse = `「${normalized}」`;
+
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const unlockedAt = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(
+      now.getHours(),
+    )}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    setCollectedEasterEggs((prev) => {
+      const exists = prev.some(
+        (item) => item.verse.replace(/^[「『]+|[」』]+$/g, '').trim() === normalized,
+      );
+      if (exists) return prev;
+      const next = [...prev, { verse: displayVerse, unlockedAt }];
+      try {
+        localStorage.setItem(EASTER_EGG_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage error
+      }
+      setRecentUnlockedEggToast({
+        slotIndex: next.length,
+        verse: displayVerse,
+        unlockedAt,
+      });
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setRecentUnlockedEggToast(null);
+      }, 4200);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   // 線上真人位置與最多 25 位小人比例分配系統
   const [onlinePresenceUsers, setOnlinePresenceUsers] = useState<IslandOnlineUserRecord[]>(() =>
@@ -1178,6 +1256,42 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           )}
         </div>
 
+        {/* 左下角：彩蛋收集冊按鈕與新解鎖提示 */}
+        <div
+          className="island-bottom-left-collection island-ui-interactive"
+          aria-label="彩蛋收集冊"
+        >
+          {recentUnlockedEggToast && (
+            <div
+              className="island-easter-book-toast"
+              onClick={() => {
+                setShowEasterEggBook(true);
+                setRecentUnlockedEggToast(null);
+              }}
+            >
+              <div className="easter-toast-badge">
+                <Sparkles size={13} />
+                <span>新彩蛋收入第 {String(recentUnlockedEggToast.slotIndex).padStart(2, '0')} 格</span>
+              </div>
+              <div className="easter-toast-verse">{recentUnlockedEggToast.verse}</div>
+              <div className="easter-toast-time">解鎖時間：{recentUnlockedEggToast.unlockedAt}</div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowEasterEggBook((prev) => !prev)}
+            className="island-easter-book-btn"
+            title="打開彩蛋收集冊：查看已解鎖的隱藏詩句與解鎖時間"
+          >
+            <ScrollText size={16} className="easter-book-icon shrink-0 text-amber-700" />
+            <span className="easter-book-btn-title">彩蛋收集冊</span>
+            <span className="easter-book-btn-count">
+              {collectedEasterEggs.length} / {TOTAL_ISLAND_EASTER_EGGS}
+            </span>
+          </button>
+        </div>
+
         {/* ============================================================
             主舞台內容：Three.js 3D 立體建模（支援 +8 時區 8 大時辰與天氣動態場景）
             ============================================================ */}
@@ -1193,6 +1307,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           buildingStats={presenceSummary.buildingStats}
           onSelectIsland={handleSelectIsland}
           onFocusIsland={handleFocusIsland}
+          onEasterEggTriggered={handleEasterEggTriggered}
         />
       </div>
 
@@ -2859,7 +2974,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               </button>
             </div>
 
-            <h2 className="guide-main-title">快來和創點源互動 !</h2>
+            <h2 className="guide-main-title">快來尋找小彩蛋!</h2>
+            <p className="guide-main-subtitle">數十處隱藏彩蛋 可與物件們互動</p>
 
             <p className="guide-main-desc">
               點選島嶼進入探索。電腦版按住左鍵可平移地圖、右鍵拖曳可旋轉並調整俯視角；手機版用單手指移動即可平移並調整俯視角。場景並會隨所在地時辰與天候（清晨・中午・傍晚・晚上及雨天）自動變換。
@@ -2956,6 +3072,90 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               <span>開始探索</span>
               <ArrowRight size={17} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          左下角「彩蛋收集冊」彈窗 (Easter Egg Collection Book Modal)
+          ============================================================ */}
+      {showEasterEggBook && (
+        <div
+          className="island-easter-book-modal-overlay island-ui-interactive"
+          onClick={() => setShowEasterEggBook(false)}
+        >
+          <div
+            className="island-easter-book-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="easter-book-modal-header">
+              <div>
+                <div className="easter-book-modal-badge">
+                  <Sparkles size={13} />
+                  <span>創點源 · 尋幽探勝錄</span>
+                </div>
+                <h2 className="easter-book-modal-title">彩蛋收集冊</h2>
+                <p className="easter-book-modal-subtitle">
+                  與島上物件互動即可觸發詩句，首次觸發將按發現順序刊登於收集冊並記錄解鎖時間
+                </p>
+              </div>
+
+              <div className="easter-book-header-right">
+                <div className="easter-book-progress-pill">
+                  <span>已收集</span>
+                  <strong>
+                    {collectedEasterEggs.length} / {TOTAL_ISLAND_EASTER_EGGS}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEasterEggBook(false)}
+                  className="guide-modal-circle-close"
+                  aria-label="關閉彩蛋收集冊"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="easter-book-slots-grid">
+              {Array.from({ length: TOTAL_ISLAND_EASTER_EGGS }).map((_, idx) => {
+                const record = collectedEasterEggs[idx];
+                const slotNum = String(idx + 1).padStart(2, '0');
+                return (
+                  <div
+                    key={`easter-slot-${slotNum}`}
+                    className={`easter-slot-card ${record ? 'is-unlocked' : 'is-locked'}`}
+                  >
+                    <div className="easter-slot-top">
+                      <span className="easter-slot-index">第 {slotNum} 格</span>
+                      {record ? (
+                        <span className="easter-slot-status unlocked">
+                          <CheckCircle2 size={12} />
+                          已解鎖
+                        </span>
+                      ) : (
+                        <span className="easter-slot-status locked">尚未觸發</span>
+                      )}
+                    </div>
+
+                    {record ? (
+                      <>
+                        <div className="easter-slot-verse">{record.verse}</div>
+                        <div className="easter-slot-time">
+                          <Clock size={11} />
+                          <span>解鎖時間：{record.unlockedAt}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="easter-slot-placeholder">
+                        <span>？ 尋訪創點源各處物件與時辰奇景以解鎖此格</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

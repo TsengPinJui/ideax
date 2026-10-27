@@ -44,7 +44,18 @@ class AncientJiangnanBgmEngine {
   ];
 
   public start() {
-    if (this.isPlaying) return;
+    this.isMuted = false;
+    if (this.isPlaying) {
+      if (this.ctx && this.masterGain) {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(0.24, now, 0.18);
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      return;
+    }
     this.isPlaying = true;
     this.stepIndex = 0;
 
@@ -126,12 +137,20 @@ class AncientJiangnanBgmEngine {
     };
     this.unlockHandler = unlock;
     window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('pointerup', unlock, { passive: true });
+    window.addEventListener('click', unlock, { passive: true });
+    window.addEventListener('touchstart', unlock, { passive: true });
+    window.addEventListener('wheel', unlock, { passive: true });
     window.addEventListener('keydown', unlock, { passive: true });
   }
 
   private removeAutoUnlock() {
     if (this.unlockHandler) {
       window.removeEventListener('pointerdown', this.unlockHandler);
+      window.removeEventListener('pointerup', this.unlockHandler);
+      window.removeEventListener('click', this.unlockHandler);
+      window.removeEventListener('touchstart', this.unlockHandler);
+      window.removeEventListener('wheel', this.unlockHandler);
       window.removeEventListener('keydown', this.unlockHandler);
       this.unlockHandler = null;
     }
