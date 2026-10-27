@@ -11,15 +11,19 @@ import {
   ALL_REGION_IDS,
   WORLD_BRIDGES,
   getBridgeSideColliders,
+  getGlobalWalkableZones,
 } from './regionConfigs';
 import {
   MaterialPalette,
-  createHollowBuildingBlockout,
   createCourtyardWallMesh,
-  createStoneArchBridge,
-  createIslandWhiteboxBase,
   createColliderWireframes,
 } from './ProceduralAssets';
+import {
+  createStyledBuilding,
+  createStyledBridge,
+  createStyledIsland,
+  TreeBatch,
+} from './stylized/architecture';
 
 export interface RegionLoadedData {
   manifest: RegionManifest;
@@ -66,25 +70,33 @@ export class RegionManager {
    * Build the shared sea plane, 5 island base platforms, and 4 arched bridges connecting to 主島
    */
   private buildArchipelagoFoundation() {
-    // 1. Calm Sea Water Expanse
-    const seaGeo = new THREE.PlaneGeometry(360, 320);
-    const seaMesh = new THREE.Mesh(seaGeo, this.sharedMaterials.waterMat);
-    seaMesh.rotation.x = -Math.PI / 2;
-    seaMesh.position.set(0, -0.35, 0);
-    this.archipelagoBaseGroup.add(seaMesh);
-
-    // 2. 5 Island Landmass & Plaza Bases
-    for (const id of ALL_REGION_IDS) {
+    // 海面、天空與遠景由 StylizedWorld 負責；這裡建 5 座島的地面、山崖、欄杆、樹與 4 座石拱橋
+    const walk = getGlobalWalkableZones();
+    const trees = new TreeBatch();
+    ALL_REGION_IDS.forEach((id, i) => {
       const manifest = REGION_CONFIGS[id];
-      const baseGroup = createIslandWhiteboxBase(manifest, this.sharedMaterials);
-      this.archipelagoBaseGroup.add(baseGroup);
-    }
-
-    // 3. 4 Arched Stone Bridges connecting 主島 to the 4 outer islands
+      const [cx, cz] = manifest.center;
+      const ell = walk.find((z) => z.type === 'ellipse' && Math.abs(z.cx - cx) < 0.5 && Math.abs(z.cz - cz) < 0.5);
+      const island = createStyledIsland(
+        {
+          id,
+          center: manifest.center,
+          walkRx: ell && ell.type === 'ellipse' ? ell.rx : manifest.islandRadiusX - 0.5,
+          walkRz: ell && ell.type === 'ellipse' ? ell.rz : manifest.islandRadiusZ - 0.5,
+          plazaRadius: manifest.plazaRadius,
+          bridges: WORLD_BRIDGES,
+          avoid: manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: Math.max(b.width, b.depth) / 2 + 1 })),
+          landmark: manifest.landmark,
+          seed: 101 + i * 17,
+        },
+        trees
+      );
+      this.archipelagoBaseGroup.add(island);
+    });
     for (const bridge of WORLD_BRIDGES) {
-      const bridgeMesh = createStoneArchBridge(bridge, this.sharedMaterials);
-      this.archipelagoBaseGroup.add(bridgeMesh);
+      this.archipelagoBaseGroup.add(createStyledBridge(bridge));
     }
+    this.archipelagoBaseGroup.add(trees.build());
   }
 
   private setStatus(status: RegionStatus, progress: number = 0) {
@@ -139,8 +151,9 @@ export class RegionManager {
 
     // 2. Walk-In Hollow Main Buildings (主要建築物內皆可走入)
     for (const b of manifest.buildings) {
-      const bldMesh = createHollowBuildingBlockout(b, this.sharedMaterials);
-      group.add(bldMesh);
+      group.add(createStyledBuilding(b));
+      // 讓出主執行緒，載入時畫面不會卡住
+      await new Promise((r) => setTimeout(r, 0));
     }
 
     // 3. Debug Collider Wireframe Group
@@ -268,6 +281,17 @@ export class RegionManager {
       }
     }
     return all;
+  }
+
+  /** 遠處建築的室內細節先隱藏（每隔幾格畫面呼叫一次即可） */
+  public updateInteriorLod(x: number, z: number, radius = 30) {
+    for (const [, data] of this.loadedRegions) {
+      for (const child of data.sceneGroup.children) {
+        const inner = child.userData.interior as THREE.Object3D | undefined;
+        if (!inner) continue;
+        inner.visible = Math.hypot(child.position.x - x, child.position.z - z) < radius;
+      }
+    }
   }
 
   /**

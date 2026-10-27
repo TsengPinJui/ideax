@@ -6,6 +6,7 @@ import {
   Collider,
   RegionManifest,
 } from './types';
+import { getStyleMaterials, LanternBatch, scaledBox } from './stylized/architecture';
 
 // ==========================================
 // 1. Clean Signboard Label Texture (High-Contrast Architectural Label)
@@ -14,37 +15,31 @@ import {
 export function createSignPlaqueTexture(
   title: string,
   subtitle?: string,
-  accentHex: number = 0xd97706
+  _accentHex: number = 0xd97706
 ): THREE.CanvasTexture {
+  // 深色漆木匾＋金框金字
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
   const ctx = canvas.getContext('2d')!;
-
-  const accentColor = `#${accentHex.toString(16).padStart(6, '0')}`;
-
-  // Clean architectural dark slate background
-  ctx.fillStyle = '#1c1917';
+  const g = ctx.createLinearGradient(0, 0, 0, 160);
+  g.addColorStop(0, '#4a2412');
+  g.addColorStop(1, '#2b130a');
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, 512, 160);
-
-  // Crisp accent border
-  ctx.strokeStyle = accentColor;
+  ctx.strokeStyle = '#d4a637';
   ctx.lineWidth = 8;
   ctx.strokeRect(8, 8, 496, 144);
-
-  // Title text
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = '#f2c94c';
+  ctx.font = '900 52px "Noto Serif TC","Songti TC","PMingLiU",serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(title, 256, subtitle ? 64 : 80);
-
   if (subtitle) {
-    ctx.fillStyle = '#fde68a';
-    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#e9d8a6';
+    ctx.font = '700 24px "Noto Serif TC","Songti TC","PMingLiU",serif';
     ctx.fillText(subtitle, 256, 118);
   }
-
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -382,102 +377,70 @@ export function createHollowBuildingBlockout(
 
 export function createCourtyardWallMesh(
   seg: CourtyardWallSegment,
-  mats: MaterialPalette
+  _mats: MaterialPalette
 ): THREE.Group {
+  // 粉牆黛瓦：白色粉牆、石砌牆基、黑瓦牆帽，月洞門兩側掛燈籠
+  const sm = getStyleMaterials();
   const group = new THREE.Group();
   const dx = seg.x2 - seg.x1;
   const dz = seg.z2 - seg.z1;
   const len = Math.hypot(dx, dz);
-  const midX = (seg.x1 + seg.x2) / 2;
-  const midZ = (seg.z1 + seg.z2) / 2;
-
-  group.position.set(midX, 0, midZ);
-  // Align local X axis along (dx, dz)
+  group.position.set((seg.x1 + seg.x2) / 2, 0, (seg.z1 + seg.z2) / 2);
   group.rotation.y = -Math.atan2(dz, dx);
 
   const h = seg.height || 3.2;
   const thick = 0.45;
-
-  if (!seg.hasMoonGate) {
-    // Solid courtyard wall segment
-    const wall = new THREE.Mesh(
-      new THREE.BoxGeometry(len, h, thick),
-      mats.wallWhiteMat
-    );
-    wall.position.y = h / 2;
+  const wallPiece = (l: number, x: number) => {
+    const base = new THREE.Mesh(scaledBox(l + 0.05, 0.6, thick + 0.12, 2, 0.6, 2), sm.stone);
+    base.position.set(x, 0.3, 0);
+    group.add(base);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(l, h - 0.6, thick), sm.plaster);
+    wall.position.set(x, 0.6 + (h - 0.6) / 2, 0);
     wall.castShadow = true;
     wall.receiveShadow = true;
     group.add(wall);
-
-    const coping = new THREE.Mesh(
-      new THREE.BoxGeometry(len + 0.2, 0.24, thick + 0.2),
-      mats.roofSlateMat
-    );
-    coping.position.y = h + 0.12;
+    const coping = new THREE.Mesh(scaledBox(l + 0.3, 0.22, thick + 0.7, 1.5, 0.22, 1.5), sm.roofs.slate);
+    coping.position.set(x, h + 0.11, 0);
     group.add(coping);
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(l + 0.3, 0.18, 0.22), sm.ridges.slate);
+    ridge.position.set(x, h + 0.3, 0);
+    group.add(ridge);
+  };
+
+  if (!seg.hasMoonGate) {
+    wallPiece(len, 0);
   } else {
-    // Courtyard wall with an open circular Moon Gate (月洞門) passage in the center
     const gateW = seg.gateWidth || 5.6;
     const wingLen = Math.max(0.5, (len - gateW) / 2);
-
-    // Left and right wall wings
     [-1, 1].forEach((dir) => {
-      const wing = new THREE.Mesh(
-        new THREE.BoxGeometry(wingLen, h, thick),
-        mats.wallWhiteMat
-      );
-      wing.position.set(dir * (gateW / 2 + wingLen / 2), h / 2, 0);
-      wing.castShadow = true;
-      wing.receiveShadow = true;
-      group.add(wing);
-
-      const wingCap = new THREE.Mesh(
-        new THREE.BoxGeometry(wingLen + 0.2, 0.24, thick + 0.2),
-        mats.roofSlateMat
-      );
-      wingCap.position.set(dir * (gateW / 2 + wingLen / 2), h + 0.12, 0);
-      group.add(wingCap);
-
-      // Moon Gate side pillar jambs
-      const pillar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.28, 0.32, h + 0.5, 12),
-        mats.roofSlateMat
-      );
+      wallPiece(wingLen, dir * (gateW / 2 + wingLen / 2));
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, h + 0.5, 12), sm.redLacquer);
       pillar.position.set(dir * (gateW / 2), (h + 0.5) / 2, 0);
       group.add(pillar);
     });
-
-    // Overhead Moon Gate Arch Header Beam (y = 3.4m so player walks under freely)
-    const archHeader = new THREE.Mesh(
-      new THREE.BoxGeometry(gateW + 0.8, 0.65, thick + 0.25),
-      mats.roofSlateMat
-    );
-    archHeader.position.set(0, h + 0.45, 0);
-    group.add(archHeader);
-
-    // Decorative Moon Gate Circular Arch Rim (upper half-circle above 2.2m)
-    const torusArc = new THREE.Mesh(
-      new THREE.TorusGeometry(gateW / 2, 0.22, 10, 24, Math.PI),
-      mats.roofSlateMat
-    );
-    torusArc.position.set(0, h - 0.8, 0);
-    group.add(torusArc);
-
-    // Sign plaque on both sides of the Moon Gate
+    const header = new THREE.Mesh(new THREE.BoxGeometry(gateW + 0.8, 0.65, thick + 0.25), sm.plaster);
+    header.position.set(0, h + 0.45, 0);
+    group.add(header);
+    const headerCap = new THREE.Mesh(scaledBox(gateW + 1.2, 0.22, thick + 0.8, 1.5, 0.22, 1.5), sm.roofs.slate);
+    headerCap.position.set(0, h + 0.88, 0);
+    group.add(headerCap);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(gateW / 2, 0.22, 10, 28, Math.PI), sm.stoneLight);
+    rim.position.set(0, h - 0.8, 0);
+    group.add(rim);
+    const lan = new LanternBatch();
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) lan.addHanging(sx * (gateW / 2 + 0.9), h - 0.6, sz * 0.75, 0.95);
+    group.add(lan.build());
     if (seg.gateLabel) {
       const tex = createSignPlaqueTexture(seg.gateLabel, undefined, 0x0d9488);
       const signMat = new THREE.MeshBasicMaterial({ map: tex });
-      const signFront = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.1), signMat);
-      signFront.position.set(0, h + 1.15, 0.3);
-      group.add(signFront);
-
-      const signBack = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.1), signMat);
-      signBack.position.set(0, h + 1.15, -0.3);
-      signBack.rotation.y = Math.PI;
-      group.add(signBack);
+      for (const side of [1, -1]) {
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.1), signMat);
+        sign.position.set(0, h + 1.5, side * 0.3);
+        if (side < 0) sign.rotation.y = Math.PI;
+        group.add(sign);
+      }
     }
   }
-
   return group;
 }
 
