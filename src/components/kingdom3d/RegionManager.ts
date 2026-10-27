@@ -57,6 +57,8 @@ export class RegionManager {
   // Callbacks
   public onStatusChange?: (status: RegionStatus, progress: number) => void;
   public onError?: (error: string) => void;
+  /** 某座島的建築組好、加進場景之後通知（用來填入懸賞牆內容） */
+  public onRegionReady?: () => void;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -214,6 +216,7 @@ export class RegionManager {
         });
         this.loadedRegions.set(regionId, data);
         this.scene.add(data.sceneGroup);
+        this.onRegionReady?.();
       } else {
         this.loadDurationMs = 0;
         if (!this.scene.children.includes(data.sceneGroup)) {
@@ -256,6 +259,7 @@ export class RegionManager {
       const data = await this.assembleRegionGroup(manifest, () => {});
       this.loadedRegions.set(regionId, data);
       this.scene.add(data.sceneGroup);
+      this.onRegionReady?.();
     } catch (e) {
       console.warn(`Preload skipped for ${regionId}:`, e);
     }

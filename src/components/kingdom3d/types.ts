@@ -128,6 +128,8 @@ export interface BuildingInteractable {
   height: number;
   /** Open entrance doorway width on the front (+Z) wall */
   doorWidth?: number;
+  /** 可走上去的樓層數（例如創點樓 3 層）；沒有設定就是單層 */
+  floors?: number;
   /** Number of stacked architectural roof tiers (1, 2, 3, or 4) */
   tiers?: number;
   /** Solid whitebox blockout accent color */
