@@ -29,6 +29,8 @@ interface MobileControlsOverlayProps {
   onToggleFastWalk: () => void;
   timeOfDay?: 'day' | 'dusk' | 'night';
   onCycleTimeOfDay?: () => void;
+  isFancy?: boolean;
+  onToggleFancy?: () => void;
 }
 
 export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
@@ -51,6 +53,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onToggleFastWalk,
   timeOfDay,
   onCycleTimeOfDay,
+  isFancy,
+  onToggleFancy,
 }) => {
   // Mobile Virtual Joystick State
   const [joystickActive, setJoystickActive] = useState(false);
@@ -289,6 +293,11 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             <button type="button" className="kx-menu-item" onClick={onToggleFastWalk}>
               <Footprints className="w-4 h-4 text-amber-200" /> {isFastWalk ? '疾走中（點一下恢復常速）' : '常速（點一下改疾走）'}
             </button>
+            {onToggleFancy && (
+              <button type="button" className="kx-menu-item" onClick={onToggleFancy}>
+                <Sparkles className="w-4 h-4 text-amber-200" /> 畫質：{isFancy ? '精緻（陰影、泛光）' : '流暢'}
+              </button>
+            )}
             <button type="button" className="kx-menu-item" onClick={() => { onOpenSettings(); closeMenu(); }}>
               <Settings className="w-4 h-4 text-amber-200" /> 操作說明
             </button>

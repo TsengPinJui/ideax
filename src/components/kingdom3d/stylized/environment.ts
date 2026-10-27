@@ -60,6 +60,7 @@ interface Preset {
   mountain: number;
   cloud: number;
   cloudOpacity: number;
+  bloom: number;
 }
 
 const PRESETS: Record<TimeOfDay, Preset> = {
@@ -70,7 +71,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0xcfe2ee, fogNear: 140, fogFar: 620,
     deep: 0x16627a, shallow: 0x3aa2a8, waterSky: 0x9fcbe6, glint: 1.0,
     lantern: 0.55, lamp: 0.4, windows: 0.0, glowOpacity: 0.12, glowSize: 1.8, orb: 1.0,
-    exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0x5f8c72, cloud: 0xffffff, cloudOpacity: 0.95,
+    exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0x5f8c72, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
   },
   dusk: {
     top: 0x4d79b8, horizon: 0xffc88f, bottom: 0xd99a6a,
@@ -79,7 +80,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0xf0c49c, fogNear: 120, fogFar: 560,
     deep: 0x1f4f63, shallow: 0x3f7d80, waterSky: 0xf2a877, glint: 1.4,
     lantern: 1.5, lamp: 1.1, windows: 0.45, glowOpacity: 0.42, glowSize: 2.4, orb: 1.6,
-    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0x6f7f78, cloud: 0xffd2b0, cloudOpacity: 0.9,
+    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0x6f7f78, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.42,
   },
   night: {
     top: 0x060c22, horizon: 0x1d2b4f, bottom: 0x0b1226,
@@ -88,7 +89,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     fog: 0x15203b, fogNear: 70, fogFar: 420,
     deep: 0x07142a, shallow: 0x123049, waterSky: 0x223a66, glint: 0.9,
     lantern: 3.2, lamp: 2.6, windows: 1.35, glowOpacity: 0.95, glowSize: 3.0, orb: 2.6,
-    exposure: 1.2, stars: 1, moon: true, playerLamp: 2.2, mountain: 0x1d2740, cloud: 0x3a4a73, cloudOpacity: 0.35,
+    exposure: 1.2, stars: 1, moon: true, playerLamp: 2.2, mountain: 0x1d2740, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.85,
   },
 };
 
@@ -238,12 +239,14 @@ export class StylizedWorld {
     // 光源
     this.hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
     this.sun = new THREE.DirectionalLight(0xffffff, 2);
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.normalBias = 0.05;
     const sc = this.sun.shadow.camera;
-    sc.left = -45;
-    sc.right = 45;
-    sc.top = 45;
-    sc.bottom = -45;
+    sc.left = -38;
+    sc.right = 38;
+    sc.top = 38;
+    sc.bottom = -38;
     sc.near = 1;
     sc.far = 220;
     this.ambient = new THREE.AmbientLight(0xffffff, 0.2);
@@ -567,6 +570,11 @@ export class StylizedWorld {
     }
     flowers.count = fi;
     this.root.add(pads, flowers);
+  }
+
+  /** 燈籠泛光強度（依時段） */
+  get bloomStrength() {
+    return PRESETS[this.timeOfDay].bloom;
   }
 
   setTimeOfDay(t: TimeOfDay) {

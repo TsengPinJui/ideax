@@ -633,6 +633,127 @@ export function petalTexture() {
   });
 }
 
+/** 用同一張畫布的明暗當高度，做出凹凸（石縫、瓦溝、木紋會有立體感） */
+export function bumpOf(key: string, color: THREE.Texture) {
+  return cached(`bump_${key}`, () => {
+    const t = new THREE.CanvasTexture(color.image as HTMLCanvasElement);
+    t.colorSpace = THREE.NoColorSpace;
+    t.wrapS = color.wrapS;
+    t.wrapT = color.wrapT;
+    t.anisotropy = color.anisotropy;
+    return t;
+  });
+}
+
+/** 屋簷瓦當（一排圓形瓦頭） */
+export function eaveTileTexture() {
+  return cached('eaveTile', () => {
+    const [c, ctx] = makeCanvas(64, 32);
+    ctx.fillStyle = '#2a3038';
+    ctx.fillRect(0, 0, 64, 32);
+    for (const x of [16, 48]) {
+      ctx.fillStyle = '#56606c';
+      ctx.beginPath();
+      ctx.arc(x, 16, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#c9a33a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, 16, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    return toTexture(c);
+  });
+}
+
+/** 朱漆大門（金色門釘） */
+export function doorTexture() {
+  return cached('door', () => {
+    const [c, ctx] = makeCanvas(128, 256);
+    ctx.fillStyle = '#8e1f17';
+    ctx.fillRect(0, 0, 128, 256);
+    ctx.strokeStyle = '#4a120c';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, 116, 244);
+    for (let r = 0; r < 7; r++) {
+      for (let k = 0; k < 4; k++) {
+        const x = 26 + k * 25;
+        const y = 34 + r * 30;
+        const g = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, 7);
+        g.addColorStop(0, '#fff2b0');
+        g.addColorStop(1, '#a87a1c');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = '#c9a33a';
+    ctx.beginPath();
+    ctx.arc(110, 130, 9, 0, Math.PI * 2);
+    ctx.fill();
+    return toTexture(c, { repeat: false });
+  });
+}
+
+/** 草叢（透明底的草葉） */
+export function grassTuftTexture() {
+  return cached('grassTuft', () => {
+    const [c, ctx] = makeCanvas(128, 128);
+    const rand = seeded(71);
+    for (let i = 0; i < 46; i++) {
+      const x = 10 + rand() * 108;
+      const h = 50 + rand() * 70;
+      const bend = (rand() - 0.5) * 30;
+      ctx.strokeStyle = `rgb(${70 + rand() * 50},${120 + rand() * 60},${40 + rand() * 30})`;
+      ctx.lineWidth = 2 + rand() * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 128);
+      ctx.quadraticCurveTo(x + bend * 0.3, 128 - h * 0.6, x + bend, 128 - h);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = ['#f7c6d8', '#fff1c4', '#e9a3c4', '#ffffff'][i % 4];
+      ctx.beginPath();
+      ctx.arc(14 + rand() * 100, 30 + rand() * 50, 4 + rand() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return toTexture(c, { repeat: false });
+  });
+}
+
+/** 岸邊浪花（由內往外漸淡） */
+export function foamTexture() {
+  return cached('foam', () => {
+    const [c, ctx] = makeCanvas(256, 64);
+    const rand = seeded(83);
+    const g = ctx.createLinearGradient(0, 0, 0, 64);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 160; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${0.3 + rand() * 0.5})`;
+      ctx.beginPath();
+      ctx.ellipse(rand() * 256, 8 + rand() * 50, 4 + rand() * 10, 2 + rand() * 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return toTexture(c, { srgb: false });
+  });
+}
+
+/** 依顯示卡能力提高貼圖的斜角清晰度 */
+export function setTextureAnisotropy(n: number) {
+  for (const t of cache.values()) {
+    if (t.anisotropy !== n) {
+      t.anisotropy = n;
+      t.needsUpdate = true;
+    }
+  }
+}
+
 export function disposeTextureCache() {
   for (const t of cache.values()) t.dispose();
   cache.clear();

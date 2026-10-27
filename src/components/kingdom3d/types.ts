@@ -209,6 +209,8 @@ export interface QualitySettings {
   sensitivity: number;
   showColliders?: boolean;
   moveSpeedMultiplier?: number;
+  /** 精緻畫質：柔和陰影、燈籠泛光、反鋸齒 */
+  fancy?: boolean;
 }
 
 export interface DevPerformanceMetrics {

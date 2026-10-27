@@ -23,6 +23,7 @@ import {
   createStyledBridge,
   createStyledIsland,
   TreeBatch,
+  GrassBatch,
 } from './stylized/architecture';
 
 export interface RegionLoadedData {
@@ -73,6 +74,7 @@ export class RegionManager {
     // 海面、天空與遠景由 StylizedWorld 負責；這裡建 5 座島的地面、山崖、欄杆、樹與 4 座石拱橋
     const walk = getGlobalWalkableZones();
     const trees = new TreeBatch();
+    const grass = new GrassBatch();
     ALL_REGION_IDS.forEach((id, i) => {
       const manifest = REGION_CONFIGS[id];
       const [cx, cz] = manifest.center;
@@ -89,7 +91,8 @@ export class RegionManager {
           landmark: manifest.landmark,
           seed: 101 + i * 17,
         },
-        trees
+        trees,
+        grass
       );
       this.archipelagoBaseGroup.add(island);
     });
@@ -97,6 +100,7 @@ export class RegionManager {
       this.archipelagoBaseGroup.add(createStyledBridge(bridge));
     }
     this.archipelagoBaseGroup.add(trees.build());
+    this.archipelagoBaseGroup.add(grass.build());
   }
 
   private setStatus(status: RegionStatus, progress: number = 0) {
@@ -150,14 +154,17 @@ export class RegionManager {
     await new Promise((r) => setTimeout(r, 35));
 
     // 2. Walk-In Hollow Main Buildings (主要建築物內皆可走入)
+    const extraColliders: Collider[] = [];
     for (const b of manifest.buildings) {
-      group.add(createStyledBuilding(b));
+      const bld = createStyledBuilding(b);
+      group.add(bld);
+      if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
       // 讓出主執行緒，載入時畫面不會卡住
       await new Promise((r) => setTimeout(r, 0));
     }
 
     // 3. Debug Collider Wireframe Group
-    const colliderDebugGroup = createColliderWireframes(manifest.colliders);
+    const colliderDebugGroup = createColliderWireframes([...manifest.colliders, ...extraColliders]);
     colliderDebugGroup.visible = this.showColliderWireframes;
     group.add(colliderDebugGroup);
 
@@ -169,7 +176,8 @@ export class RegionManager {
       sceneGroup: group,
       colliderDebugGroup,
       buildings: manifest.buildings,
-      colliders: manifest.colliders,
+      // 原本的牆＋門口石獅、盆栽
+      colliders: [...manifest.colliders, ...extraColliders],
     };
   }
 

@@ -22,6 +22,18 @@ import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { BuildingInteractionModal } from './BuildingInteractionModal';
 import { DevStatsPanel } from './DevStatsPanel';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
+import { setTextureAnisotropy } from './stylized/textures';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+
+/** 電腦、平板等效能較好的裝置預設開精緻畫質；手機預設流暢 */
+const detectFancyDefault = () => {
+  if (typeof window === 'undefined') return false;
+  const touch = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
+  return !touch && window.innerWidth >= 900 && (navigator.hardwareConcurrency || 4) >= 4;
+};
 import './kingdomUi.css';
 import {
   AlertCircle,
@@ -56,6 +68,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
   const worldRef = useRef<StylizedWorld | null>(null);
+  const fancyRef = useRef<boolean>(detectFancyDefault());
+  const composerRef = useRef<EffectComposer | null>(null);
+  const bloomRef = useRef<UnrealBloomPass | null>(null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('dusk');
 
   // Safe player pose for error recovery
@@ -76,7 +91,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Settings & Dev stats
   const [quality, setQuality] = useState<QualitySettings>({
     resolutionScale: 1.0,
-    shadows: false,
+    shadows: detectFancyDefault(),
+    fancy: detectFancyDefault(),
     renderDistance: 220,
     headBob: true,
     sensitivity: 1.0,
@@ -200,18 +216,29 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       depth: true,
     });
     renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio || 1, 1.5) * quality.resolutionScale
+      Math.min(window.devicePixelRatio || 1, fancyRef.current ? 2 : 1.5) * quality.resolutionScale
     );
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = quality.shadows;
-    renderer.shadowMap.type = THREE.BasicShadowMap;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
     container.appendChild(renderer.domElement);
 
     // 4. 天空、海面、遠景、光源與晝夜（東方奇幻風格）
     const world = new StylizedWorld(scene, renderer);
-    world.setShadows(quality.shadows);
+    world.setShadows(fancyRef.current);
     worldRef.current = world;
+    setTextureAnisotropy(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
+
+    // 精緻畫質：HDR＋反鋸齒的後製（燈籠、窗紙、寶珠會泛光）
+    const rt = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, samples: 4 });
+    const composer = new EffectComposer(renderer, rt);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), world.bloomStrength, 0.55, 0.88);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+    composerRef.current = composer;
+    bloomRef.current = bloom;
 
     // 5. FirstPersonControls
     const controls = new FirstPersonControls(camera, renderer.domElement, quality);
@@ -255,6 +282,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      composer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
 
@@ -328,7 +356,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if ((lodTick = (lodTick + 1) % 15) === 0) regionManager.updateInteriorLod(camera.position.x, camera.position.z);
 
       // Render Scene
-      renderer.render(scene, camera);
+      if (fancyRef.current) {
+        bloom.strength = world.bloomStrength;
+        composer.render(delta);
+      } else {
+        renderer.render(scene, camera);
+      }
 
       // Update Performance Stats
       const stats = perfMonitorRef.current.update(renderer);
@@ -384,6 +417,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       regionManager.disposeAll();
       world.dispose();
       worldRef.current = null;
+      composer.dispose();
+      rt.dispose();
+      composerRef.current = null;
       if ((window as any).__kingdom) delete (window as any).__kingdom;
 
       if (renderer.domElement && renderer.domElement.parentNode) {
@@ -563,6 +599,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         isDesktopPointerLocked={isDesktopPointerLocked}
         onDesktopRequestLock={() => {
           controlsRef.current?.lockPointer();
+        }}
+        isFancy={Boolean(quality.fancy)}
+        onToggleFancy={() => {
+          const next = !quality.fancy;
+          fancyRef.current = next;
+          worldRef.current?.setShadows(next);
+          if (rendererRef.current) {
+            rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio || 1, next ? 2 : 1.5) * quality.resolutionScale);
+            const sz = rendererRef.current.getSize(new THREE.Vector2());
+            composerRef.current?.setSize(sz.x, sz.y);
+          }
+          handleChangeQuality({ fancy: next, shadows: next });
         }}
         timeOfDay={timeOfDay}
         onCycleTimeOfDay={() => {
