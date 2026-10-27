@@ -258,6 +258,35 @@ export function bridgeRailRange(b: { x1: number; z1: number; x2: number; z2: num
   return t1 > t0 ? [t0, t1] : [0, 1];
 }
 
+/** 橋上釣客的位置：每座橋兩位，坐在欄杆內側、面向橋外（碰撞也用這份） */
+export function bridgeAnglerSpots(): { id: string; x: number; z: number; y: number; faceYaw: number }[] {
+  const out: { id: string; x: number; z: number; y: number; faceYaw: number }[] = [];
+  WORLD_BRIDGES.forEach((b, bi) => {
+    const dx = b.x2 - b.x1;
+    const dz = b.z2 - b.z1;
+    const len = Math.hypot(dx, dz);
+    const nx = -dz / len;
+    const nz = dx / len;
+    [
+      [0.36, 1],
+      [0.64, -1],
+    ].forEach(([t, side], k) => {
+      const off = (b.halfWidth - 0.75) * side;
+      const ox = nx * side;
+      const oz = nz * side;
+      out.push({
+        id: `${b.id}-angler-${k}`,
+        x: b.x1 + dx * t + nx * off,
+        z: b.z1 + dz * t + nz * off,
+        y: Math.sin(t * Math.PI) * b.bridgeMaxHeight,
+        // 面向橋外（本地 +Z 朝外）
+        faceYaw: Math.atan2(ox, oz) + (bi % 2 ? 0.08 : -0.08),
+      });
+    });
+  });
+  return out;
+}
+
 export function getBridgeSideColliders(): Collider[] {
   const list: Collider[] = [];
   for (const b0 of WORLD_BRIDGES) {
@@ -809,6 +838,8 @@ export const REGION_HOME: RegionManifest = {
   plazaColorHex: 0xe7e5e4,
   walkableZones: getGlobalWalkableZones(),
   colliders: [
+    // 橋上的釣客（坐著，繞過去就好）
+    ...bridgeAnglerSpots().map((p) => ({ id: p.id, type: 'cylinder' as const, x: p.x, z: p.z, radius: 0.55 })),
     // 大燈泡雕像（石座＋一圈望柱，半徑約 5 公尺）
     { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 4.6 },
     ...homeBuildings.flatMap(generateBuildingWallColliders),

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Collider } from '../types';
 import { localToWorldXZ } from '../regionConfigs';
 import { getStyleMaterials, buildRoofTier, mergeByMaterial, LanternBatch, scaledBox } from './architecture';
-import { signboardTexture, coupletTexture } from './textures';
+import { signboardTexture, coupletTexture, scrollPaintingTexture } from './textures';
 import { makePickProxy } from '../picking';
 import { DOOR_COUPLETS } from '../couplets';
 
@@ -181,6 +181,73 @@ export function createTulouShell(b: TulouInput): THREE.Group {
   for (const s of [-1, 1]) lanterns.addHanging(s * (gateW / 2 + 1.5), gateH - 0.2, fz + 1.0, 1.1);
   for (let k = 0; k < 3; k++) add(scaledBox(gateW + 2.6 - k * 0.4, 0.16, 0.6, 1.5, 0.16, 1.5), mats.stoneLight, 0, 0.08 + (2 - k) * 0.0, fz + 1.6 + k * 0.55);
 
+  // 天井西側：創點舞台（戲台：台基、紅柱、小屋頂、背幕與匾額、台前石階）
+  {
+    const sg = new THREE.Group();
+    sg.position.set(-12.0, 0, 0);
+    sg.rotation.y = Math.PI / 2; // 台口朝東（朝中央樓閣與大門方向）
+    body.add(sg);
+    const sw = 6.0;
+    const sd = 2.8;
+    const sh = 0.85;
+    const a2 = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      sg.add(m);
+      return m;
+    };
+    a2(scaledBox(sw, sh, sd, 1.5, sh, 1.5), mats.stone, 0, sh / 2, 0);
+    a2(scaledBox(sw - 0.2, 0.08, sd - 0.2, 2, 0.08, 2), mats.woodFloor, 0, sh + 0.04, 0);
+    a2(new THREE.BoxGeometry(sw - 0.6, 0.05, sd * 0.6), mats.rug, 0, sh + 0.1, 0.1);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a2(new THREE.CylinderGeometry(0.15, 0.17, 2.6, 10), mats.redLacquer, sx * (sw / 2 - 0.2), sh + 1.3, sz * (sd / 2 - 0.2));
+    a2(new THREE.BoxGeometry(sw + 0.2, 0.3, 0.3), mats.redLacquer, 0, sh + 2.6, sd / 2 - 0.2);
+    // 背幕：山水畫
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(sw - 0.6, 2.3), new THREE.MeshStandardMaterial({ map: scrollPaintingTexture(5), roughness: 0.9 }));
+    back.position.set(0, sh + 1.3, -sd / 2 + 0.15);
+    back.userData.noMerge = true;
+    sg.add(back);
+    a2(new THREE.BoxGeometry(sw - 0.4, 2.5, 0.12), mats.darkWood, 0, sh + 1.3, -sd / 2 + 0.06);
+    const smat = new THREE.MeshStandardMaterial({ map: signboardTexture('創點舞台', '提案發表・創星季'), roughness: 0.55 });
+    const splaque = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.62, 0.1), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, smat, mats.darkWood]);
+    splaque.position.set(0, sh + 2.95, sd / 2 - 0.15);
+    splaque.userData.noMerge = true;
+    sg.add(splaque);
+    const sroof = buildRoofTier(sw, sd, { rise: 0.55, overhang: 0.45, curl: 0.3, theme: 'red', ridge: true, lite: true, horns: false });
+    sroof.position.y = sh + 2.75;
+    sroof.scale.y = 0.85;
+    sg.add(sroof);
+    for (let k = 0; k < 3; k++) a2(scaledBox(2.2, 0.28, 0.4, 1, 0.28, 1), mats.stoneLight, 0, sh - 0.14 - k * 0.28, sd / 2 + 0.2 + k * 0.4);
+    for (const sx of [-1, 1]) lanterns.addHanging(-12.0 + 0, sh + 2.35, sx * (sw / 2 - 0.3), 0.7);
+  }
+  // 天井東側：提案桌（長案、卷軸、筆墨、匾額、兩張圓凳）
+  {
+    const tg = new THREE.Group();
+    tg.position.set(12.0, 0, 0);
+    tg.rotation.y = -Math.PI / 2;
+    body.add(tg);
+    const a2 = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      tg.add(m);
+      return m;
+    };
+    a2(new THREE.BoxGeometry(2.8, 0.1, 1.1), mats.redLacquer, 0, 0.82, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) a2(new THREE.BoxGeometry(0.1, 0.78, 0.1), mats.darkWood, sx * 1.25, 0.39, sz * 0.45);
+    for (const [x, z] of [[-0.8, 0.05], [0.1, -0.1], [0.75, 0.15]] as [number, number][]) {
+      const roll = a2(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 10), mats.plaster, x, 0.94, z);
+      roll.rotation.z = Math.PI / 2;
+    }
+    a2(new THREE.BoxGeometry(0.3, 0.05, 0.22), mats.ridges.slate, 1.05, 0.9, -0.25);
+    a2(new THREE.CylinderGeometry(0.09, 0.08, 0.24, 10), mats.pot, -1.1, 0.99, -0.3);
+    const tmat = new THREE.MeshStandardMaterial({ map: signboardTexture('提案桌', '把點子寫成提案'), roughness: 0.55 });
+    const tplaque = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.06), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, tmat, mats.darkWood]);
+    tplaque.position.set(0, 1.12, -0.45);
+    tplaque.rotation.x = -0.2;
+    tplaque.userData.noMerge = true;
+    tg.add(tplaque);
+    for (const sx of [-0.7, 0.7]) a2(new THREE.CylinderGeometry(0.24, 0.2, 0.46, 12), mats.redLacquer, sx, 0.23, 0.95);
+  }
+
   mergeByMaterial(body);
   root.add(lanterns.build());
 
@@ -206,6 +273,20 @@ export function createTulouShell(b: TulouInput): THREE.Group {
     const [dx, dz] = localToWorldXZ(b.position.x, b.position.z, b.facingYaw, s * (gateW / 2 + 0.45), fz + 0.7);
     colliders.push({ id: `${b.id}-drum-${s}`, type: 'cylinder', x: dx, z: dz, radius: 0.5 } as Collider);
   }
+  // 舞台與提案桌的碰撞＋點擊範圍
+  const rect = (id: string, cx0: number, cz0: number, hw: number, hd: number) => {
+    const corners: [number, number][] = [[cx0 - hw, cz0 - hd], [cx0 + hw, cz0 - hd], [cx0 + hw, cz0 + hd], [cx0 - hw, cz0 + hd]];
+    corners.forEach(([ax, az], i) => {
+      const [bx2, bz2] = corners[(i + 1) % 4];
+      const [x1, z1] = localToWorldXZ(b.position.x, b.position.z, b.facingYaw, ax, az);
+      const [x2, z2] = localToWorldXZ(b.position.x, b.position.z, b.facingYaw, bx2, bz2);
+      colliders.push({ id: `${b.id}-${id}-${i}`, type: 'segment', x1, z1, x2, z2, halfThickness: 0.15 } as Collider);
+    });
+  };
+  rect('stage', -12.0, 0, 1.6, 3.1);
+  rect('ptable', 12.0, 0, 0.65, 1.5);
+  root.add(makePickProxy(3.6, 4.0, 6.4, -12.0, 0, 0, { kind: 'feature', id: 'stage' }));
+  root.add(makePickProxy(1.8, 1.8, 3.2, 12.0, 0, 0, { kind: 'feature', id: 'proposal' }));
   root.userData.colliders = colliders;
   // 點外牆也能打開創點樓介紹
   root.add(makePickProxy(R * 2 + 1, H + 2.5, R * 2 + 1, 0, 0, 0, { kind: 'building', id: b.id }));

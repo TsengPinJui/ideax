@@ -124,3 +124,28 @@ export function openInNewTab(path: string) {
   }
   return false;
 }
+
+/** 創點樓一樓天井裡的設施：舞台、提案桌（點了在左側顯示說明與按鈕） */
+export const FEATURE_INFO: Record<'stage' | 'proposal', { title: string; badge: string; sub: string; desc: string; actions: KingdomActionButton[] }> = {
+  stage: {
+    title: '創點舞台',
+    badge: '創點樓・一樓',
+    sub: '提案發表・創星季',
+    desc: '天井西側的戲台，是發表提案、創星季競賽與活動的舞台。',
+    actions: [
+      { label: '前往創星季', hint: '競賽說明、賽程與報名', action: mod('star_season'), primary: true },
+      { label: '逛創點子提案', hint: '大家發表的創新提案', action: mod('ideas_feed') },
+    ],
+  },
+  proposal: {
+    title: '提案桌',
+    badge: '創點樓・一樓',
+    sub: '把點子寫成創新提案',
+    desc: '看完懸賞牆上的痛點，有了解法就在這張桌子寫成創新提案。',
+    actions: [
+      { label: '發表創新提案', hint: '在新分頁填寫', action: mod('create_proposal'), primary: true },
+      { label: '逛創點子提案', action: mod('ideas_feed') },
+      { label: '報名創星季', action: mod('star_season') },
+    ],
+  },
+};

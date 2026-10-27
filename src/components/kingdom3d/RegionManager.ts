@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import { makePickProxy } from './picking';
+import { createVillagers } from './stylized/villagers';
 import { createTulouShell, TULOU_RADIUS } from './stylized/tulou';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
@@ -114,6 +115,8 @@ export class RegionManager {
     for (const bridge of WORLD_BRIDGES) {
       this.archipelagoBaseGroup.add(createStyledBridge(bridge));
     }
+    // 河邊草地的村民與橋上釣客
+    this.archipelagoBaseGroup.add(createVillagers());
     this.archipelagoBaseGroup.add(trees.build());
     this.archipelagoBaseGroup.add(grass.build());
   }

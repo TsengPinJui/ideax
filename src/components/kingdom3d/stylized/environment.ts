@@ -83,8 +83,8 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     hemiSky: 0xffe2c0, hemiGround: 0x6d5446, hemiIntensity: 0.95, ambient: 0.22,
     fog: 0xf0c49c, fogNear: 120, fogFar: 560,
     deep: 0x1f4f63, shallow: 0x3f7d80, waterSky: 0xf2a877, glint: 1.4,
-    lantern: 1.5, lamp: 1.1, windows: 0.45, glowOpacity: 0.42, glowSize: 2.4, orb: 1.6,
-    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.42,
+    lantern: 1.2, lamp: 0.95, windows: 0.4, glowOpacity: 0.28, glowSize: 2.0, orb: 1.3,
+    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.26,
   },
   night: {
     top: 0x060c22, horizon: 0x1d2b4f, bottom: 0x0b1226,
@@ -92,8 +92,9 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     hemiSky: 0x3a4f88, hemiGround: 0x1a1418, hemiIntensity: 0.75, ambient: 0.2,
     fog: 0x15203b, fogNear: 70, fogFar: 420,
     deep: 0x07142a, shallow: 0x123049, waterSky: 0x223a66, glint: 0.9,
-    lantern: 3.2, lamp: 2.6, windows: 1.35, glowOpacity: 0.95, glowSize: 3.0, orb: 2.6,
-    exposure: 1.2, stars: 1, moon: true, playerLamp: 2.2, mountain: 0x4a5582, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.85,
+    // 夜晚：燈光柔和一點，避免泛光太暈、太刺眼
+    lantern: 1.7, lamp: 1.4, windows: 0.75, glowOpacity: 0.38, glowSize: 2.1, orb: 1.5,
+    exposure: 1.12, stars: 1, moon: true, playerLamp: 1.8, mountain: 0x4a5582, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.3,
   },
 };
 
@@ -880,15 +881,18 @@ export class StylizedWorld {
     this.cloudMat.opacity = p.cloudOpacity;
     this.waterfalls.forEach((m) => m.color.setHex(t === 'night' ? 0x8fa6cc : t === 'dusk' ? 0xffe6cc : 0xffffff));
     if (t === 'night') {
-      this.petalMat.color.setHex(0xd8ff7a);
+      // 螢火蟲：顏色淡一點、少一點亮度，夜裡不刺眼
+      this.petalMat.color.setHex(0x8fae55);
       this.petalMat.map = glowTexture();
       this.petalMat.blending = THREE.AdditiveBlending;
-      this.petalMat.size = 0.3;
+      this.petalMat.size = 0.26;
+      this.petalMat.opacity = 0.45;
     } else {
       this.petalMat.color.setHex(0xffb7cf);
       this.petalMat.map = petalTexture();
       this.petalMat.blending = THREE.NormalBlending;
       this.petalMat.size = 0.22;
+      this.petalMat.opacity = 1;
     }
     this.petalMat.needsUpdate = true;
   }

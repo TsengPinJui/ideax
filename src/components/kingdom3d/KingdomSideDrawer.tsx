@@ -7,7 +7,7 @@ import { isGameQuestion } from '../../utils/gameClassification';
 import { painForFloor } from './PainFloorModal';
 import { PAIN_FLOORS } from './stylized/painBoard';
 import { STREET_PROPS, StreetProp, StallContent } from './stylized/streets';
-import { actionsForBuilding, KingdomAction, KingdomActionButton } from './buildingActions';
+import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO } from './buildingActions';
 import { isTypingTarget } from './FirstPersonControls';
 import './kingdomUi.css';
 
@@ -20,6 +20,7 @@ export type DrawerState =
   | { kind: 'soso' }
   | { kind: 'jobs' }
   | { kind: 'job'; index: number }
+  | { kind: 'feature'; id: 'stage' | 'proposal' }
   | { kind: 'question'; question: Question; back: DrawerState | null };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
@@ -185,6 +186,9 @@ export const KingdomSideDrawer: React.FC<{
         ...a,
         run: () => (a.action.kind === 'painFloor' ? onChange({ kind: 'painFloor', level: a.action.level }) : onAction(a.action)),
       }));
+    }
+    if (state.kind === 'feature') {
+      return FEATURE_INFO[state.id].actions.map((a) => ({ ...a, run: () => onAction(a.action) }));
     }
     if (state.kind === 'painFloor') {
       return PAIN_FLOORS.map((f, i) => ({ label: f.label, hint: f.sub, primary: i === state.level, run: () => onChange({ kind: 'painFloor', level: i }) }));
@@ -489,6 +493,17 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'feature') {
+    const f = FEATURE_INFO[state.id];
+    body = (
+      <>
+        <Header title={f.title} badge={f.badge} sub={f.sub} onClose={close} />
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          <ActionList actions={actions} />
+          <p className="kx-sub text-[13px] leading-relaxed">{f.desc}</p>
+        </div>
+      </>
+    );
   } else if (state?.kind === 'desk') {
     body = (
       <>
