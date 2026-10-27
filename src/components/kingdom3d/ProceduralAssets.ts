@@ -426,6 +426,7 @@ export function createCourtyardWallMesh(
     group.add(headerCap);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(gateW / 2, 0.22, 10, 28, Math.PI), sm.stoneLight);
     rim.position.set(0, h - 0.8, 0);
+    rim.scale.y = Math.min(1, 2.8 / (gateW / 2));
     group.add(rim);
     const lan = new LanternBatch();
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) lan.addHanging(sx * (gateW / 2 + 0.9), h - 0.6, sz * 0.75, 0.95);

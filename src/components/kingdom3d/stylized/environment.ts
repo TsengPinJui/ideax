@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeStreetMaterials } from './streets';
 import {
   getStyleMaterials,
   disposeStyleMaterials,
@@ -870,6 +871,7 @@ export class StylizedWorld {
     });
     this.ownedTextures.forEach((t) => t.dispose());
     disposeStyleMaterials();
+    disposeStreetMaterials();
   }
 }
 

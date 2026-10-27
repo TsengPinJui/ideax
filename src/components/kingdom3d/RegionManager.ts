@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import {
   RegionId,
   RegionStatus,
@@ -89,7 +90,10 @@ export class RegionManager {
           walkRz: ell && ell.type === 'ellipse' ? ell.rz : manifest.islandRadiusZ - 0.5,
           plazaRadius: manifest.plazaRadius,
           bridges: WORLD_BRIDGES,
-          avoid: manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: Math.max(b.width, b.depth) / 2 + 1 })),
+          avoid: [
+            ...manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: Math.max(b.width, b.depth) / 2 + 1 })),
+            ...streetAvoidAreas(id),
+          ],
           landmark: manifest.landmark,
           seed: 101 + i * 17,
         },
@@ -163,6 +167,13 @@ export class RegionManager {
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
       // 讓出主執行緒，載入時畫面不會卡住
       await new Promise((r) => setTimeout(r, 0));
+    }
+
+    // 商店街、市集攤位、牌坊（街景；四周有碰撞）
+    const street = createStreetProps(manifest.id);
+    if (street) {
+      group.add(street);
+      extraColliders.push(...(street.userData.colliders as Collider[]));
     }
 
     // 3. Debug Collider Wireframe Group

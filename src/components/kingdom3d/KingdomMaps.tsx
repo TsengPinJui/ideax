@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { RegionId } from './types';
 import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
+import { STREET_PROPS } from './stylized/streets';
 import { BASIN_LANDMARKS, MOUNTAIN_RING, FARMLANDS, landOutline } from './stylized/basinLayout';
 
 /** 遠景地標（與 StylizedWorld 的位置一致） */
@@ -102,6 +103,28 @@ export function WorldMapContent({
                 <rect x={-b.width / 2 + 1.2} y={-b.depth / 2 + 1.2} width={b.width - 2.4} height={b.depth - 2.4} fill="none" stroke="#d9a94a" strokeWidth={0.5} />
               </g>
             ))}
+            {STREET_PROPS[rid].map((p) => (
+              <g key={p.id} transform={`translate(${p.x} ${p.z}) rotate(${(-p.yaw * 180) / Math.PI})`}>
+                {p.kind === 'gate' ? (
+                  <rect x={-p.w / 2} y={-0.5} width={p.w} height={1} fill="#b3261e" stroke={INK} strokeWidth={0.4} />
+                ) : (
+                  <rect x={-p.w / 2} y={-p.d / 2} width={p.w} height={p.d} fill={p.kind === 'shop' ? '#b86b3c' : '#d9a94a'} stroke={INK} strokeWidth={0.5} rx={0.4} />
+                )}
+              </g>
+            ))}
+            {full && rid === 'region-home' && (
+              <text x={-23} y={1.2} textAnchor="middle" fontSize={3} fill={INK} className="kx-serif" fontWeight={700} transform="rotate(-90 -23 0)">
+                商店街
+              </text>
+            )}
+            {full &&
+              STREET_PROPS[rid]
+                .filter((p) => p.kind === 'gate')
+                .map((p) => (
+                  <text key={`${p.id}-t`} x={p.x} y={p.z - 15} textAnchor="middle" fontSize={3.6} fill={INK} className="kx-serif" fontWeight={700}>
+                    {p.name}市集
+                  </text>
+                ))}
             {full &&
               r.buildings.map((b) => (
                 <text key={`${b.id}-t`} x={b.position.x} y={b.position.z + Math.max(b.width, b.depth) / 2 + 4.5} textAnchor="middle" fontSize={3.6} fill={INK} className="kx-serif" fontWeight={700}>
