@@ -161,7 +161,7 @@ export interface IslandLabelOverlay {
   tier?: 1 | 2 | 3;
 }
 
-export const TOTAL_ISLAND_EASTER_EGGS = 29;
+export const TOTAL_ISLAND_EASTER_EGGS = 35;
 
 interface IslandScene3DProps {
   view: IslandViewTransform;
@@ -1827,9 +1827,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
     const createChineseRoof = (width: number, depth: number, height: number, mat: THREE.Material) => {
       const roofGroup = new THREE.Group();
-      const mainRoof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(width, depth) * 0.78, height, 4), mat);
-      mainRoof.rotation.y = Math.PI / 4;
-      mainRoof.scale.set(width / Math.max(width, depth), 1, depth / Math.max(width, depth));
+      const coneGeo = new THREE.ConeGeometry(Math.SQRT1_2, height, 4);
+      coneGeo.rotateY(Math.PI / 4);
+      const mainRoof = new THREE.Mesh(coneGeo, mat);
+      mainRoof.scale.set(width * 1.08, 1, depth * 1.08);
       mainRoof.position.y = height * 0.5;
       roofGroup.add(mainRoof);
 
@@ -2203,11 +2204,13 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     bulbOuterAuraMesh.position.y = 1.15;
     bulbGroup.add(bulbOuterAuraMesh);
 
-    // 5.5 小燈泡隱藏表情與雙手（平常是無臉雕像；點擊時露出微笑表情、招手並快速轉一圈）
+    // 5.5 小燈泡隱藏表情與雙手（平常是無臉雕像；點擊時露出微笑表情、招手並快速轉一圈，同時觸發小燈泡專屬彩蛋）
     bulbGroup.userData = {
       isXiaoDengPaoStatue: true,
       islandId: 'home',
       districtId: 'home-plaza',
+      easterEggPoem: '「找到了小燈泡！當燈泡亮起，就是又有好點子了！」',
+      easterEggKind: 'agent',
     };
     const xiaoDengPaoFeaturesGroup = new THREE.Group();
     xiaoDengPaoFeaturesGroup.visible = false;
@@ -3892,13 +3895,13 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     // =========================================================
-    // 6. BOTTOM-RIGHT ISLAND (徵才島 · 翰林院 · 求職廟 · 江南園林庭院與月洞門)
+    // 6. BOTTOM-RIGHT ISLAND (徵才島 · 翰林院 · 求職廟 · 寬敞江南園林庭院與月洞門)
     // =========================================================
-    const careerBase = createIslandBase('career', 32, 24, 15.4, 13.8, 3.4);
+    const careerBase = createIslandBase('career', 32, 24, 19.2, 16.8, 3.4);
     const careerY = careerBase.topY;
 
     const hanlinGroup = new THREE.Group();
-    hanlinGroup.position.set(-4.6, careerY, -2.6);
+    hanlinGroup.position.set(-6.0, careerY, -3.2);
     hanlinGroup.rotation.y = -Math.PI / 6;
     careerBase.group.add(hanlinGroup);
 
@@ -3937,7 +3940,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     });
 
     const templeGroup = new THREE.Group();
-    templeGroup.position.set(3.2, careerY, -0.5);
+    templeGroup.position.set(4.5, careerY, -1.2);
     templeGroup.rotation.y = -Math.PI / 6;
     careerBase.group.add(templeGroup);
 
@@ -4005,35 +4008,35 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     gardenCourtyard.rotation.y = -Math.PI / 6;
     careerBase.group.add(gardenCourtyard);
 
-    // (1) 江南園林青石板庭院鋪地與十字花街石徑（參照圖1、圖4濕潤青石板庭院）
+    // (1) 寬敞開闊的江南園林青石板庭院鋪地與十字花街石徑（大幅外擴圍牆範圍，讓翰林院與求職廟周圍留有充裕庭院空間）
     const courtyardPaving = new THREE.Mesh(
-      new THREE.BoxGeometry(15.2, 0.08, 10.6),
+      new THREE.BoxGeometry(24.6, 0.08, 16.8),
       mats.stonePlaza,
     );
     courtyardPaving.position.set(0, 0.04, -0.4);
     gardenCourtyard.add(courtyardPaving);
 
     // 青石板分格條紋與中軸步石（營造圖1、圖4青石磚縫質感）
-    for (let sx = -6.8; sx <= 6.8; sx += 1.7) {
+    for (let sx = -11.2; sx <= 11.2; sx += 2.24) {
       const seamLine = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.095, 10.4),
+        new THREE.BoxGeometry(0.08, 0.095, 16.4),
         mats.stoneGrey,
       );
       seamLine.position.set(sx, 0.045, -0.4);
       gardenCourtyard.add(seamLine);
     }
-    for (let sz = -5.2; sz <= 4.4; sz += 1.6) {
+    for (let sz = -8.0; sz <= 7.2; sz += 2.15) {
       const crossSeam = new THREE.Mesh(
-        new THREE.BoxGeometry(15.0, 0.095, 0.08),
+        new THREE.BoxGeometry(24.2, 0.095, 0.08),
         mats.stoneGrey,
       );
       crossSeam.position.set(0, 0.045, sz);
       gardenCourtyard.add(crossSeam);
     }
 
-    // (2) 園林曲水荷花池與三折青石平橋（位於西苑翰林院前方庭院，參照圖3江南水榭曲廊意境）
+    // (2) 園林曲水荷花池與三折青石平橋（移至西苑開闊前庭 [-6.2, 3.8]，不擠壓建築動線）
     const gardenPondGroup = new THREE.Group();
-    gardenPondGroup.position.set(-4.5, 0.06, 2.35);
+    gardenPondGroup.position.set(-6.2, 0.06, 3.8);
     gardenCourtyard.add(gardenPondGroup);
 
     const pondWater = new THREE.Mesh(
@@ -4394,47 +4397,44 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       return corrGrp;
     };
 
-    // (6) 組裝圍合「翰林院」與「求職廟」的江南園林四面院牆與三座特色園門：
-    // A. 南側正門：粉牆黛瓦「月洞門」（正對下山青石階梯，取代舊牌坊，完美呈現圖1月洞門）
-    const southMainMoonGate = createMoonGateWallSegment(5.4, 2.85, mats.wallCream, true, true);
-    southMainMoonGate.position.set(-1.6, 0, 5.1);
+    // (6) 組裝圍合「翰林院」與「求職廟」的寬敞江南園林四面院牆（外擴至 x = ±12.8, z = -9.2 ~ +8.4，內部開闊不擁擠）：
+    // A. 南側正門：粉牆黛瓦「月洞門」（正對下山青石階梯，完美呈現圖1月洞門）
+    const southMainMoonGate = createMoonGateWallSegment(5.8, 2.85, mats.wallCream, true, true);
+    southMainMoonGate.position.set(-1.2, 0, 8.4);
     gardenCourtyard.add(southMainMoonGate);
 
-    // 南側月洞門左右延伸粉牆黛瓦漏窗院牆（把求職廟與翰林院前方完整圍出庭院）
-    gardenCourtyard.add(createGardenWallSegment(-8.2, 5.1, -4.3, 5.1, 2.45, true, mats.wallCream));
-    gardenCourtyard.add(createGardenWallSegment(1.1, 5.1, 8.2, 5.1, 2.45, true, mats.wallCream));
+    // 南側月洞門左右延伸粉牆黛瓦漏窗院牆（寬敞包圍求職廟與翰林院前庭）
+    gardenCourtyard.add(createGardenWallSegment(-12.8, 8.4, -4.1, 8.4, 2.45, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(1.7, 8.4, 12.8, 8.4, 2.45, true, mats.wallCream));
 
-    // B. 西北迎橋門：粉牆黛瓦「迎客月洞門」（正對主島通往徵才島的青石拱橋頭，過橋即入月洞門）
-    const bridgeWestMoonGate = createMoonGateWallSegment(4.8, 2.75, mats.wallCream, true, true);
-    bridgeWestMoonGate.position.set(-8.2, 0, -2.2);
+    // B. 西北迎橋門：粉牆黛瓦「迎客月洞門」（正對主島通往徵才島的青石拱橋頭，過橋即入寬敞月洞門）
+    const bridgeWestMoonGate = createMoonGateWallSegment(5.2, 2.78, mats.wallCream, true, true);
+    bridgeWestMoonGate.position.set(-12.8, 0, -2.6);
     bridgeWestMoonGate.rotation.y = Math.PI / 2;
     gardenCourtyard.add(bridgeWestMoonGate);
 
     // 西側南北兩段粉牆圍牆（與迎客月洞門無縫相接）
-    gardenCourtyard.add(createGardenWallSegment(-8.2, -5.8, -8.2, -4.6, 2.45, false, mats.wallCream));
-    gardenCourtyard.add(createGardenWallSegment(-8.2, 0.2, -8.2, 5.1, 2.45, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(-12.8, -9.2, -12.8, -5.2, 2.45, true, mats.wallCream));
+    gardenCourtyard.add(createGardenWallSegment(-12.8, 0.0, -12.8, 8.4, 2.45, true, mats.wallCream));
 
-    // C. 北側後院：粉牆黛瓦圍牆 + 江南飛簷抄手游廊（參照圖3游廊緊貼北側白牆）
-    gardenCourtyard.add(createGardenWallSegment(-8.2, -5.8, 8.2, -5.8, 2.55, true, mats.wallCream));
-    const northCorridor = createGardenCoveredCorridor(-7.4, -5.0, 7.4, -5.0);
+    // C. 北側後院：粉牆黛瓦圍牆 + 江南飛簷抄手游廊（退至 z = -9.2，讓翰林院與求職廟後方留有寬敞後院）
+    gardenCourtyard.add(createGardenWallSegment(-12.8, -9.2, 12.8, -9.2, 2.55, true, mats.wallCream));
+    const northCorridor = createGardenCoveredCorridor(-11.6, -8.3, 11.6, -8.3);
     gardenCourtyard.add(northCorridor);
 
-    // D. 東側院牆：粉牆黛瓦圍牆 + 東側飛簷游廊
-    gardenCourtyard.add(createGardenWallSegment(8.2, -5.8, 8.2, 5.1, 2.45, true, mats.wallCream));
-    const eastCorridor = createGardenCoveredCorridor(7.4, -4.6, 7.4, 4.3);
+    // D. 東側院牆：粉牆黛瓦圍牆 + 東側飛簷游廊（外推至 x = +12.8，不擠壓求職廟）
+    gardenCourtyard.add(createGardenWallSegment(12.8, -9.2, 12.8, 8.4, 2.45, true, mats.wallCream));
+    const eastCorridor = createGardenCoveredCorridor(11.9, -7.8, 11.9, 7.2);
     gardenCourtyard.add(eastCorridor);
 
-    // E. 中庭分隔景牆（位於「翰林院」與「求職廟」之間 x = -0.85，參照圖4朱紅園林雲牆 + 月洞門，將兩者圍成東西相通的雙進園林庭院）
-    const innerDividerGate = createMoonGateWallSegment(4.6, 2.68, mats.vermilion, true, false);
-    innerDividerGate.position.set(-0.85, 0, 1.45);
+    // E. 庭院雅致半開放朱紅月洞門景牆（位於前庭中軸微偏西 x = -1.2, z = 4.6，僅作短段借景雲牆，不阻斷兩館之間寬敞的中庭廣場）
+    const innerDividerGate = createMoonGateWallSegment(4.6, 2.62, mats.vermilion, true, false);
+    innerDividerGate.position.set(-1.2, 0, 5.2);
     innerDividerGate.rotation.y = Math.PI / 2;
     gardenCourtyard.add(innerDividerGate);
+    gardenCourtyard.add(createGardenWallSegment(-1.2, 7.5, -1.2, 8.4, 2.38, false, mats.vermilion));
 
-    // 中庭北段朱紅景牆（連接北游廊與中庭月洞門，參照圖4紅牆黛瓦與青石地面）
-    gardenCourtyard.add(createGardenWallSegment(-0.85, -4.8, -0.85, -0.85, 2.38, true, mats.vermilion));
-    gardenCourtyard.add(createGardenWallSegment(-0.85, 3.75, -0.85, 5.1, 2.38, false, mats.vermilion));
-
-    // (7) 園林翠竹叢與弧形石砌花壇假山（100% 參照圖2：月洞門旁修竹掩映、太湖石假山與弧形矮石欄花壇）
+    // (7) 園林翠竹叢與弧形石砌花壇假山（佈置於寬敞四隅與月洞門旁，不佔用中央走道）
     const createBambooGroveWithPlanter = (bx: number, bz: number, stalkCount = 11) => {
       const bGrp = new THREE.Group();
       bGrp.position.set(bx, 0, bz);
@@ -4493,30 +4493,30 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       return bGrp;
     };
 
-    // 在南側月洞門畔、西北迎客月洞門畔、中庭紅牆轉角與東北廊角佈置翠竹假山花壇
-    gardenCourtyard.add(createBambooGroveWithPlanter(-4.2, 4.15, 11));
-    gardenCourtyard.add(createBambooGroveWithPlanter(0.95, 4.15, 9));
-    gardenCourtyard.add(createBambooGroveWithPlanter(-6.8, -4.1, 10));
-    gardenCourtyard.add(createBambooGroveWithPlanter(6.4, -3.8, 10));
+    // 在寬敞院落四角與月洞門畔佈置翠竹假山花壇
+    gardenCourtyard.add(createBambooGroveWithPlanter(-10.5, 6.6, 11));
+    gardenCourtyard.add(createBambooGroveWithPlanter(9.8, 6.6, 9));
+    gardenCourtyard.add(createBambooGroveWithPlanter(-10.8, -6.8, 10));
+    gardenCourtyard.add(createBambooGroveWithPlanter(10.2, -6.5, 10));
 
-    // 南側月洞門正前方下山青石階梯（與南側月洞門無縫對齊）
+    // 南側月洞門正前方下山青石階梯（隨外擴南門順移）
     for (let s = 0; s < 6; s++) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.72), mats.stoneStep);
-      step.position.set(-2.2 - s * 0.35, careerY - s * 0.24, 6.8 + s * 0.58);
+      const step = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.28, 0.72), mats.stoneStep);
+      step.position.set(-2.6 - s * 0.35, careerY - s * 0.24, 9.6 + s * 0.58);
       step.rotation.y = -Math.PI / 6;
       careerBase.group.add(step);
     }
 
     const careerRockBamboo = createTaihuRockAndBamboo(1.15);
-    careerRockBamboo.position.set(9.2, careerY, -6.2);
+    careerRockBamboo.position.set(13.2, careerY, -8.2);
     careerBase.group.add(careerRockBamboo);
 
     // 徵才島圍牆外圍水岸垂柳與桃花樹點綴
     [
-      [10.2, 3.8, 1.2],
-      [-10.2, 2.8, 1.15],
-      [9.5, -5.8, 1.1],
-      [-6.8, -8.5, 1.08],
+      [14.2, 5.2, 1.2],
+      [-14.2, 4.2, 1.15],
+      [13.6, -7.8, 1.1],
+      [-9.8, -11.2, 1.08],
     ].forEach(([tx, tz, sc], idx) => {
       const tree = idx % 2 === 0 ? createWillowTree(sc) : createSakuraTree(sc);
       tree.position.set(tx, careerY, tz);
@@ -4882,10 +4882,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       landGrp.add(grassTop);
 
       const landSurfaceY = topHeight + 0.24;
+      const inwardSignX = cx === 0 ? 1 : -Math.sign(cx);
+      const inwardSignZ = cz === 0 ? 1 : -Math.sign(cz);
       [
-        [-rx * 0.36, -rz * 0.28, 1.06],
-        [rx * 0.36, rz * 0.28, 1.1],
+        [inwardSignX * Math.min(rx * 0.35, 5.2), inwardSignZ * Math.min(rz * 0.25, 3.6), 1.06],
+        [inwardSignX * Math.min(rx * 0.15, 2.4), -inwardSignZ * Math.min(rz * 0.22, 3.2), 1.08],
       ].forEach(([tx, tz, sc], tIdx) => {
+        const worldTreeX = cx + tx;
+        const worldTreeZ = cz + tz;
+        // 確保靠近山腳處的樹木絕不直接碰觸山腳
+        if (Math.hypot(worldTreeX / 1.08, worldTreeZ / 0.94) > 50.5) return;
         const tree = tIdx % 2 === 0 ? createWillowTree(sc) : createSakuraTree(sc);
         tree.position.set(tx, landSurfaceY, tz);
         landGrp.add(tree);
@@ -4906,30 +4912,30 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       rotY?: number;
       topHeight?: number;
     }> = [
-      // 1. 北岸左右兩座大型有機農田島（中央留出寬闊水道直通北山洞口 [0, -50.5]）
-      { cx: -26.0, cz: -44.5, rx: 14.5, rz: 6.5, seed: 1.4, rotY: 0.05, topHeight: 0.62 },
-      { cx: 26.0, cz: -44.5, rx: 14.5, rz: 6.5, seed: 2.8, rotY: -0.05, topHeight: 0.62 },
+      // 1. 北岸左右兩座大型有機農田陸地（外緣向北擴大直連北山山腳，中央留出寬闊水道直通北山飛瀑）
+      { cx: -30.5, cz: -47.5, rx: 19.5, rz: 12.2, seed: 1.4, rotY: 0.04, topHeight: 0.62 },
+      { cx: 30.5, cz: -47.5, rx: 19.5, rz: 12.2, seed: 2.8, rotY: -0.04, topHeight: 0.62 },
 
-      // 2. 西岸紅圈區域全面填滿，並將內側岸線往外退至 x ≈ -31.5，確保與主島之間的水道寬敞通暢
-      { cx: -42.5, cz: 0.0, rx: 11.8, rz: 9.2, seed: 4.1, rotY: 0.0, topHeight: 0.65 },
-      { cx: -45.5, cz: -13.5, rx: 14.5, rz: 11.8, seed: 4.3, rotY: 0.08, topHeight: 0.65 },
-      { cx: -45.5, cz: 13.5, rx: 14.5, rz: 11.8, seed: 4.7, rotY: -0.08, topHeight: 0.65 },
-      { cx: -54.0, cz: 0.0, rx: 12.0, rz: 28.5, seed: 9.7, rotY: 0.0, topHeight: 0.63 },
-      { cx: -46.5, cz: -34.0, rx: 13.5, rz: 9.5, seed: 10.3, rotY: 0.12, topHeight: 0.62 },
-      { cx: -46.5, cz: 34.0, rx: 13.5, rz: 9.5, seed: 11.1, rotY: -0.12, topHeight: 0.62 },
+      // 2. 西岸田園陸地（外緣向西擴大與西山山腳無縫銜接，內緣維持原位不影響內圈水道）
+      { cx: -48.5, cz: 0.0, rx: 17.5, rz: 11.5, seed: 4.1, rotY: 0.0, topHeight: 0.65 },
+      { cx: -50.5, cz: -15.5, rx: 19.0, rz: 13.5, seed: 4.3, rotY: 0.06, topHeight: 0.65 },
+      { cx: -50.5, cz: 15.5, rx: 19.0, rz: 13.5, seed: 4.7, rotY: -0.06, topHeight: 0.65 },
+      { cx: -55.5, cz: 0.0, rx: 14.5, rz: 32.0, seed: 9.7, rotY: 0.0, topHeight: 0.63 },
+      { cx: -47.5, cz: -34.5, rx: 16.5, rz: 12.5, seed: 10.3, rotY: 0.12, topHeight: 0.62 },
+      { cx: -47.5, cz: 34.5, rx: 16.5, rz: 12.5, seed: 11.1, rotY: -0.12, topHeight: 0.62 },
 
-      // 3. 東岸陸地往東（山側）退縮至 x ≈ 31.8 外側，大幅拓寬與主島之間的中央水道，同時保留討論島與東岸農田茶園的連綿陸地及南側瀑布河道
-      { cx: 43.5, cz: -4.2, rx: 11.8, rz: 6.8, seed: 5.5, rotY: -0.04, topHeight: 0.65 },
-      { cx: 41.5, cz: -13.5, rx: 10.2, rz: 7.6, seed: 5.9, rotY: -0.15, topHeight: 0.65 },
-      { cx: 48.5, cz: -14.5, rx: 12.2, rz: 12.8, seed: 12.4, rotY: 0.04, topHeight: 0.63 },
-      { cx: 46.5, cz: -34.0, rx: 13.0, rz: 9.5, seed: 12.9, rotY: -0.1, topHeight: 0.62 },
+      // 3. 東岸田園陸地（外緣向東擴大直抵東山山腳，南側保留東山飛瀑河道）
+      { cx: 48.5, cz: -4.2, rx: 17.5, rz: 7.2, seed: 5.5, rotY: -0.04, topHeight: 0.65 },
+      { cx: 49.5, cz: -16.5, rx: 18.5, rz: 12.5, seed: 5.9, rotY: -0.08, topHeight: 0.65 },
+      { cx: 55.5, cz: -16.5, rx: 14.5, rz: 16.5, seed: 12.4, rotY: 0.04, topHeight: 0.63 },
+      { cx: 47.5, cz: -34.5, rx: 16.5, rz: 12.5, seed: 12.9, rotY: -0.1, topHeight: 0.62 },
 
-      // 4. 南岸左右兩座大型有機農田島（中央留出水道直通南山洞口 [0, 52.5]）
-      { cx: -26.0, cz: 44.5, rx: 14.5, rz: 6.5, seed: 6.9, rotY: -0.05, topHeight: 0.62 },
-      { cx: 26.0, cz: 44.5, rx: 14.5, rz: 6.5, seed: 8.3, rotY: 0.05, topHeight: 0.62 },
+      // 4. 南岸左右兩座大型有機農田陸地（外緣向南擴大直連南山山腳，中央留出水道直通南山洞口）
+      { cx: -30.5, cz: 47.5, rx: 19.5, rz: 12.2, seed: 6.9, rotY: -0.04, topHeight: 0.62 },
+      { cx: 30.5, cz: 47.5, rx: 19.5, rz: 12.2, seed: 8.3, rotY: 0.04, topHeight: 0.62 },
 
-      // 5. 東南山麓陸地（位於徵才島 [32, 24] 東南側，避開 z = +4 ~ +15 的東山瀑布河道）
-      { cx: 48.5, cz: 29.5, rx: 11.5, rz: 10.2, seed: 13.8, rotY: -0.08, topHeight: 0.62 },
+      // 5. 東南山麓陸地（位於徵才島東側，向東與向南擴大直連東南群山山腳）
+      { cx: 51.5, cz: 29.5, rx: 16.5, rz: 13.5, seed: 13.8, rotY: -0.08, topHeight: 0.62 },
     ];
 
     organicLandmasses.forEach((lm) => {
@@ -4944,7 +4950,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     createLotusPatch(-7.8, 42, 5);
     createLotusPatch(7.8, 42, 5);
 
-    // 8.4 第一層：32座無縫閉合疊嶂環形山脈（點擊山觸發：「山不在高，有仙則靈」或「我是山神，最怕愚公」）
+    // 8.4 第一層：32座無縫閉合疊嶂環形山脈（山環整體向外退讓，避免任何農田或房屋穿模進山腳）
     const mountainMistPoem = '「坐看雲起時」';
     const mountainPoems = [
       '「山不在高，有仙則靈」',
@@ -4954,24 +4960,24 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     const closedRingCount = 32;
     for (let i = 0; i < closedRingCount; i++) {
       const angle = (i / closedRingCount) * Math.PI * 2;
-      const isSouthCaveArea = i === 7 || i === 8 || i === 9; // 南側水道小洞口後方與兩側山峰退讓，避免山錐掩埋洞口
-      const isNorthWaterfallPeak = i === 24; // 北側飛瀑主峰（與北山疊水飛瀑無縫銜接）
+      const isSouthCaveArea = i === 7 || i === 8 || i === 9; // 南側水道小洞口後方與兩側山峰退讓
+      const isNorthWaterfallPeak = i === 24; // 北側飛瀑主峰
       const isCaveOrWaterfallPeak = isSouthCaveArea || isNorthWaterfallPeak;
       const isWestPagodaPlateau = i === 16; // 痛點島與創意島之間後方的平頂山台 (i=16)
       const isWestPlateauShoulder = i === 15 || i === 17; // 塔樓山台兩側平緩山肩
 
       const radiusBase = isWestPagodaPlateau
-        ? 61.5
+        ? 69.5
         : isWestPlateauShoulder
-        ? 65.5
+        ? 73.5
         : isSouthCaveArea
-        ? 72.5
+        ? 78.5
         : isNorthWaterfallPeak
-        ? 64.5
-        : 69 + Math.sin(i * 1.6) * 3.5;
+        ? 70.5
+        : 76.5 + Math.sin(i * 1.6) * 3.0;
       const mx = Math.cos(angle) * (radiusBase * 1.08);
       const mz = Math.sin(angle) * (radiusBase * 0.94);
-      const mr = isNorthWaterfallPeak ? 16.5 : isSouthCaveArea ? 14.2 : 15.8 + (i % 4) * 1.1;
+      const mr = isNorthWaterfallPeak ? 15.2 : isSouthCaveArea ? 13.5 : 14.2 + (i % 4) * 0.85;
       const mh = 26 + (i % 5) * 2.8;
 
       const peakGrp = new THREE.Group();
@@ -4983,23 +4989,23 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       };
 
       if (isWestPagodaPlateau) {
-        // 塔樓所在區域的山勢平緩開闊：打造寬闊平頂翠微山台（不蓋在尖峰上）
+        // 塔樓所在區域的山勢平緩開闊：打造寬闊平頂翠微山台（不壓迫西岸農田與村舍）
         const lowerSlope = new THREE.Mesh(
-          new THREE.CylinderGeometry(13.8, 22.8, 12.2, 12),
+          new THREE.CylinderGeometry(12.8, 18.5, 12.2, 12),
           mats.mountainGreen,
         );
         lowerSlope.position.y = 6.1;
         peakGrp.add(lowerSlope);
 
         const midTerrace = new THREE.Mesh(
-          new THREE.CylinderGeometry(11.6, 13.8, 3.2, 12),
+          new THREE.CylinderGeometry(11.2, 12.8, 3.2, 12),
           mats.grassLush,
         );
         midTerrace.position.y = 13.8;
         peakGrp.add(midTerrace);
 
         const flatLawnTop = new THREE.Mesh(
-          new THREE.CylinderGeometry(11.2, 11.6, 0.6, 16),
+          new THREE.CylinderGeometry(10.8, 11.2, 0.6, 16),
           mats.grassTop,
         );
         flatLawnTop.position.y = 15.4;
@@ -5008,21 +5014,21 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         // 山台兩側自然緩坡延伸，與南北相鄰山肩柔和銜接
         [-1, 1].forEach((dir) => {
           const wingMound = new THREE.Mesh(
-            new THREE.CylinderGeometry(7.2, 12.5, 13.2, 10),
+            new THREE.CylinderGeometry(6.8, 10.8, 13.2, 10),
             mats.mountainGreen,
           );
-          wingMound.position.set(-1.5, 6.6, dir * 10.2);
+          wingMound.position.set(-1.5, 6.6, dir * 9.8);
           peakGrp.add(wingMound);
 
           const wingCap = new THREE.Mesh(
-            new THREE.CylinderGeometry(6.8, 7.2, 0.6, 10),
+            new THREE.CylinderGeometry(6.4, 6.8, 0.6, 10),
             mats.grassLush,
           );
-          wingCap.position.set(-1.5, 13.3, dir * 10.2);
+          wingCap.position.set(-1.5, 13.3, dir * 9.8);
           peakGrp.add(wingCap);
 
           const plateauPine = createPineTree(1.25);
-          plateauPine.position.set(2.2, 15.6, dir * 7.6);
+          plateauPine.position.set(2.2, 15.6, dir * 7.2);
           peakGrp.add(plateauPine);
         });
 
@@ -5036,14 +5042,14 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         // 塔樓山台左右兩側（i=15, i=17）改為平緩圓頂山肩，讓整片西山區域山勢平緩開闊
         const shoulderH = 15.2;
         const mainShoulder = new THREE.Mesh(
-          new THREE.CylinderGeometry(mr * 0.56, mr * 0.98, shoulderH, 10),
+          new THREE.CylinderGeometry(mr * 0.54, mr * 0.92, shoulderH, 10),
           mats.mountainGreen,
         );
         mainShoulder.position.y = shoulderH * 0.5;
         peakGrp.add(mainShoulder);
 
         const shoulderFlatCap = new THREE.Mesh(
-          new THREE.CylinderGeometry(mr * 0.52, mr * 0.56, 0.7, 10),
+          new THREE.CylinderGeometry(mr * 0.5, mr * 0.54, 0.7, 10),
           mats.grassLush,
         );
         shoulderFlatCap.position.y = shoulderH + 0.25;
@@ -5191,10 +5197,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     };
 
     const stoneCragLocations: Array<[number, number, number, number]> = [
-      [-44.0, -46.5, 0.92, 0.6],
-      [44.0, -46.5, 0.92, -0.55],
-      [-42.5, 48.5, 0.92, 2.4],
-      [42.5, 48.5, 0.92, -2.4],
+      [-55.5, -56.5, 0.92, 0.6],
+      [55.5, -56.5, 0.92, -0.55],
+      [-54.5, 57.5, 0.92, 2.4],
+      [54.5, 57.5, 0.92, -2.4],
     ];
 
     stoneCragLocations.forEach(([cx, cz, sc, rot]) => {
@@ -5432,8 +5438,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       clickableIslands.push(waterGrottoGroup);
     };
 
-    // 南山唯一水道小洞口（位於南水道盡頭 [0, 0.2, 51.2]，正對主島南岸，剛好容納一艘烏篷船進出）
-    createMountainWaterGrotto(0, 0.2, 51.2, Math.PI);
+    // 南山唯一水道小洞口（位於南水道盡頭 [0, 0.2, 55.5]，緊貼外移後的南山山腳，正對主島南岸）
+    createMountainWaterGrotto(0, 0.2, 55.5, Math.PI);
 
     // 瀑布水霧與漣漪共用材質
     const wfMistCloudMat = new THREE.MeshStandardMaterial({
@@ -5447,10 +5453,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       flatShading: true,
     });
 
-    // 北山中央水道盡頭 [0, -0.5, -55.0]：與低多邊形群山融為一體的「雙層青石岩階疊水飛瀑」（無黑色圓球怪石、無突兀深藍圓盤）
+    // 北山中央水道盡頭 [0, -0.5, -56.8]：與外移後的北山主峰無縫銜接的「雙層青石岩階疊水飛瀑」
     const createNorthCentralGrandWaterfall = () => {
       const grandWf = new THREE.Group();
-      grandWf.position.set(0, -0.5, -55.0);
+      grandWf.position.set(0, -0.5, -56.8);
       grandWf.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
         easterEggKind: 'waterfall',
@@ -5599,10 +5605,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
     createNorthCentralGrandWaterfall();
 
-    // A2. 東山疊水飛瀑與碧水河道（嵌入東山山麓 [58.5, -0.5, 10.8]，採用與周圍山脈一致的 7 邊形低多邊形岩階，移除黑色圓球怪石與深藍圓盤）
+    // A2. 東山疊水飛瀑與碧水河道（隨東山山腳外移嵌入 [61.5, -0.5, 10.8]）
     const createEastMountainWaterfall = () => {
       const wfGroup = new THREE.Group();
-      wfGroup.position.set(58.5, -0.5, 10.8);
+      wfGroup.position.set(61.5, -0.5, 10.8);
       wfGroup.rotation.y = -Math.PI / 2 - 0.06;
       wfGroup.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
@@ -5765,9 +5771,9 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         '「塔影初收日色昏，隔牆人語近甘園。南山遊遍分歸路，半入錢唐半暗門。」',
       ];
 
-      // 西山高崖山澗飛瀑（位於痛點島西側山麓 [-57.5, -0.5, -20.5]，採用 7 邊形低多邊形山岩台座與疊水飛瀑）
+      // 西山高崖山澗飛瀑（隨西山山腳外移至 [-59.5, -0.5, -21.5]，遠離西岸房舍與水田）
       const westWf = new THREE.Group();
-      westWf.position.set(-57.5, -0.5, -20.5);
+      westWf.position.set(-59.5, -0.5, -21.5);
       westWf.rotation.y = Math.PI / 2 - 0.15;
       westWf.userData = {
         easterEggPoem: '「日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天。」',
@@ -6147,17 +6153,17 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         return pagodaTower;
       };
 
-      // 山上塔樓一個就好：移至痛點島 [-32, -24] 與創意島 [-32, 24] 之間後方的西山平頂山台 [-66.4, 15.1, 0]，穩立於平坦山坪上，晚上會亮
+      // 山上塔樓一個就好：隨西山平頂山台 [-75.0, 15.1, 0] 外移，穩立於平坦山坪上，晚上會亮
       const singleMountainPagoda = createMountainPagodaTower(1.16);
-      singleMountainPagoda.position.set(-66.4, 15.1, 0);
+      singleMountainPagoda.position.set(-75.0, 15.1, 0);
       singleMountainPagoda.rotation.y = Math.PI / 2;
       worldGroup.add(singleMountainPagoda);
       clickableIslands.push(singleMountainPagoda);
 
-      // 4. 南岸水鄉白牆黛瓦臨水民居（窗戶改用 homesteadWindowGlow，晚上九點以後全部民房暗下來）
+      // 4. 南岸水鄉白牆黛瓦臨水民居（位於南岸農田島平坦草地上，遠離南山山腳不穿模）
       [
-        [-14.5, 0.86, 42.2, 0.18],
-        [13.5, 0.86, 42.4, -0.22],
+        [-16.5, 0.86, 40.2, 0.18],
+        [16.5, 0.86, 40.2, -0.22],
       ].forEach(([hx, hy, hz, hRot], idx) => {
         const house = new THREE.Group();
         house.position.set(hx, hy, hz);
@@ -6284,16 +6290,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       clickableIslands.push(pGroup);
     };
 
-    // 精準配置於各座大型有機農田陸地上的水稻梯田（東岸與西岸皆隨陸地外推，保持中央水道寬敞）
-    createPaddyCluster(-41.5, 0.89, 0.0, 12.5, 6.8, 3, 0.0);      // 西岸中央農田梯田
-    createPaddyCluster(-46.5, 0.89, -13.5, 12.5, 6.2, 3, 0.08);   // 西岸紅圈區（痛點島與西農田之間）水稻梯田
-    createPaddyCluster(-46.5, 0.89, 13.5, 12.5, 6.2, 3, -0.08);   // 西岸紅圈區（創意島與西農田之間）水稻梯田
-    createPaddyCluster(41.2, 0.89, -4.2, 10.8, 6.2, 3, -0.04);    // 東岸中央農田梯田（隨陸地往東外推）
-    createPaddyCluster(46.5, 0.87, -14.5, 10.5, 5.6, 2, 0.05);    // 東岸綠標連綿陸地梯田
-    createPaddyCluster(-24.5, 0.86, -44.5, 12.5, 5.4, 2, 0.05);   // 西北農田島梯田
-    createPaddyCluster(24.5, 0.86, -44.5, 12.5, 5.4, 2, -0.05);   // 東北農田島梯田
-    createPaddyCluster(-24.0, 0.86, 44.5, 12.5, 5.4, 2, -0.05);   // 西南農田島梯田
-    createPaddyCluster(24.0, 0.86, 44.5, 12.5, 5.4, 2, 0.05);    // 東南農田島梯田
+    // 精準配置於各座大型有機農田陸地中央的水稻梯田（內縮遠離山腳，絕不與山體穿模）
+    createPaddyCluster(-39.5, 0.89, 0.0, 10.2, 5.8, 3, 0.0);      // 西岸中央農田梯田
+    createPaddyCluster(-41.5, 0.89, -13.2, 9.8, 5.2, 3, 0.06);    // 西岸北段水稻梯田
+    createPaddyCluster(-41.5, 0.89, 13.2, 9.8, 5.2, 3, -0.06);    // 西岸南段水稻梯田
+    createPaddyCluster(39.8, 0.89, -4.2, 9.2, 5.2, 3, -0.04);     // 東岸中央農田梯田
+    createPaddyCluster(42.5, 0.87, -14.2, 8.8, 4.8, 2, 0.05);     // 東岸連綿陸地梯田
+    createPaddyCluster(-23.5, 0.86, -41.2, 10.5, 4.6, 2, 0.05);   // 西北農田島梯田
+    createPaddyCluster(23.5, 0.86, -41.2, 10.5, 4.6, 2, -0.05);   // 東北農田島梯田
+    createPaddyCluster(-23.5, 0.86, 41.2, 10.5, 4.6, 2, -0.05);   // 西南農田島梯田
+    createPaddyCluster(23.5, 0.86, 41.2, 10.5, 4.6, 2, 0.05);    // 東南農田島梯田
 
     // C. 3 座大型江南木構運轉水車（青石支架向下扎根至河床，緊貼農田島岸邊提水灌溉）
     const createWaterWheelMesh = (posX: number, posY: number, posZ: number, rotY = 0) => {
@@ -6365,16 +6371,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     createWaterWheelMesh(-30.5, -0.35, 0.0, Math.PI / 2);   // 西岸中央農田島水車（隨西岸外推）
     createWaterWheelMesh(35.5, -0.35, 1.8, 0);              // 東岸瀑布河道北岸水車（正臨藍色河道提水）
 
-    // D. 沿著各島小水道與南北洞口水道兩岸種植的「盛開桃花樹」（全數穩立於各有機陸地草坪上，絕不懸浮水面）
+    // D. 沿著各島小水道與南北洞口水道兩岸種植的「盛開桃花樹」（全數穩立於各有機陸地草坪上，且與山腳保持充裕距離）
     // 1. 西岸連綿田園與東岸河道駁岸桃樹
-    [-50, -45, -40, -35].forEach((x) => {
+    [-46, -42, -38, -34].forEach((x) => {
       [-5.2, 5.2].forEach((z) => {
         const t = createSakuraTree(1.12);
         t.position.set(x, 0.89, z);
         worldGroup.add(t);
       });
     });
-    [35, 40, 45, 50].forEach((x) => {
+    [35, 39, 43, 47].forEach((x) => {
       [-9.2, 1.2].forEach((z) => {
         const t = createSakuraTree(1.12);
         t.position.set(x, 0.89, z);
@@ -6382,8 +6388,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       });
     });
 
-    // 2. 北山洞口水道與南山洞口水道兩側岸上迎客桃樹（立於南北農田島內側草坪岸邊）
-    [-42.5, -45.5, -48.0].forEach((z) => {
+    // 2. 北山洞口水道與南山洞口水道兩側岸上迎客桃樹（立於南北農田島內側草坪岸邊，遠離山腳）
+    [-41.5, -44.2, -46.8].forEach((z) => {
       const leftTree = createSakuraTree(1.18);
       leftTree.position.set(-13.5, 0.86, z);
       worldGroup.add(leftTree);
@@ -6392,7 +6398,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       rightTree.position.set(13.5, 0.86, z);
       worldGroup.add(rightTree);
     });
-    [42.5, 45.5, 48.0].forEach((z) => {
+    [41.5, 44.2, 46.8].forEach((z) => {
       const leftTree = createSakuraTree(1.15);
       leftTree.position.set(-13.5, 0.86, z);
       worldGroup.add(leftTree);
@@ -6402,19 +6408,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       worldGroup.add(rightTree);
     });
 
-    // 3. 東西外岸山麓田園桃林（立於山麓有機陸地上）
-    [-28, -20, -8, 8, 20, 28].forEach((z) => {
-      const wTree = createSakuraTree(1.15);
-      wTree.position.set(-53.5, 0.87, z);
+    // 3. 東西外岸田園桃林（向內收攏於平坦草地，預留寬闊山麓草甸，避免直接碰觸山腳）
+    [-24, -17, -8, 8, 17, 24].forEach((z) => {
+      const wTree = createSakuraTree(1.12);
+      wTree.position.set(-46.8, 0.87, z);
       worldGroup.add(wTree);
     });
-    [-28, -20, -10, 26, 32].forEach((z) => {
-      const eTree = createSakuraTree(1.15);
-      eTree.position.set(52.5, 0.86, z);
+    [-24, -17, -10, 23, 28].forEach((z) => {
+      const eTree = createSakuraTree(1.12);
+      eTree.position.set(46.2, 0.86, z);
       worldGroup.add(eTree);
     });
 
-    // E. 島以外的空地：蜿蜒鄉間青石板道路與白牆黛瓦江南民房聚落（晚上村民會回家，晚上九點以後全部民房暗下來）
+    // E. 島以外的空地：蜿蜒鄉間青石板道路與白牆黛瓦江南民房聚落（全部退離山腳，避免穿模）
     const createOuterRoadSegment = (
       x1: number,
       z1: number,
@@ -6450,27 +6456,27 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // 鋪設外圍空地連接各處民房與農田的鄉間道路網
     const outerRoadSegments: Array<[number, number, number, number, number]> = [
       // 西北空地村道
-      [-37.5, -45.5, -26.5, -45.5, 0.87],
-      [-32.5, -45.5, -32.5, -37.5, 0.87],
-      [-48.5, -35.5, -38.5, -35.5, 0.87],
+      [-33.5, -41.5, -24.5, -41.5, 0.87],
+      [-31.5, -41.5, -31.5, -33.5, 0.87],
+      [-42.5, -32.0, -34.5, -32.0, 0.87],
       // 東北空地村道
-      [26.5, -45.5, 38.5, -45.5, 0.87],
-      [33.5, -45.5, 33.5, -37.5, 0.87],
-      [38.5, -35.5, 48.5, -35.5, 0.87],
+      [24.5, -41.5, 33.5, -41.5, 0.87],
+      [31.5, -41.5, 31.5, -33.5, 0.87],
+      [34.5, -32.0, 42.5, -32.0, 0.87],
       // 西岸外圍空地南北縱貫村道
-      [-51.2, -24.5, -51.2, 24.5, 0.89],
-      [-51.2, -16.5, -44.5, -16.5, 0.89],
-      [-51.2, 0.0, -43.5, 0.0, 0.89],
-      [-51.2, 16.5, -44.5, 16.5, 0.89],
+      [-46.2, -21.5, -46.2, 21.5, 0.89],
+      [-46.2, -15.5, -41.5, -15.5, 0.89],
+      [-46.2, 0.0, -40.5, 0.0, 0.89],
+      [-46.2, 15.5, -41.5, 15.5, 0.89],
       // 東岸外圍空地村道
-      [48.5, -24.5, 48.5, -6.5, 0.89],
-      [43.5, -13.5, 51.5, -13.5, 0.89],
-      [45.5, 26.5, 51.5, 32.5, 0.87],
+      [44.8, -21.5, 44.8, -6.5, 0.89],
+      [40.5, -13.5, 46.8, -13.5, 0.89],
+      [42.5, 25.5, 46.2, 28.5, 0.87],
       // 西南與東南空地村道
-      [-48.5, 35.5, -35.5, 35.5, 0.87],
-      [-35.5, 44.5, -20.5, 44.5, 0.87],
-      [20.5, 44.5, 36.5, 44.5, 0.87],
-      [36.5, 35.5, 48.5, 35.5, 0.87],
+      [-42.5, 32.0, -33.5, 32.0, 0.87],
+      [-32.5, 41.5, -20.5, 41.5, 0.87],
+      [20.5, 41.5, 32.5, 41.5, 0.87],
+      [33.5, 32.0, 42.5, 32.0, 0.87],
     ];
     outerRoadSegments.forEach(([x1, z1, x2, z2, ry]) => {
       createOuterRoadSegment(x1, z1, x2, z2, ry);
@@ -6566,28 +6572,28 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       clickableIslands.push(cottage);
     };
 
-    // 在五島以外的空地（西北、東北、西岸、東岸、西南、東南）沿村道配置多座江南民房
+    // 在五島以外的空地（西北、東北、西岸、東岸、西南、東南）沿村道配置多座江南民房（全數向內收攏於平坦草地，絕不穿模山腳）
     const outerHomesteadCoords: Array<[number, number, number, number, number]> = [
-      [-33.2, 0.86, -44.5, 0.25, 1.0],   // 1. 西北農田村舍
-      [-46.8, 0.86, -34.2, 0.15, 0.94],  // 2. 西北山麓村舍
-      [33.8, 0.86, -44.5, -0.25, 1.0],   // 3. 東北農田村舍
-      [46.8, 0.86, -34.2, -0.18, 0.94],  // 4. 東北山麓村舍
-      [-52.8, 0.87, -17.5, 1.48, 0.95],  // 5. 西岸北段村舍
-      [-52.5, 0.87, -2.5, 1.45, 1.0],    // 6. 西岸中段村舍
-      [-52.8, 0.87, 17.2, 1.65, 0.95],   // 7. 西岸南段村舍
-      [50.2, 0.87, -16.8, -1.52, 0.96],  // 8. 東岸北段村舍
-      [49.5, 0.86, 29.8, -0.85, 0.94],   // 9. 東南山麓村舍
-      [-46.5, 0.86, 34.5, 0.35, 0.95],   // 10. 西南山麓村舍
-      [-33.5, 0.86, 44.5, 0.22, 0.96],   // 11. 西南農田村舍
-      [33.2, 0.86, 44.5, -0.3, 1.0],     // 12. 東南農田村舍
+      [-30.5, 0.86, -40.8, 0.25, 0.96],   // 1. 西北農田村舍
+      [-40.8, 0.86, -31.5, 0.15, 0.92],   // 2. 西北田園村舍
+      [30.5, 0.86, -40.8, -0.25, 0.96],   // 3. 東北農田村舍
+      [40.8, 0.86, -31.5, -0.18, 0.92],   // 4. 東北田園村舍
+      [-46.8, 0.87, -16.8, 1.48, 0.94],   // 5. 西岸北段村舍
+      [-46.5, 0.87, -2.5, 1.45, 0.95],    // 6. 西岸中段村舍
+      [-46.8, 0.87, 16.5, 1.65, 0.94],    // 7. 西岸南段村舍
+      [45.8, 0.87, -16.2, -1.52, 0.94],   // 8. 東岸北段村舍
+      [44.5, 0.86, 26.8, -0.85, 0.92],    // 9. 東南田園村舍
+      [-40.8, 0.86, 31.5, 0.35, 0.92],    // 10. 西南田園村舍
+      [-30.5, 0.86, 40.8, 0.22, 0.95],    // 11. 西南農田村舍
+      [30.5, 0.86, 40.8, -0.3, 0.96],     // 12. 東南農田村舍
     ];
     outerHomesteadCoords.forEach(([hx, hy, hz, hRot, hScale]) => {
       createJiangnanHomestead(hx, hy, hz, hRot, hScale);
     });
 
-    // F. 江南梯級茶園階地（穩立於東岸農田島東側坡地 [50.5, 0.89, -4.2]）
+    // F. 江南梯級茶園階地（穩立於東岸農田島坡地 [46.5, 0.89, -4.2]，遠離山腳）
     const teaTerraceGroup = new THREE.Group();
-    teaTerraceGroup.position.set(50.5, 0.89, -4.2);
+    teaTerraceGroup.position.set(46.5, 0.89, -4.2);
     teaTerraceGroup.userData = {
       easterEggPoem: '「土地平曠，屋舍儼然，有良田、美池、桑竹之屬。」',
       easterEggKind: 'farmland',
@@ -6677,10 +6683,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       clickableIslands.push(oxGrp);
     };
 
-    createWaterOx(33.2, 0.86, -44.5, -0.6); // 東北農田島水牛
-    createWaterOx(-14.8, 0.86, -44.5, 0.8); // 西北農田島水牛
-    createWaterOx(-49.5, 0.89, 1.5, 0.8);   // 西岸中央農田島黃牛
-    createWaterOx(50.5, 0.89, -2.0, -0.6);  // 東岸中央農田島黃牛
+    createWaterOx(28.5, 0.86, -41.2, -0.6); // 東北農田島水牛
+    createWaterOx(-15.5, 0.86, -41.2, 0.8); // 西北農田島水牛
+    createWaterOx(-44.5, 0.89, 1.5, 0.8);   // 西岸中央農田島黃牛
+    createWaterOx(45.2, 0.89, -2.0, -0.6);  // 東岸中央農田島黃牛
 
     // H. 辛勤農夫 NPC（著青布藍衣、頭戴竹編斗笠，手持鋤頭於農田島上勞作，頭上無倒三角）
     const createFarmer = (fx: number, fy: number, fz: number, rotY = 0, phase = 0) => {
@@ -6728,11 +6734,11 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       clickableIslands.push(farmerGrp);
     };
 
-    createFarmer(16.2, 0.86, -44.2, 0.4, 0.8);   // 東北農田島農夫
-    createFarmer(-16.2, 0.86, -44.2, -0.6, 1.6); // 西北農田島農夫
-    createFarmer(-48.5, 0.89, -1.8, 0.9, 2.4);   // 西岸中央農田島農夫
-    createFarmer(17.5, 0.86, 44.2, -1.1, 0.2);   // 東南農田島農夫
-    createFarmer(48.2, 0.89, -5.5, -0.3, 1.1);   // 東岸茶園茶農
+    createFarmer(16.2, 0.86, -41.2, 0.4, 0.8);   // 東北農田島農夫
+    createFarmer(-16.2, 0.86, -41.2, -0.6, 1.6); // 西北農田島農夫
+    createFarmer(-44.5, 0.89, -1.8, 0.9, 2.4);   // 西岸中央農田島農夫
+    createFarmer(17.5, 0.86, 41.2, -1.1, 0.2);   // 東南農田島農夫
+    createFarmer(44.2, 0.89, -5.5, -0.3, 1.1);   // 東岸茶園茶農
 
     // H2. 外圍村道散步與歸家村民 NPC（白天在村道與田間散步，傍晚沿路走回民房，晚上回家進屋休息；另有少數夜遊村民留在外面）
     interface OuterVillagerItem {
@@ -6754,16 +6760,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       staysOutsideAtNight: boolean;
       robeColor: number;
     }> = [
-      { homePos: [-33.2, 0.88, -42.2], strollPos: [-25.5, 0.88, -45.2], staysOutsideAtNight: false, robeColor: 0x4a6b82 },
-      { homePos: [-46.8, 0.88, -32.0], strollPos: [-39.0, 0.88, -35.5], staysOutsideAtNight: false, robeColor: 0x7c5846 },
-      { homePos: [33.8, 0.88, -42.2], strollPos: [25.5, 0.88, -45.2], staysOutsideAtNight: false, robeColor: 0x3d7058 },
-      { homePos: [46.8, 0.88, -32.0], strollPos: [39.0, 0.88, -35.5], staysOutsideAtNight: false, robeColor: 0x8a5240 },
-      { homePos: [-50.5, 0.90, -17.0], strollPos: [-44.5, 0.90, -8.5], staysOutsideAtNight: false, robeColor: 0x5c6478 },
-      { homePos: [-50.5, 0.90, -2.5], strollPos: [-43.5, 0.90, 5.5], staysOutsideAtNight: false, robeColor: 0x6b4e71 },
-      { homePos: [-50.5, 0.90, 17.0], strollPos: [-44.2, 0.90, 24.5], staysOutsideAtNight: false, robeColor: 0x3b6278 },
-      { homePos: [48.2, 0.90, -16.5], strollPos: [43.8, 0.90, -7.5], staysOutsideAtNight: false, robeColor: 0x4f7556 },
-      { homePos: [-33.5, 0.88, 42.2], strollPos: [-21.5, 0.88, 44.2], staysOutsideAtNight: true, robeColor: 0x46698a },
-      { homePos: [33.2, 0.88, 42.2], strollPos: [21.5, 0.88, 44.2], staysOutsideAtNight: true, robeColor: 0x7a5980 },
+      { homePos: [-30.5, 0.88, -39.2], strollPos: [-23.5, 0.88, -41.2], staysOutsideAtNight: false, robeColor: 0x4a6b82 },
+      { homePos: [-40.8, 0.88, -30.0], strollPos: [-35.5, 0.88, -32.0], staysOutsideAtNight: false, robeColor: 0x7c5846 },
+      { homePos: [30.5, 0.88, -39.2], strollPos: [23.5, 0.88, -41.2], staysOutsideAtNight: false, robeColor: 0x3d7058 },
+      { homePos: [40.8, 0.88, -30.0], strollPos: [35.5, 0.88, -32.0], staysOutsideAtNight: false, robeColor: 0x8a5240 },
+      { homePos: [-45.5, 0.90, -16.2], strollPos: [-41.5, 0.90, -8.5], staysOutsideAtNight: false, robeColor: 0x5c6478 },
+      { homePos: [-45.5, 0.90, -2.5], strollPos: [-40.5, 0.90, 5.5], staysOutsideAtNight: false, robeColor: 0x6b4e71 },
+      { homePos: [-45.5, 0.90, 16.0], strollPos: [-41.2, 0.90, 21.5], staysOutsideAtNight: false, robeColor: 0x3b6278 },
+      { homePos: [44.5, 0.90, -15.5], strollPos: [41.2, 0.90, -7.5], staysOutsideAtNight: false, robeColor: 0x4f7556 },
+      { homePos: [-30.5, 0.88, 39.2], strollPos: [-21.5, 0.88, 41.2], staysOutsideAtNight: true, robeColor: 0x46698a },
+      { homePos: [30.5, 0.88, 39.2], strollPos: [21.5, 0.88, 41.2], staysOutsideAtNight: true, robeColor: 0x7a5980 },
     ];
 
     villagerConfigs.forEach((cfg, vIdx) => {
@@ -8332,16 +8338,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     // =========================================================
     // 8.6 創點源原創角色立體動態系統（搜搜、白喵、多慧）
     // =========================================================
-    // (A) 搜搜 (Sousou)：駕著筋斗雲在天上騰雲駕霧
+    // (A) 搜搜 (Sousou)：駕著筋斗雲在天上騰雲駕霧（點擊觸發搜搜專屬彩蛋）
     const sousouCloudGroup = new THREE.Group();
     sousouCloudGroup.position.set(0, 15.5, 0);
     sousouCloudGroup.scale.setScalar(1.42);
     sousouCloudGroup.userData = {
       islandId: 'career',
       districtId: 'career-temple-district',
-      easterEggPoem: npcVillagerPoem,
-      easterEggKind: 'npc',
+      easterEggPoem: '「找到了搜搜！駕著筋斗雲，一眨眼就幫你尋遍天下機會！」',
+      easterEggKind: 'agent',
     };
+    const sousouHitSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 10, 10),
+      invisibleHitMat,
+    );
+    sousouHitSphere.position.set(0, 0.65, 0);
+    sousouCloudGroup.add(sousouHitSphere);
 
     const somersaultCloudWhiteMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -8522,15 +8534,21 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     worldGroup.add(sousouCloudGroup);
     clickableIslands.push(sousouCloudGroup);
 
-    // (B) 白喵 (BaiMiao)：慵懶的在各座島和橋間閒晃，有時會躺下來打滾或睡覺
+    // (B) 白喵 (BaiMiao)：慵懶的在各座島和橋間閒晃，有時會躺下來打滾或睡覺（點擊觸發白喵專屬彩蛋）
     const baiMiaoRoot = new THREE.Group();
     baiMiaoRoot.scale.setScalar(1.48);
     baiMiaoRoot.userData = {
       islandId: 'career',
       districtId: 'career-headhunter-district',
-      easterEggPoem: npcVillagerPoem,
-      easterEggKind: 'npc',
+      easterEggPoem: '「找到了白喵！哈基米～讓我先打個滾再幫你媒合專家喵！」',
+      easterEggKind: 'agent',
     };
+    const baiMiaoHitSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.25, 10, 10),
+      invisibleHitMat,
+    );
+    baiMiaoHitSphere.position.set(0, 0.55, 0);
+    baiMiaoRoot.add(baiMiaoHitSphere);
 
     const baiMiaoBodyPivot = new THREE.Group();
     baiMiaoRoot.add(baiMiaoBodyPivot);
@@ -8705,16 +8723,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       [-8.8, homeY + 0.22, 6.6],
     ];
 
-    // (C) 多慧 (Duohui)：在主島熱情的招呼新來的小人，有時會拍拍翅膀
+    // (C) 多慧 (Duohui)：在主島熱情的招呼新來的小人，有時會拍拍翅膀（點擊觸發多慧專屬彩蛋）
     const duohuiRoot = new THREE.Group();
     duohuiRoot.position.set(1.85, homeY + 0.24, 5.1);
     duohuiRoot.scale.setScalar(1.52);
     duohuiRoot.userData = {
       islandId: 'home',
       districtId: 'home-plaza',
-      easterEggPoem: npcVillagerPoem,
-      easterEggKind: 'npc',
+      easterEggPoem: '「找到了多慧！25小時全年無休，有任何問題都包在我身上！」',
+      easterEggKind: 'agent',
     };
+    const duohuiHitSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.25, 10, 10),
+      invisibleHitMat,
+    );
+    duohuiHitSphere.position.set(0, 0.65, 0);
+    duohuiRoot.add(duohuiHitSphere);
 
     const owlSageGreenMat = new THREE.MeshStandardMaterial({ color: 0x6b9e58, roughness: 0.55 });
     const owlDarkGreenSuitMat = new THREE.MeshStandardMaterial({ color: 0x1e4d2b, roughness: 0.5 });
@@ -8868,16 +8892,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     clickableIslands.push(duohuiRoot);
 
     // ---------------------------------------------------------
-    // (E) 【007】：躺在徵才島「翰林院」屋頂上（紫白配色特務機器人、頭頂旋轉紫金雷達碟、紫光雙眼螢幕、手捧發光情報平板）
+    // (E) 【007】：躺在徵才島「翰林院」屋頂上（點擊觸發 007 專屬彩蛋）
     // ---------------------------------------------------------
     const agent007Group = new THREE.Group();
     agent007Group.userData = {
       islandId: 'career',
       districtId: 'career-academy',
       characterId: 'agent007',
-      easterEggPoem: npcVillagerPoem,
-      easterEggKind: 'npc',
+      easterEggPoem: '「找到了007！躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」',
+      easterEggKind: 'agent',
     };
+    const agent007HitSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.35, 10, 10),
+      invisibleHitMat,
+    );
+    agent007HitSphere.position.set(0, 0.65, 0);
+    agent007Group.add(agent007HitSphere);
     // 放置在翰林院正面二層翠玉琉璃屋頂斜坡上（牌匾「翰林院」正上方屋瓦，視野極佳）
     agent007Group.position.set(0.42, 4.18, 1.48);
     agent007Group.rotation.set(0.18, 0.28, 0);
@@ -9081,16 +9111,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     hanlinGroup.add(agent007Group);
 
     // ---------------------------------------------------------
-    // (F) 【紅色安全帽大熊】：在討論島「工作坊（百工坊街道：鐵匠鋪與木匠鋪之間）」工作台作勢修理與製作東西
+    // (F) 【紅色安全帽大熊】：在討論島「工作坊（百工坊街道：鐵匠鋪與木匠鋪之間）」工作台作勢修理與製作東西（點擊觸發大熊專屬彩蛋）
     // ---------------------------------------------------------
     const bearWorkshopGroup = new THREE.Group();
     bearWorkshopGroup.userData = {
       islandId: 'discussion',
       districtId: 'disc-workshop',
       characterId: 'bear',
-      easterEggPoem: npcVillagerPoem,
-      easterEggKind: 'npc',
+      easterEggPoem: '「找到了大熊！敲敲打打修修補補，再難的技術都能幫你落地！」',
+      easterEggKind: 'agent',
     };
+    const bearHitSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(1.45, 10, 10),
+      invisibleHitMat,
+    );
+    bearHitSphere.position.set(0, 0.78, 0.25);
+    bearWorkshopGroup.add(bearHitSphere);
     // 放置在百工坊街道中央（鐵匠鋪與木匠鋪門前青石街心），清楚可見大熊揮動木槌修理與打造機關
     bearWorkshopGroup.position.set(0.35, 0.14, 1.25);
     bearWorkshopGroup.rotation.y = -0.35;
@@ -9817,6 +9853,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           xiaoDengPaoStartTime = nowT;
           xiaoDengPaoActiveUntil = nowT + 3.2;
           xiaoDengPaoFacingYaw = smoothedSpherical.yawRad;
+          triggerEasterEggRef.current('「找到了小燈泡！當燈泡亮起，就是又有好點子了！」');
           return;
         }
         if (foundEasterEggPoem || (foundEasterEggPoems && foundEasterEggPoems.length > 0)) {
@@ -11110,6 +11147,20 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
                   <span>桃源</span>
                   <span>雅集</span>
                 </span>
+
+                {/* 卷軸右上角／右側關閉叉叉按鈕 */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEasterEggToast(null);
+                  }}
+                  className="ml-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#8c6d46]/55 bg-[#f7efe0]/95 text-xs font-black text-[#4a3520] shadow-xs transition hover:bg-[#e8d8bc] hover:text-[#1d150f]"
+                  title="關閉彩蛋卷軸"
+                  aria-label="關閉彩蛋卷軸"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 

@@ -1,5 +1,3 @@
-import { VibeCodingExhibitionView } from './components/VibeCodingExhibitionView';
-import { FullscreenAppEmbedView } from './components/FullscreenAppEmbedView';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
@@ -7,36 +5,21 @@ import { HeroSection } from './components/HeroSection';
 import { CategoryFilter } from './components/CategoryFilter';
 import { SubcategoryBoardBanner } from './components/SubcategoryBoardBanner';
 import { QuestionCard } from './components/QuestionCard';
-import { QuestionDetailModal } from './components/QuestionDetailModal';
-import { SubmitAnswerModal } from './components/SubmitAnswerModal';
-import { SolversView } from './components/SolversView';
-import { JobExplorerView } from './components/JobExplorerView';
-import { MechanismView } from './components/MechanismView';
-import { AboutUsView } from './components/AboutUsView';
 import { BaiMiaoZoneWalker } from './components/baimiao/BaiMiaoZoneWalker';
-import { DuohuiPeek } from './components/agents/DuohuiPeek';
-import { AboutUsModal } from './components/AboutUsModal';
-import { AuthModal } from './components/AuthModal';
 import { DemoAccountBanner } from './components/DemoAccountBanner';
-import { CustomerServiceModal } from './components/CustomerServiceModal';
 import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverlay';
 import { isGuestUser } from './utils/userDisplay';
-import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
 import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
 import { HomeAnnouncementBanner } from './components/HomeAnnouncementBanner';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { BackToTopButton } from './components/BackToTopButton';
-import { PwaInstallModal } from './components/PwaInstallModal';
 import { CenterToast } from './components/CenterToast';
 import { SplashScreen } from './components/SplashScreen';
-import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
-import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { NewVersionNotice } from './components/NewVersionNotice';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
-import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
@@ -59,9 +42,7 @@ import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle,
 import { recordQuestionViewClick, getEffectiveQuestionViews } from './utils/proposalClicks';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
-import { MascotHost } from './components/mascot/MascotHost';
-import { IslandWorldView } from './components/island/IslandWorldView';
-import { IslandAction } from './data/islandWorld';
+import type { IslandAction } from './data/islandWorld';
 import {
   getOrCreateIslandSessionId,
   publishLocalPresence,
@@ -70,7 +51,27 @@ import {
 } from './utils/islandPresence';
 import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
 
-// 需要時才載入的頁面（程式碼分割）：縮小首頁第一次下載的檔案大小
+const ONBOARDING_STORAGE_KEY = 'ideax_app_onboarding_completed_v1';
+
+// 需要時才載入的頁面與大型彈窗（程式碼分割）：大幅縮小首頁第一次下載與解析的檔案大小
+const IslandWorldView = lazyNamed<typeof import('./components/island/IslandWorldView').IslandWorldView>(() => import('./components/island/IslandWorldView'), 'IslandWorldView');
+const VibeCodingExhibitionView = lazyNamed<typeof import('./components/VibeCodingExhibitionView').VibeCodingExhibitionView>(() => import('./components/VibeCodingExhibitionView'), 'VibeCodingExhibitionView');
+const FullscreenAppEmbedView = lazyNamed<typeof import('./components/FullscreenAppEmbedView').FullscreenAppEmbedView>(() => import('./components/FullscreenAppEmbedView'), 'FullscreenAppEmbedView', { fallback: null });
+const CreateIdeasZoneView = lazyNamed<typeof import('./components/CreateIdeasZoneView').CreateIdeasZoneView>(() => import('./components/CreateIdeasZoneView'), 'CreateIdeasZoneView');
+const QuestionDetailModal = lazyNamed<typeof import('./components/QuestionDetailModal').QuestionDetailModal>(() => import('./components/QuestionDetailModal'), 'QuestionDetailModal');
+const SubmitAnswerModal = lazyNamed<typeof import('./components/SubmitAnswerModal').SubmitAnswerModal>(() => import('./components/SubmitAnswerModal'), 'SubmitAnswerModal');
+const SolversView = lazyNamed<typeof import('./components/SolversView').SolversView>(() => import('./components/SolversView'), 'SolversView');
+const JobExplorerView = lazyNamed<typeof import('./components/JobExplorerView').JobExplorerView>(() => import('./components/JobExplorerView'), 'JobExplorerView');
+const AboutUsView = lazyNamed<typeof import('./components/AboutUsView').AboutUsView>(() => import('./components/AboutUsView'), 'AboutUsView');
+const AboutUsModal = lazyNamed<typeof import('./components/AboutUsModal').AboutUsModal>(() => import('./components/AboutUsModal'), 'AboutUsModal', { fallback: null });
+const AuthModal = lazyNamed<typeof import('./components/AuthModal').AuthModal>(() => import('./components/AuthModal'), 'AuthModal', { fallback: null });
+const CustomerServiceModal = lazyNamed<typeof import('./components/CustomerServiceModal').CustomerServiceModal>(() => import('./components/CustomerServiceModal'), 'CustomerServiceModal', { fallback: null });
+const PwaInstallModal = lazyNamed<typeof import('./components/PwaInstallModal').PwaInstallModal>(() => import('./components/PwaInstallModal'), 'PwaInstallModal', { fallback: null });
+const RatingModal = lazyNamed<typeof import('./components/RatingModal').RatingModal>(() => import('./components/RatingModal'), 'RatingModal', { fallback: null });
+const AppOnboardingGuide = lazyNamed<typeof import('./components/AppOnboardingGuide').AppOnboardingGuide>(() => import('./components/AppOnboardingGuide'), 'AppOnboardingGuide', { fallback: null });
+const GoogleSitelinksModal = lazyNamed<typeof import('./components/GoogleSitelinksModal').GoogleSitelinksModal>(() => import('./components/GoogleSitelinksModal'), 'GoogleSitelinksModal', { fallback: null });
+const MascotHost = lazyNamed<typeof import('./components/mascot/MascotHost').MascotHost>(() => import('./components/mascot/MascotHost'), 'MascotHost', { fallback: null });
+const DuohuiPeek = lazyNamed<typeof import('./components/agents/DuohuiPeek').DuohuiPeek>(() => import('./components/agents/DuohuiPeek'), 'DuohuiPeek', { fallback: null });
 const CreateQuestionModal = lazyNamed<typeof import('./components/CreateQuestionModal').CreateQuestionModal>(() => import('./components/CreateQuestionModal'), 'CreateQuestionModal');
 const UnlockPaywallModal = lazyNamed<typeof import('./components/UnlockPaywallModal').UnlockPaywallModal>(() => import('./components/UnlockPaywallModal'), 'UnlockPaywallModal', { fallback: null });
 const SolverProfileModal = lazyNamed<typeof import('./components/SolverProfileModal').SolverProfileModal>(() => import('./components/SolverProfileModal'), 'SolverProfileModal');
@@ -82,8 +83,16 @@ const AiCrmView = lazyNamed<typeof import('./components/AiCrmView').AiCrmView>((
 const MembershipAndTopupFullPage = lazyNamed<typeof import('./components/MembershipAndTopupFullPage').MembershipAndTopupFullPage>(() => import('./components/MembershipAndTopupFullPage'), 'MembershipAndTopupFullPage');
 const ChatView = lazyNamed<typeof import('./components/ChatView').ChatView>(() => import('./components/ChatView'), 'ChatView');
 const StarSeasonView = lazyNamed<typeof import('./components/challenge/StarSeasonView').StarSeasonView>(() => import('./components/challenge/StarSeasonView'), 'StarSeasonView');
-// 首頁載入完成、瀏覽器閒置後，預先下載最常用的頁面（發布、創星季、私訊、個人中心）
-preloadWhenIdle([CreateQuestionModal.preload, StarSeasonView.preload, ChatView.preload, UserDashboardModal.preload]);
+// 首頁載入完成、瀏覽器閒置後，在背景預先下載最常點擊的畫面（問題詳情、創點島、發布、登入、創星季、私訊、個人中心）
+preloadWhenIdle([
+  QuestionDetailModal.preload,
+  AuthModal.preload,
+  IslandWorldView.preload,
+  CreateQuestionModal.preload,
+  StarSeasonView.preload,
+  ChatView.preload,
+  UserDashboardModal.preload,
+]);
 
 const CATEGORIES: Category[] = [
   '專業問題',
@@ -150,6 +159,8 @@ function MainContent() {
     likedQuestionIds,
     secondedQuestionIds,
     sameQuestionIds,
+    isCustomerServiceOpen,
+    isRatingModalOpen,
     allowGuestPosting,
     setQuestions,
   } = useApp();
@@ -3755,26 +3766,30 @@ function MainContent() {
       )}
 
       {/* 關於我們與條款彈窗 */}
-      <AboutUsModal
-        isOpen={isAboutModalOpen}
-        onClose={closeAboutModal}
-        initialSection={aboutModalInitialSection}
-      />
+      {isAboutModalOpen && (
+        <AboutUsModal
+          isOpen={isAboutModalOpen}
+          onClose={closeAboutModal}
+          initialSection={aboutModalInitialSection}
+        />
+      )}
 
       {/* 管理員使用示範帳號時的提示與「回到管理員」 */}
       <DemoAccountBanner />
 
       {/* 全域 登入 / 註冊彈窗（含創星季獨立站與舊站） */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        initialMode={authModalMode}
-        initialMethod={authModalMethod}
-        interceptReason={authModalInterceptReason}
-      />
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={closeAuthModal}
+          initialMode={authModalMode}
+          initialMethod={authModalMethod}
+          interceptReason={authModalInterceptReason}
+        />
+      )}
 
       {/* 官方客服與爭議仲裁中心彈窗 */}
-      <CustomerServiceModal />
+      {isCustomerServiceOpen && <CustomerServiceModal />}
 
       {/* 取消釘選看板提示彈窗 */}
       {unpinConfirmOpen && (
@@ -3920,55 +3935,59 @@ function MainContent() {
       )}
 
       {/* PWA 安裝與下載指引彈窗 */}
-      <PwaInstallModal
-        isOpen={isPwaInstallModalOpen}
-        onClose={closePwaInstallModal}
-      />
+      {isPwaInstallModalOpen && (
+        <PwaInstallModal
+          isOpen={isPwaInstallModalOpen}
+          onClose={closePwaInstallModal}
+        />
+      )}
 
       {/* 首次使用步驟式跟隨引導教學（下載一次教學一次，同裝置不同帳號不重複） */}
-      <AppOnboardingGuide
-        isOpen={isOnboardingOpen}
-        isFromAboutUs={isOnboardingFromAbout}
-        onClose={(completedAll) => {
-          setIsOnboardingOpen(false);
-          if (completedAll && isOnboardingFromAbout) {
-            setIsOnboardingFromAbout(false);
-            try {
-              sessionStorage.setItem('ideax_force_chat_onboarding', 'true');
-            } catch (e) {
-              // ignore
+      {isOnboardingOpen && (
+        <AppOnboardingGuide
+          isOpen={isOnboardingOpen}
+          isFromAboutUs={isOnboardingFromAbout}
+          onClose={(completedAll) => {
+            setIsOnboardingOpen(false);
+            if (completedAll && isOnboardingFromAbout) {
+              setIsOnboardingFromAbout(false);
+              try {
+                sessionStorage.setItem('ideax_force_chat_onboarding', 'true');
+              } catch (e) {
+                // ignore
+              }
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('chat');
+              return;
             }
+            setIsOnboardingFromAbout(false);
+            setActiveTab('explore');
+          }}
+          onNavigateTab={(tab) => {
             setSelectedQuestion(null);
             setSelectedSolver(null);
-            setActiveTab('chat');
-            return;
-          }
-          setIsOnboardingFromAbout(false);
-          setActiveTab('explore');
-        }}
-        onNavigateTab={(tab) => {
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          setActiveTab(tab);
-        }}
-        onOpenSidebar={() => setIsCategorySidebarOpen(true)}
-        onCloseSidebar={() => setIsCategorySidebarOpen(false)}
-        onResetFilters={() => {
-          setSelectedCategory('全部');
-          setSelectedSubcategory('全部');
-          setSelectedLevel('全部');
-          setSearchQuery('');
-          setSpecialZone('all');
-        }}
-        onOpenUserDashboard={() => {
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          setUserDashboardTab('profile');
-          setActiveTab('user_dashboard');
-        }}
-        viewMode={viewMode}
-        onSetViewMode={handleSetViewMode}
-      />
+            setActiveTab(tab);
+          }}
+          onOpenSidebar={() => setIsCategorySidebarOpen(true)}
+          onCloseSidebar={() => setIsCategorySidebarOpen(false)}
+          onResetFilters={() => {
+            setSelectedCategory('全部');
+            setSelectedSubcategory('全部');
+            setSelectedLevel('全部');
+            setSearchQuery('');
+            setSpecialZone('all');
+          }}
+          onOpenUserDashboard={() => {
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            setUserDashboardTab('profile');
+            setActiveTab('user_dashboard');
+          }}
+          viewMode={viewMode}
+          onSetViewMode={handleSetViewMode}
+        />
+      )}
 
       {/* 發布內容後詢問是否開啟通知 */}
       <NotificationOptInPrompt />
@@ -3977,8 +3996,9 @@ function MainContent() {
       {activeTab !== 'island_explorer' && <NewVersionNotice />}
 
       {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站與創點島全螢幕地圖不顯示） */}
-      <MascotHost hidden={activeTab === 'star_season' || activeTab === 'island_explorer'} />
-
+      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && (
+        <MascotHost hidden={false} />
+      )}
 
       {/* 軟體作品試玩體驗畫面（含右下角查看作品說明按鍵） */}
       {fullscreenEmbedApp && (
@@ -3990,14 +4010,16 @@ function MainContent() {
       )}
 
       {/* 專家評分回饋彈窗 */}
-      <RatingModal />
+      {isRatingModalOpen && <RatingModal />}
 
       {/* Google 搜尋多個分頁捷徑 (Sitelinks) 預覽中心與子網址導航彈窗 */}
-      <GoogleSitelinksModal
-        isOpen={isSitelinksModalOpen}
-        onClose={() => setIsSitelinksModalOpen(false)}
-        onNavigateToSitelink={handleNavigateToSitelink}
-      />
+      {isSitelinksModalOpen && (
+        <GoogleSitelinksModal
+          isOpen={isSitelinksModalOpen}
+          onClose={() => setIsSitelinksModalOpen(false)}
+          onNavigateToSitelink={handleNavigateToSitelink}
+        />
+      )}
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />

@@ -9,6 +9,7 @@ import {
   Clock,
   CloudRain,
   Compass,
+  Film,
   Flame,
   Gamepad2,
   HelpCircle,
@@ -16,6 +17,7 @@ import {
   Minus,
   Moon,
   PanelsTopLeft,
+  Play,
   Plus,
   RotateCcw,
   ScrollText,
@@ -77,6 +79,7 @@ import {
   CityWeatherAndTime,
 } from '../../data/cityData';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
+import { loadIslandIntroVideoUrl } from '../../services/islandIntroVideoService';
 import './IslandWorldView.css';
 
 interface IslandWorldViewProps {
@@ -197,6 +200,43 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const [randomPickedGames, setRandomPickedGames] = useState<Question[] | null>(null);
 
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const INTRO_VIDEO_STORAGE_KEY = 'ideax_island_intro_video_seen_v2';
+  const [showIntroVideoModal, setShowIntroVideoModal] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ideax_island_intro_video_seen_v2') !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(null);
+  const [introVideoLoadProgress, setIntroVideoLoadProgress] = useState<number>(0);
+
+  useEffect(() => {
+    if (!showIntroVideoModal && introVideoSrc) return;
+    let active = true;
+    loadIslandIntroVideoUrl((pct) => {
+      if (active) setIntroVideoLoadProgress(pct);
+    })
+      .then((url) => {
+        if (active) setIntroVideoSrc(url);
+      })
+      .catch(() => {
+        if (active) setIntroVideoSrc('/api/media/island-intro-video');
+      });
+    return () => {
+      active = false;
+    };
+  }, [showIntroVideoModal, introVideoSrc]);
+
+  const handleCloseIntroVideo = () => {
+    try {
+      localStorage.setItem(INTRO_VIDEO_STORAGE_KEY, '1');
+    } catch {
+      // Ignore storage error
+    }
+    setShowIntroVideoModal(false);
+  };
+
   const [searchText, setSearchText] = useState('');
 
   // 彩蛋收集冊（首次觸發即依發現順序刊登於收集冊格子，並記錄解鎖時間）
@@ -209,9 +249,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.filter(
-            (item) => item && typeof item.verse === 'string' && typeof item.unlockedAt === 'string',
-          );
+          return parsed
+            .filter(
+              (item) => item && typeof item.verse === 'string' && typeof item.unlockedAt === 'string',
+            )
+            .map((item) => ({
+              verse: item.verse,
+              unlockedAt: item.unlockedAt.split(' ')[0],
+            }));
         }
       }
     } catch {
@@ -236,9 +281,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    const unlockedAt = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(
-      now.getHours(),
-    )}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const unlockedAt = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
 
     setCollectedEasterEggs((prev) => {
       const exists = prev.some(
@@ -1192,21 +1235,25 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           </button>
         </div>
 
-        {/* 右下角城市與當地天氣設定按鈕及彈窗選單 */}
+        {/* 右下角城市與當地天氣設定按鈕及彈窗選單（純文字兩排顯示，與右上角形式一致） */}
         <div className="island-bottom-right-city island-ui-interactive" aria-label="城市與天氣設定">
           <button
             type="button"
             onClick={() => setShowCityMenu((prev) => !prev)}
-            className="island-city-btn"
+            className="island-shichen-pure-text-btn island-city-pure-text-btn"
             title="設定城市：地圖時間與天氣將依當地即時調整"
           >
-            <MapPin size={15} className="city-pin-icon shrink-0 text-amber-700" />
-            <span className="city-btn-name font-bold text-stone-900">{currentCity.name}</span>
-            {cityWeatherInfo && (
-              <span className="city-btn-weather text-[11px] font-semibold text-stone-600 bg-amber-100/80 px-1.5 py-0.5 rounded-md">
-                {cityWeatherInfo.temp}°C · {cityWeatherInfo.weatherDesc}
+            <span className="shichen-main-row">
+              <MapPin size={15} className="shrink-0" />
+              <span className="shichen-calligraphy-title">{currentCity.name}</span>
+            </span>
+            <span className="shichen-sub-row">
+              <span>
+                {cityWeatherInfo
+                  ? `${cityWeatherInfo.temp}°C · ${cityWeatherInfo.weatherDesc}`
+                  : currentCity.country}
               </span>
-            )}
+            </span>
           </button>
 
           {showCityMenu && (
@@ -1274,7 +1321,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 <span>新彩蛋收入第 {String(recentUnlockedEggToast.slotIndex).padStart(2, '0')} 格</span>
               </div>
               <div className="easter-toast-verse">{recentUnlockedEggToast.verse}</div>
-              <div className="easter-toast-time">解鎖時間：{recentUnlockedEggToast.unlockedAt}</div>
+              <div className="easter-toast-time">{recentUnlockedEggToast.unlockedAt}</div>
             </div>
           )}
 
@@ -1282,7 +1329,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             type="button"
             onClick={() => setShowEasterEggBook((prev) => !prev)}
             className="island-easter-book-btn"
-            title="打開彩蛋收集冊：查看已解鎖的隱藏詩句與解鎖時間"
+            title="打開彩蛋收集冊：查看已解鎖的隱藏詩句"
           >
             <ScrollText size={16} className="easter-book-icon shrink-0 text-amber-700" />
             <span className="easter-book-btn-title">彩蛋收集冊</span>
@@ -2964,14 +3011,28 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   IDEA X • 島覽
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowGuideModal(false)}
-                className="guide-modal-circle-close"
-                aria-label="關閉說明"
-              >
-                <X size={16} />
-              </button>
+              <div className="guide-modal-top-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuideModal(false);
+                    setShowIntroVideoModal(true);
+                  }}
+                  className="guide-modal-video-replay-btn"
+                  title="觀看創點島導覽影片"
+                >
+                  <Film size={14} />
+                  <span>導覽影片</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGuideModal(false)}
+                  className="guide-modal-circle-close"
+                  aria-label="關閉說明"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <h2 className="guide-main-title">快來尋找小彩蛋!</h2>
@@ -3096,7 +3157,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 </div>
                 <h2 className="easter-book-modal-title">彩蛋收集冊</h2>
                 <p className="easter-book-modal-subtitle">
-                  與島上物件互動即可觸發詩句，首次觸發將按發現順序刊登於收集冊並記錄解鎖時間
+                  與島上物件或 Agent 角色互動即可觸發詩句，首次觸發將按發現順序刊登於收集冊
                 </p>
               </div>
 
@@ -3144,7 +3205,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                         <div className="easter-slot-verse">{record.verse}</div>
                         <div className="easter-slot-time">
                           <Clock size={11} />
-                          <span>解鎖時間：{record.unlockedAt}</span>
+                          <span>{record.unlockedAt.split(' ')[0]}</span>
                         </div>
                       </>
                     ) : (
@@ -3156,6 +3217,54 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          首次進入創點島導覽影片彈窗 (Intro Video Modal)
+          ============================================================ */}
+      {showIntroVideoModal && (
+        <div
+          className="island-intro-video-overlay island-ui-interactive"
+          onClick={handleCloseIntroVideo}
+        >
+          <div
+            className="island-intro-video-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={handleCloseIntroVideo}
+              className="island-intro-video-close-btn"
+              aria-label="關閉影片"
+              title="關閉影片"
+            >
+              <X size={20} />
+            </button>
+            {introVideoSrc ? (
+              <video
+                key={introVideoSrc}
+                src={introVideoSrc}
+                className="island-intro-video-player"
+                controls
+                autoPlay
+                playsInline
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 px-8 text-amber-100/90 gap-4 min-h-[280px]">
+                <Film size={32} className="text-amber-300 animate-pulse" />
+                <div className="text-sm font-bold tracking-wider">
+                  正在從雲端資料庫載入創點島導覽影片... {introVideoLoadProgress}%
+                </div>
+                <div className="w-56 h-2 rounded-full bg-white/15 overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 transition-all duration-200 rounded-full"
+                    style={{ width: `${Math.max(6, introVideoLoadProgress)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

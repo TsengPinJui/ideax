@@ -1474,6 +1474,153 @@ export function subscribePersonalData(
 }
 
 /**
+ * 第一階段（首屏關鍵資料）：只載入首頁必備的 questions 與 platform_settings，大幅縮短開站等待時間
+ */
+export async function loadCriticalBootDataFromFirestore(
+  onProgress?: (completedCount: number, totalCount: number, stepLabel: string) => void
+): Promise<{
+  questions?: Question[];
+  settings?: any;
+} | null> {
+  const TOTAL_TASKS = 2;
+  let completedTasks = 0;
+  const trackTask = <T,>(promise: Promise<T>, label: string): Promise<T> =>
+    promise.then((res) => {
+      completedTasks += 1;
+      if (onProgress) {
+        try {
+          onProgress(completedTasks, TOTAL_TASKS, label);
+        } catch {}
+      }
+      return res;
+    });
+
+  try {
+    const [qSnap, settingsSnap] = await Promise.all([
+      trackTask(getDocs(collection(db, 'questions')), '正在同步全站痛點、提案與懸賞題目...'),
+      trackTask(getDocs(collection(db, 'platform_settings')), '正在套用平台環境與賽事設定...'),
+    ]);
+
+    const result: { questions?: Question[]; settings?: any } = {};
+    if (!qSnap.empty) {
+      result.questions = qSnap.docs
+        .map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data } as Question;
+        })
+        .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()));
+    }
+    if (!settingsSnap.empty) {
+      const globalDoc = settingsSnap.docs.find((d) => d.id === 'global');
+      if (globalDoc) {
+        result.settings = globalDoc.data();
+      }
+    }
+    return result;
+  } catch (err) {
+    handleFirestoreError('Could not load critical boot data from Firestore (falling back to server database mirror)', err);
+    try {
+      if (onProgress) onProgress(1, TOTAL_TASKS, '正在從備援資料庫同步全站資料...');
+      const resp = await fetch('/api/competition/db-mirror');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (onProgress) onProgress(TOTAL_TASKS, TOTAL_TASKS, '備援資料庫同步完成！');
+        if (data && data.success) {
+          return {
+            questions: Array.isArray(data.questions)
+              ? data.questions.filter((q: any) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()))
+              : undefined,
+          };
+        }
+      }
+    } catch {}
+    if (onProgress) onProgress(TOTAL_TASKS, TOTAL_TASKS, '已載入本地快取資料');
+    return null;
+  }
+}
+
+/**
+ * 第二階段（背景延後載入）：首屏渲染完成後再載入會員清單、所有解方討論串、認證專家庫與個人私訊/交易/通知
+ */
+export async function loadSecondaryBootDataFromFirestore(): Promise<{
+  users?: User[];
+  answers?: Answer[];
+  transactions?: Transaction[];
+  conversations?: ChatConversation[];
+  notifications?: NotificationItem[];
+  solvers?: Solver[];
+} | null> {
+  try {
+    const scope = currentDataScope;
+    const emptySnap = { docs: [] as any[] };
+    const personalPromise: Promise<any> = scope.isAdmin
+      ? auth
+          .authStateReady()
+          .catch(() => {})
+          .then(() =>
+            Promise.all([
+              getDocs(collection(db, 'transactions')).catch(() => emptySnap),
+              getDocs(collection(db, 'conversations')).catch(() => emptySnap),
+              getDocs(collection(db, 'notifications')).catch(() => emptySnap),
+            ])
+          )
+          .then(([t, c, n]: any[]) => ({
+            transactions: t.docs.map((d: any) => d.data() as Transaction),
+            conversations: c.docs.map((d: any) => d.data() as ChatConversation),
+            notifications: n.docs.map((d: any) => d.data() as NotificationItem),
+          }))
+      : loadPersonalDataFromFirestore(scope).catch(() => null);
+
+    const [usersSnap, aSnap, personal, solversSnap] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'answers')),
+      personalPromise,
+      getDocs(collection(db, 'solvers')),
+    ]);
+
+    const result: {
+      users?: User[];
+      answers?: Answer[];
+      transactions?: Transaction[];
+      conversations?: ChatConversation[];
+      notifications?: NotificationItem[];
+      solvers?: Solver[];
+    } = {};
+
+    if (!usersSnap.empty) {
+      result.users = usersSnap.docs.map((d) => stripUserSecrets(d.data() as User));
+    }
+    if (!aSnap.empty) {
+      result.answers = aSnap.docs.map((d) => d.data() as Answer);
+    }
+    if (personal) {
+      result.transactions = personal.transactions;
+      result.conversations = personal.conversations;
+      result.notifications = personal.notifications;
+    }
+    if (!solversSnap.empty) {
+      result.solvers = solversSnap.docs.map((d) => d.data() as Solver);
+    }
+    return result;
+  } catch (err) {
+    handleFirestoreError('loadSecondaryBootDataFromFirestore', err);
+    try {
+      const resp = await fetch('/api/competition/db-mirror');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.success) {
+          return {
+            users: Array.isArray(data.users) ? data.users : undefined,
+            answers: Array.isArray(data.answers) ? data.answers : undefined,
+          };
+        }
+      }
+    } catch {}
+    return null;
+  }
+}
+
+/**
  * Read all categorized collections from Firestore on initial load
  */
 export async function loadAllDataFromFirestore(

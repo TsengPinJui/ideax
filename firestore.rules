@@ -376,6 +376,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 平台媒體分片儲存（創點島導覽影片等公開多媒體資產）：所有人可讀，僅限管理員修改
+    match /platform_media_chunks/{chunkId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 其他集合（創星季提案、功能使用統計、上線紀錄、在線人數等）：
     // 一律由伺服器服務帳戶寫入；前端只保留公開提案與連線測試的讀取，其餘只有管理員
     match /competition_proposals/{id} {

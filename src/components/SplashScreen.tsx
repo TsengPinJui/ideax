@@ -64,7 +64,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     setTimeout(() => {
       setIsRendered(false);
       if (onDismiss) onDismiss();
-    }, 480);
+    }, 240);
   }, [isInitialBootComplete, isFadingOut, isRendered, onDismiss]);
 
   // 將顯示進度與真實載入進度 (initialBootProgress) 即時平滑掛勾；若未完成載入絕不衝到 100%
@@ -81,10 +81,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }
 
     const diff = target - displayProgress;
-    const step = isInitialBootComplete ? Math.max(4, Math.ceil(diff / 2)) : Math.max(1, Math.ceil(diff / 4));
+    const step = isInitialBootComplete ? Math.max(12, Math.ceil(diff / 1.5)) : Math.max(2, Math.ceil(diff / 3));
     const timer = setTimeout(() => {
       setDisplayProgress((prev) => Math.min(target, prev + step));
-    }, 28);
+    }, 18);
 
     return () => clearTimeout(timer);
   }, [initialBootProgress, isInitialBootComplete, displayProgress]);
@@ -94,7 +94,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     if (!isInitialBootComplete || displayProgress < 100) return;
     const finishTimer = setTimeout(() => {
       handleDismiss();
-    }, 240);
+    }, 60);
     return () => clearTimeout(finishTimer);
   }, [isInitialBootComplete, displayProgress, handleDismiss]);
 

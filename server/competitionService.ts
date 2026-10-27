@@ -222,6 +222,7 @@ function toFirestoreNativePayload(val: any): any {
 }
 
 function applyPayloadToLocalDoc(colName: string, docId: string, data: any, merge: boolean = true) {
+  if (colName === 'platform_media_chunks') return;
   if (!localDbStore[colName]) localDbStore[colName] = {};
   const existing = merge && localDbStore[colName][docId] ? { ...localDbStore[colName][docId] } : {};
   for (const [k, v] of Object.entries(data || {})) {

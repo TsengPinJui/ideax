@@ -138,6 +138,21 @@
         "commissionRate": { "type": "number" },
         "updatedAt": { "type": "string" }
       }
+    },
+    "PlatformMediaChunk": {
+      "title": "PlatformMediaChunk",
+      "description": "Chunked binary media asset stored in Firestore for streaming playback",
+      "type": "object",
+      "properties": {
+        "mediaId": { "type": "string" },
+        "chunkIndex": { "type": "number" },
+        "totalChunks": { "type": "number" },
+        "mimeType": { "type": "string" },
+        "data": { "type": "string" },
+        "totalBytes": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["mediaId", "chunkIndex", "totalChunks", "mimeType", "data"]
     }
   },
   "firestore": {
@@ -188,6 +203,10 @@
     "/platform_settings/{settingId}": {
       "schema": "PlatformSetting",
       "description": "Stores system configurations, subscription plans, and admin grants"
+    },
+    "/platform_media_chunks/{chunkId}": {
+      "schema": "PlatformMediaChunk",
+      "description": "Stores chunked binary media assets such as the IdeaX Island intro video"
     }
   }
 }

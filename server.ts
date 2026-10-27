@@ -86,6 +86,86 @@ app.get('/api/pwa/status', (req: Request, res: Response) => {
 });
 
 // ==========================================
+// 創點島導覽影片雲端資料庫串流端點 (/api/media/island-intro-video)
+// 從 Firestore (platform_media_chunks) 讀取分片並支援 HTTP Range 串流播放
+// ==========================================
+let cachedIslandIntroVideoBuffer: Buffer | null = null;
+let cachedIslandIntroVideoPromise: Promise<Buffer> | null = null;
+
+async function getIslandIntroVideoBufferFromDb(): Promise<Buffer> {
+  if (cachedIslandIntroVideoBuffer) return cachedIslandIntroVideoBuffer;
+  if (!cachedIslandIntroVideoPromise) {
+    cachedIslandIntroVideoPromise = (async () => {
+      const firstSnap = await adminDb.collection('platform_media_chunks').doc('island_intro_video_00').get();
+      if (!firstSnap.exists) {
+        throw new Error('island_intro_video_00 not found in Firestore');
+      }
+      const firstData = firstSnap.data() || {};
+      const totalChunks = Number(firstData.totalChunks) || 14;
+      const buffers: Buffer[] = new Array(totalChunks);
+      buffers[0] = Buffer.from(String(firstData.data || ''), 'base64');
+
+      const indices = Array.from({ length: totalChunks - 1 }, (_, i) => i + 1);
+      await Promise.all(
+        indices.map(async (idx) => {
+          const docId = `island_intro_video_${String(idx).padStart(2, '0')}`;
+          const snap = await adminDb.collection('platform_media_chunks').doc(docId).get();
+          if (!snap.exists) {
+            throw new Error(`Missing chunk ${docId}`);
+          }
+          const d = snap.data() || {};
+          buffers[idx] = Buffer.from(String(d.data || ''), 'base64');
+        })
+      );
+
+      const fullBuffer = Buffer.concat(buffers);
+      cachedIslandIntroVideoBuffer = fullBuffer;
+      return fullBuffer;
+    })().finally(() => {
+      cachedIslandIntroVideoPromise = null;
+    });
+  }
+  return cachedIslandIntroVideoPromise;
+}
+
+app.get('/api/media/island-intro-video', async (req: Request, res: Response) => {
+  try {
+    const videoBuf = await getIslandIntroVideoBufferFromDb();
+    const total = videoBuf.length;
+    const range = req.headers.range;
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const requestedEnd = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      // Limit single range chunk to 3MB for serverless compatibility
+      const end = Math.min(requestedEnd, start + 3 * 1024 * 1024 - 1, total - 1);
+      if (isNaN(start) || start >= total || start < 0 || start > end) {
+        res.status(416).setHeader('Content-Range', `bytes */${total}`).end();
+        return;
+      }
+      const chunkSize = end - start + 1;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+      res.setHeader('Content-Length', String(chunkSize));
+      res.end(videoBuf.subarray(start, end + 1));
+      return;
+    }
+
+    res.status(200);
+    res.setHeader('Content-Length', String(total));
+    res.end(videoBuf);
+  } catch (err: any) {
+    console.error('[Media] Failed to load island intro video from Firestore:', err?.message || err);
+    res.status(500).json({ error: '無法從資料庫載入導覽影片' });
+  }
+});
+
+// ==========================================
 // 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)
 // ==========================================
 // 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)

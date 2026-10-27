@@ -123,6 +123,8 @@ import {
   syncAuditLogsToFirestore,
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
+  loadCriticalBootDataFromFirestore,
+  loadSecondaryBootDataFromFirestore,
   loadPersonalDataFromFirestore,
   getUserFromFirestore,
   getMyPrivateProfile,
@@ -1254,36 +1256,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 不重複造訪用戶數（每台裝置算一位）
   const [uniqueVisitorsCount, setUniqueVisitorsCount] = useState<number>(() => getCachedRealTrafficStats().uniqueVisitorsTotal || 0);
 
-  // 1. 記錄進入網站之瀏覽量 & 實時監聽全站瀏覽量與造訪用戶數
+  // 1. 記錄進入網站之瀏覽量 & 實時監聽全站瀏覽量與造訪用戶數（延後至首屏載入後執行，不搶佔初始頻寬）
   useEffect(() => {
     const refreshVisitors = () => setUniqueVisitorsCount(getCachedRealTrafficStats().uniqueVisitorsTotal || 0);
-    recordSiteVisitInFirestore().then((visits) => {
-      setSiteVisitsCount(visits);
-      refreshVisitors();
-    });
-    const unsub = subscribeSiteVisitsFromFirestore((visits) => {
-      setSiteVisitsCount(visits);
-      refreshVisitors();
-    });
+    let unsub: (() => void) | null = null;
+    const deferTimer = setTimeout(() => {
+      recordSiteVisitInFirestore().then((visits) => {
+        setSiteVisitsCount(visits);
+        refreshVisitors();
+      });
+      unsub = subscribeSiteVisitsFromFirestore((visits) => {
+        setSiteVisitsCount(visits);
+        refreshVisitors();
+      });
+    }, 800);
     return () => {
+      clearTimeout(deferTimer);
       if (unsub) unsub();
     };
   }, []);
 
-  // 2. 即時線上 Heartbeat & 實時監聽活躍連線數
+  // 2. 即時線上 Heartbeat & 實時監聽活躍連線數（延後至首屏載入後執行）
   useEffect(() => {
-    sendPresenceHeartbeat(currentUser?.id);
-    void touchUserLastActive(currentUser?.id);
+    let unsub: (() => void) | null = null;
+    const deferTimer = setTimeout(() => {
+      sendPresenceHeartbeat(currentUser?.id);
+      void touchUserLastActive(currentUser?.id);
+      unsub = subscribePresenceFromFirestore((count) => {
+        setOnlineUsersCount(count);
+      });
+    }, 900);
     const heartbeatTimer = setInterval(() => {
       sendPresenceHeartbeat(currentUser?.id);
       void touchUserLastActive(currentUser?.id); // 最多每 10 分鐘寫一次最近上線時間
     }, 30000); // 每 30 秒回報一次在線並累計在線停留時長
 
-    const unsub = subscribePresenceFromFirestore((count) => {
-      setOnlineUsersCount(count);
-    });
-
     return () => {
+      clearTimeout(deferTimer);
       clearInterval(heartbeatTimer);
       if (unsub) unsub();
     };
@@ -1488,6 +1497,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const virtualSeedMap = new Map(
       [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((vq) => [vq.id, vq])
     );
+    const userLikedQuestionSet = (() => {
+      try {
+        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_questions`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return new Set<string>(parsed);
+        }
+      } catch {}
+      return new Set<string>();
+    })();
     const sanitizeQuestion = (rawQ: any): Question => {
       const seedQ = virtualSeedMap.get(rawQ?.id);
       const hasUserUpdates =
@@ -1519,9 +1538,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 : {}),
               ...((rawQ.id === 'q-vp-idea-pace' || rawQ.id === 'q-vp-vibe-pace') && seedQ
                 ? {
-                    coverImage: seedQ.coverImage,
-                    galleryImages: seedQ.galleryImages,
-                    vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                     coverImage: seedQ.coverImage,
+                     galleryImages: seedQ.galleryImages,
+                     vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
                   }
                 : {}),
             }),
@@ -1542,12 +1561,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isFakeOrSeed = Boolean(seedQ || q.isSimulated || isMockQuestionId(q.id, q.authorId) || isSimulatedQuestion(q));
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (isFakeOrSeed ? 0 : (q.views || 0));
       const isGame = isGameQuestion(q);
-      let userLikedQuestions: string[] = [];
-      try {
-        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_questions`);
-        if (raw) userLikedQuestions = JSON.parse(raw);
-      } catch {}
-      const hasRealUserLike = Array.isArray(userLikedQuestions) && userLikedQuestions.includes(q.id);
+      const hasRealUserLike = userLikedQuestionSet.has(q.id);
       const resolvedLikes = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.likes ?? 0);
       const resolvedSeconded = isGame && isFakeOrSeed ? (hasRealUserLike ? 1 : 0) : (q.secondedCount ?? resolvedLikes);
       return reduceSimulatedProposalLikes({
@@ -2304,28 +2318,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [currentUser]);
 
+  const isFirstMountStorageRef = useRef(true);
   useEffect(() => {
+    if (isFirstMountStorageRef.current) return;
     safeSetJSON(`${STORAGE_KEY_PREFIX}users`, availableUsers);
   }, [availableUsers]);
 
   useEffect(() => {
+    if (isFirstMountStorageRef.current) return;
     safeSetJSON(`${STORAGE_KEY_PREFIX}commission`, commissionRate);
   }, [commissionRate]);
 
   useEffect(() => {
+    if (isFirstMountStorageRef.current) return;
     // 儲存題目列表時自動過濾龐大 Base64 資源，避免突破瀏覽器容量上限造成 QuotaExceededError
     safeSetJSON(`${STORAGE_KEY_PREFIX}questions`, questions);
   }, [questions]);
 
   useEffect(() => {
+    if (isFirstMountStorageRef.current) return;
     safeSetJSON(`${STORAGE_KEY_PREFIX}answers`, answers);
   }, [answers]);
 
   useEffect(() => {
+    if (isFirstMountStorageRef.current) return;
     safeSetJSON(`${STORAGE_KEY_PREFIX}transactions`, transactions);
   }, [transactions]);
 
   useEffect(() => {
+    if (isFirstMountStorageRef.current) {
+      isFirstMountStorageRef.current = false;
+      return;
+    }
     const clean = (conversations || []).filter((c) => !isMockConversationId(c.id) && c.id !== 'conv-tutorial-demo');
     safeSetJSON(`${STORAGE_KEY_PREFIX}conversations`, clean);
   }, [conversations]);
@@ -3034,28 +3058,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Initial check & hydration / initial seed to Firestore + real-time listeners
+  // Initial check & hydration / phased boot:
+  // 第一階段：只載入首頁必備的 questions 與 platform_settings（移除預先阻塞的連線測試與 window.load 等待）
+  // 第二階段：首屏就緒後，在背景延後載入會員清單、所有解方討論串、專家庫、個人交易/私訊/通知與即時監聽器
   useEffect(() => {
     let mounted = true;
     let unsubQuestions: (() => void) | null = null;
     let unsubUsers: (() => void) | null = null;
+    let secondaryTimer: ReturnType<typeof setTimeout> | null = null;
 
     (async () => {
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+      let connected = true;
+
       try {
         if (mounted) {
-          setInitialBootProgress(22);
-          setInitialBootStatusText('正在驗證雲端資料庫連線...');
-        }
-        const connected = await testFirestoreConnection();
-        if (mounted) {
-          setIsFirestoreConnected(connected);
-          setInitialBootProgress(28);
-          setInitialBootStatusText('雲端連線就緒，正在同步全站痛點與提案...');
+          setInitialBootProgress(26);
+          setInitialBootStatusText('正在同步全站痛點與提案...');
         }
 
         // Auto purge expired 7-day delisted/deleted questions on startup
-        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-        const now = Date.now();
         const deletedIds = getDeletedQuestionIds();
         const expiredIdsOnBoot: string[] = [];
 
@@ -3088,18 +3112,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return remaining;
         });
 
-        const cloudData = await loadAllDataFromFirestore((completedCount, totalCount, stepLabel) => {
+        const criticalData = await loadCriticalBootDataFromFirestore((completedCount, totalCount, stepLabel) => {
           if (!mounted) return;
-          const nextPct = Math.min(86, 28 + Math.round((completedCount / totalCount) * 58));
+          const nextPct = Math.min(88, 28 + Math.round((completedCount / totalCount) * 58));
           setInitialBootProgress((prev) => Math.max(prev, nextPct));
           setInitialBootStatusText(stepLabel);
         });
         if (!mounted) return;
-        setInitialBootProgress((prev) => Math.max(prev, 88));
-        setInitialBootStatusText('正在整合痛點、創新提案與專家解方...');
+        connected = Boolean(criticalData);
+        setIsFirestoreConnected(connected);
+        setInitialBootProgress((prev) => Math.max(prev, 92));
+        setInitialBootStatusText('正在整合痛點與創新提案...');
 
-        if (cloudData && cloudData.settings) {
-          if (cloudData.settings.publicMetricsConfig) {
+        if (criticalData && criticalData.settings) {
+          if (criticalData.settings.publicMetricsConfig) {
             setPublicMetricsConfig((prev) => {
               let localOverride: Partial<PublicMetricsConfig> = {};
               try {
@@ -3108,7 +3134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               } catch {}
               const merged = {
                 ...prev,
-                ...cloudData.settings.publicMetricsConfig,
+                ...criticalData.settings.publicMetricsConfig,
                 ...(typeof localOverride.showIslandMap === 'boolean' ? { showIslandMap: localOverride.showIslandMap } : {}),
                 ...(typeof localOverride.showCardViews === 'boolean' ? { showCardViews: localOverride.showCardViews } : {}),
                 ...(localOverride.cardViewsScope ? { cardViewsScope: localOverride.cardViewsScope } : {}),
@@ -3120,490 +3146,460 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return merged;
             });
           }
-          if (cloudData.settings.competitionHomepageStatsConfig) {
+          if (criticalData.settings.competitionHomepageStatsConfig) {
             try {
-              localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(cloudData.settings.competitionHomepageStatsConfig));
+              localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(criticalData.settings.competitionHomepageStatsConfig));
               if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('ideax_competition_stats_config_updated', { detail: cloudData.settings.competitionHomepageStatsConfig }));
+                window.dispatchEvent(new CustomEvent('ideax_competition_stats_config_updated', { detail: criticalData.settings.competitionHomepageStatsConfig }));
               }
             } catch {}
           }
+          if (typeof criticalData.settings.commissionRate === 'number') {
+            setCommissionRate(criticalData.settings.commissionRate);
+          }
         }
 
-        const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
-
-        if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
-          if (cloudData.users && cloudData.users.length > 0) {
-            const repairedCloudUsers = cloudData.users.map((cu) => {
-              const repaired = restoreCanonicalUserIdentity(cu);
-              // 只修自己的帳號（資料庫規則不允許改別人的資料）
-              if (cu.hasCompletedProfile === false && repaired.hasCompletedProfile === true && connected && cu.id === currentUser?.id) {
-                syncUserToFirestore(repaired).catch(() => {});
-              }
-              return repaired;
-            });
-
-            const deletedUsers = getDeletedUserIds();
-            setAvailableUsers((prevUsers) => {
-              const combined = [...(prevUsers || []), ...(cloudData.users || [])];
-              const { uniqueUsers, removedIds } = deduplicateUsersList(combined, deletedUsers);
-              if (removedIds.length > 0 && connected) {
-                deleteUsersFromFirestore(removedIds);
-              }
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
-              } catch {}
-              return uniqueUsers;
-            });
-            if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
-              setCurrentUser((prev) => {
-                const foundUser = repairedCloudUsers.find((u) => u.id === prev.id || (USER_ALIAS_MAP[prev.id] && u.id === USER_ALIAS_MAP[prev.id]));
-                if (foundUser) {
-                  const restoredFound = restoreCanonicalUserIdentity({
-                    ...foundUser,
-                    ...prev,
-                    id: prev.id,
-                    hasCompletedProfile: Boolean(foundUser.hasCompletedProfile || prev.hasCompletedProfile),
-                  });
-                  return (restoredFound.id === 'user-admin' || restoredFound.id === 'a000000001' || restoredFound.role === 'admin')
-                    ? { ...restoredFound, balance: typeof restoredFound.balance === 'number' && restoredFound.balance > 0 ? restoredFound.balance : 50000 }
-                    : restoredFound;
-                }
-                return restoreCanonicalUserIdentity(prev);
-              });
-            }
-          }
-          if (cloudData.questions && cloudData.questions.length > 0) {
-            const currentDeleted = getDeletedQuestionIds();
-            const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
-            const getRealClicks = (): Record<string, number> => {
-              try {
-                const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
-                return raw ? JSON.parse(raw) : {};
-              } catch {
-                return {};
-              }
-            };
-            const realClicks = getRealClicks();
-            const questionsNeedingCloudUpdate: Question[] = [];
-            const filteredQ = cloudData.questions
-              .filter(
-                (q) =>
-                  Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) &&
-                  !currentDeleted.has(q.id) &&
-                  (isDemo || !isMockQuestionId(q.id, q.authorId)) &&
-                  (!isPurgedBoot || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
-              )
-              .filter((q) => {
-                if (q.status === 'delisted' && q.delistedAt) {
-                  return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
-                }
-                return true;
-              })
-              .map((rawQ) => {
-                const seedQ = ALL_VIRTUAL_PROPOSALS_SEED.find((sq) => sq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
-                const hasUserUpdates =
-                  Array.isArray(rawQ?.updateLogs) &&
-                  rawQ.updateLogs.length > (seedQ?.updateLogs?.length || 0);
-                const isFakeOrSeed = Boolean(seedQ || rawQ.isSimulated || isMockQuestionId(rawQ.id, rawQ.authorId) || isSimulatedQuestion(rawQ));
-                const highestViews = isFakeOrSeed
-                  ? (typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0)
-                  : Math.max(
-                      typeof rawQ.views === 'number' ? rawQ.views : 0,
-                      typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
-                      typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
-                    );
-                const finalQ = reduceSimulatedProposalLikes({
-                  ...rawQ,
-                  ...(seedQ && !hasUserUpdates
-                    ? {
-                        appName: seedQ.appName || rawQ.appName,
-                        title: seedQ.title,
-                        description: seedQ.description,
-                        category: seedQ.category,
-                        subcategory: seedQ.subcategory,
-                        subcategories: seedQ.subcategories,
-                        tags: seedQ.tags,
-                        coverImage: seedQ.coverImage,
-                        galleryImages: seedQ.galleryImages,
-                        demoUrl: seedQ.demoUrl || rawQ.demoUrl,
-                        vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
-                        authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
-                        referencedPainPoint: seedQ.referencedPainPoint,
-                        ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
-                      }
-                    : {
-                        subcategories: rawQ.subcategories || seedQ?.subcategories,
-                        ...((rawQ.id === 'q-vp-idea-ideax' || rawQ.id === 'q-vp-vibe-ideax') && (!rawQ.currentVersion || rawQ.currentVersion === 'v6.2.0')
-                          ? { currentVersion: 'v1.0.0' }
-                          : {}),
-                        ...((rawQ.id === 'q-vp-idea-pace' || rawQ.id === 'q-vp-vibe-pace') && seedQ
-                          ? {
-                              coverImage: seedQ.coverImage,
-                              galleryImages: seedQ.galleryImages,
-                              vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
-                            }
-                          : {}),
-                      }),
-                  ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
-                  showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
-                  cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
-                  views: highestViews,
-                  viewsCount: highestViews,
-                  tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
-                });
-                return finalQ;
-              });
-            const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
-            const isSeedMigratedV8 = localStorage.getItem(`${STORAGE_KEY_PREFIX}db_seed_v8`) === 'true';
-            const priorityIds = new Set([
-              'q-vp-idea-ideax',
-              'q-vp-vibe-ideax',
-              'q-vp-vibe-nexsight',
-              'q-vp-idea-gosun',
-              'q-vp-vibe-gosun',
-              'q-vp-idea-deeperdigger',
-              'q-vp-vibe-deeperdigger',
-              'q-vp-vibe-aiwolf',
-              'q-vp-vibe-mazewar',
-              'q-vp-idea-pace',
-              'q-vp-vibe-pace',
-              'q-vp-idea-aiyaya',
-              'q-vp-vibe-aiyaya',
-              'q-vp-idea-stallmatch',
-              'q-vp-vibe-stallmatch',
-            ]);
-            const missingVirtualForCloud = isPurgedBoot
-              ? []
-              : ALL_VIRTUAL_PROPOSALS_SEED.filter(
-                  (vq) =>
-                    !currentDeleted.has(vq.id) &&
-                    (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
-                );
-            if (connected) {
-              if (missingVirtualForCloud.length > 0) {
-                syncQuestionsToFirestore(missingVirtualForCloud);
-                syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
-              }
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
-              } catch {}
-            }
-            const mergedById = new Map<string, Question>();
-            filteredQ.forEach((q) => mergedById.set(q.id, { ...q, tertiaryCategory: getEffectiveTertiaryCategory(q) }));
-            missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, { ...vq, tertiaryCategory: getEffectiveTertiaryCategory(vq) }));
-            const finalMergedQ = Array.from(mergedById.values());
-
-            // 確保雲端所有小遊戲皆具備合規的 7 大第三級分類，若有未標記者自動回寫雲端補正
-            if (connected) {
-              const unclassifiedGames = finalMergedQ.filter(
-                (q) => isGameQuestion(q) && (!q.tertiaryCategory || !GAME_TERTIARY_CATEGORIES.includes(q.tertiaryCategory as any))
-              );
-              if (unclassifiedGames.length > 0) {
-                const patchList = unclassifiedGames.map((g) => ({
-                  ...g,
-                  subcategory: '遊戲',
-                  subcategories: Array.from(new Set([...(g.subcategories || []), '遊戲'])),
-                  tertiaryCategory: getEffectiveTertiaryCategory(g),
-                }));
-                syncQuestionsToFirestore(patchList);
-              }
-            }
-
-            setQuestions(finalMergedQ);
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
-            } catch {
-              // ignore
-            }
-          }
-          if (cloudData.answers && cloudData.answers.length > 0) {
-            const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
-            const deletedAnsIds = getDeletedAnswerIds();
-            const currentDeletedQ = getDeletedQuestionIds();
-            const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
-            const obsoleteSimIds: string[] = [];
-            const rawCloudAns = (!isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers).filter((a) => {
-              if (typeof a?.id === 'string' && (a.id.startsWith('ans-sim-') || a.id.startsWith('ans-vp-')) && !virtualAnsMap.has(a.id)) {
-                obsoleteSimIds.push(a.id);
-                return false;
-              }
-              if (isPurgedBoot && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
-              return true;
-            });
-            if (obsoleteSimIds.length > 0 && connected) {
-              deleteAnswersFromFirestore(obsoleteSimIds);
-            }
-            const seenAns = new Set<string>();
-            const finalAns: Answer[] = [];
-            const answersToSync: Answer[] = [];
-            const activeVirtualAns = isPurgedBoot ? [] : ALL_VIRTUAL_ANSWERS_SEED;
-            const cloudAnsMap = new Map(rawCloudAns.map((ca) => [ca.id, ca]));
-            for (const rawA0 of [...rawCloudAns, ...activeVirtualAns]) {
-              const rawA = stripFakeStarSeasonDefaults(rawA0);
-              if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !currentDeletedQ.has(rawA.questionId) && !seenAns.has(rawA.id)) {
-                seenAns.add(rawA.id);
-                const seedAns = virtualAnsMap.get(rawA.id);
-                if (seedAns) {
-                  const mergedSimAns: Answer = {
-                    ...rawA,
-                    ...seedAns,
-                    likes: Math.max(rawA.likes || 0, seedAns.likes || 0),
-                    isSimulated: true,
-                    simulatedBatchId: SIMULATED_BATCH_ID,
-                  };
-                  finalAns.push(mergedSimAns);
-                  const existingCloudA = cloudAnsMap.get(rawA.id);
-                  if (!existingCloudA || existingCloudA.freePreview !== mergedSimAns.freePreview || !existingCloudA.isSimulated) {
-                    answersToSync.push(mergedSimAns);
-                  }
-                } else {
-                  finalAns.push(rawA);
-                }
-              }
-            }
-            if (answersToSync.length > 0 && connected) {
-              syncAnswersToFirestore(answersToSync);
-            }
-            setAnswers(finalAns);
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(finalAns));
-            } catch {}
-          }
-          // 雲端資料一律合併進本機（私訊與通知有部分只存在本機，取代會讓聊天室消失）；交易紀錄管理員以全站取代
-          const isAdminBoot = currentUser.role === 'admin';
-          if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
-            const bootTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
-            setTransactions((prev) => (isAdminBoot ? bootTx : mergeServerIntoLocal(prev, bootTx)));
-          }
-          if (Array.isArray(cloudData.conversations) && cloudData.conversations.length > 0) {
-            const bootConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
-            setConversations((prev) => mergeServerIntoLocal(prev, bootConv));
-          }
-          if (Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0) {
-            const bootNotifs = cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
-            setNotifications((prev) => mergeServerIntoLocal(prev, bootNotifs));
-          }
-          if (cloudData.solvers && cloudData.solvers.length > 0) {
-            if (!isDemo) {
-              setSolvers(cloudData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)));
-            } else {
-              setSolvers(cloudData.solvers);
-            }
-          }
-          if (cloudData.settings) {
-            if (typeof cloudData.settings.commissionRate === 'number') {
-              setCommissionRate(cloudData.settings.commissionRate);
-            }
-          }
-          if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
-        } else if (connected) {
-          // 若雲端為空，自動執行初次全量雙向種子寫入
-          await pushAllDataToFirestore({
-            users: availableUsers,
-            questions,
-            answers,
-            transactions,
-            conversations,
-            notifications,
-            bookmarks: { userId: currentUser.id, questionIds: bookmarkedQuestionIds },
-            solvers,
-            commissionRate,
-            plans: Object.values(subscriptionPlans),
-            adminDailyGrants,
-          });
-          if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
-        }
-
-        // Attach real-time snapshot listener for questions
-        unsubQuestions = subscribeToQuestions((updatedCloudQuestions) => {
-          if (!mounted || !updatedCloudQuestions) return;
+        if (criticalData && criticalData.questions && criticalData.questions.length > 0) {
           const currentDeleted = getDeletedQuestionIds();
-          const isCurrentDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
-          const isPurgedSnap = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
-          const valid = updatedCloudQuestions
+          const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+          const getRealClicks = (): Record<string, number> => {
+            try {
+              const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+              return raw ? JSON.parse(raw) : {};
+            } catch {
+              return {};
+            }
+          };
+          const realClicks = getRealClicks();
+          const seedQuestionLookup = new Map(
+            [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((sq) => [sq.id, sq])
+          );
+          const filteredQ = criticalData.questions
             .filter(
               (q) =>
                 Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) &&
                 !currentDeleted.has(q.id) &&
-                (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)) &&
-                (!isPurgedSnap || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
+                (isDemo || !isMockQuestionId(q.id, q.authorId)) &&
+                (!isPurgedBoot || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
             )
             .filter((q) => {
               if (q.status === 'delisted' && q.delistedAt) {
-                return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
+                return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
               }
               return true;
             })
-            .map((rawQ) => reduceSimulatedProposalLikes({
-              ...rawQ,
-              tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
-              tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
-            }));
-          setQuestions((prevQuestions) => {
-            const cloudIds = new Set(valid.map((q) => q.id));
-            // 保留本機裝置上剛發布、尚未同步或本地建立之問題（避免雲端快照覆蓋導致剛刊登的題目或作品消失）
-            const localPreserved = (prevQuestions || []).filter((lq) => {
-              if (!lq || !lq.id || cloudIds.has(lq.id) || currentDeleted.has(lq.id)) return false;
-              // 只要是時間戳產生之真實問題 (q-17...) 或由當前登入者所發布，一律保留
-              const isTimestampId = /^q-\d{10,}$/.test(lq.id);
-              const isMine = Boolean(currentUser?.id && lq.authorId === currentUser.id);
-              return isTimestampId || isMine;
-            });
-
-            const merged = [...localPreserved, ...valid];
-            const seenValid = new Set<string>();
-            const finalValid = merged.filter((q) => {
-              if (!q || !q.id || seenValid.has(q.id)) return false;
-              seenValid.add(q.id);
-              return true;
-            });
-
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalValid));
-            } catch {}
-            return finalValid;
-          });
-          setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
-        });
-
-        // Attach real-time snapshot listener for users (同步註銷與反悔猶豫期狀態)
-        unsubUsers = subscribeToUsers((updatedCloudUsers) => {
-          if (!mounted || !updatedCloudUsers || updatedCloudUsers.length === 0) return;
-          setAvailableUsers((prevUsers) => {
-            const userMap = new Map<string, User>();
-            prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
-            updatedCloudUsers.forEach((rawCu) => {
-              const cu = restoreCanonicalUserIdentity(rawCu);
-              const local = userMap.get(cu.id);
-              if (local) {
-                // 若本地該用戶處於正常使用（非註銷/已取消猶豫期），雲端不得重新蓋回猶豫期
-                const isLocalActive = !local.isDeactivated && !local.deactivationStatus;
-                const isCloudDeactivated = Boolean(
-                  cu.isDeactivated ||
-                  cu.deactivationStatus === 'pending_grace' ||
-                  cu.deactivationStatus === 'deactivated'
-                );
-                const finalDeact = isLocalActive ? false : isCloudDeactivated;
-
-                userMap.set(
-                  cu.id,
-                  restoreCanonicalUserIdentity({
-                    ...cu,
-                    ...local,
-                    // 雲端權限身分權威覆蓋：避免本地快取覆蓋雲端指派的管理員身分
-                    role: cu.role || local.role,
-                    accountType: cu.accountType || local.accountType,
-                    adminSites: cu.adminSites !== undefined ? cu.adminSites : local.adminSites,
-                    memberId: cu.memberId || local.memberId,
-                    title: cu.title || local.title,
-                    isInitialAdmin: cu.isInitialAdmin !== undefined ? cu.isInitialAdmin : local.isInitialAdmin,
-                    isDeactivated: finalDeact,
-                    deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
-                    deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
-                    deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
-                    deactivationReason: finalDeact ? cu.deactivationReason : undefined,
-                    // 正式模式：點數以雲端（伺服器帳本）為準
-                    ...(realPointsEconomyRef.current
-                      ? {
-                          balance: typeof cu.balance === 'number' ? cu.balance : local.balance,
-                          withheldPoints: typeof cu.withheldPoints === 'number' ? cu.withheldPoints : local.withheldPoints,
-                          tipReceivablesPoints: typeof cu.tipReceivablesPoints === 'number' ? cu.tipReceivablesPoints : local.tipReceivablesPoints,
-                          thisWeekTipPoints: typeof cu.thisWeekTipPoints === 'number' ? cu.thisWeekTipPoints : local.thisWeekTipPoints,
-                        }
-                      : {}),
-                    // 停權狀態以雲端為準（管理員在其他裝置停權／解除停權時要即時生效）
-                    ...('isBlocked' in (rawCu as any)
-                      ? {
-                          isBlocked: Boolean(cu.isBlocked),
-                          blockedReason: cu.blockedReason,
-                          blockedUntil: cu.blockedUntil,
-                          blockedAt: cu.blockedAt,
-                          blockedByAdminName: cu.blockedByAdminName,
-                        }
-                      : {}),
-                  })
-                );
-              } else {
-                userMap.set(cu.id, cu);
-              }
-            });
-            const { uniqueUsers, removedIds } = deduplicateUsersList(
-              Array.from(userMap.values()),
-              getDeletedUserIds()
-            );
-            if (removedIds.length > 0) {
-              deleteUsersFromFirestore(removedIds);
-            }
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
-            } catch {}
-            return uniqueUsers;
-          });
-          setCurrentUser((prev) => {
-            if (!prev || prev.id === 'user-guest') return prev;
-            const matchedCloud = updatedCloudUsers.find(
-              (cu) =>
-                cu.id === prev.id ||
-                (cu.authUid && prev.authUid && cu.authUid === prev.authUid) ||
-                (cu.email && prev.email && cu.email.toLowerCase() === prev.email.toLowerCase())
-            );
-            if (matchedCloud) {
-              const updated = restoreCanonicalUserIdentity({
-                ...prev,
-                ...matchedCloud,
-                role: matchedCloud.role || prev.role,
-                accountType: matchedCloud.accountType || prev.accountType,
-                adminSites: matchedCloud.adminSites !== undefined ? matchedCloud.adminSites : prev.adminSites,
-                memberId: matchedCloud.memberId || prev.memberId,
-                title: matchedCloud.title || prev.title,
-                isInitialAdmin: matchedCloud.isInitialAdmin !== undefined ? matchedCloud.isInitialAdmin : prev.isInitialAdmin,
+            .map((rawQ) => {
+              const seedQ = seedQuestionLookup.get(rawQ.id);
+              const hasUserUpdates =
+                Array.isArray(rawQ?.updateLogs) &&
+                rawQ.updateLogs.length > (seedQ?.updateLogs?.length || 0);
+              const isFakeOrSeed = Boolean(seedQ || rawQ.isSimulated || isMockQuestionId(rawQ.id, rawQ.authorId) || isSimulatedQuestion(rawQ));
+              const highestViews = isFakeOrSeed
+                ? (typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0)
+                : Math.max(
+                    typeof rawQ.views === 'number' ? rawQ.views : 0,
+                    typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
+                    typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
+                  );
+              const finalQ = reduceSimulatedProposalLikes({
+                ...rawQ,
+                ...(seedQ && !hasUserUpdates
+                  ? {
+                      appName: seedQ.appName || rawQ.appName,
+                      title: seedQ.title,
+                      description: seedQ.description,
+                      category: seedQ.category,
+                      subcategory: seedQ.subcategory,
+                      subcategories: seedQ.subcategories,
+                      tags: seedQ.tags,
+                      coverImage: seedQ.coverImage,
+                      galleryImages: seedQ.galleryImages,
+                      demoUrl: seedQ.demoUrl || rawQ.demoUrl,
+                      vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                      authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
+                      referencedPainPoint: seedQ.referencedPainPoint,
+                      ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
+                    }
+                  : {
+                      subcategories: rawQ.subcategories || seedQ?.subcategories,
+                      ...((rawQ.id === 'q-vp-idea-ideax' || rawQ.id === 'q-vp-vibe-ideax') && (!rawQ.currentVersion || rawQ.currentVersion === 'v6.2.0')
+                        ? { currentVersion: 'v1.0.0' }
+                        : {}),
+                      ...((rawQ.id === 'q-vp-idea-pace' || rawQ.id === 'q-vp-vibe-pace') && seedQ
+                        ? {
+                            coverImage: seedQ.coverImage,
+                            galleryImages: seedQ.galleryImages,
+                            vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                          }
+                        : {}),
+                    }),
+                ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
+                showCardImage: rawQ.showCardImage !== undefined ? Boolean(rawQ.showCardImage) : (seedQ?.showCardImage ?? true),
+                cardDisplayImage: typeof rawQ.cardDisplayImage === 'string' ? rawQ.cardDisplayImage : (seedQ?.cardDisplayImage || ''),
+                views: highestViews,
+                viewsCount: highestViews,
+                tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
               });
-              try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updated));
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updated));
-              } catch {}
-              return updated;
+              return finalQ;
+            });
+          const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
+          const isSeedMigratedV8 = localStorage.getItem(`${STORAGE_KEY_PREFIX}db_seed_v8`) === 'true';
+          const priorityIds = new Set([
+            'q-vp-idea-ideax',
+            'q-vp-vibe-ideax',
+            'q-vp-vibe-nexsight',
+            'q-vp-idea-gosun',
+            'q-vp-vibe-gosun',
+            'q-vp-idea-deeperdigger',
+            'q-vp-vibe-deeperdigger',
+            'q-vp-vibe-aiwolf',
+            'q-vp-vibe-mazewar',
+            'q-vp-idea-pace',
+            'q-vp-vibe-pace',
+            'q-vp-idea-aiyaya',
+            'q-vp-vibe-aiyaya',
+            'q-vp-idea-stallmatch',
+            'q-vp-vibe-stallmatch',
+          ]);
+          const missingVirtualForCloud = isPurgedBoot
+            ? []
+            : ALL_VIRTUAL_PROPOSALS_SEED.filter(
+                (vq) =>
+                  !currentDeleted.has(vq.id) &&
+                  (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
+              );
+          if (connected) {
+            if (missingVirtualForCloud.length > 0) {
+              syncQuestionsToFirestore(missingVirtualForCloud);
+              syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
             }
-            return restoreCanonicalUserIdentity(prev);
-          });
-          setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
-        });
-        if (mounted) {
-          setInitialBootProgress((prev) => Math.max(prev, 95));
-          setInitialBootStatusText('正在完成版面與即時資料通道初始化...');
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
+            } catch {}
+          }
+          const mergedById = new Map<string, Question>();
+          filteredQ.forEach((q) => mergedById.set(q.id, { ...q, tertiaryCategory: getEffectiveTertiaryCategory(q) }));
+          missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, { ...vq, tertiaryCategory: getEffectiveTertiaryCategory(vq) }));
+          const finalMergedQ = Array.from(mergedById.values());
+
+          // 確保雲端所有小遊戲皆具備合規的 7 大第三級分類，若有未標記者自動回寫雲端補正
+          if (connected) {
+            const unclassifiedGames = finalMergedQ.filter(
+              (q) => isGameQuestion(q) && (!q.tertiaryCategory || !GAME_TERTIARY_CATEGORIES.includes(q.tertiaryCategory as any))
+            );
+            if (unclassifiedGames.length > 0) {
+              const patchList = unclassifiedGames.map((g) => ({
+                ...g,
+                subcategory: '遊戲',
+                subcategories: Array.from(new Set([...(g.subcategories || []), '遊戲'])),
+                tertiaryCategory: getEffectiveTertiaryCategory(g),
+              }));
+              syncQuestionsToFirestore(patchList);
+            }
+          }
+
+          setQuestions(finalMergedQ);
+          try {
+            safeSetJSON(`${STORAGE_KEY_PREFIX}questions`, finalMergedQ);
+          } catch {
+            // ignore
+          }
+          if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         }
       } catch (err) {
         console.warn('Firestore initial boot load:', err);
       } finally {
-        if (typeof window !== 'undefined' && document.readyState !== 'complete') {
-          if (mounted) {
-            setInitialBootStatusText('正在完成頁面資源載入...');
-          }
-          await new Promise<void>((resolve) => {
-            const onWindowLoad = () => {
-              window.removeEventListener('load', onWindowLoad);
-              resolve();
-            };
-            window.addEventListener('load', onWindowLoad);
-            setTimeout(() => {
-              window.removeEventListener('load', onWindowLoad);
-              resolve();
-            }, 4000);
-          });
-        }
         if (mounted) {
           setInitialBootProgress(100);
           setInitialBootStatusText('資料載入完成，即刻探索！');
           setIsInitialBootComplete(true);
         }
       }
+
+      // 第二階段：延後至首屏進入後再於背景載入其餘集合（users、answers、solvers、個人交易/私訊/通知）與即時監聽
+      secondaryTimer = setTimeout(async () => {
+        if (!mounted) return;
+        try {
+          const secondaryData = await loadSecondaryBootDataFromFirestore();
+          if (!mounted) return;
+
+          if (secondaryData) {
+            if (secondaryData.users && secondaryData.users.length > 0) {
+              const repairedCloudUsers = secondaryData.users.map((cu) => {
+                const repaired = restoreCanonicalUserIdentity(cu);
+                if (cu.hasCompletedProfile === false && repaired.hasCompletedProfile === true && connected && cu.id === currentUser?.id) {
+                  syncUserToFirestore(repaired).catch(() => {});
+                }
+                return repaired;
+              });
+
+              const deletedUsers = getDeletedUserIds();
+              setAvailableUsers((prevUsers) => {
+                const combined = [...(prevUsers || []), ...(secondaryData.users || [])];
+                const { uniqueUsers, removedIds } = deduplicateUsersList(combined, deletedUsers);
+                if (removedIds.length > 0 && connected) {
+                  deleteUsersFromFirestore(removedIds);
+                }
+                try {
+                  safeSetJSON(`${STORAGE_KEY_PREFIX}users`, uniqueUsers);
+                } catch {}
+                return uniqueUsers;
+              });
+              if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
+                setCurrentUser((prev) => {
+                  const foundUser = repairedCloudUsers.find((u) => u.id === prev.id || (USER_ALIAS_MAP[prev.id] && u.id === USER_ALIAS_MAP[prev.id]));
+                  if (foundUser) {
+                    const restoredFound = restoreCanonicalUserIdentity({
+                      ...foundUser,
+                      ...prev,
+                      id: prev.id,
+                      hasCompletedProfile: Boolean(foundUser.hasCompletedProfile || prev.hasCompletedProfile),
+                    });
+                    return (restoredFound.id === 'user-admin' || restoredFound.id === 'a000000001' || restoredFound.role === 'admin')
+                      ? { ...restoredFound, balance: typeof restoredFound.balance === 'number' && restoredFound.balance > 0 ? restoredFound.balance : 50000 }
+                      : restoredFound;
+                  }
+                  return restoreCanonicalUserIdentity(prev);
+                });
+              }
+            }
+
+            if (secondaryData.answers && secondaryData.answers.length > 0) {
+              const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+              const deletedAnsIds = getDeletedAnswerIds();
+              const currentDeletedQ = getDeletedQuestionIds();
+              const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
+              const obsoleteSimIds: string[] = [];
+              const rawCloudAns = (!isDemo ? secondaryData.answers.filter((a) => !isMockAnswerId(a.id)) : secondaryData.answers).filter((a) => {
+                if (typeof a?.id === 'string' && (a.id.startsWith('ans-sim-') || a.id.startsWith('ans-vp-')) && !virtualAnsMap.has(a.id)) {
+                  obsoleteSimIds.push(a.id);
+                  return false;
+                }
+                if (isPurgedBoot && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
+                return true;
+              });
+              if (obsoleteSimIds.length > 0 && connected) {
+                deleteAnswersFromFirestore(obsoleteSimIds);
+              }
+              const seenAns = new Set<string>();
+              const finalAns: Answer[] = [];
+              const answersToSync: Answer[] = [];
+              const activeVirtualAns = isPurgedBoot ? [] : ALL_VIRTUAL_ANSWERS_SEED;
+              const cloudAnsMap = new Map(rawCloudAns.map((ca) => [ca.id, ca]));
+              for (const rawA0 of [...rawCloudAns, ...activeVirtualAns]) {
+                const rawA = stripFakeStarSeasonDefaults(rawA0);
+                if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !currentDeletedQ.has(rawA.questionId) && !seenAns.has(rawA.id)) {
+                  seenAns.add(rawA.id);
+                  const seedAns = virtualAnsMap.get(rawA.id);
+                  if (seedAns) {
+                    const mergedSimAns: Answer = {
+                      ...rawA,
+                      ...seedAns,
+                      likes: Math.max(rawA.likes || 0, seedAns.likes || 0),
+                      isSimulated: true,
+                      simulatedBatchId: SIMULATED_BATCH_ID,
+                    };
+                    finalAns.push(mergedSimAns);
+                    const existingCloudA = cloudAnsMap.get(rawA.id);
+                    if (!existingCloudA || existingCloudA.freePreview !== mergedSimAns.freePreview || !existingCloudA.isSimulated) {
+                      answersToSync.push(mergedSimAns);
+                    }
+                  } else {
+                    finalAns.push(rawA);
+                  }
+                }
+              }
+              if (answersToSync.length > 0 && connected) {
+                syncAnswersToFirestore(answersToSync);
+              }
+              setAnswers(finalAns);
+              try {
+                safeSetJSON(`${STORAGE_KEY_PREFIX}answers`, finalAns);
+              } catch {}
+            }
+
+            const isAdminBoot = currentUser.role === 'admin';
+            if (Array.isArray(secondaryData.transactions) && secondaryData.transactions.length > 0) {
+              const bootTx = !isDemo ? secondaryData.transactions.filter((t) => !isMockTransactionId(t.id)) : secondaryData.transactions;
+              setTransactions((prev) => (isAdminBoot ? bootTx : mergeServerIntoLocal(prev, bootTx)));
+            }
+            if (Array.isArray(secondaryData.conversations) && secondaryData.conversations.length > 0) {
+              const bootConv = !isDemo ? secondaryData.conversations.filter((c) => !isMockConversationId(c.id)) : secondaryData.conversations;
+              setConversations((prev) => mergeServerIntoLocal(prev, bootConv));
+            }
+            if (Array.isArray(secondaryData.notifications) && secondaryData.notifications.length > 0) {
+              const bootNotifs = secondaryData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+              setNotifications((prev) => mergeServerIntoLocal(prev, bootNotifs));
+            }
+            if (secondaryData.solvers && secondaryData.solvers.length > 0) {
+              if (!isDemo) {
+                setSolvers(secondaryData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)));
+              } else {
+                setSolvers(secondaryData.solvers);
+              }
+            }
+            if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+          }
+
+          if (!mounted) return;
+
+          // Attach real-time snapshot listener for questions
+          unsubQuestions = subscribeToQuestions((updatedCloudQuestions) => {
+            if (!mounted || !updatedCloudQuestions) return;
+            const currentDeleted = getDeletedQuestionIds();
+            const isCurrentDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+            const isPurgedSnap = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+            const valid = updatedCloudQuestions
+              .filter(
+                (q) =>
+                  Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) &&
+                  !currentDeleted.has(q.id) &&
+                  (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)) &&
+                  (!isPurgedSnap || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
+              )
+              .filter((q) => {
+                if (q.status === 'delisted' && q.delistedAt) {
+                  return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
+                }
+                return true;
+              })
+              .map((rawQ) => reduceSimulatedProposalLikes({
+                ...rawQ,
+                tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
+                tertiaryCategory: getEffectiveTertiaryCategory(rawQ),
+              }));
+            setQuestions((prevQuestions) => {
+              const cloudIds = new Set(valid.map((q) => q.id));
+              const localPreserved = (prevQuestions || []).filter((lq) => {
+                if (!lq || !lq.id || cloudIds.has(lq.id) || currentDeleted.has(lq.id)) return false;
+                const isTimestampId = /^q-\d{10,}$/.test(lq.id);
+                const isMine = Boolean(currentUser?.id && lq.authorId === currentUser.id);
+                return isTimestampId || isMine;
+              });
+
+              const merged = [...localPreserved, ...valid];
+              const seenValid = new Set<string>();
+              const finalValid = merged.filter((q) => {
+                if (!q || !q.id || seenValid.has(q.id)) return false;
+                seenValid.add(q.id);
+                return true;
+              });
+
+              try {
+                safeSetJSON(`${STORAGE_KEY_PREFIX}questions`, finalValid);
+              } catch {}
+              return finalValid;
+            });
+            setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+          });
+
+          // Attach real-time snapshot listener for users (同步註銷與反悔猶豫期狀態)
+          unsubUsers = subscribeToUsers((updatedCloudUsers) => {
+            if (!mounted || !updatedCloudUsers || updatedCloudUsers.length === 0) return;
+            setAvailableUsers((prevUsers) => {
+              const userMap = new Map<string, User>();
+              prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
+              updatedCloudUsers.forEach((rawCu) => {
+                const cu = restoreCanonicalUserIdentity(rawCu);
+                const local = userMap.get(cu.id);
+                if (local) {
+                  const isLocalActive = !local.isDeactivated && !local.deactivationStatus;
+                  const isCloudDeactivated = Boolean(
+                    cu.isDeactivated ||
+                    cu.deactivationStatus === 'pending_grace' ||
+                    cu.deactivationStatus === 'deactivated'
+                  );
+                  const finalDeact = isLocalActive ? false : isCloudDeactivated;
+
+                  userMap.set(
+                    cu.id,
+                    restoreCanonicalUserIdentity({
+                      ...cu,
+                      ...local,
+                      role: cu.role || local.role,
+                      accountType: cu.accountType || local.accountType,
+                      adminSites: cu.adminSites !== undefined ? cu.adminSites : local.adminSites,
+                      memberId: cu.memberId || local.memberId,
+                      title: cu.title || local.title,
+                      isInitialAdmin: cu.isInitialAdmin !== undefined ? cu.isInitialAdmin : local.isInitialAdmin,
+                      isDeactivated: finalDeact,
+                      deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
+                      deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
+                      deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
+                      deactivationReason: finalDeact ? cu.deactivationReason : undefined,
+                      ...(realPointsEconomyRef.current
+                        ? {
+                            balance: typeof cu.balance === 'number' ? cu.balance : local.balance,
+                            withheldPoints: typeof cu.withheldPoints === 'number' ? cu.withheldPoints : local.withheldPoints,
+                            tipReceivablesPoints: typeof cu.tipReceivablesPoints === 'number' ? cu.tipReceivablesPoints : local.tipReceivablesPoints,
+                            thisWeekTipPoints: typeof cu.thisWeekTipPoints === 'number' ? cu.thisWeekTipPoints : local.thisWeekTipPoints,
+                          }
+                        : {}),
+                      ...('isBlocked' in (rawCu as any)
+                        ? {
+                            isBlocked: Boolean(cu.isBlocked),
+                            blockedReason: cu.blockedReason,
+                            blockedUntil: cu.blockedUntil,
+                            blockedAt: cu.blockedAt,
+                            blockedByAdminName: cu.blockedByAdminName,
+                          }
+                        : {}),
+                    })
+                  );
+                } else {
+                  userMap.set(cu.id, cu);
+                }
+              });
+              const { uniqueUsers, removedIds } = deduplicateUsersList(
+                Array.from(userMap.values()),
+                getDeletedUserIds()
+              );
+              if (removedIds.length > 0) {
+                deleteUsersFromFirestore(removedIds);
+              }
+              try {
+                safeSetJSON(`${STORAGE_KEY_PREFIX}users`, uniqueUsers);
+              } catch {}
+              return uniqueUsers;
+            });
+            setCurrentUser((prev) => {
+              if (!prev || prev.id === 'user-guest') return prev;
+              const matchedCloud = updatedCloudUsers.find(
+                (cu) =>
+                  cu.id === prev.id ||
+                  (cu.authUid && prev.authUid && cu.authUid === prev.authUid) ||
+                  (cu.email && prev.email && cu.email.toLowerCase() === prev.email.toLowerCase())
+              );
+              if (matchedCloud) {
+                const updated = restoreCanonicalUserIdentity({
+                  ...prev,
+                  ...matchedCloud,
+                  role: matchedCloud.role || prev.role,
+                  accountType: matchedCloud.accountType || prev.accountType,
+                  adminSites: matchedCloud.adminSites !== undefined ? matchedCloud.adminSites : prev.adminSites,
+                  memberId: matchedCloud.memberId || prev.memberId,
+                  title: matchedCloud.title || prev.title,
+                  isInitialAdmin: matchedCloud.isInitialAdmin !== undefined ? matchedCloud.isInitialAdmin : prev.isInitialAdmin,
+                });
+                try {
+                  localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updated));
+                  localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updated));
+                } catch {}
+                return updated;
+              }
+              return restoreCanonicalUserIdentity(prev);
+            });
+            setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+          });
+        } catch (err) {
+          console.warn('Firestore secondary background load:', err);
+        }
+      }, 150);
     })();
 
     return () => {
       mounted = false;
+      if (secondaryTimer) clearTimeout(secondaryTimer);
       if (unsubQuestions) unsubQuestions();
       if (unsubUsers) unsubUsers();
     };
