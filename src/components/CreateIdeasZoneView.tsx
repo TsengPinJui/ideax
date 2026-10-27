@@ -555,6 +555,23 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           setSelectedProposalForDetail(null);
           onBackFromDetail?.();
         }}
+        onEditProposal={(p) => {
+          sessionStorage.setItem('ideax_challenge_load_proposal_id', p.id);
+          window.dispatchEvent(
+            new CustomEvent('ideax_challenge_navigate', {
+              detail: { subView: 'submit', proposalId: p.id },
+            })
+          );
+          window.dispatchEvent(
+            new CustomEvent('ideax_select_special_zone', {
+              detail: { zone: 'competition' },
+            })
+          );
+        }}
+        onWithdrawProposal={() => {
+          setSelectedProposalForDetail(null);
+          onBackFromDetail?.();
+        }}
         onBack={handleBackFromProposalDetail}
         onToggleLike={(pid) => {
           const target = proposalsList.find((p) => p.id === pid) || liveProposal;

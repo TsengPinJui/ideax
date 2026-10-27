@@ -161,6 +161,33 @@ export interface IslandLabelOverlay {
   tier?: 1 | 2 | 3;
 }
 
+export function playIdeaBulbChime() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    // 4-note melodic crystal chime (C5 -> E5 -> G5 -> C6)
+    const freqs = [523.25, 659.25, 783.99, 1046.5];
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+      gain.gain.setValueAtTime(0.0001, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + idx * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.88);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.08);
+      osc.stop(now + idx * 0.08 + 0.92);
+    });
+  } catch {
+    // audio policy catch
+  }
+}
+
 export const TOTAL_ISLAND_EASTER_EGGS = 35;
 
 interface IslandScene3DProps {
@@ -10088,9 +10115,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         if (clickedXiaoDengPao) {
           const nowT = clock.getElapsedTime();
           xiaoDengPaoStartTime = nowT;
-          xiaoDengPaoActiveUntil = nowT + 3.2;
+          xiaoDengPaoActiveUntil = nowT + 4.5;
           xiaoDengPaoFacingYaw = smoothedSpherical.yawRad;
+          playIdeaBulbChime();
           triggerEasterEggRef.current('「找到了小燈泡！當燈泡亮起，就是又有好點子了！」');
+          return;
+        }
+        if (foundEasterEggKind === 'waterfall') {
+          triggerEasterEggRef.current(
+            '「垂涎三尺」—— 日照香爐生紫煙，遙看瀑布掛前川。飛流直下三千尺，疑是銀河落九天！好點子如飛瀑奔騰不息～',
+          );
           return;
         }
         if (foundEasterEggPoem || (foundEasterEggPoems && foundEasterEggPoems.length > 0)) {
@@ -10141,6 +10175,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         }
       }
     };
+
+    // 監聽新提案或貼文發布事件：地圖中央大燈泡亮起並播放清脆音效
+    const handleNewContentAlert = (e?: Event) => {
+      const nowT = clock.getElapsedTime();
+      xiaoDengPaoStartTime = nowT;
+      xiaoDengPaoActiveUntil = nowT + 5.5;
+      xiaoDengPaoFacingYaw = smoothedSpherical.yawRad;
+      playIdeaBulbChime();
+      const detail = (e as CustomEvent)?.detail;
+      const title = detail?.title ? `「${detail.title}」` : '';
+      triggerEasterEggRef.current(`💡 新提案/貼文發布！島嶼中央大燈泡已為 ${title} 點亮！`);
+    };
+    window.addEventListener('ideax_new_content_alert', handleNewContentAlert);
 
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
@@ -10333,20 +10380,27 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         ? 0.06 * pulseFactor
         : 0;
 
+      const isBulbActive = t < xiaoDengPaoActiveUntil;
+      const bulbActiveMultiplier = isBulbActive ? 2.5 : 1.0;
+
       mats.bulbGold.emissiveIntensity = THREE.MathUtils.lerp(
         mats.bulbGold.emissiveIntensity,
-        targetBulbEmissive * rainGlowBoost,
+        Math.max(targetBulbEmissive * rainGlowBoost, isBulbActive ? 3.6 : 0),
         lerpSpeed,
       );
       mats.bulbRing.emissiveIntensity = THREE.MathUtils.lerp(
         mats.bulbRing.emissiveIntensity,
-        targetRingEmissive * rainGlowBoost,
+        Math.max(targetRingEmissive * rainGlowBoost, isBulbActive ? 2.8 : 0),
         lerpSpeed,
       );
-      bulbHaloMat.opacity = THREE.MathUtils.lerp(bulbHaloMat.opacity, targetHaloOpacity, lerpSpeed);
+      bulbHaloMat.opacity = THREE.MathUtils.lerp(
+        bulbHaloMat.opacity,
+        Math.max(targetHaloOpacity, isBulbActive ? 0.85 : 0),
+        lerpSpeed,
+      );
       bulbOuterAuraMat.opacity = THREE.MathUtils.lerp(
         bulbOuterAuraMat.opacity,
-        targetOuterAuraOpacity,
+        Math.max(targetOuterAuraOpacity, isBulbActive ? 0.65 : 0),
         lerpSpeed,
       );
       bulbHaloMesh.visible = bulbHaloMat.opacity > 0.01;
@@ -10355,7 +10409,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       bulbLight.intensity = THREE.MathUtils.lerp(
         bulbLight.intensity,
         (isNightPhase ? atmos.bulbLightIntensity * 1.45 * pulseFactor : atmos.bulbLightIntensity) *
-          rainGlowBoost,
+          rainGlowBoost * bulbActiveMultiplier,
         lerpSpeed,
       );
 
@@ -11202,6 +11256,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('pointermove', handleCanvasPointerMove);
+      window.removeEventListener('ideax_new_content_alert', handleNewContentAlert);
       canvas.removeEventListener('pointerdown', handleCanvasPointerDown);
       window.removeEventListener('pointerup', handleCanvasPointerUp);
       canvas.removeEventListener('webglcontextlost', handleContextLost);

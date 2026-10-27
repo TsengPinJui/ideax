@@ -3135,9 +3135,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             {/* 4. 副標題說明文字 */}
             <div className="space-y-1.5 text-xs sm:text-sm md:text-base text-stone-700 max-w-xl mx-auto font-medium leading-relaxed">
-              <p>加入 IdeaX 創星季，提出創新 idea，獲得市場支持與專業回饋。</p>
+              <p>加入 IdeaX 創星季，提出創新提案，獲得市場支持與專業回饋。</p>
               <p className="text-amber-700 font-bold">
-                提出你的創新 Idea，讓市場與專業共同驗證。
+                提出你的創新提案，讓市場與專業共同驗證。
               </p>
             </div>
 

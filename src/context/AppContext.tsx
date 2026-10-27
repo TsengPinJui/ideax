@@ -5746,6 +5746,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 發布後是詢問通知權限的好時機（「有人回覆時要通知你嗎？」），等成功提示消失後再顯示
     try {
+      window.dispatchEvent(
+        new CustomEvent('ideax_new_content_alert', {
+          detail: { title: q.title, type: kindLabel },
+        })
+      );
       setTimeout(() => window.dispatchEvent(new CustomEvent('ideax:suggest-notification-optin')), 2800);
     } catch {}
 

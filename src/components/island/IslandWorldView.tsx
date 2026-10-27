@@ -137,6 +137,25 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   // 古風背景雅樂狀態（默認打開 BGM，地圖開啟時自動播放，離開地圖時停止）
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
 
+  // 當有新提案或貼文加入時，觸發島嶼中央大燈泡亮起與清脆音效
+  const prevQuestionsCount = useRef(questions.length);
+  useEffect(() => {
+    if (questions.length > prevQuestionsCount.current) {
+      const latestQ = questions[0];
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('ideax_new_content_alert', {
+            detail: {
+              title: latestQ?.title || '新提案',
+              type: isGameQuestion(latestQ) ? '遊戲作品' : '創新提案',
+            },
+          })
+        );
+      }
+    }
+    prevQuestionsCount.current = questions.length;
+  }, [questions]);
+
   useEffect(() => {
     ancientJiangnanBgm.setMuted(false);
     setIsBgmMuted(false);

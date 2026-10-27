@@ -204,14 +204,15 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     );
   };
 
-  // Handle sending official reply to ticket submitter
-  const handleSendTicketReply = (ticket: CustomerSupportTicket) => {
+  // Handle sending official reply to ticket submitter (支援純回覆維持處理中，或回覆並結案)
+  const handleSendTicketReply = (ticket: CustomerSupportTicket, markResolved: boolean = true) => {
     if (!ticketReplyNote.trim()) return;
 
     const replyText = ticketReplyNote.trim();
+    const targetStatus = markResolved ? 'resolved' : 'in_progress';
     const updated: CustomerSupportTicket = {
       ...ticket,
-      status: 'resolved',
+      status: targetStatus,
       adminNote: replyText,
     };
 
@@ -221,8 +222,12 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     // Send official notification to the user
     if (addNotification && ticket.userId && ticket.userId !== 'guest') {
       addNotification(
-        `【官方工單回覆】工單 #${ticket.id} 處理進度`,
-        `親愛的用戶您好，管理團隊已針對您提報的客服工單「${ticket.title}」完成審查與回覆：\n\n${replyText}\n\n如有進一步問題，歡迎隨時透過「客服與回報」向專員洽詢。`,
+        markResolved
+          ? `【官方工單結案回覆】工單 #${ticket.id}「${ticket.title}」已完成處理`
+          : `【官方工單進度回覆】工單 #${ticket.id}「${ticket.title}」最新回覆`,
+        `親愛的用戶您好，管理團隊已針對您提報的客服工單「${ticket.title}」${
+          markResolved ? '完成審查並予以結案' : '發送最新處理進度說明'
+        }：\n\n${replyText}\n\n如有進一步問題，歡迎隨時透過「客服與回報」向專員洽詢。`,
         'system',
         ticket.userId,
         'personal'
@@ -231,7 +236,11 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
     setSelectedTicketForReply(null);
     setTicketReplyNote('');
-    showToast(`官方回覆已發送給用戶（${ticket.userName}），工單 #${ticket.id} 已結案！`);
+    showToast(
+      markResolved
+        ? `官方回覆已發送給用戶（${ticket.userName}），工單 #${ticket.id} 已結案！`
+        : `官方回覆已發送給用戶（${ticket.userName}），工單 #${ticket.id} 維持【處理中】！`
+    );
   };
 
   // 爭議裁決確認視窗（顯示系統即將依照裁定結果自動發布的罐頭式官方文字）
@@ -837,7 +846,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                         className="px-3 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{isSelected ? '收起回覆' : '官方回覆並結案'}</span>
+                        <span>{isSelected ? '收起回覆' : '回覆工單'}</span>
                       </button>
                     </div>
 
@@ -850,7 +859,6 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                             <span>撰寫官方回覆（將自動推播至用戶通知中心與信箱）</span>
                           </span>
                         </div>
-
                         <textarea
                           rows={3}
                           value={ticketReplyNote}
@@ -858,22 +866,31 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                           placeholder="請輸入給予用戶的處理結果說明、補償點數明細或後續操作指示..."
                           className="w-full p-2.5 text-xs bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
-
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
                           <button
                             type="button"
                             onClick={() => setSelectedTicketForReply(null)}
-                            className="px-3 py-1 text-xs font-bold text-stone-500 hover:bg-stone-100 rounded-lg cursor-pointer"
+                            className="px-3 py-1.5 text-xs font-bold text-stone-500 hover:bg-stone-100 rounded-lg cursor-pointer"
                           >
                             取消
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleSendTicketReply(ticket)}
-                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            onClick={() => handleSendTicketReply(ticket, false)}
+                            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                            title="發布官方回覆給用戶，但工單維持「處理中」狀態以利後續追蹤"
                           >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>發布回覆並標記結案</span>
+                            <Send className="w-3.5 h-3.5 text-stone-600" />
+                            <span>回覆（維持處理中）</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendTicketReply(ticket, true)}
+                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                            title="發布官方回覆給用戶，並正式將此工單標記為已結案"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-stone-950" />
+                            <span>回覆並結案</span>
                           </button>
                         </div>
                       </div>

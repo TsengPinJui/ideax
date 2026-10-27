@@ -149,7 +149,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
     {
       id: 'create_ideas',
       label: '創點子（創新提案）',
-      shortLabel: '創新Idea',
+      shortLabel: '創新提案',
       subLabel: '創新解方、創業企劃',
       icon: '💡',
       count: zoneCounts.create_ideas,

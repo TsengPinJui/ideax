@@ -826,6 +826,14 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           setSelectedProposalForSupport(p);
           setIsSupportModalOpen(true);
         }}
+        onEditProposal={(p) => {
+          sessionStorage.setItem('ideax_challenge_load_proposal_id', p.id);
+          onNavigate('submit');
+        }}
+        onWithdrawProposal={() => {
+          setSelectedProposalForDetail(null);
+          onRefreshProposals?.();
+        }}
         stageInfo={stageInfo}
         isLoggedIn={Boolean(auth.currentUser && currentUser.id !== 'user-guest')}
         onOpenAuth={onOpenAuth}

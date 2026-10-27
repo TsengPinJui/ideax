@@ -105,6 +105,11 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isAdminDelistModalOpen, setIsAdminDelistModalOpen] = useState(false);
+  const [confirmActionModal, setConfirmActionModal] = useState<{
+    type: 'withdraw' | 'unpublish' | 'delete';
+    title: string;
+    description: string;
+  } | null>(null);
 
   const {
     currentUser,
@@ -118,6 +123,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     toggleLikeDiscussionAnswer,
     isDiscussionAnswerLiked,
     getDiscussionAnswerLikesCount,
+    unpublishOwnQuestion,
+    deleteQuestionPermanently,
   } = useApp();
   const isBookmarked = isQuestionBookmarked(proposal.id);
   const [localLikedCommentIds, setLocalLikedCommentIds] = useState<string[]>([]);
@@ -257,29 +264,54 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     sessionStorage.setItem('ideax_challenge_load_proposal_id', proposal.id);
     if (onEditProposal) {
       onEditProposal(proposal);
-    } else {
-      window.location.href = `/challenge?subView=submit`;
-    }
-  };
-
-  const handleWithdrawThisProposal = () => {
-    if (
-      !window.confirm(
-        '確定要撤回此提案嗎？\n\n撤回後本提案將自官方審核清單與公開展示中移除，並保留完整資料轉為「暫存草稿」，您可以隨時修改後重新發布！'
-      )
-    ) {
       return;
     }
-    const res = withdrawCompetitionProposal(proposal.id, currentUser?.id);
-    if (res.success) {
-      showToast?.('提案已成功撤回為草稿！');
-      if (onWithdrawProposal) {
-        onWithdrawProposal(proposal);
+    window.dispatchEvent(
+      new CustomEvent('ideax_challenge_navigate', {
+        detail: { subView: 'submit', proposalId: proposal.id },
+      })
+    );
+    window.dispatchEvent(
+      new CustomEvent('ideax_select_special_zone', {
+        detail: { zone: 'competition' },
+      })
+    );
+    showToast?.('已載入提案資料至編輯頁面');
+  };
+
+  const handleConfirmActionModal = async () => {
+    if (!confirmActionModal) return;
+    const { type } = confirmActionModal;
+    setConfirmActionModal(null);
+
+    if (type === 'withdraw') {
+      const res = withdrawCompetitionProposal(proposal.id, currentUser?.id);
+      if (res.success) {
+        showToast?.('提案已成功撤回為草稿！');
+        if (onWithdrawProposal) {
+          onWithdrawProposal(proposal);
+        } else {
+          onBack();
+        }
       } else {
-        onBack();
+        showToast?.(res.message);
       }
-    } else {
-      showToast?.(res.message);
+    } else if (type === 'unpublish') {
+      if (onUnpublish) {
+        onUnpublish(proposal);
+      } else if (unpublishOwnQuestion) {
+        unpublishOwnQuestion(proposal.id);
+      }
+      showToast?.('提案已下架。');
+      onBack();
+    } else if (type === 'delete') {
+      if (onDelete) {
+        await onDelete(proposal);
+      } else if (deleteQuestionPermanently) {
+        await deleteQuestionPermanently(proposal.id);
+      }
+      showToast?.('提案已永久刪除。');
+      onBack();
     }
   };
 
@@ -319,72 +351,73 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* 分享按鈕 (帶文字說明分享至社群/LINE) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* 分享按鈕 (行動版僅圖示，電腦版帶文字，無多餘笨重外框) */}
             <button
               type="button"
               onClick={handleShareWithText}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-95"
               title="帶文字說明分享此提案至社群或好友"
             >
-              <Share2 className="w-3.5 h-3.5 text-stone-950" />
-              <span>分享提案</span>
+              <Share2 className="w-4 h-4 text-stone-950" />
+              <span className="hidden sm:inline">分享提案</span>
             </button>
 
-            {/* ⭐ 收藏按鈕 */}
+            {/* ⭐ 收藏按鈕 (行動版純圖示，免除擁擠外框) */}
             <button
               type="button"
               onClick={() => {
                 const isAdded = toggleBookmarkQuestion(proposal.id);
                 showToast?.(isAdded ? '⭐ 已收藏並收錄至「我的按讚收藏」' : '已取消收藏');
               }}
-              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                 isBookmarked
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                  : 'bg-white text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-700'
+                  ? 'bg-amber-100 text-amber-900 shadow-2xs'
+                  : 'bg-stone-100 text-stone-700 hover:bg-amber-50 hover:text-amber-800'
               }`}
               title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
             >
-              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
-              <span>{isBookmarked ? '已收藏' : '收藏'}</span>
+              <Star className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-600' : 'text-stone-500'}`} />
+              <span className="hidden sm:inline">{isBookmarked ? '已收藏' : '收藏'}</span>
             </button>
 
-            {/* ❤️ Like（創新提案）或 🔥 +1 附議（痛點） */}
+            {/* ❤️ Like（創新提案）或 🔥 +1 附議（痛點）(行動版圖示+數字，無笨重邊框) */}
             {proposal.stage === 'pain_point' ? (
               <button
                 type="button"
                 onClick={() => onToggleLike(proposal.id)}
-                className={`px-2.5 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                   isLiked
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
-                    : 'bg-orange-50 text-orange-800 border-orange-300 hover:bg-orange-100'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-orange-50 text-orange-800 hover:bg-orange-100'
                 }`}
                 title="🔥 +1 附議此痛點"
               >
-                <span>🔥 +1 附議</span>
-                <span className="font-mono">({proposal.likeCount || 0})</span>
+                <span>🔥</span>
+                <span className="hidden sm:inline">+1 附議</span>
+                <span className="font-mono text-xs font-bold">({proposal.likeCount || 0})</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => onToggleLike(proposal.id)}
-                className={`px-2.5 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                   isLiked
-                    ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
-                    : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                    ? 'bg-rose-500 text-white shadow-2xs'
+                    : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
                 }`}
                 title={isLiked ? '❤️ 已 Like' : '❤️ Like 此提案'}
               >
-                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                <span>Like</span>
-                <span className="font-mono">({proposal.likeCount || 0})</span>
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="hidden sm:inline">Like</span>
+                <span className="font-mono text-xs font-bold">({proposal.likeCount || 0})</span>
               </button>
             )}
 
             {/* 管理員審核與下架控制 */}
             {currentUser?.role === 'admin' && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full ${
                   proposal.status === 'approved'
                     ? 'bg-emerald-100 text-emerald-800'
                     : proposal.status === 'rejected'
@@ -597,9 +630,9 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </section>
         ) : (
         <>
-        {/* 2. ［注資創星幣］橫條（痛點不開放注資，僅解方提案展示） */}
+        {/* 2. ［注資創星幣 / 點數打賞］橫條（痛點不開放注資，僅解方提案展示） */}
         {proposal.stage !== 'pain_point' && (
-          <section id="module-support" className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
+          <section id="module-support" className="bg-amber-50/60 rounded-2xl p-4 sm:p-5 border border-amber-200/70 shadow-2xs space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
@@ -618,15 +651,15 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-stone-600 bg-white/70 px-3.5 py-2.5 rounded-xl border border-amber-200/60">
+            <div className="flex items-center justify-between gap-2 text-xs text-stone-600 bg-white/80 px-3 py-2 rounded-xl border border-amber-100 flex-wrap">
               <span className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-stone-500" />
                 <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
               </span>
-              <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
-                <span>刊登狀態：</span>
-                <strong className="text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {proposal.unpublishAt ? `刊登至 ${proposal.unpublishAt} 止` : '♾️ 預設永久刊登'}
+              <span className="text-xs text-amber-900 font-semibold flex items-center gap-1">
+                <span>刊登：</span>
+                <strong className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold">
+                  {proposal.unpublishAt ? `至 ${proposal.unpublishAt} 止` : '♾️ 預設永久刊登'}
                 </strong>
               </span>
             </div>
@@ -861,37 +894,43 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {isFromCreate && onUnpublish && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('要將這件提案下架嗎？下架後不會出現在公開列表。')) onUnpublish(proposal);
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
-                  title="將提案從公開列表下架"
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>下架提案</span>
-                </button>
-              )}
-              {isFromCreate && onDelete && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('確定永久刪除此提案？此操作無法復原。')) void onDelete(proposal);
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
-                  title="永久刪除此提案"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>刪除提案</span>
-                </button>
-              )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmActionModal({
+                    type: 'unpublish',
+                    title: '確認下架此提案？',
+                    description: '下架後此提案將自公開探索列表中隱藏，您隨時可在個人中心重新上架。',
+                  })
+                }
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 shadow-2xs"
+                title="將提案從公開列表下架"
+              >
+                <EyeOff className="w-3.5 h-3.5 text-amber-600" />
+                <span>下架提案</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmActionModal({
+                    type: 'delete',
+                    title: '確定永久刪除此提案？',
+                    description: '刪除後提案所有資料、留言與紀錄將從平台徹底抹除，此操作無法復原。',
+                  })
+                }
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 shadow-2xs"
+                title="永久刪除此提案"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>刪除提案</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleEditThisProposal}
-                className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-98"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-98"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>編輯提案</span>
@@ -899,8 +938,14 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
               <button
                 type="button"
-                onClick={handleWithdrawThisProposal}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                onClick={() =>
+                  setConfirmActionModal({
+                    type: 'withdraw',
+                    title: '確定要撤回此提案嗎？',
+                    description: '撤回後本提案將自官方審核清單與公開展示中移除，並保留完整資料轉為「暫存草稿」，您可以隨時修改後重新發布！',
+                  })
+                }
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98 shadow-2xs"
                 title="撤回至草稿箱"
               >
                 <Undo2 className="w-3.5 h-3.5 text-rose-600" />
@@ -1279,6 +1324,59 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </button>
         </div>
       </main>
+
+      {/* 提案發布者/管理員操作確認彈窗（免除 iframe 內瀏覽器 confirm 阻擋） */}
+      {confirmActionModal && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                confirmActionModal.type === 'delete'
+                  ? 'bg-rose-100 text-rose-700'
+                  : confirmActionModal.type === 'withdraw'
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-stone-100 text-stone-700'
+              }`}>
+                {confirmActionModal.type === 'delete' ? (
+                  <Trash2 className="w-5 h-5" />
+                ) : confirmActionModal.type === 'withdraw' ? (
+                  <Undo2 className="w-5 h-5" />
+                ) : (
+                  <EyeOff className="w-5 h-5" />
+                )}
+              </div>
+              <h3 className="text-base font-black text-stone-900">
+                {confirmActionModal.title}
+              </h3>
+            </div>
+            <p className="text-xs text-stone-600 leading-relaxed">
+              {confirmActionModal.description}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmActionModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 cursor-pointer transition-colors"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmActionModal}
+                className={`px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer shadow-2xs transition-all active:scale-95 ${
+                  confirmActionModal.type === 'delete'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : confirmActionModal.type === 'withdraw'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-stone-800 hover:bg-stone-900'
+                }`}
+              >
+                確認執行
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 管理員下架提案彈窗 */}
       <AdminDelistModal
