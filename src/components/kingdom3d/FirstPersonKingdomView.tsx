@@ -22,6 +22,7 @@ import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { BuildingInteractionModal } from './BuildingInteractionModal';
 import { DevStatsPanel } from './DevStatsPanel';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
+import './kingdomUi.css';
 import {
   AlertCircle,
   RefreshCw,
@@ -82,7 +83,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     showColliders: false,
     moveSpeedMultiplier: 1.0,
   });
-  const [isDevStatsOpen, setIsDevStatsOpen] = useState(true);
+  const [isDevStatsOpen, setIsDevStatsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDesktopPointerLocked, setIsDesktopPointerLocked] = useState(false);
 
@@ -481,89 +482,43 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
       />
 
-      {/* Initial / Retry Loading Screen */}
+      {/* 載入畫面（水墨風） */}
       {regionStatus === 'loading' && (
-        <div className="absolute inset-0 z-40 bg-stone-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-stone-100">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 mb-4 animate-pulse">
-            🏯
+        <div className="kx-root absolute inset-0 z-40 flex flex-col items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center, #2b1a10 0%, #120a06 75%)' }}>
+          <svg viewBox="0 0 120 70" className="w-40 h-24 mb-3 opacity-90" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <path key={i} d={`M ${48 + i * 2} ${54 - i * 9} L ${72 - i * 2} ${54 - i * 9} L ${68 - i * 2} ${50 - i * 9} L ${52 + i * 2} ${50 - i * 9} Z`} fill="#b3261e" stroke="#e2b85a" strokeWidth="0.8" />
+            ))}
+            <path d="M 0 66 Q 30 50 60 62 T 120 60 L 120 70 L 0 70 Z" fill="rgba(226,184,90,0.18)" />
+          </svg>
+          <div className="kx-title text-xl sm:text-2xl">創點源・五島</div>
+          <div className="kx-sub text-[13px] mt-1">正在搭起樓閣、點亮燈籠…</div>
+          <div className="w-60 h-1.5 mt-5 rounded-full overflow-hidden" style={{ background: 'rgba(226,184,90,0.18)' }}>
+            <div className="h-full transition-all duration-200" style={{ width: `${Math.max(8, loadProgress)}%`, background: 'linear-gradient(90deg,#b3261e,#e2b85a)' }} />
           </div>
-          <div className="text-lg font-black text-amber-200">
-            載入創點源五島中...
-          </div>
-          <div className="w-56 h-2 bg-stone-800 rounded-full mt-4 overflow-hidden border border-stone-700">
-            <div
-              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-200"
-              style={{ width: `${Math.max(8, loadProgress)}%` }}
-            />
-          </div>
-          <div className="text-xs text-stone-400 mt-2 font-mono">
-            {loadProgress}% 建構島嶼、石拱橋、樓閣與燈籠
-          </div>
+          <div className="kx-sub text-[12px] mt-2 tabular-nums">{loadProgress}%</div>
         </div>
       )}
 
-      {/* Error Alert Screen with Retry & Safe Return Fallback */}
+      {/* 載入失敗：重試或回到原本的島 */}
       {regionStatus === 'error' && (
-        <div className="absolute inset-0 z-40 bg-stone-950/88 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="max-w-md w-full bg-stone-900 border border-rose-500/60 rounded-3xl p-6 text-stone-100 shadow-2xl space-y-4">
+        <div className="kx-root absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="kx-panel kx-corners max-w-md w-full p-5 sm:p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-base font-black text-rose-300">
-                    分區資產載入失敗
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/40 text-[10px] font-mono font-bold text-rose-300">
-                    status: error
-                  </span>
-                </div>
-                <p className="text-xs text-amber-200/90 font-bold">
-                  目標分區：{failedRegionName}
-                </p>
-                <p className="text-xs text-stone-300 leading-relaxed">
-                  {errorMessage || '分區資產載入逾時或幾何建構中斷'}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-stone-950/70 border border-stone-800 text-[11px] text-stone-400 space-y-1">
-              <div>・原分區場景與玩家狀態已安全保留，未重新整理整個網站。</div>
+              <AlertCircle className="w-6 h-6 text-rose-300 shrink-0 mt-0.5" />
               <div>
-                ・您可選擇
-                <span className="text-amber-300 font-bold">「重試載入」</span>
-                重新建構目標分區，或
-                <span className="text-emerald-300 font-bold">
-                  「安全返回原區域」
-                </span>
-                繼續探索。
+                <h4 className="kx-title text-lg">{failedRegionName} 沒有載入成功</h4>
+                <p className="kx-sub text-[13px] mt-1 leading-relaxed">{errorMessage || '分區資產載入逾時或幾何建構中斷'}</p>
+                <p className="kx-sub text-[12.5px] mt-2">你目前的位置都還在，可以重試，或先回到原本的島繼續逛。</p>
               </div>
             </div>
-
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onExit}
-                className="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-bold text-stone-300 cursor-pointer transition-colors"
-              >
-                退出回主站
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={onExit} className="kx-btn-ghost px-3.5 py-2 text-[13px] cursor-pointer">離開</button>
+              <button type="button" onClick={handleSafeReturn} className="kx-btn-ghost px-3.5 py-2 text-[13px] flex items-center gap-1.5 cursor-pointer">
+                <ShieldCheck className="w-4 h-4" /> 回到原本的島
               </button>
-              <button
-                type="button"
-                onClick={handleSafeReturn}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-lg shadow-emerald-950/50"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>安全返回原區域</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-lg shadow-amber-950/50"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>重試載入</span>
+              <button type="button" onClick={handleRetry} className="kx-btn-primary px-4 py-2 text-[13px] flex items-center gap-1.5 cursor-pointer">
+                <RefreshCw className="w-4 h-4" /> 重試
               </button>
             </div>
           </div>
@@ -649,45 +604,30 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onClose={() => setIsDevStatsOpen(false)}
       />
 
-      {/* Controls Guide Modal */}
+      {/* 操作說明 */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="max-w-lg w-full bg-stone-900 border border-amber-500/40 rounded-3xl p-6 text-stone-100 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-              <h3 className="text-lg font-black text-amber-200">
-                創點源操作指南
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(false)}
-                className="p-1 rounded-lg hover:bg-stone-800 text-stone-400 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
+        <div className="kx-root fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}>
+          <div className="kx-panel kx-corners max-w-md w-full p-5 sm:p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="kx-title text-xl">操作說明</h3>
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="kx-round w-8 h-8" aria-label="關閉">
+                <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="p-3.5 rounded-2xl bg-stone-950/60 border border-stone-800 text-xs space-y-2">
-              <div className="font-bold text-amber-300">操作方式：</div>
-              <div className="grid grid-cols-2 gap-2 text-stone-300">
-                <div>
-                  <span className="text-stone-400">電腦桌機：</span>
-                  <p className="mt-0.5">WASD / 方向鍵移動、Shift 加速</p>
-                  <p className="mt-0.5">按住畫面拖曳或點擊鎖定滑鼠環顧</p>
-                </div>
-                <div>
-                  <span className="text-stone-400">手機平板：</span>
-                  <p className="mt-0.5">左下虛擬搖桿移動、上方可開「疾走」</p>
-                  <p className="mt-0.5">右半部滑動調整視角、右上雷達點島瞬移</p>
-                </div>
+            <div className="grid sm:grid-cols-2 gap-3 text-[13.5px] leading-relaxed">
+              <div>
+                <p className="kx-title text-[14px] mb-1">電腦</p>
+                <p className="kx-sub">WASD／方向鍵移動，Shift 疾走</p>
+                <p className="kx-sub">點畫面鎖定滑鼠環顧，E 進入建築</p>
+              </div>
+              <div>
+                <p className="kx-title text-[14px] mb-1">手機、平板</p>
+                <p className="kx-sub">左下搖桿移動，右半邊滑動轉視角</p>
+                <p className="kx-sub">右上羅盤點開全島地圖，點島瞬移</p>
               </div>
             </div>
-
-            <div className="pt-1 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(false)}
-                className="px-5 py-2 rounded-xl bg-amber-500 text-stone-950 font-black text-xs hover:bg-amber-400 cursor-pointer"
-              >
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="kx-btn-primary px-5 py-2 text-[13.5px] cursor-pointer">
                 繼續探索
               </button>
             </div>
