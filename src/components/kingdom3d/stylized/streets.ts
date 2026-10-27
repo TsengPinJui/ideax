@@ -2,12 +2,15 @@ import * as THREE from 'three';
 import type { Collider, RegionId } from '../types';
 import { localToWorldXZ, getGlobalWalkableZones, REGION_CONFIGS } from '../regionConfigs';
 import { getStyleMaterials, scaledBox, buildRoofTier, mergeByMaterial, LanternBatch, RoofTheme } from './architecture';
+import { makePickProxy } from '../picking';
 import { awningTexture, shopInteriorTexture, signboardTexture, bannerTexture, ShopKind } from './textures';
 
 /**
  * 主島商店街與創意島「創意集」市集：兩層樓的街屋店面、條紋布棚攤位、牌坊與顧店的掌櫃。
  * 店面只是街景（不能走進去），四周都有碰撞，玩家不會穿過去。
  */
+
+export type StallContent = 'new' | 'proposal' | 'game' | 'app' | 'hot';
 
 export interface StreetProp {
   id: string;
@@ -16,6 +19,8 @@ export interface StreetProp {
   name: string;
   sub?: string;
   goods: ShopKind;
+  /** 市集攤位擺的真實內容（點攤位會在左側列出） */
+  content?: StallContent;
   x: number;
   z: number;
   yaw: number;
@@ -34,7 +39,7 @@ function ringProps(
   w: number,
   d: number,
   inset: number | ((rx: number, rz: number) => [number, number]),
-  list: { deg: number; name: string; sub: string; goods: ShopKind }[]
+  list: { deg: number; name: string; sub: string; goods: ShopKind; content?: StallContent }[]
 ): StreetProp[] {
   const r = REGION_CONFIGS[regionId];
   const [cx, cz] = r.center;
@@ -46,7 +51,7 @@ function ringProps(
     const a = (it.deg * Math.PI) / 180;
     const x = cx + Math.cos(a) * ax;
     const z = cz + Math.sin(a) * az;
-    return { id: `${regionId}-${kind}-${i}`, regionId, kind, name: it.name, sub: it.sub, goods: it.goods, x, z, yaw: faceCenter(x, z, cx, cz), w, d };
+    return { id: `${regionId}-${kind}-${i}`, regionId, kind, name: it.name, sub: it.sub, goods: it.goods, content: it.content, x, z, yaw: faceCenter(x, z, cx, cz), w, d };
   });
 }
 
@@ -64,11 +69,11 @@ const HOME_SHOPS = ringProps('region-home', 'shop', 6, 4.4, 3.0, [
 
 /** 創意島北側：創意集市集（五個攤位＋牌坊） */
 const CREATIVE_STALLS = ringProps('region-creative', 'stall', 3.6, 2.4, (rx, rz) => [rx * 0.76, rz * 0.76], [
-  { deg: -130, name: '手作飾品', sub: '創意集', goods: 'crafts' },
-  { deg: -112, name: '點子糖舖', sub: '創意集', goods: 'sweets' },
-  { deg: -94, name: '創意畫攤', sub: '創意集', goods: 'ink' },
-  { deg: -76, name: '木作玩具', sub: '創意集', goods: 'toys' },
-  { deg: -58, name: '燈謎攤', sub: '創意集', goods: 'lanterns' },
+  { deg: -130, name: '新品攤', sub: '最新上架的作品與提案', goods: 'sweets', content: 'new' },
+  { deg: -112, name: '提案攤', sub: '創新提案', goods: 'ink', content: 'proposal' },
+  { deg: -94, name: '遊戲攤', sub: '遊戲作品', goods: 'toys', content: 'game' },
+  { deg: -76, name: '軟體攤', sub: '軟體應用與 AI 工具', goods: 'crafts', content: 'app' },
+  { deg: -58, name: '人氣攤', sub: '瀏覽最多的作品與提案', goods: 'lanterns', content: 'hot' },
 ]);
 
 const CREATIVE_GATE: StreetProp = (() => {
@@ -379,6 +384,11 @@ export function createStreetProps(regionId: RegionId): THREE.Group | null {
   }
   mergeByMaterial(root);
   root.add(lanterns.build());
+  // 點擊範圍（合併之後才加，才不會被併進街景網格）
+  for (const p of list) {
+    const h = p.kind === 'shop' ? 6.6 : p.kind === 'stall' ? 3 : 6;
+    root.add(makePickProxy(p.w + 0.4, h, p.kind === 'gate' ? 1.6 : p.d + 1.2, p.x, p.z, p.yaw, { kind: 'street', id: p.id }));
+  }
   root.userData.colliders = colliders;
   return root;
 }

@@ -5,7 +5,7 @@ import {
   ALL_REGION_IDS,
   detectPlayerSpatialContext,
 } from './regionConfigs';
-import { Menu, Map as MapIcon, Settings, Activity, LogOut, Hand, Sparkles, X, Sun, Moon, Footprints } from 'lucide-react';
+import { Menu, Map as MapIcon, Settings, Activity, LogOut, Hand, Sparkles, X, Sun, Moon, Footprints, Volume2, VolumeX, Users } from 'lucide-react';
 import { CompassMinimap, WorldMapModal } from './KingdomMaps';
 import './kingdomUi.css';
 
@@ -33,6 +33,13 @@ interface MobileControlsOverlayProps {
   onToggleFancy?: () => void;
   /** 例如在創點樓二樓時顯示「創點樓・二樓・創業與專業」 */
   placeOverride?: string;
+  /** 點一下畫面（沒有拖曳）：回傳 true 表示點到了可互動的東西 */
+  onTapScreen?: (clientX: number, clientY: number) => boolean;
+  /** 數字變動時打開全島地圖（左側面板的「打開全島地圖」） */
+  openMapSignal?: number;
+  bgmMuted?: boolean;
+  onToggleBgm?: () => void;
+  multiplayer?: { status: 'off' | 'guest' | 'connecting' | 'online' | 'error'; others: number };
 }
 
 export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
@@ -58,6 +65,11 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   isFancy,
   onToggleFancy,
   placeOverride,
+  onTapScreen,
+  openMapSignal,
+  bgmMuted,
+  onToggleBgm,
+  multiplayer,
 }) => {
   // Mobile Virtual Joystick State
   const [joystickActive, setJoystickActive] = useState(false);
@@ -69,6 +81,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
 
   // Mobile Touch Look State
   const lookTouchIdRef = useRef<number | null>(null);
+  const lookTapRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lookLastPosRef = useRef({ x: 0, y: 0 });
 
   const maxRadius = 45;
@@ -188,6 +201,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       const t = e.changedTouches[i];
       lookTouchIdRef.current = t.identifier;
       lookLastPosRef.current = { x: t.clientX, y: t.clientY };
+      lookTapRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
       break;
     }
   };
@@ -211,6 +225,13 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     for (let i = 0; i < e.changedTouches.length; i++) {
       if (e.changedTouches[i].identifier === lookTouchIdRef.current) {
         lookTouchIdRef.current = null;
+        const t = e.changedTouches[i];
+        const st = lookTapRef.current;
+        lookTapRef.current = null;
+        // 輕點（沒有滑動）就當作點選畫面上的東西
+        if (st && e.type === 'touchend' && Math.hypot(t.clientX - st.x, t.clientY - st.y) < 10 && performance.now() - st.t < 350) {
+          onTapScreen?.(t.clientX, t.clientY);
+        }
         break;
       }
     }
@@ -233,6 +254,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
   }, []);
   const [mapOpen, setMapOpen] = useState(false);
+  useEffect(() => {
+    if (openMapSignal) setMapOpen(true);
+  }, [openMapSignal]);
   const region = REGION_CONFIGS[activeRegionId];
   const spaceLabel = React.useMemo(
     () => detectPlayerSpatialContext(playerPos.x, playerPos.z).spaceLabel,
@@ -280,6 +304,22 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           </span>
         </button>
 
+        {multiplayer && multiplayer.status !== 'off' && !menuOpen && (
+          <div className="kx-panel mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11.5px]" title="多人同遊">
+            <Users className="w-3.5 h-3.5 text-amber-200" />
+            <span className="kx-sub">
+              {multiplayer.status === 'online'
+                ? multiplayer.others > 0
+                  ? `島上還有 ${multiplayer.others} 位旅人`
+                  : '多人同遊中・目前只有你'
+                : multiplayer.status === 'guest'
+                ? '登入後可和其他人一起逛'
+                : multiplayer.status === 'connecting'
+                ? '正在連線其他旅人…'
+                : '多人連線暫時無法使用'}
+            </span>
+          </div>
+        )}
         {menuOpen && (
           <div className="kx-panel mt-2 p-2 w-[min(78vw,300px)] animate-in fade-in slide-in-from-top-1 duration-150">
             <p className="kx-sub text-[11.5px] px-3 pt-1 pb-1">前往島嶼</p>
@@ -308,6 +348,11 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             {onCycleTimeOfDay && (
               <button type="button" className="kx-menu-item" onClick={onCycleTimeOfDay}>
                 <span className="text-amber-200 [&>svg]:w-4 [&>svg]:h-4">{todIcon}</span> 時段：{todLabel}
+              </button>
+            )}
+            {onToggleBgm && (
+              <button type="button" className="kx-menu-item" onClick={onToggleBgm}>
+                {bgmMuted ? <VolumeX className="w-4 h-4 text-amber-200" /> : <Volume2 className="w-4 h-4 text-amber-200" />} 古風背景樂：{bgmMuted ? '關' : '開'}
               </button>
             )}
             <button type="button" className="kx-menu-item" onClick={onToggleFastWalk}>
@@ -420,6 +465,13 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                 <MapIcon className="w-5 h-5" />
               </button>
             </div>
+            {onToggleBgm && (
+              <div className="flex flex-col gap-2.5 sm:gap-3">
+                <button type="button" onClick={onToggleBgm} data-on={!bgmMuted} className="kx-round w-11 h-11 sm:w-12 sm:h-12" title={bgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'} aria-label={bgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}>
+                  {bgmMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+              </div>
+            )}
             <div className="flex flex-col items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
@@ -450,7 +502,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       {!isDesktopPointerLocked && (
         <div className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-auto">
           <button type="button" onClick={onDesktopRequestLock} className="kx-panel px-4 py-1.5 text-[12.5px] cursor-pointer whitespace-nowrap">
-            點畫面鎖定視角・WASD 移動・Shift 疾走・E 互動
+            點建築、攤位看介紹・點這裡鎖定視角・WASD 移動・E 互動
           </button>
         </div>
       )}

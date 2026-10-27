@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStreetProps, streetAvoidAreas } from './stylized/streets';
+import { makePickProxy } from './picking';
 import {
   RegionId,
   RegionStatus,
@@ -164,6 +165,8 @@ export class RegionManager {
     for (const b of manifest.buildings) {
       const bld = createStyledBuilding(b);
       group.add(bld);
+      // 點畫面上的建築就能打開左側介紹
+      group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
       // 讓出主執行緒，載入時畫面不會卡住
       await new Promise((r) => setTimeout(r, 0));

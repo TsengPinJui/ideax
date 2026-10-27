@@ -587,6 +587,42 @@
   left: 18px;
   z-index: 28;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 進入 3D 第一人稱五島 */
+.island-enter-3d-btn {
+  height: 40px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(226, 184, 90, 0.85);
+  background: linear-gradient(180deg, #a3241f 0%, #7d1a16 100%);
+  color: #fff0c8;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(60, 16, 10, 0.3);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.island-enter-3d-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(60, 16, 10, 0.38);
+}
+
+@media (max-width: 640px) {
+  .island-enter-3d-btn {
+    height: 34px;
+    padding: 0 11px 0 9px;
+    font-size: 12.5px;
+  }
 }
 
 .island-back-circle-btn {
