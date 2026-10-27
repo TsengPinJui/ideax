@@ -147,6 +147,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'desk' });
     } else if (t.kind === 'npc') {
       setDrawer({ kind: 'soso' });
+    } else if (t.kind === 'feature') {
+      setDrawer({ kind: 'feature', id: t.id });
     } else if (t.kind === 'jobScroll') {
       setDrawer({ kind: sosoJobsCountRef.current > 0 ? 'jobs' : 'soso' });
     }
@@ -467,7 +469,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const rt = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, samples: 4 });
     const composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), world.bloomStrength, 0.55, 0.88);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), world.bloomStrength, 0.4, 0.92);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
     composerRef.current = composer;

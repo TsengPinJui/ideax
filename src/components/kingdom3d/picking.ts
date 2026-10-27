@@ -7,7 +7,8 @@ export type PickTarget =
   | { kind: 'painBoard'; level: number; buildingId: string }
   | { kind: 'desk'; buildingId: string }
   | { kind: 'npc'; id: 'soso' }
-  | { kind: 'jobScroll' };
+  | { kind: 'jobScroll' }
+  | { kind: 'feature'; id: 'stage' | 'proposal' };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 

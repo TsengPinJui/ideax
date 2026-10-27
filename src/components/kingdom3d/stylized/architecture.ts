@@ -385,18 +385,20 @@ export function buildRoofTier(
       beam.position.y = peak + 0.18;
       g.add(beam);
       // 脊獸（兩端上翹的鴟吻）；小屋頂改成正脊兩端微翹的脊頭
-      for (const s of opts.horns === false ? [] : [-1, 1]) {
+      for (const s of opts.horns === true ? [-1, 1] : []) {
         const horn = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.11, 6, 10, Math.PI * 0.75), mats.gold);
         const off = s * (ridgeHalf + 0.15);
         horn.position.set(alongX ? off : 0, peak + 0.55, alongX ? 0 : off);
         horn.rotation.set(0, alongX ? 0 : Math.PI / 2, s > 0 ? 0.15 : Math.PI - 0.15);
         g.add(horn);
       }
-      if (opts.horns === false) {
+      if (opts.horns !== true) {
         for (const s of [-1, 1]) {
-          const cap = new THREE.Mesh(new THREE.BoxGeometry(alongX ? 0.32 : 0.36, 0.3, alongX ? 0.36 : 0.32), ridgeMat);
-          cap.position.set(alongX ? s * (ridgeHalf + 0.25) : 0, peak + 0.3, alongX ? 0 : s * (ridgeHalf + 0.25));
-          cap.rotation.set(alongX ? 0 : s * 0.35, 0, alongX ? -s * 0.35 : 0);
+          // 正脊兩端微微上翹的脊頭（取代鉤狀鴟吻）
+          const big = Math.min(1.6, 0.7 + ridgeHalf * 0.12);
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(alongX ? 0.5 * big : 0.38, 0.32 * big, alongX ? 0.38 : 0.5 * big), ridgeMat);
+          cap.position.set(alongX ? s * (ridgeHalf + 0.3) : 0, peak + 0.28 + 0.06 * big, alongX ? 0 : s * (ridgeHalf + 0.3));
+          cap.rotation.set(alongX ? 0 : s * 0.4, 0, alongX ? -s * 0.4 : 0);
           g.add(cap);
         }
       }
