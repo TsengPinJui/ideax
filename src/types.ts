@@ -50,7 +50,8 @@ export type AppTab =
   | 'membership'
   | 'topup'
   | 'job_explorer'
-  | 'island_explorer';
+  | 'island_explorer'
+  | 'kingdom_fp';
 
 export type AboutSection = 
   | 'list'

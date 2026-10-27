@@ -1150,6 +1150,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+          {/* 創點國 3D 第一人稱步行探索原型入口 */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('kingdom_fp');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 border ${
+              activeTab === 'kingdom_fp'
+                ? 'bg-amber-400 text-stone-950 border-amber-500 font-black shadow-xs'
+                : 'bg-amber-50/90 hover:bg-amber-100 text-amber-900 border-amber-300/80 shadow-2xs'
+            }`}
+            title="開啟 IdeaX 創點國 3D 第一人稱探索原型"
+            aria-label="開啟 IdeaX 創點國 3D 第一人稱探索原型"
+          >
+            <span className="text-sm">🏯</span>
+            <span className="text-xs font-black">3D 探索</span>
+            <span className="hidden xl:inline text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950">
+              FPS
+            </span>
+          </button>
+
           {/* 我的案件 (電腦版顯示，無冗餘外框) */}
           <button
             onClick={() => {
