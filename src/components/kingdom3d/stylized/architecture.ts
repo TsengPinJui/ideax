@@ -15,6 +15,11 @@ import {
   glowTexture,
   scrollPaintingTexture,
   balustradeTexture,
+  bumpOf,
+  eaveTileTexture,
+  doorTexture,
+  grassTuftTexture,
+  foamTexture,
   seeded,
 } from './textures';
 
@@ -47,6 +52,14 @@ export interface StyleMaterials {
   rug: THREE.MeshStandardMaterial;
   plaster: THREE.MeshStandardMaterial;
   balustrade: THREE.MeshStandardMaterial;
+  eave: THREE.MeshStandardMaterial;
+  door: THREE.MeshStandardMaterial;
+  bracket: THREE.MeshStandardMaterial;
+  pot: THREE.MeshStandardMaterial;
+  sculpt: THREE.MeshStandardMaterial;
+  potPlant: THREE.MeshStandardMaterial;
+  grassTuft: THREE.MeshStandardMaterial;
+  foam: THREE.MeshBasicMaterial;
 }
 
 let styleMats: StyleMaterials | null = null;
@@ -65,10 +78,10 @@ export function getStyleMaterials(): StyleMaterials {
       })
   );
   const roofs = {
-    slate: std({ map: roofTileTexture('slate'), roughness: 0.6, metalness: 0.1, side: THREE.FrontSide }),
-    teal: std({ map: roofTileTexture('teal'), roughness: 0.5, metalness: 0.12 }),
-    gold: std({ map: roofTileTexture('gold'), roughness: 0.45, metalness: 0.35 }),
-    red: std({ map: roofTileTexture('red'), roughness: 0.55, metalness: 0.08 }),
+    slate: std({ map: roofTileTexture('slate'), bumpMap: bumpOf('roof_slate', roofTileTexture('slate')), bumpScale: 4, roughness: 0.6, metalness: 0.1, side: THREE.FrontSide }),
+    teal: std({ map: roofTileTexture('teal'), bumpMap: bumpOf('roof_teal', roofTileTexture('teal')), bumpScale: 4, roughness: 0.5, metalness: 0.12 }),
+    gold: std({ map: roofTileTexture('gold'), bumpMap: bumpOf('roof_gold', roofTileTexture('gold')), bumpScale: 4, roughness: 0.45, metalness: 0.35 }),
+    red: std({ map: roofTileTexture('red'), bumpMap: bumpOf('roof_red', roofTileTexture('red')), bumpScale: 4, roughness: 0.55, metalness: 0.08 }),
   };
   const ridges = {
     slate: std({ color: 0x2a323d, roughness: 0.55 }),
@@ -91,13 +104,13 @@ export function getStyleMaterials(): StyleMaterials {
       blending: THREE.AdditiveBlending,
     }),
     facades,
-    stone: std({ map: stoneBlockTexture(), color: 0xd9d0c3 }),
-    stoneLight: std({ map: stoneBlockTexture(), color: 0xf2ebe0 }),
-    paving: std({ map: pavingTexture(), roughness: 0.92 }),
-    plaza: std({ map: plazaTexture(), roughness: 0.9 }),
+    stone: std({ map: stoneBlockTexture(), bumpMap: bumpOf('stone', stoneBlockTexture()), bumpScale: 3, color: 0xd9d0c3 }),
+    stoneLight: std({ map: stoneBlockTexture(), bumpMap: bumpOf('stone', stoneBlockTexture()), bumpScale: 2, color: 0xf2ebe0 }),
+    paving: std({ map: pavingTexture(), bumpMap: bumpOf('paving', pavingTexture()), bumpScale: 3.5, roughness: 0.92 }),
+    plaza: std({ map: plazaTexture(), bumpMap: bumpOf('plaza', plazaTexture()), bumpScale: 3, roughness: 0.9 }),
     grass: std({ map: grassTexture(), roughness: 1 }),
-    rock: std({ map: rockTexture(), roughness: 0.95 }),
-    woodFloor: std({ map: woodFloorTexture(), roughness: 0.6 }),
+    rock: std({ map: rockTexture(), bumpMap: bumpOf('rock', rockTexture()), bumpScale: 6, roughness: 0.95 }),
+    woodFloor: std({ map: woodFloorTexture(), bumpMap: bumpOf('woodFloor', woodFloorTexture()), bumpScale: 1.5, roughness: 0.6 }),
     ceiling: std({ map: ceilingTexture(), roughness: 0.7, side: THREE.DoubleSide }),
     darkWood: std({ color: 0x4a2716, roughness: 0.7 }),
     redLacquer: std({ color: 0x9c2a22, roughness: 0.45, metalness: 0.05 }),
@@ -109,7 +122,15 @@ export function getStyleMaterials(): StyleMaterials {
     orb: std({ color: 0xffe08a, emissive: 0xffc04a, emissiveIntensity: 1.6, roughness: 0.25 }),
     rug: std({ color: 0x8e2420, roughness: 0.9 }),
     plaster: std({ color: 0xf1eadc, roughness: 0.95 }),
-    balustrade: std({ map: balustradeTexture(), roughness: 0.9 }),
+    balustrade: std({ map: balustradeTexture(), bumpMap: bumpOf('balustrade', balustradeTexture()), bumpScale: 2.5, roughness: 0.9 }),
+    eave: std({ map: eaveTileTexture(), roughness: 0.6 }),
+    door: std({ map: doorTexture(), roughness: 0.5, side: THREE.DoubleSide }),
+    bracket: std({ color: 0x2c6a62, roughness: 0.6 }),
+    pot: std({ color: 0x2f5675, roughness: 0.35, metalness: 0.05 }),
+    sculpt: std({ color: 0xcfc7b8, roughness: 0.75 }),
+    potPlant: std({ color: 0x5f9440, roughness: 0.9 }),
+    grassTuft: std({ map: grassTuftTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 }),
+    foam: new THREE.MeshBasicMaterial({ map: foamTexture(), transparent: true, depthWrite: false, opacity: 0.8 }),
   };
   return styleMats;
 }
@@ -314,6 +335,27 @@ export function buildRoofTier(
       const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.13, 5, false);
       g.add(new THREE.Mesh(tube, ridgeMat));
     }
+  }
+  // 屋簷邊的一排瓦當（沿著翹起的簷口繞一圈）
+  {
+    const pts: THREE.Vector3[] = [];
+    const per = 14;
+    const corners: [number, number][] = [[-halfW, -halfD], [halfW, -halfD], [halfW, halfD], [-halfW, halfD]];
+    for (let c = 0; c < 4; c++) {
+      const [x0, z0] = corners[c];
+      const [x1, z1] = corners[(c + 1) % 4];
+      for (let k = 0; k < per; k++) {
+        const t = k / per;
+        const x = x0 + (x1 - x0) * t;
+        const z = z0 + (z1 - z0) * t;
+        pts.push(new THREE.Vector3(x * 1.005, sample(x * 0.999, z * 0.999) - 0.04, z * 1.005));
+      }
+    }
+    const perim = 4 * (halfW + halfD);
+    const eaveGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'centripetal'), 160, 0.15, 6, true);
+    const euv = eaveGeo.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < euv.count; i++) euv.setX(i, euv.getX(i) * (perim / 0.5));
+    g.add(new THREE.Mesh(eaveGeo, mats.eave));
   }
   if (opts.ridge !== false) {
     const peak = sample(0, 0);
@@ -541,6 +583,47 @@ function hashStr(s: string) {
   return Math.abs(h);
 }
 
+let lionGeoCache: THREE.BufferGeometry | null = null;
+/** 石獅（簡化造型：須彌座、蹲坐的身體、捲毛鬃、繡球） */
+function getLionGeometry() {
+  if (lionGeoCache) return lionGeoCache;
+  const parts = [
+    new THREE.BoxGeometry(0.9, 0.42, 1.05).translate(0, 0.21, 0),
+    new THREE.BoxGeometry(1.0, 0.08, 1.15).translate(0, 0.44, 0),
+    new THREE.SphereGeometry(0.36, 12, 9).scale(1, 0.95, 1.2).translate(0, 0.86, -0.08),
+    new THREE.SphereGeometry(0.4, 12, 9).scale(1.15, 1, 0.75).translate(0, 1.24, 0.12),
+    new THREE.SphereGeometry(0.27, 12, 9).translate(0, 1.32, 0.3),
+    new THREE.SphereGeometry(0.11, 8, 6).scale(1.2, 0.8, 1).translate(0, 1.26, 0.54),
+    new THREE.BoxGeometry(0.15, 0.45, 0.16).translate(-0.17, 0.68, 0.3),
+    new THREE.BoxGeometry(0.15, 0.45, 0.16).translate(0.17, 0.68, 0.3),
+    new THREE.SphereGeometry(0.15, 10, 8).translate(0.2, 0.62, 0.48),
+  ];
+  lionGeoCache = mergeGeometries(parts)!;
+  return lionGeoCache;
+}
+
+let bushGeoCache: THREE.BufferGeometry | null = null;
+function getRoundBushGeometry() {
+  if (bushGeoCache) return bushGeoCache;
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [x, y, z, r] of [[0, 0, 0, 0.42], [0.22, -0.08, 0.1, 0.3], [-0.2, -0.05, -0.12, 0.32], [0.05, 0.22, -0.05, 0.3]]) {
+    const g = new THREE.IcosahedronGeometry(r, 1);
+    const p = g.attributes.position as THREE.BufferAttribute;
+    const n = g.attributes.normal as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) {
+      const v = new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i)).normalize();
+      n.setXYZ(i, v.x, v.y, v.z);
+    }
+    parts.push(g.translate(x, y, z));
+  }
+  bushGeoCache = mergeGeometries(parts.map((g) => {
+    const idx = Array.from({ length: g.attributes.position.count }, (_, i) => i);
+    g.setIndex(idx);
+    return g;
+  }))!;
+  return bushGeoCache;
+}
+
 export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const mats = getStyleMaterials();
   const root = new THREE.Group();
@@ -612,6 +695,40 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
 
   // 屋簷下的額枋
   addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), mats.redLacquer, 0, h - 0.1, 0);
+  // 斗拱：額枋上方一排青綠彩繪的托架
+  {
+    const blockGeo = new THREE.BoxGeometry(0.3, 0.22, 0.3);
+    const armGeo = new THREE.BoxGeometry(0.18, 0.15, 0.7);
+    const crossGeo = new THREE.BoxGeometry(0.7, 0.15, 0.18);
+    const sides: [number, number, number, number, number][] = [
+      // 起點 x, z, 方向 dx, dz, 長度
+      [-w / 2, d / 2 + 0.25, 1, 0, w],
+      [-w / 2, -d / 2 - 0.25, 1, 0, w],
+      [-w / 2 - 0.25, -d / 2, 0, 1, d],
+      [w / 2 + 0.25, -d / 2, 0, 1, d],
+    ];
+    for (const [sx, sz, dx, dz, len] of sides) {
+      const n = Math.max(2, Math.round(len / 1.3));
+      const outX = dz !== 0 ? Math.sign(sx) : 0;
+      const outZ = dx !== 0 ? Math.sign(sz) : 0;
+      const ry = outX !== 0 ? Math.PI / 2 : 0;
+      for (let i = 0; i <= n; i++) {
+        const x = sx + dx * (len * i) / n;
+        const z = sz + dz * (len * i) / n;
+        addMesh(body, blockGeo, mats.bracket, x, h + 0.2, z, ry);
+        addMesh(body, armGeo, mats.bracket, x + outX * 0.2, h + 0.38, z + outZ * 0.2, ry);
+        addMesh(body, crossGeo, mats.gold, x + outX * 0.3, h + 0.38, z + outZ * 0.3, ry);
+      }
+    }
+  }
+  // 敞開的朱漆大門（門扇貼在前牆內側，不擋路）
+  for (const sx of [-1, 1]) {
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(doorW / 2 - 0.05, doorH - 0.1, 0.08), mats.door);
+    leaf.position.set(sx * (doorW / 2 + doorW / 4), (doorH - 0.1) / 2 + 0.05, d / 2 - thick / 2 - 0.06);
+    if (sx > 0) leaf.rotation.y = Math.PI;
+    leaf.userData.noMerge = true;
+    root.add(leaf);
+  }
 
   // 天花（藻井）
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.4, d - 0.4), mats.ceiling);
@@ -635,6 +752,21 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
         addMesh(body, new THREE.CylinderGeometry(0.2, 0.2, bodyH, 8), mats.redLacquer, (cx * tw * 0.86) / 2, y + bodyH / 2 - 0.15, (cz * td * 0.86) / 2);
       }
       addMesh(body, scaledBox(tw * 0.9, 0.34, td * 0.9, 3, 0.34, 3), mats.redLacquer, 0, y + bodyH - 0.2, 0);
+      // 上層迴廊欄杆
+      {
+        const bw = tw * 0.86 + 0.9;
+        const bd = td * 0.86 + 0.9;
+        const ry0 = y + 0.05;
+        for (const [lx, lz, ln, alongX] of [[0, bd / 2, bw, true], [0, -bd / 2, bw, true], [bw / 2, 0, bd, false], [-bw / 2, 0, bd, false]] as [number, number, number, boolean][]) {
+          addMesh(body, new THREE.BoxGeometry(alongX ? ln : 0.1, 0.1, alongX ? 0.1 : ln), mats.redLacquer, lx, ry0 + 0.55, lz);
+          addMesh(body, new THREE.BoxGeometry(alongX ? ln : 0.06, 0.06, alongX ? 0.06 : ln), mats.gold, lx, ry0 + 0.25, lz);
+          const np = Math.max(2, Math.round(ln / 0.9));
+          for (let k = 0; k <= np; k++) {
+            const off = -ln / 2 + (ln * k) / np;
+            addMesh(body, new THREE.BoxGeometry(0.09, 0.6, 0.09), mats.redLacquer, alongX ? off : lx, ry0 + 0.3, alongX ? lz : off);
+          }
+        }
+      }
       y += bodyH - 0.1;
     }
     const rise = last ? Math.min(3.4, 0.3 * Math.min(tw, td) + 0.6) : 1.25;
@@ -656,6 +788,36 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
     y += last ? 0 : rise * 0.4;
   }
+
+  // 門口石獅一對、轉角盆栽（另外加上碰撞，玩家不會穿過去）
+  const extraColliders: { id: string; type: 'cylinder'; x: number; z: number; radius: number }[] = [];
+  const toWorld = (lx: number, lz: number): [number, number] => {
+    const c = Math.cos(b.facingYaw);
+    const sn = Math.sin(b.facingYaw);
+    return [b.position.x + lx * c + lz * sn, b.position.z - lx * sn + lz * c];
+  };
+  const lionGeo = getLionGeometry();
+  for (const sx of [-1, 1]) {
+    const lx = sx * (doorW / 2 + 1.15);
+    const lz = d / 2 + 1.3;
+    if (Math.abs(lx) + 0.5 > w / 2 + 1.5) continue;
+    addMesh(body, lionGeo, mats.sculpt, lx, 0, lz, sx * 0.25);
+    const [wx, wz] = toWorld(lx, lz);
+    extraColliders.push({ id: `${b.id}-lion-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.6 });
+  }
+  if (w / 2 - 0.55 > doorW / 2 + 2.3) {
+    const potGeo = new THREE.CylinderGeometry(0.34, 0.24, 0.55, 12);
+    const plantGeo = getRoundBushGeometry();
+    for (const sx of [-1, 1]) {
+      const lx = sx * (w / 2 - 0.55);
+      const lz = d / 2 + 0.8;
+      addMesh(body, potGeo, mats.pot, lx, 0.275, lz);
+      addMesh(body, plantGeo, mats.potPlant, lx, 0.85, lz);
+      const [wx, wz] = toWorld(lx, lz);
+      extraColliders.push({ id: `${b.id}-pot-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.45 });
+    }
+  }
+  root.userData.colliders = extraColliders;
 
   // 門口一對大燈籠、兩側旗幟、牌匾
   lanterns.addHanging(-doorW / 2 - 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
@@ -892,7 +1054,7 @@ export interface StyledIslandInput {
   seed: number;
 }
 
-export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch): THREE.Group {
+export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, grass?: GrassBatch): THREE.Group {
   const mats = getStyleMaterials();
   const g = new THREE.Group();
   const [cx, cz] = inp.center;
@@ -983,18 +1145,115 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch): TH
     const pillarH = Math.max(2, lm.height - 3.3);
     addMesh(lg, new THREE.CylinderGeometry(0.55, 0.75, pillarH, 12), mats.redLacquer, 0, 1.4 + pillarH / 2, 0);
     for (const yy of [1.6, 1.4 + pillarH - 0.2]) addMesh(lg, new THREE.TorusGeometry(0.7, 0.1, 6, 18).rotateX(Math.PI / 2), mats.gold, 0, yy, 0);
-    addMesh(lg, new THREE.CylinderGeometry(0.75, 0.55, 0.6, 12), mats.gold, 0, lm.height - 1.7, 0);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 18), mats.orb);
-    bulb.position.y = lm.height;
-    bulb.userData.noMerge = true;
-    lg.add(bulb);
-    lanterns.addHanging(lm.x - cx, lm.height, lm.z - cz, 0.01);
-    lanterns.addHanging(lm.x - cx, lm.height + 0.4, lm.z - cz, 0.01);
+    // 大燈泡：金色螺旋燈座＋梨形發光玻璃泡（比原本大約一倍半）
+    const baseY = 1.4 + pillarH;
+    addMesh(lg, new THREE.CylinderGeometry(1.0, 0.75, 0.5, 16), mats.gold, 0, baseY + 0.25, 0);
+    addMesh(lg, new THREE.CylinderGeometry(0.95, 0.95, 1.1, 16), mats.gold, 0, baseY + 1.0, 0);
+    for (let k = 0; k < 4; k++) addMesh(lg, new THREE.TorusGeometry(0.97, 0.07, 6, 20).rotateX(Math.PI / 2), mats.stoneLight, 0, baseY + 0.62 + k * 0.26, 0);
+    const R = 2.6;
+    const prof: THREE.Vector2[] = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      // 由頸部（窄）往上鼓成球形，頂端收圓
+      const y = t * (R * 2.15);
+      let r: number;
+      if (t < 0.25) r = 0.95 + (R * 0.62 - 0.95) * (t / 0.25);
+      else {
+        const u = (t - 0.25) / 0.75;
+        r = Math.max(0.02, R * Math.sqrt(Math.max(0, 1 - Math.pow(u * 1.55 - 0.55, 2))) * (u < 0.36 ? 0.62 + (u / 0.36) * 0.38 : 1));
+      }
+      prof.push(new THREE.Vector2(r, y));
+    }
+    const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), mats.orb);
+    glass.position.y = baseY + 1.5;
+    glass.userData.noMerge = true;
+    lg.add(glass);
+    const centerY = baseY + 1.5 + R * 1.35;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffc860, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.set(R * 5.5, R * 5.5, 1);
+    halo.position.y = centerY;
+    halo.userData.noMerge = true;
+    lg.add(halo);
+    lanterns.addHanging(lm.x - cx, centerY, lm.z - cz, 0.01);
     parts.add(lg);
   }
+
+  // 草叢與小花（草地外環）
+  if (grass) {
+    const gn = Math.round(perim / 0.55);
+    for (let i = 0; i < gn; i++) {
+      const a = rand() * Math.PI * 2;
+      const off = 0.8 + rand() * 5.8;
+      const x = Math.cos(a) * (rx + off);
+      const z = Math.sin(a) * (rz + off);
+      if (blockedByBridge(x + cx, z + cz, 0.6)) continue;
+      grass.add(x + cx, -0.04, z + cz, 0.7 + rand() * 0.7, rand() * Math.PI);
+    }
+  }
+  // 岸邊浪花
+  const foam = new THREE.Mesh(foamRingGeometry(rx + rim + 0.05, rz + rim + 0.05, 3.2), mats.foam);
+  foam.position.y = -0.3;
+  foam.renderOrder = 2;
+  g.add(foam);
 
   g.add(parts);
   mergeByMaterial(parts);
   g.add(lanterns.build());
   return g;
+}
+
+/** 浪花環：內圈貼岸、往外漸淡 */
+export function foamRingGeometry(rxIn: number, rzIn: number, width: number, seg = 120) {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  const perim = Math.PI * (rxIn + rzIn);
+  for (let i = 0; i <= seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    const c = Math.cos(a);
+    const sn = Math.sin(a);
+    pos.push(c * rxIn, 0, sn * rzIn, c * (rxIn + width), 0, sn * (rzIn + width));
+    const u = ((i / seg) * perim) / 10;
+    uv.push(u, 0, u, 1);
+  }
+  for (let i = 0; i < seg; i++) {
+    const a = i * 2;
+    idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** 草叢批次（十字交叉的透明草葉，一次畫完） */
+export class GrassBatch {
+  private items: number[] = [];
+  add(x: number, y: number, z: number, s: number, rot: number) {
+    this.items.push(x, y, z, s, rot);
+  }
+  build(): THREE.Object3D {
+    const mats = getStyleMaterials();
+    const n = this.items.length / 5;
+    const geo = mergeGeometries([
+      new THREE.PlaneGeometry(1, 0.7).translate(0, 0.35, 0),
+      new THREE.PlaneGeometry(1, 0.7).translate(0, 0.35, 0).rotateY(Math.PI / 2),
+    ])!;
+    const im = new THREE.InstancedMesh(geo, mats.grassTuft, Math.max(1, n));
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const [x, y, z, s, r] = this.items.slice(i * 5, i * 5 + 5);
+      q.setFromAxisAngle(up, r);
+      im.setMatrixAt(i, m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(s, s, s)));
+      im.setColorAt(i, c.setHSL(0.24 + ((i * 37) % 10) / 200, 0.45, 0.62 + ((i * 13) % 10) / 60));
+    }
+    im.count = n;
+    im.frustumCulled = false;
+    return im;
+  }
 }
