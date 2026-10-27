@@ -1349,11 +1349,6 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
     pier.position.set(0, (yAt(t) - 3) / 2 - 0.3, (t - 0.5) * span);
     parts.add(pier);
   }
-  const arch = new THREE.Mesh(new THREE.TorusGeometry(span * 0.2, 0.35, 6, 16, Math.PI), mats.stone);
-  arch.rotation.y = Math.PI / 2;
-  arch.position.set(0, -0.6, 0);
-  arch.scale.set(1, 0.55, 1);
-  parts.add(arch);
   // 橋頭與橋中的石燈
   for (const t of [Math.max(0.04, ra), 0.5, Math.min(0.96, rb)]) {
     for (const rx of [-w / 2 - 0.15, w / 2 + 0.15]) {
