@@ -21,6 +21,7 @@ import { PerformanceMonitor } from './PerformanceMonitor';
 import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { BuildingInteractionModal } from './BuildingInteractionModal';
 import { DevStatsPanel } from './DevStatsPanel';
+import { StylizedWorld, TimeOfDay } from './stylized/environment';
 import {
   AlertCircle,
   RefreshCw,
@@ -53,6 +54,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Lights
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const worldRef = useRef<StylizedWorld | null>(null);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('dusk');
 
   // Safe player pose for error recovery
   const safePlayerPoseRef = useRef<{ pos: THREE.Vector3; yaw: number } | null>(null);
@@ -184,11 +187,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     sceneRef.current = scene;
 
     const initialManifest = REGION_CONFIGS[initialRegionId] || REGION_CONFIGS['region-home'];
-    scene.background = new THREE.Color(0xe2e8f0);
-    scene.fog = new THREE.Fog(0xe2e8f0, 85, 240);
-
-    // 2. Camera (far = 260 so neighboring islands and bridges are clearly visible)
-    const camera = new THREE.PerspectiveCamera(68, width / height, 0.15, 260);
+    // 2. Camera（遠景山脈與天空需要較遠的可視距離）
+    const camera = new THREE.PerspectiveCamera(68, width / height, 0.15, 1000);
     cameraRef.current = camera;
 
     // 3. Renderer
@@ -207,18 +207,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     rendererRef.current = renderer;
     container.appendChild(renderer.domElement);
 
-    // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
-    scene.add(ambientLight);
-    ambientLightRef.current = ambientLight;
-
-    const hemiLight = new THREE.HemisphereLight(0xf8fafc, 0xcbd5e1, 0.55);
-    scene.add(hemiLight);
-
-    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
-    sunLight.position.set(45, 80, 50);
-    scene.add(sunLight);
-    sunLightRef.current = sunLight;
+    // 4. 天空、海面、遠景、光源與晝夜（東方奇幻風格）
+    const world = new StylizedWorld(scene, renderer);
+    world.setShadows(quality.shadows);
+    worldRef.current = world;
 
     // 5. FirstPersonControls
     const controls = new FirstPersonControls(camera, renderer.domElement, quality);
@@ -280,6 +272,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 9. Animation & Physics Game Loop
     const clock = new THREE.Clock();
     const globalWalkableZones = getGlobalWalkableZones();
+    let lodTick = 14;
 
     const animate = () => {
       rafIdRef.current = requestAnimationFrame(animate);
@@ -330,6 +323,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         setNearBuilding(foundBuilding);
       }
 
+      world.update(delta, camera.position);
+      if ((lodTick = (lodTick + 1) % 15) === 0) regionManager.updateInteriorLod(camera.position.x, camera.position.z);
+
       // Render Scene
       renderer.render(scene, camera);
 
@@ -363,6 +359,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     rafIdRef.current = requestAnimationFrame(animate);
 
+    // 本機開發用：截圖與測試時可直接移動視角、切換時段（正式站不提供）
+    if (/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) {
+      (window as any).__kingdom = {
+        teleport: (x: number, z: number, yaw: number, pitch = 0) => {
+          controls.setSpawn(new THREE.Vector3(x, 0, z), yaw);
+          controls.pitch = pitch;
+          controls.updateCameraTransform(0);
+        },
+        setTimeOfDay: (t: TimeOfDay) => {
+          world.setTimeOfDay(t);
+          setTimeOfDay(t);
+        },
+      };
+    }
+
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       window.removeEventListener('resize', handleResize);
@@ -370,6 +381,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
       controls.dispose();
       regionManager.disposeAll();
+      world.dispose();
+      worldRef.current = null;
+      if ((window as any).__kingdom) delete (window as any).__kingdom;
 
       if (renderer.domElement && renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
@@ -474,7 +488,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             🏯
           </div>
           <div className="text-lg font-black text-amber-200">
-            載入創點源五島白模空間中...
+            載入創點源五島中...
           </div>
           <div className="w-56 h-2 bg-stone-800 rounded-full mt-4 overflow-hidden border border-stone-700">
             <div
@@ -483,7 +497,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             />
           </div>
           <div className="text-xs text-stone-400 mt-2 font-mono">
-            {loadProgress}% 建構島嶼、拱橋、月洞門圍牆與可步入建築空間
+            {loadProgress}% 建構島嶼、石拱橋、樓閣與燈籠
           </div>
         </div>
       )}
@@ -594,6 +608,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         isDesktopPointerLocked={isDesktopPointerLocked}
         onDesktopRequestLock={() => {
           controlsRef.current?.lockPointer();
+        }}
+        timeOfDay={timeOfDay}
+        onCycleTimeOfDay={() => {
+          const order: TimeOfDay[] = ['day', 'dusk', 'night'];
+          const next = order[(order.indexOf(timeOfDay) + 1) % order.length];
+          worldRef.current?.setTimeOfDay(next);
+          setTimeOfDay(next);
         }}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {

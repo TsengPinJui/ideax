@@ -33,6 +33,8 @@ interface MobileControlsOverlayProps {
   onDesktopRequestLock: () => void;
   isFastWalk: boolean;
   onToggleFastWalk: () => void;
+  timeOfDay?: 'day' | 'dusk' | 'night';
+  onCycleTimeOfDay?: () => void;
 }
 
 export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
@@ -53,6 +55,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onDesktopRequestLock,
   isFastWalk,
   onToggleFastWalk,
+  timeOfDay,
+  onCycleTimeOfDay,
 }) => {
   // Mobile Virtual Joystick State
   const [joystickActive, setJoystickActive] = useState(false);
@@ -256,6 +260,18 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
 
         {/* Right: Controls Bar */}
         <div className="flex items-center gap-1.5">
+          {/* 晝夜切換：白天 → 黃昏 → 夜晚 */}
+          {onCycleTimeOfDay && (
+            <button
+              type="button"
+              onClick={onCycleTimeOfDay}
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 bg-stone-900/85 hover:bg-stone-800 text-amber-200 border-stone-700/60"
+              title="切換時段（白天／黃昏／夜晚）"
+            >
+              <span aria-hidden="true">{timeOfDay === 'night' ? '🌙' : timeOfDay === 'day' ? '☀️' : '🌇'}</span>
+              <span className="hidden sm:inline">{timeOfDay === 'night' ? '夜晚' : timeOfDay === 'day' ? '白天' : '黃昏'}</span>
+            </button>
+          )}
           {/* Speed Toggle Button */}
           <button
             type="button"
