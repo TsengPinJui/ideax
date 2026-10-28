@@ -2,7 +2,7 @@ import { WaterLife, WeatherType, isUnderRoof } from './waterLife';
 import * as THREE from 'three';
 import { faunaEnv } from './fauna';
 import { disposeStreetMaterials } from './streets';
-import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
+import { REGION_CONFIGS, localToWorldXZ, getGlobalWalkableZones } from '../regionConfigs';
 import { isFloorsHall } from './exhibitHall';
 import { lobbyPit } from './hallLobby';
 import {
@@ -75,8 +75,8 @@ const PRESETS: Record<TimeOfDay, Preset> = {
   day: {
     top: 0x3f86d6, horizon: 0xcfe5f2, bottom: 0x9cc3d8,
     sunDir: [0.35, 0.75, -0.45], sunColor: 0xfff1d6, sunIntensity: 2.4, skyGlow: 0.6,
-    hemiSky: 0xdbeeff, hemiGround: 0x8a7a62, hemiIntensity: 1.1, ambient: 0.25,
-    fog: 0xcfe2ee, fogNear: 140, fogFar: 620,
+    hemiSky: 0xdbeeff, hemiGround: 0x9a8466, hemiIntensity: 1.05, ambient: 0.22,
+    fog: 0xd3e2e8, fogNear: 95, fogFar: 640,
     deep: 0x16627a, shallow: 0x3aa2a8, waterSky: 0x9fcbe6, glint: 1.0,
     lantern: 0.55, lamp: 0.4, windows: 0.0, glowOpacity: 0.12, glowSize: 1.8, orb: 1.0,
     exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0xffffff, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
@@ -85,7 +85,7 @@ const PRESETS: Record<TimeOfDay, Preset> = {
     top: 0x4d79b8, horizon: 0xffc88f, bottom: 0xd99a6a,
     sunDir: [-0.45, 0.16, -0.88], sunColor: 0xffb265, sunIntensity: 2.6, skyGlow: 1.0,
     hemiSky: 0xffe2c0, hemiGround: 0x6d5446, hemiIntensity: 0.95, ambient: 0.22,
-    fog: 0xf0c49c, fogNear: 120, fogFar: 560,
+    fog: 0xeec29a, fogNear: 70, fogFar: 540,
     deep: 0x1f4f63, shallow: 0x3f7d80, waterSky: 0xf2a877, glint: 1.4,
     lantern: 1.2, lamp: 0.95, windows: 0.4, glowOpacity: 0.28, glowSize: 2.0, orb: 1.3,
     exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.26,
@@ -112,9 +112,19 @@ function makeWaterMaterial() {
         uDeep: { value: new THREE.Color() },
         uShallow: { value: new THREE.Color() },
         uSky: { value: new THREE.Color() },
+        uSkyTop: { value: new THREE.Color() },
+        uSkyHorizon: { value: new THREE.Color() },
         uSunDir: { value: new THREE.Vector3(0, 1, 0) },
         uSunColor: { value: new THREE.Color() },
         uGlint: { value: 1 },
+        uFoam: { value: new THREE.Color(0xffffff) },
+        uFoamAmt: { value: 0.35 },
+        // 即時倒影（精緻畫質才有）：倒影貼圖與投影矩陣
+        tReflect: { value: null },
+        uReflMatrix: { value: new THREE.Matrix4() },
+        uReflStrength: { value: 0 },
+        // 五座島（可走範圍＋河岸草地）：岸邊淺水與浪花
+        uIslands: { value: [0, 1, 2, 3, 4].map(() => new THREE.Vector4(1e5, 1e5, 1, 1)) },
         // 有地下室的建築範圍：海面在這裡不畫，從樓梯井往下看才看得到地下室
         uHoles: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(1e5, 1e5, 1, 0)) },
         uHoleSizes: { value: [0, 1, 2, 3].map(() => new THREE.Vector2(0, 0)) },
@@ -122,10 +132,13 @@ function makeWaterMaterial() {
     ]),
     vertexShader: /* glsl */ `
       #include <fog_pars_vertex>
+      uniform mat4 uReflMatrix;
       varying vec3 vWorld;
+      varying vec4 vRefl;
       void main() {
         vec4 wp = modelMatrix * vec4(position, 1.0);
         vWorld = wp.xyz;
+        vRefl = uReflMatrix * wp;
         vec4 mvPosition = viewMatrix * wp;
         gl_Position = projectionMatrix * mvPosition;
         #include <fog_vertex>
@@ -138,18 +151,50 @@ function makeWaterMaterial() {
       uniform vec3 uDeep;
       uniform vec3 uShallow;
       uniform vec3 uSky;
+      uniform vec3 uSkyTop;
+      uniform vec3 uSkyHorizon;
       uniform vec3 uSunDir;
       uniform vec3 uSunColor;
+      uniform vec3 uFoam;
+      uniform float uFoamAmt;
       uniform float uGlint;
+      uniform sampler2D tReflect;
+      uniform float uReflStrength;
+      uniform vec4 uIslands[5];
       uniform vec4 uHoles[4];
       uniform vec2 uHoleSizes[4];
       varying vec3 vWorld;
-      float wave(vec2 p) {
-        return sin(p.x * 0.31 + uTime * 0.8) * 0.5
-          + sin(p.y * 0.27 - uTime * 0.65) * 0.5
-          + sin((p.x + p.y) * 0.71 + uTime * 1.4) * 0.22
-          + sin((p.x - p.y) * 1.33 - uTime * 1.9) * 0.11
-          + sin(p.x * 2.7 + p.y * 1.9 + uTime * 2.6) * 0.05;
+      varying vec4 vRefl;
+
+      // 大浪（慢）＋中浪＋細碎漣漪：幾組不同方向、不同頻率的波疊起來
+      float waveH(vec2 p, float detail) {
+        float h = 0.0;
+        h += sin(dot(p, vec2(0.31, 0.12)) + uTime * 0.8) * 0.5;
+        h += sin(dot(p, vec2(-0.14, 0.27)) - uTime * 0.65) * 0.45;
+        h += sin(dot(p, vec2(0.52, 0.47)) + uTime * 1.25) * 0.22;
+        h += sin(dot(p, vec2(-0.77, 0.61)) - uTime * 1.6) * 0.13 * detail;
+        h += sin(dot(p, vec2(1.31, -0.93)) + uTime * 2.3) * 0.07 * detail;
+        h += sin(dot(p, vec2(2.17, 1.71)) - uTime * 3.1) * 0.035 * detail;
+        h += sin(dot(p, vec2(-3.4, 2.6)) + uTime * 4.0) * 0.018 * detail;
+        return h;
+      }
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
+      // 離最近島岸（草地外緣）的距離（公尺；岸上是負的）
+      float shoreDist(vec2 p) {
+        float d = 1e5;
+        for (int i = 0; i < 5; i++) {
+          vec4 e = uIslands[i];
+          vec2 q = (p - e.xy) / e.zw;
+          float l = length(q);
+          d = min(d, (l - 1.0) * min(e.z, e.w));
+        }
+        return d;
       }
       void main() {
         vec2 p = vWorld.xz;
@@ -159,19 +204,56 @@ function makeWaterMaterial() {
           vec2 hl = vec2(hd.x * hh.z - hd.y * hh.w, hd.x * hh.w + hd.y * hh.z);
           if (abs(hl.x) < uHoleSizes[i].x && abs(hl.y) < uHoleSizes[i].y) discard;
         }
-        float e = 0.2;
+        vec3 toCam = cameraPosition - vWorld;
+        float dist = length(toCam);
+        vec3 V = toCam / dist;
+        // 遠處的細浪淡掉（不會閃爍），近處清楚
+        float detail = clamp(1.0 - dist / 260.0, 0.15, 1.0);
+        float e = 0.18;
         vec3 n = normalize(vec3(
-          -(wave(p + vec2(e, 0.0)) - wave(p - vec2(e, 0.0))) * 0.55,
+          -(waveH(p + vec2(e, 0.0), detail) - waveH(p - vec2(e, 0.0), detail)) * 0.42 * detail,
           1.0,
-          -(wave(p + vec2(0.0, e)) - wave(p - vec2(0.0, e))) * 0.55));
-        vec3 V = normalize(cameraPosition - vWorld);
-        float fres = pow(1.0 - max(dot(n, V), 0.0), 3.0);
-        vec3 base = mix(uDeep, uShallow, clamp(0.45 + 0.22 * wave(p * 0.4), 0.0, 1.0));
-        vec3 col = mix(base, uSky, clamp(fres * 0.4 + 0.05, 0.0, 0.45));
+          -(waveH(p + vec2(0.0, e), detail) - waveH(p - vec2(0.0, e), detail)) * 0.42 * detail));
+
+        float sd = shoreDist(p);
+        float shallow = 1.0 - smoothstep(0.0, 14.0, sd);
+        // 水色：深處偏墨綠藍、岸邊淺水偏翠、浪峰透光
+        float crest = clamp(0.5 + 0.5 * waveH(p * 0.45, 1.0), 0.0, 1.0);
+        vec3 body = mix(uDeep, uShallow, clamp(0.25 + shallow * 0.75 + crest * 0.12, 0.0, 1.0));
+
+        // 天空倒影（菲涅耳）
         vec3 R = reflect(-V, n);
+        float ry = clamp(R.y, 0.0, 1.0);
+        vec3 skyCol = mix(uSkyHorizon, uSkyTop, pow(ry, 0.55));
+        skyCol = mix(skyCol, uSky, 0.5) * 0.82;
+        float cosT = max(dot(n, V), 0.0);
+        float fres = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
+        // 沒有即時倒影時（手機）別讓水面整片反白
+        fres = clamp(fres, 0.0, uReflStrength > 0.0 ? 0.8 : 0.55);
+        vec3 refl = skyCol;
+        // 即時倒影（建築、樹、山、燈籠），用水波法線擾動
+        if (uReflStrength > 0.0) {
+          vec2 uv = vRefl.xy / vRefl.w + n.xz * 0.045 * detail;
+          vec3 rc = texture2D(tReflect, uv).rgb;
+          refl = mix(refl, rc, uReflStrength);
+        }
+        vec3 col = mix(body, refl, fres);
+
+        // 太陽（夜裡是月亮）的波光
         vec3 L = normalize(uSunDir);
-        float spec = pow(max(dot(R, L), 0.0), 140.0) * 2.2 + pow(max(dot(R, L), 0.0), 18.0) * 0.18;
-        col += uSunColor * spec * uGlint;
+        float rl = max(dot(R, L), 0.0);
+        float spec = pow(rl, 220.0) * 3.0 + pow(rl, 32.0) * 0.22;
+        // 細碎閃光
+        float sparkle = step(0.985, vnoise(p * 3.0 + uTime * 0.7)) * pow(rl, 8.0) * 1.6 * detail;
+        col += uSunColor * (spec + sparkle) * uGlint;
+
+        // 岸邊浪花：沿岸一圈白沫，隨浪推近退遠
+        if (sd > -0.5 && sd < 2.2) {
+          float band = sd + sin(uTime * 0.9 + p.x * 0.15 + p.y * 0.11) * 0.3;
+          float foam = smoothstep(1.1, 0.15, band) * smoothstep(-0.35, 0.15, band);
+          foam *= smoothstep(0.35, 0.75, vnoise(p * 2.2 + vec2(uTime * 0.25, -uTime * 0.18)));
+          col = mix(col, uFoam, clamp(foam * uFoamAmt, 0.0, 0.5));
+        }
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -232,6 +314,11 @@ export class StylizedWorld {
   private sky: THREE.Mesh;
   private skyMat: THREE.ShaderMaterial;
   private waterMat: THREE.ShaderMaterial;
+  private water: THREE.Mesh | null = null;
+  // 即時倒影
+  private reflRT: THREE.WebGLRenderTarget | null = null;
+  private reflCam = new THREE.PerspectiveCamera();
+  public reflections = false;
   private stars: THREE.Points;
   private moon: THREE.Sprite;
   private clouds: THREE.Sprite[] = [];
@@ -335,9 +422,18 @@ export class StylizedWorld {
         this.waterMat.uniforms.uHoleSizes.value[i].set(hh.hx, hh.hz);
       });
     }
+    {
+      // 島岸（可走範圍＋草地外環）：岸邊淺水與浪花
+      const zones = getGlobalWalkableZones();
+      Object.values(REGION_CONFIGS).forEach((r, i) => {
+        const z = zones.find((zz) => zz.type === 'ellipse' && Math.abs(zz.cx - r.center[0]) < 0.5 && Math.abs(zz.cz - r.center[1]) < 0.5);
+        if (z && z.type === 'ellipse' && i < 5) this.waterMat.uniforms.uIslands.value[i].set(z.cx, z.cz, z.rx + 6.2, z.rz + 6.2);
+      });
+    }
     const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1), this.waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.y = -0.35;
+    this.water = water;
     this.root.add(water);
 
     // 盆地：照 /island 的地圖構造（32 座閉合環形山、田園陸地、北山飛瀑、塔樓山台、南山洞口、東山飛瀑）
@@ -875,6 +971,20 @@ export class StylizedWorld {
     return PRESETS[this.timeOfDay].bloom;
   }
 
+  /** 泛光門檻：黃昏、夜裡燈籠更容易暈開 */
+  get bloomThreshold() {
+    return this.timeOfDay === 'night' ? 0.8 : this.timeOfDay === 'dusk' ? 0.9 : 0.95;
+  }
+
+  /** 調色（後製）：飽和度、對比、暗部／亮部色偏、暗角 */
+  get grade() {
+    const t = this.timeOfDay;
+    const rain = this.weather === 'rain';
+    if (t === 'night') return { sat: 1.06, contrast: 1.06, shadow: [0.0, 0.02, 0.07], high: [0.06, 0.035, 0.0], vignette: 0.42 };
+    if (t === 'dusk') return { sat: rain ? 1.0 : 1.14, contrast: 1.07, shadow: [0.03, 0.0, 0.045], high: [0.07, 0.035, -0.01], vignette: 0.34 };
+    return { sat: rain ? 0.92 : 1.1, contrast: 1.06, shadow: [-0.005, 0.01, 0.035], high: [0.045, 0.03, 0.0], vignette: 0.26 };
+  }
+
   setTimeOfDay(t: TimeOfDay) {
     this.timeOfDay = t;
     faunaEnv.tod = t;
@@ -901,18 +1011,24 @@ export class StylizedWorld {
     w.uDeep.value.setHex(p.deep);
     w.uShallow.value.setHex(p.shallow);
     w.uSky.value.setHex(p.waterSky);
+    w.uSkyTop.value.setHex(p.top);
+    w.uSkyHorizon.value.setHex(p.horizon);
+    w.uFoam.value.setHex(t === 'night' ? 0x8fa3c8 : t === 'dusk' ? 0xffe8d0 : 0xf4fbff);
+    w.uFoamAmt.value = t === 'night' ? 0.12 : t === 'dusk' ? 0.3 : 0.34;
     w.uSunDir.value.copy(sd);
     w.uSunColor.value.setHex(p.sunColor);
     w.uGlint.value = p.glint;
     mats.lanternBody.emissiveIntensity = p.lantern;
     mats.lampPaper.emissiveIntensity = p.lamp;
     mats.facades.forEach((f) => (f.emissiveIntensity = p.windows));
+    mats.templeFacade.emissiveIntensity = p.windows;
     mats.glow.opacity = p.glowOpacity;
     mats.glow.size = p.glowSize;
     mats.orb.emissiveIntensity = p.orb;
     mats.bulbGlass.emissiveIntensity = 0.45 + p.orb * 0.25;
     mats.bulbRing.emissiveIntensity = 0.6 + p.orb * 0.2;
     this.renderer.toneMappingExposure = p.exposure;
+    this.updateEnvironmentMap();
     (this.stars.material as THREE.PointsMaterial).opacity = p.stars;
     this.moon.visible = p.moon;
     this.moon.position.copy(sd).multiplyScalar(760);
@@ -939,6 +1055,114 @@ export class StylizedWorld {
   }
 
   private sunDir = new THREE.Vector3(0, 1, 0);
+  private pmrem: THREE.PMREMGenerator | null = null;
+  private envRT: THREE.WebGLRenderTarget | null = null;
+  private envScene: THREE.Scene | null = null;
+  public envIntensity = 0.45;
+
+  /**
+   * 環境光照（IBL）：用目前時段的天空做一張模糊的環境貼圖，琉璃瓦、漆木、銅器、石板會帶一點天光反射，
+   * 暗面也會染上天空的色調（黃昏偏暖、夜裡偏藍）
+   */
+  private updateEnvironmentMap() {
+    try {
+      if (!this.pmrem) {
+        this.pmrem = new THREE.PMREMGenerator(this.renderer);
+        this.envScene = new THREE.Scene();
+        const sky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), this.skyMat);
+        this.envScene.add(sky);
+        // 地面：盆地裡的草地與水面顏色
+        const ground = new THREE.Mesh(new THREE.CircleGeometry(48, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4f6a4a }));
+        ground.position.y = -2;
+        ground.userData.envGround = true;
+        this.envScene.add(ground);
+      }
+      const g = this.envScene!.children.find((c) => c.userData.envGround) as THREE.Mesh | undefined;
+      if (g) (g.material as THREE.MeshBasicMaterial).color.setHex(this.timeOfDay === 'night' ? 0x0c1424 : this.timeOfDay === 'dusk' ? 0x5a4a38 : 0x5a7050);
+      const rt = this.pmrem.fromScene(this.envScene!, 0.04);
+      this.envRT?.dispose();
+      this.envRT = rt;
+      this.scene.environment = rt.texture;
+    } catch {
+      // 不支援時就不用環境貼圖
+    }
+  }
+
+  /** 把場景裡的材質設成合適的環境反射強度（載入新的島之後呼叫） */
+  applyEnvIntensity(root: THREE.Object3D) {
+    root.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (!m) return;
+      for (const mm of Array.isArray(m) ? m : [m]) {
+        const st = mm as THREE.MeshStandardMaterial;
+        if (st.isMeshStandardMaterial && !st.userData.envSet) {
+          // 招牌、佈告欄這類自己會亮的紙面：幾乎不吃環境光，避免白天整片反白看不清字
+          st.envMapIntensity = st.emissiveMap ? 0.12 : this.envIntensity * (st.metalness > 0.3 ? 1.6 : 1);
+          st.userData.envSet = true;
+        }
+      }
+    });
+  }
+
+  /**
+   * 即時倒影（精緻畫質）：用鏡像相機從水面下往上拍一張（解析度減半），水面 shader 依菲涅耳混進來
+   * 和 three 的 Reflector 同一套算法（斜截投影把水面以下裁掉）
+   */
+  renderReflection(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, scene: THREE.Scene) {
+    const u = this.waterMat.uniforms;
+    if (!this.reflections || !this.water || camera.position.y < this.water.position.y + 0.05) {
+      u.uReflStrength.value = 0;
+      return;
+    }
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const w = Math.max(256, Math.floor(size.x * 0.5));
+    const h = Math.max(256, Math.floor(size.y * 0.5));
+    if (!this.reflRT) {
+      this.reflRT = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 0 });
+      u.tReflect.value = this.reflRT.texture;
+    } else if (this.reflRT.width !== w || this.reflRT.height !== h) this.reflRT.setSize(w, h);
+    const y0 = this.water.position.y;
+    const vc = this.reflCam;
+    // 鏡像相機：位置與視線對水面翻轉
+    const cp = camera.getWorldPosition(new THREE.Vector3());
+    const look = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion())).add(cp);
+    vc.position.set(cp.x, 2 * y0 - cp.y, cp.z);
+    vc.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    vc.up.y = -vc.up.y;
+    vc.lookAt(look.x, 2 * y0 - look.y, look.z);
+    vc.far = camera.far;
+    vc.updateMatrixWorld();
+    vc.projectionMatrix.copy(camera.projectionMatrix);
+    const tm = u.uReflMatrix.value as THREE.Matrix4;
+    tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+    tm.multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse);
+    // 斜截投影：只畫水面以上的東西
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -y0).applyMatrix4(vc.matrixWorldInverse);
+    const clip = new THREE.Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant);
+    const pm = vc.projectionMatrix;
+    const q = new THREE.Vector4(
+      (Math.sign(clip.x) + pm.elements[8]) / pm.elements[0],
+      (Math.sign(clip.y) + pm.elements[9]) / pm.elements[5],
+      -1,
+      (1 + pm.elements[10]) / pm.elements[14]
+    );
+    clip.multiplyScalar(2 / clip.dot(q));
+    pm.elements[2] = clip.x;
+    pm.elements[6] = clip.y;
+    pm.elements[10] = clip.z + 1 - 0.003;
+    pm.elements[14] = clip.w;
+    this.water.visible = false;
+    const prevRT = renderer.getRenderTarget();
+    const prevShadow = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.setRenderTarget(this.reflRT);
+    renderer.clear();
+    renderer.render(scene, vc);
+    renderer.setRenderTarget(prevRT);
+    renderer.shadowMap.autoUpdate = prevShadow;
+    this.water.visible = true;
+    u.uReflStrength.value = 0.85;
+  }
 
   /** 開啟或關閉陰影（依畫質設定） */
   setShadows(on: boolean) {

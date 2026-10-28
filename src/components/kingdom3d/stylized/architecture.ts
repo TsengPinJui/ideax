@@ -8,6 +8,7 @@ import {
   stoneBlockTexture,
   woodFloorTexture,
   facadeTexture,
+  templeFacadeTexture,
   roofTileTexture,
   ceilingTexture,
   signboardTexture,
@@ -44,6 +45,8 @@ export interface StyleMaterials {
   lampPaper: THREE.MeshStandardMaterial;
   glow: THREE.PointsMaterial;
   facades: THREE.MeshStandardMaterial[];
+  /** 廟宇牆面（朱紅牆、竹節窗、石裙堵） */
+  templeFacade: THREE.MeshStandardMaterial;
   stone: THREE.MeshStandardMaterial;
   stoneLight: THREE.MeshStandardMaterial;
   paving: THREE.MeshStandardMaterial;
@@ -93,6 +96,7 @@ export function getStyleMaterials(): StyleMaterials {
         roughness: 0.8,
       })
   );
+  const templeFacade = std({ map: templeFacadeTexture(false), emissiveMap: templeFacadeTexture(true), emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.3, roughness: 0.7 });
   const roofs = {
     slate: std({ map: roofTileTexture('slate'), bumpMap: bumpOf('roof_slate', roofTileTexture('slate')), bumpScale: 4, roughness: 0.6, metalness: 0.1, side: THREE.FrontSide }),
     teal: std({ map: roofTileTexture('teal'), bumpMap: bumpOf('roof_teal', roofTileTexture('teal')), bumpScale: 4, roughness: 0.5, metalness: 0.12 }),
@@ -120,6 +124,7 @@ export function getStyleMaterials(): StyleMaterials {
       blending: THREE.AdditiveBlending,
     }),
     facades,
+    templeFacade,
     stone: std({ map: stoneBlockTexture(), bumpMap: bumpOf('stone', stoneBlockTexture()), bumpScale: 3, color: 0xd9d0c3 }),
     stoneLight: std({ map: stoneBlockTexture(), bumpMap: bumpOf('stone', stoneBlockTexture()), bumpScale: 2, color: 0xf2ebe0 }),
     paving: std({ map: pavingTexture(), bumpMap: bumpOf('paving', pavingTexture()), bumpScale: 3.5, roughness: 0.92 }),
@@ -611,7 +616,9 @@ export interface StyledBuildingInput {
   tiers?: number;
   floors?: number;
   basements?: number;
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple';
+  /** 招牌名稱下方的小字；沒有就用 previewBadge */
+  signSub?: string;
   npc?: 'soso';
   colorHex: number;
 }
@@ -750,11 +757,13 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const em = ext === 'exhibition' || ext === 'arcade' ? exteriorMats() : null;
   // 徽派（討論島，照 /island）：白牆黛瓦、深色木柱、兩側馬頭牆
   const huizhou = ext === 'huizhou';
-  const facade = ext === 'exhibition' || huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : mats.facades[hv % mats.facades.length];
+  // 廟宇（求職廟）：朱紅牆、金黃琉璃瓦，前面另外加三川殿門廊、龍柱、剪黏雙龍搶珠
+  const temple = ext === 'temple';
+  const facade = ext === 'exhibition' || huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
   // 柱子：展覽館與徽派深色木柱、電玩城深色金屬，其餘紅柱
   const pillarMat = ext === 'exhibition' || huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
   const themes: RoofTheme[] = ['slate', 'teal', 'slate', 'red'];
-  const theme: RoofTheme = b.exterior === 'huizhou' ? 'slate' : tiers >= 4 ? 'gold' : themes[hv % themes.length];
+  const theme: RoofTheme = b.exterior === 'huizhou' ? 'slate' : temple || tiers >= 4 ? 'gold' : themes[hv % themes.length];
   const plinthH = 0.45;
   const wallH = h - plinthH;
   const lanterns = new LanternBatch();
@@ -1145,7 +1154,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     ban.userData.noMerge = true;
     root.add(ban);
   }
-  const sTex = signboardTexture(b.name, b.previewBadge);
+  const sTex = signboardTexture(b.name, b.signSub ?? b.previewBadge);
   const signMat = new THREE.MeshStandardMaterial({ map: sTex, emissive: 0xffffff, emissiveMap: sTex, emissiveIntensity: 0.58, roughness: 0.45, metalness: 0.12 });
   const signH = Math.min(1.25, Math.max(0.8, h - doorH - 0.05));
   const signW = Math.min(doorW + 1.6, signH * 3);
@@ -1189,7 +1198,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
       inner.add(p);
     }
   }
-  const bTex = signboardTexture(b.name, b.previewBadge);
+  const bTex = signboardTexture(b.name, b.signSub ?? b.previewBadge);
   const boardMat = new THREE.MeshStandardMaterial({ map: bTex, emissive: 0xffffff, emissiveMap: bTex, emissiveIntensity: 0.58, roughness: 0.5 });
   const board = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(5.2, w - 2), Math.min(5.2, w - 2) / 3), boardMat);
   board.position.set(0, Math.min(3.1, h - 1.4), -d / 2 + thick / 2 + 0.04);

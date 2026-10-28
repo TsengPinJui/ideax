@@ -100,7 +100,7 @@ function getBuildingFeatureLabel(b: BuildingInteractable): string {
     case 'discussion-street':
       return '茶藝街（主題討論）';
     case 'creative-exhibition':
-      return '薈萃樓・展覽館（作品與提案展）';
+      return '展覽館（作品與提案展）';
     case 'creative-arcade':
       return '電玩城（遊戲與作品展）';
     case 'career-academy':

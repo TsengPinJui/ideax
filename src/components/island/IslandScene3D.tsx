@@ -365,7 +365,7 @@ export const BUILDING_NAME_LABELS: IslandLabelOverlay[] = [
     islandId: 'creative',
     districtId: 'creative-exhibition',
     buildingId: 'creative-exhibition',
-    title: '薈萃樓',
+    title: '展覽館',
     worldPos: [-35.8, 10.4, 21.5],
     imgPos: [14.9, 50.6],
     kind: 'building',

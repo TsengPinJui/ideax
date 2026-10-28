@@ -85,6 +85,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 /** 電腦、平板等效能較好的裝置預設開精緻畫質；手機預設流暢 */
 const detectFancyDefault = () => {
@@ -1208,9 +1209,56 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const rt = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, samples: 4 });
     const composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), world.bloomStrength, 0.4, 0.92);
+    // 泛光前先把壞掉的像素（NaN、無限大）清掉：不然泛光會把一點點壞值擴散成整片黑
+    composer.addPass(
+      new ShaderPass({
+        uniforms: { tDiffuse: { value: null } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          varying vec2 vUv;
+          void main() {
+            vec4 c = texture2D(tDiffuse, vUv);
+            bool bad = any(isnan(c)) || any(isinf(c));
+            gl_FragColor = bad ? vec4(0.0, 0.0, 0.0, 1.0) : min(c, vec4(48.0));
+          }`,
+      })
+    );
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), world.bloomStrength, 0.55, world.bloomThreshold);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
+    // 調色＋暗角（像電影的暖色夕照與柔和邊角）
+    const grade = new ShaderPass({
+      uniforms: {
+        tDiffuse: { value: null },
+        uSat: { value: 1.1 },
+        uContrast: { value: 1.06 },
+        uShadow: { value: new THREE.Vector3() },
+        uHigh: { value: new THREE.Vector3() },
+        uVignette: { value: 0.3 },
+      },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float uSat;
+        uniform float uContrast;
+        uniform vec3 uShadow;
+        uniform vec3 uHigh;
+        uniform float uVignette;
+        varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D(tDiffuse, vUv);
+          float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+          vec3 col = mix(vec3(l), c.rgb, uSat);
+          col = (col - 0.5) * uContrast + 0.5;
+          col += uShadow * (1.0 - smoothstep(0.0, 0.55, l)) + uHigh * smoothstep(0.45, 1.0, l);
+          vec2 d = vUv - 0.5;
+          float v = smoothstep(0.38, 0.95, length(d * vec2(1.15, 1.0)));
+          col *= 1.0 - uVignette * v;
+          gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a);
+        }`,
+    });
+    composer.addPass(grade);
     composerRef.current = composer;
     bloomRef.current = bloom;
 
@@ -1280,6 +1328,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       refreshPlazaStelesRef.current();
       refreshStreetBoardsAndCarousels();
       collectPickables();
+      worldRef.current?.applyEnvIntensity(scene);
     };
     regionManager.onError = (err) => {
       setErrorMessage(err);
@@ -2001,8 +2050,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       // Render Scene
       if (fancyRef.current) {
         bloom.strength = world.bloomStrength;
+        bloom.threshold = world.bloomThreshold;
+        const gr = world.grade;
+        grade.uniforms.uSat.value = gr.sat;
+        grade.uniforms.uContrast.value = gr.contrast;
+        (grade.uniforms.uShadow.value as THREE.Vector3).set(gr.shadow[0], gr.shadow[1], gr.shadow[2]);
+        (grade.uniforms.uHigh.value as THREE.Vector3).set(gr.high[0], gr.high[1], gr.high[2]);
+        grade.uniforms.uVignette.value = gr.vignette;
+        // 水面即時倒影（精緻畫質；地下展廳、樓裡不需要）
+        world.reflections = storyRef.current.level >= 0 && !(storyRef.current.towerId && storyRef.current.level > 0 && storyRef.current.towerId !== PLATEAU_ID);
+        world.renderReflection(renderer, camera, scene);
         composer.render(delta);
       } else {
+        world.reflections = false;
+        world.renderReflection(renderer, camera, scene);
         renderer.render(scene, camera);
       }
 
@@ -2053,6 +2114,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           bonds.state = { ...bonds.state, online: true, partner: on ? { key: 'guest_test', name: '測試旅人' } : null };
           setBondTick((n) => n + 1);
         },
+        world: () => world,
+        post: () => ({ bloom, grade, composer }),
+        sceneObj: () => scene,
         findNamed: (name: string) => {
           const out: number[][] = [];
           scene.traverse((o) => {
