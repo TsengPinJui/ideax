@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Collider } from '../types';
 import { BOARDING_SPOTS, TRAILHEAD, islandEdge, BASIN_LANDMARKS } from './basinLayout';
-import { REGION_CONFIGS } from '../regionConfigs';
+import { REGION_CONFIGS, WEST_LANDING } from '../regionConfigs';
 import { getStyleMaterials, LanternBatch, buildRoofTier, scaledBox } from './architecture';
 import { signboardTexture, seeded } from './textures';
 import { makePickProxy } from '../picking';
@@ -10,7 +10,7 @@ import { openWater } from './waterLife';
 /**
  * 渡口（乘船點）與塔樓登山口
  * - 渡口：岸邊的木棧橋＋小亭＋「乘船點」招牌；點了可以搭船自由遊湖（每船兩人、同時最多 25 艘）
- * - 登山口：痛點島西岸的石牌坊，點了直通西側塔樓山台的塔外空地；山上有「下山」石碑回到登山口
+ * - 登山口：西側田園山腳的石牌坊（從「聚雲塔登山渡口」上岸沿石板路走過去），點了直通塔樓山台的塔外空地；山上有「下山」石碑回到登山口
  */
 
 export interface Dock {
@@ -39,8 +39,8 @@ function findWater(regionId: string, deg: number): [number, number] {
 }
 
 export const DOCKS: Dock[] = BOARDING_SPOTS.map((s) => {
-  const [lx, lz] = islandEdge(s.regionId, s.deg, -1.5);
-  const [wx, wz] = findWater(s.regionId, s.deg);
+  const [lx, lz] = s.fixed ? s.fixed.land : islandEdge(s.regionId, s.deg, -1.5);
+  const [wx, wz] = s.fixed ? s.fixed.water : findWater(s.regionId, s.deg);
   const outYaw = Math.atan2(-(wx - lx), -(wz - lz)); // 面向水面
   return { id: s.id, name: s.name, regionId: s.regionId, landX: lx, landZ: lz, landYaw: outYaw, waterX: wx, waterZ: wz, waterYaw: outYaw };
 });
@@ -62,13 +62,13 @@ export function nearestDock(x: number, z: number) {
 
 /** 登山口（島上）與山上塔外空地 */
 export const TRAIL = (() => {
-  const [x, z] = islandEdge(TRAILHEAD.regionId, TRAILHEAD.deg, -2.2);
-  const [ox, oz] = islandEdge(TRAILHEAD.regionId, TRAILHEAD.deg, 6);
+  // 西側田園山腳（WEST_LANDING.trail）：牌坊背對山、面向從渡口走過來的人；yaw 朝向山（下山回來時面向渡口）
+  const [x, z] = WEST_LANDING.trail;
   const wp = BASIN_LANDMARKS.westPlateau;
   return {
     x,
     z,
-    yaw: Math.atan2(-(ox - x), -(oz - z)),
+    yaw: Math.PI / 2,
     /** 山台頂（塔在 wp.x+2）：空地在塔的東側，面向塔 */
     topX: wp.x + 9.4,
     topZ: wp.z + 2.0,
@@ -112,7 +112,7 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
   for (const d of list) {
     // 本地座標：+Z 指向水面
     const dg = new THREE.Group();
-    dg.position.set(d.landX, 0, d.landZ);
+    dg.position.set(d.landX, d.regionId === 'west' ? WEST_LANDING.y - 0.15 : 0, d.landZ);
     dg.rotation.y = d.landYaw + Math.PI;
     g.add(dg);
     const len = Math.max(6, Math.hypot(d.waterX - d.landX, d.waterZ - d.landZ) + 1.5);
@@ -152,7 +152,7 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
   }
   if (trail) {
     const tg = new THREE.Group();
-    tg.position.set(TRAIL.x, 0, TRAIL.z);
+    tg.position.set(TRAIL.x, regionId === 'west' ? WEST_LANDING.y : 0, TRAIL.z);
     tg.rotation.y = TRAIL.yaw + Math.PI;
     g.add(tg);
     // 石牌坊＋「登山步道」匾＋往塔的指路石
@@ -172,6 +172,31 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
     const stele = add(tg, new THREE.BoxGeometry(0.9, 1.6, 0.25), sm.stone, 2.6, 0.8, 0.8);
     stele.rotation.y = -0.4;
     tg.add(makePickProxy(4.4, 4.2, 2.4, 0, 0.6, 0, { kind: 'trail', dir: 'up' }));
+  }
+  if (regionId === 'west') {
+    // 渡口到登山口的田間石板路（兩旁石燈）
+    const W = WEST_LANDING;
+    const [ax, az] = W.dockLand;
+    const [bx, bz] = W.trail;
+    const len = Math.hypot(bx - ax, bz - az);
+    const yaw = Math.atan2(bx - ax, bz - az);
+    const pg = new THREE.Group();
+    g.add(pg);
+    const n = Math.floor(len / 1.25);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const slab = add(pg, new THREE.BoxGeometry(W.halfWidth * 1.7, 0.12, 1.05), sm.stoneLight, ax + (bx - ax) * t, W.y + 0.04, az + (bz - az) * t, yaw);
+      slab.receiveShadow = true;
+    }
+    for (let i = 1; i < 6; i++) {
+      const t = i / 6;
+      for (const sd of [-1, 1]) {
+        const px = ax + (bx - ax) * t + Math.cos(yaw) * sd * (W.halfWidth + 0.6);
+        const pz = az + (bz - az) * t - Math.sin(yaw) * sd * (W.halfWidth + 0.6);
+        lan.addPost(px, W.y, pz, 1.6);
+        colliders.push({ id: `west-path-lamp-${i}-${sd}`, type: 'cylinder', x: px, z: pz, radius: 0.28 });
+      }
+    }
   }
   g.add(lan.build());
   return { group: g, colliders };

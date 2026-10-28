@@ -6,7 +6,7 @@
 
 export const EASTER_EGG_STORAGE_KEY = 'ideax_island_easter_egg_book_v1';
 export const EASTER_EGG_EVENT = 'ideax_easter_egg_book_changed';
-export const TOTAL_ISLAND_EASTER_EGGS = 35;
+export const TOTAL_ISLAND_EASTER_EGGS = 36;
 
 export interface EasterEggRecord {
   verse: string;
@@ -69,4 +69,14 @@ export function onEasterEggBookChange(cb: (list: EasterEggRecord[]) => void): ()
     window.removeEventListener(EASTER_EGG_EVENT, onLocal);
     window.removeEventListener('storage', onStorage);
   };
+}
+
+/** 主廣場的大燈泡：小燈泡、大燈泡各算一格；3D 地圖只有一座燈泡，點了先給還沒收集的那一格 */
+export const XIAODENGPAO_VERSE = '「找到了小燈泡！當燈泡亮起，就是又有好點子了！」';
+export const BIG_BULB_VERSE = '「大燈泡亮起來了！滿城的好點子都被照亮了！」';
+export function nextBulbVerse(): string {
+  const have = new Set(loadEasterEggBook().map((r) => strip(r.verse)));
+  if (!have.has(strip(XIAODENGPAO_VERSE))) return XIAODENGPAO_VERSE;
+  if (!have.has(strip(BIG_BULB_VERSE))) return BIG_BULB_VERSE;
+  return XIAODENGPAO_VERSE;
 }
