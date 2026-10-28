@@ -215,7 +215,9 @@ service cloud.firestore {
       return ['balance', 'withheldPoints', 'pendingEarnings', 'tipReceivablesPoints', 'bountyReceivablesPoints', 'thisWeekTipPoints',
               'totalWithdrawn', 'isBlocked', 'blockedReason', 'blockedUntil', 'blockedAt', 'blockedByAdminName',
               'adminSites', 'isSiteAAdmin', 'isSiteBAdmin', 'adminIdentityBadge', 'isInitialAdmin',
-              'subscriptionTier', 'subscriptionExpiresAt'];
+              'subscriptionTier', 'subscriptionExpiresAt',
+              // 等級與經驗值：只有伺服器能寫（權威資料在 user_xp，這裡是顯示用的副本）
+              'level', 'totalXp', 'xpUpdatedAt'];
     }
     // 身分欄位：只有本人能改
     function identityUserFields() {
@@ -260,6 +262,8 @@ service cloud.firestore {
         !request.resource.data.keys().hasAny(privateProfileFields()) &&
         request.resource.data.get('balance', 0) == 0 &&
         request.resource.data.get('withheldPoints', 0) == 0 &&
+        request.resource.data.get('totalXp', 0) == 0 &&
+        request.resource.data.get('level', 1) == 1 &&
         request.resource.data.get('role', '') != 'admin' &&
         request.resource.data.get('accountType', '') != 'admin' &&
         request.resource.data.get('isBlocked', false) == false
