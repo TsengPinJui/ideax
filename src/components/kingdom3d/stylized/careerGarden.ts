@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Collider } from '../types';
 import { getStyleMaterials, buildRoofTier, mergeByMaterial, LanternBatch, scaledBox } from './architecture';
 import { seeded } from './textures';
+import { makePickProxy } from '../picking';
 
 /**
  * 徵才島院牆內的江南園林：
@@ -162,6 +163,8 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       g.add(spot);
     }
     g.position.y = 0.0;
+    // 彩蛋：錦鯉（屈原不是我殺的／你有粽子嗎?）
+    g.add(makePickProxy(0.9, 0.5, 1.1, 0, 0, 0, { kind: 'egg', egg: 'koi', maxDist: 25 }, -0.1));
     koiGroup.add(g);
     koi.push({ g, r: 1.2 + rand() * 3.2, sp: (0.18 + rand() * 0.22) * (i % 2 ? 1 : -1), ph: rand() * Math.PI * 2, cx: POND.x - 2 + rand() * 4, cz: POND.z - 1 + rand() * 2 });
   }
@@ -248,6 +251,8 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       strand.userData.noMerge = false;
     }
     colliders.push({ id: `garden-willow-${wx}`, type: 'cylinder', x: wx, z: wz, radius: 0.45 });
+    // 彩蛋：柳樹（一柳～四柳、五柳陶淵明、第六棵屈原）
+    root.add(makePickProxy(2.6, 4.4, 2.6, wx, wz, 0, { kind: 'egg', egg: 'willow', id: `garden-${wx}`, maxDist: 30 }));
   }
 
   // ── 沿牆竹林 ──
@@ -386,5 +391,7 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
 
   mergeByMaterial(stat);
   root.add(lan.build());
+  // 彩蛋：綠塘（切勿竭澤而漁！）
+  root.add(makePickProxy(POND.rx * 1.8, 0.2, POND.rz * 1.8, POND.x, POND.z, 0, { kind: 'egg', egg: 'pond', maxDist: 25 }, -0.15));
   return { group: root, colliders };
 }

@@ -188,7 +188,8 @@ export function playIdeaBulbChime() {
   }
 }
 
-export const TOTAL_ISLAND_EASTER_EGGS = 35;
+// 收集冊總格數：和實境漫遊共用（定義在 easterEggBook）
+export { TOTAL_ISLAND_EASTER_EGGS } from './easterEggBook';
 
 interface IslandScene3DProps {
   view: IslandViewTransform;

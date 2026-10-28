@@ -34,9 +34,12 @@ const DEFAULT_FEATURE_LABELS: Record<string, string> = {
   agents: '關於與角色',
   mascot_chat: '小燈泡對話',
   customer_service: '客服（多慧）',
+  roam3d: '實境漫遊',
+  map3d: '3D地圖',
 };
 
-const ALWAYS_SHOW_FEATURE_KEYS = new Set(['innovation_proposal', 'vibecoding', 'games']);
+// 實境漫遊、3D 地圖自 v4.1.17 起才開始記錄，還沒有人次時也列出來（顯示 0）
+const ALWAYS_SHOW_FEATURE_KEYS = new Set(['innovation_proposal', 'vibecoding', 'games', 'roam3d', 'map3d']);
 
 const POST_TYPE_LABEL: Record<string, string> = {
   pain_point: '痛點',

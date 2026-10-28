@@ -496,6 +496,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       statics.add(g);
+      root.add(makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'egg', egg: 'buffalo', maxDist: 40 }, 0.5));
       const head = g.userData.head as THREE.Object3D;
       if (head instanceof THREE.Group) mergeByMaterial(head);
       keepApart(head);
@@ -539,6 +540,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       statics.add(g);
+      root.add(makePickProxy(0.9, 1.3, 0.9, x, z, 0, { kind: 'egg', egg: 'egret', maxDist: 45 }, 0.5));
     }
     // 戴斗笠鋤地的農夫
     for (let i = 0; i < 6; i++) {
@@ -547,6 +549,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       offGroup.add(g);
+      offGroup.add(makePickProxy(0.9, 1.6, 0.9, x, z, 0, { kind: 'egg', egg: 'villager', maxDist: 45 }, 0.5));
       const arms = g.userData.arms as THREE.Object3D;
       if (arms instanceof THREE.Group) mergeByMaterial(arms);
       keepApart(arms);
@@ -589,6 +592,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         g.position.set(x, -0.04, z);
         g.rotation.y = tan + (rand() - 0.5) * 0.6;
         statics.add(g);
+        root.add(makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'egg', egg: 'buffalo', maxDist: 40 }));
         colliders.push({ id: `fauna-buffalo-${ii}`, type: 'cylinder', x, z, radius: 0.9 });
         const head = g.userData.head as THREE.Object3D;
         if (head instanceof THREE.Group) mergeByMaterial(head);
@@ -639,6 +643,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(sp[0], -0.04, sp[1]);
       g.rotation.y = sp[2] + (rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
       statics.add(g);
+      root.add(makePickProxy(0.9, 1.3, 0.9, sp[0], sp[1], 0, { kind: 'egg', egg: 'egret', maxDist: 40 }));
     }
   });
 
@@ -671,6 +676,9 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       const g = walker(m, rand, (ii + placed) % 3 === 1);
       g.name = 'rim-walker';
       root.add(g);
+      // 跟著走的點擊範圍（本地座標，跟著村民動）
+      const px = makePickProxy(0.9, 1.8, 0.9, 0, 0, 0, { kind: 'egg', egg: 'villager', maxDist: 35 });
+      g.add(px);
       walkers.push({ g, isl, a0, a1: a0 + span, ph: rand() * 10, sp: 0.85 + rand() * 0.3 });
       placed++;
     }

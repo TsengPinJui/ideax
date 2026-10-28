@@ -586,6 +586,8 @@ export class TreeBatch {
         im.setColorAt(i, c.setHex(t.color));
       });
       im.castShadow = true;
+      // 彩蛋用：記下每一棵的樹種（點到桃花樹：忽逢桃花林…）
+      im.userData.treeKinds = list.map((t) => t.kind);
       g.add(im);
     }
     return g;

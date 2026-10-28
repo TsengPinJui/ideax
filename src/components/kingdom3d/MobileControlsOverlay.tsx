@@ -69,6 +69,8 @@ interface MobileControlsOverlayProps {
   /** 全島地圖：點任一處前往最近可以去的地方 */
   onGoToPoint?: (x: number, z: number) => void;
   /** 小地圖下方的時間與天氣（選時段、天氣或自動） */
+  /** 小地圖下方再多放的小鍵（例如彩蛋收集冊） */
+  extraControls?: React.ReactNode;
   env?: {
     timeMode: TimeMode;
     weatherMode: WeatherMode;
@@ -157,6 +159,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   bgmMuted,
   onToggleBgm,
   env,
+  extraControls,
   onGoToPoint,
   multiplayer,
 }) => {
@@ -779,6 +782,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               autoHint={env.autoHint}
             />
           )}
+          {extraControls}
         </div>
       </div>
 

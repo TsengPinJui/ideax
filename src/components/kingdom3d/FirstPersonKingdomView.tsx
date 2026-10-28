@@ -27,6 +27,10 @@ import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, openInNewTab } from './buildingActions';
 import type { KingdomAction } from './buildingActions';
+import { trackFeature } from '../../services/featureUsage';
+import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from '../island/easterEggBook';
+import { eggVerse, EggId } from './eggs';
+import { KingdomEggButton, KingdomEggToast, KingdomEggBookModal } from './KingdomEggBook';
 import { kingdomAmbience } from './ambience';
 import { faunaEnv } from './stylized/fauna';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
@@ -56,6 +60,7 @@ import {
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
+import { drawSteleTexture, plazaTopics } from './stylized/discussionPlaza';
 import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS } from './stylized/docks';
 import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/waterLife';
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
@@ -122,8 +127,8 @@ type Tower = {
 const PLATEAU_ID = 'plateau-pagoda';
 const PLATEAU_B: BuildingInteractable = {
   id: PLATEAU_ID,
-  name: '塔樓山台',
-  subtitle: '西側平頂山台・五層塔與塔外空地',
+  name: '聚雲塔山台',
+  subtitle: '西側平頂山台・五層聚雲塔與塔外空地',
   position: new THREE.Vector3(TRAIL.plateauX, 0, TRAIL.plateauZ),
   facingYaw: 0,
   width: 22,
@@ -131,11 +136,11 @@ const PLATEAU_B: BuildingInteractable = {
   height: 30,
   colorHex: 0x7c5a3a,
   interactionRadius: 8,
-  description: '西側的平頂山台，五層塔立在山頂，塔外的空地可以眺望五座島與整片湖面。點山上的「下山」石碑就能回到痛點島的登山口。',
+  description: '西側的平頂山台，五層聚雲塔立在山頂（山頂常有雲停留），塔外的空地可以眺望五座島與整片湖面。點山上的「下山」石碑就能回到痛點島的登山口。',
   targetModule: '',
-  previewBadge: '塔樓山台',
-  previewFeatures: ['從痛點島西岸的「塔樓登山口」一點直上', '塔外空地眺望五島與湖面', '「下山」石碑回到登山口'],
-  mockData: { stats: '海拔約 30 公尺', notice: '山上風大，慢慢逛。', primaryActionLabel: '塔樓山台' },
+  previewBadge: '聚雲塔山台',
+  previewFeatures: ['從痛點島西岸的「聚雲塔登山口」一點直上', '塔外空地眺望五島與湖面', '「下山」石碑回到登山口'],
+  mockData: { stats: '海拔約 30 公尺', notice: '山上風大，慢慢逛。', primaryActionLabel: '聚雲塔山台' },
 } as unknown as BuildingInteractable;
 
 function plateauTower(): Tower {
@@ -345,6 +350,29 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [storyTowerId, setStoryTowerId] = useState<string | null>(null);
   // 左側面板（照 /island：點畫面上的建築、攤位、懸賞牆，細節在左側彈出）
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+
+  // ── 彩蛋收集冊（和 3D 地圖同一本） ──
+  const [eggList, setEggList] = useState<EasterEggRecord[]>(() => loadEasterEggBook());
+  useEffect(() => onEasterEggBookChange(setEggList), []);
+  const [eggBookOpen, setEggBookOpen] = useState(false);
+  const [eggToast, setEggToast] = useState<{ verse: string; slotIndex: number; added: boolean; key: number } | null>(null);
+  const eggTimerRef = useRef<number | null>(null);
+  const triggerEggRef = useRef<(egg: EggId, id?: string) => void>(() => {});
+  triggerEggRef.current = (egg, id) => {
+    const verse = eggVerse(egg, { night: faunaEnv.tod === 'night', clear: faunaEnv.weather === 'clear', id });
+    const r = addEasterEgg(verse);
+    if (!r) return;
+    if (r.added) {
+      setEggList(r.list);
+      playSoundEffect('bulb');
+    }
+    setEggToast({ verse: r.verse, slotIndex: r.slotIndex, added: r.added, key: Date.now() });
+    if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
+    eggTimerRef.current = window.setTimeout(() => setEggToast(null), r.added ? 5200 : 3200);
+  };
+  useEffect(() => () => {
+    if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
+  }, []);
   const drawerRef = useRef<DrawerState | null>(null);
   drawerRef.current = drawer;
   const [bgmMuted, setBgmMuted] = useState<boolean>(() => {
@@ -388,7 +416,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer({ kind: 'desk' });
     } else if (t.kind === 'npc') {
       setDrawer({ kind: 'soso' });
+      triggerEggRef.current('soso');
+    } else if (t.kind === 'egg') {
+      triggerEggRef.current(t.egg, t.id);
     } else if (t.kind === 'bulb') {
+      triggerEggRef.current('bulb');
       sceneRef.current?.traverse((o) => {
         if (typeof o.userData?.celebrate === 'function') o.userData.celebrate(cameraRef.current?.position.x, cameraRef.current?.position.z);
       });
@@ -413,6 +445,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       goTrailRef.current?.(t.dir);
     } else if (t.kind === 'character') {
       setDrawer({ kind: 'character', id: t.id });
+      triggerEggRef.current(t.id);
+    } else if (t.kind === 'discStele') {
+      setDrawer({ kind: 'discList', which: t.which });
     } else if (t.kind === 'lobbyRank') {
       setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: t.which });
     } else if (t.kind === 'lobbyScreen') {
@@ -660,6 +695,26 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       o.userData.drawnKey = key;
       const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
       const tex = drawHomeBoardTexture('home-explore', qs);
+      const old = mat.map;
+      mat.map = tex;
+      mat.emissiveMap = tex;
+      mat.needsUpdate = true;
+      old?.dispose();
+    });
+  };
+
+  /** 討論島論道廣場的兩座議題碑：刻上真實討論（熱門／最新） */
+  const refreshPlazaStelesRef = useRef<() => void>(() => {});
+  refreshPlazaStelesRef.current = () => {
+    sceneRef.current?.traverse((o) => {
+      const which = o.userData?.plazaStele as 'hot' | 'new' | undefined;
+      if (!which) return;
+      const list = plazaTopics(questionsRef.current, which).slice(0, 7);
+      const key = list.map((q) => `${q.id}:${q.title}`).join(',');
+      if (o.userData.drawnKey === key) return;
+      o.userData.drawnKey = key;
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      const tex = drawSteleTexture(which, list);
       const old = mat.map;
       mat.map = tex;
       mat.emissiveMap = tex;
@@ -1039,6 +1094,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     [rememberPose, onNavigateToModule, handleSelectRegion]
   );
 
+  // 各大功能使用比例：進實境漫遊算一次（同一位訪客一天只算一次）
+  useEffect(() => {
+    trackFeature('roam3d');
+  }, []);
+
   // 古風背景樂（和 /island 同一首），進 3D 自動播放、離開時停止
   useEffect(() => {
     ancientJiangnanBgm.start();
@@ -1194,6 +1254,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       refreshDeepHallsRef.current();
       refreshLobbiesRef.current();
       refreshHomeBoardsRef.current();
+      refreshPlazaStelesRef.current();
       refreshStreetBoardsAndCarousels();
       collectPickables();
     };
@@ -1251,6 +1312,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       for (const h of hits) {
         const t = pickTargetOf(h.object);
         if (!t) continue;
+        // 彩蛋：太遠、站得不夠高、或物件藏起來（夜裡收工的農夫等）都不算
+        if (t.kind === 'egg') {
+          if (t.maxDist && h.distance > t.maxDist) continue;
+          if (t.minY && camera.position.y < t.minY) continue;
+          let par: THREE.Object3D | null = h.object.parent;
+          let hidden = false;
+          while (par) {
+            if (!par.visible) {
+              hidden = true;
+              break;
+            }
+            par = par.parent;
+          }
+          if (hidden) continue;
+        }
         // 樓板不擋射線：只認玩家所在這一層的懸賞牆與書桌
         if (t.kind === 'painBoard') {
           const tw = towersRef.current.get(t.buildingId);
@@ -1263,7 +1339,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         // 山台：只認山上的東西（塔、下山石碑、塔頂的下塔牌）
         if (t.kind === 'trail' && (t.dir === 'down' || t.dir === 'top') && !(st.towerId === PLATEAU_ID && st.level === 1)) continue;
         if (t.kind === 'trail' && t.dir === 'down-top' && !(st.towerId === PLATEAU_ID && st.level === 2)) continue;
-        if (st.towerId === PLATEAU_ID && t.kind !== 'trail') continue;
+        if (st.towerId === PLATEAU_ID && t.kind !== 'trail' && t.kind !== 'egg') continue;
         const hallThing = t.kind === 'booth' || (t.kind === 'goFloor' && t.level === 0);
         if ((t.kind === 'lobbyScreen' || t.kind === 'lobbyRank' || (t.kind === 'goFloor' && t.level < 0)) && st.level !== 0) continue;
         if (inHall ? !hallThing || (t as { buildingId: string }).buildingId !== st.towerId : hallThing) continue;
@@ -1271,8 +1347,27 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
       return null;
     };
+    // 桃花樹（櫻桃樹叢）：只在點擊時檢查，滑鼠移動時不算（樹很多）
+    const peachAt = (clientX: number | null, clientY: number | null): PickTarget | null => {
+      if (storyRef.current.level !== 0 || storyRef.current.towerId) return null;
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (clientX === null || clientY === null) ndc.set(0, 0);
+      else ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const far = raycaster.far;
+      raycaster.far = 24;
+      const trees: THREE.Object3D[] = [];
+      scene.traverse((o) => {
+        if (o.userData?.treeKinds) trees.push(o);
+      });
+      const hit = raycaster.intersectObjects(trees, false)[0];
+      raycaster.far = far;
+      if (!hit || hit.instanceId === undefined) return null;
+      const kinds = hit.object.userData.treeKinds as string[];
+      return kinds[hit.instanceId] === 'cherry' ? { kind: 'egg', egg: 'peach' } : null;
+    };
     const tapAt = (clientX: number | null, clientY: number | null) => {
-      const t = pickAt(clientX, clientY);
+      const t = pickAt(clientX, clientY) || peachAt(clientX, clientY);
       if (!t) return false;
       playSoundEffect('interact');
       openForTarget(t);
@@ -1376,6 +1471,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         setFloorLevel(2);
         setStoryTowerId(PLATEAU_ID);
         controls.setSpawn(new THREE.Vector3(TRAIL.pagodaX - 0.6, TRAIL.topFloorY, TRAIL.pagodaZ), Math.PI / 2);
+        // 彩蛋：登上塔頂（塔樓詩句三選一）
+        window.setTimeout(() => triggerEggRef.current('pagoda'), 900);
       } else if (dir === 'up' || dir === 'down-top') {
         storyRef.current = { towerId: PLATEAU_ID, level: 1, armed: false, tween: null };
         setFloorLevel(1);
@@ -1982,6 +2079,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     refreshHallBooths();
     refreshDeepHallsRef.current();
     refreshHomeBoardsRef.current();
+    refreshPlazaStelesRef.current();
     refreshStreetBoardsAndCarousels();
   }, [questions, refreshPainBoards, refreshHallBooths, refreshStreetBoardsAndCarousels]);
 
@@ -2251,6 +2349,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? [REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, ''), floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)].filter(Boolean).join('・') : undefined}
         timeOfDay={timeOfDay}
         onGoToPoint={(x, z) => goToPointRef.current?.(x, z)}
+        extraControls={<KingdomEggButton count={eggList.length} onOpen={() => { setEggBookOpen(true); controlsRef.current?.unlockPointer?.(); }} flash={Boolean(eggToast?.added)} />}
         env={{
           timeMode,
           weatherMode,
@@ -2266,6 +2365,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           });
         }}
       />
+      <KingdomEggToast toast={eggToast} />
+      <KingdomEggBookModal open={eggBookOpen} onClose={() => setEggBookOpen(false)} list={eggList} />
 
       {/* 遊湖乘船：渡口面板、排隊、輪到時的通知、乘船中 */}
       <BoatOverlay

@@ -140,7 +140,7 @@ export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: 
   { id: 'dock-career-sw', regionId: 'region-career', deg: 133, name: '徵才島西南渡口' },
   { id: 'dock-creative-se', regionId: 'region-creative', deg: 30, name: '創意島東南渡口' },
 ];
-export const TRAILHEAD = { regionId: 'region-pain', deg: 168, name: '塔樓登山口' };
+export const TRAILHEAD = { regionId: 'region-pain', deg: 168, name: '聚雲塔登山口' };
 
 /**
  * 島與外圍田園之間補上的陸地（田園、民居）：從島中心往外的方向（度）
@@ -234,7 +234,7 @@ export const BASIN_LANDMARKS = {
   })(),
   westPlateau: (() => {
     const p = peakByKind('westPlateau');
-    return { x: p.x, z: p.z, r: p.r, name: '塔樓山台' };
+    return { x: p.x, z: p.z, r: p.r, name: '聚雲塔山台' };
   })(),
   southCave: (() => {
     const p = MOUNTAIN_RING.find((q) => q.i === 8)!;
@@ -295,3 +295,10 @@ export function chimneyTop(h: FarmHouse): [number, number, number] {
   const s = Math.sin(h.yaw);
   return [h.x + lx * c + lz * s, 0.5 + 2.6 + 1.75, h.z - lx * s + lz * c];
 }
+
+/** 湖心亭北面的「三潭印月」三座小石塔（船會繞開） */
+export const THREE_POOLS: [number, number][] = [
+  [-6, 52.5],
+  [6, 52.5],
+  [0, 47.5],
+];

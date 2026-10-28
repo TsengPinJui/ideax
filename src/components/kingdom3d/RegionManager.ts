@@ -9,6 +9,8 @@ import { createNoticeBoard } from './stylized/noticeBoard';
 import { createDocks, createPlateauExtras, DOCKS, TRAIL } from './stylized/docks';
 import { createCareerGarden } from './stylized/careerGarden';
 import { createFauna } from './stylized/fauna';
+import { createDiscussionPlaza } from './stylized/discussionPlaza';
+import { createEggProps } from './stylized/eggProps';
 import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
 import { FARMLANDS, farmHouseLayout, chimneyTop } from './stylized/basinLayout';
 import { seeded } from './stylized/textures';
@@ -135,7 +137,7 @@ export class RegionManager {
     this.archipelagoBaseGroup.add(villagers);
     if (Array.isArray(villagers.userData.colliders)) this.baseColliders.push(...(villagers.userData.colliders as Collider[]));
     // 田園動物、農夫、雁群與原創角色（白喵、多慧、007、大熊）
-    const fauna = createFauna({
+    const faunaOpts = {
       rims: ALL_REGION_IDS.flatMap((rid) => {
         const [cx, cz] = REGION_CONFIGS[rid].center;
         const e = walk.find((z) => z.type === 'ellipse' && Math.abs(z.cx - cx) < 0.5 && Math.abs(z.cz - cz) < 0.5);
@@ -149,9 +151,15 @@ export class RegionManager {
       avoidPts: [
         ...DOCKS.map((d) => [d.landX, d.landZ] as [number, number]),
         ...WORLD_BRIDGES.flatMap((b) => [[b.x1, b.z1], [b.x2, b.z2]] as [number, number][]),
-        [TRAIL.x, TRAIL.z],
+        [TRAIL.x, TRAIL.z] as [number, number],
       ],
-    });
+    };
+    // 彩蛋擺設（河岸垂柳、三潭印月）與彩蛋點擊範圍（橋欄、田園、水車、群山）：先放，動物再避開柳樹
+    const eggs = createEggProps(faunaOpts);
+    this.archipelagoBaseGroup.add(eggs.group);
+    this.baseColliders.push(...eggs.colliders);
+    faunaOpts.avoid.push(...eggs.colliders);
+    const fauna = createFauna(faunaOpts);
     this.archipelagoBaseGroup.add(fauna.group);
     this.baseColliders.push(...fauna.colliders);
     // 螢火蟲（夜）與蝴蝶（日）：河岸草地、水邊、徵才島綠塘
@@ -259,6 +267,13 @@ export class RegionManager {
       const garden = createCareerGarden();
       group.add(garden.group);
       extraColliders.push(...garden.colliders);
+    }
+
+    // 討論島藏書閣前的論道廣場（青銅鼎、議題碑、論道石桌）
+    if (manifest.id === 'region-discussion') {
+      const plaza = createDiscussionPlaza();
+      group.add(plaza.group);
+      extraColliders.push(...plaza.colliders);
     }
 
     // 商店街、市集攤位、牌坊（街景；四周有碰撞）

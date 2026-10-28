@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getGlobalWalkableZones, WORLD_BRIDGES } from '../regionConfigs';
-import { FARMLANDS, LOTUS_PATCHES, MOUNTAIN_RING } from './basinLayout';
+import { FARMLANDS, LOTUS_PATCHES, MOUNTAIN_RING, THREE_POOLS } from './basinLayout';
+import { makePickProxy } from '../picking';
 import { REGION_CONFIGS } from '../regionConfigs';
 import { STREET_PROPS } from './streets';
 import { TULOU_RADIUS, RING } from './tulou';
@@ -139,6 +140,7 @@ export function navigable(x: number, z: number, margin = 1.4) {
     for (const p of MOUNTAIN_RING) if (Math.hypot(px - p.x, pz - p.z) < p.r * 1.0) return true;
     if ((px / 150) ** 2 + (pz / 128) ** 2 > 1) return true;
     if (Math.hypot(px, pz - 64) < 7.5) return true;
+    for (const [tx, tz] of THREE_POOLS) if (Math.hypot(px - tx, pz - tz) < 1.6) return true;
     return false;
   };
   if (solid(x, z)) return false;
@@ -391,6 +393,8 @@ export class WaterLife {
       const day = fishingBoat(m);
       const night = pleasureBoat(m);
       group.add(day, night);
+      // 彩蛋：白天「見漁人…」、夜裡遊船「夜半鐘聲到客船」
+      group.add(makePickProxy(1.8, 1.8, 4.6, 0, 0, 0, { kind: 'egg', egg: 'boat', maxDist: 70 }, -0.3));
       this.boats.push({ group, day, night, a: r.a, b: r.b, t: this.rand(), dir: i % 2 ? 1 : -1, speed: 0.9 + this.rand() * 0.5, phase: this.rand() * 6 });
       this.root.add(group);
     });

@@ -5,6 +5,7 @@ import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
 import { STREET_PROPS } from './stylized/streets';
 import { TULOU_RADIUS } from './stylized/tulou';
 import { BASIN_LANDMARKS, MOUNTAIN_RING, FARMLANDS, landOutline } from './stylized/basinLayout';
+import { DOCKS, TRAIL } from './stylized/docks';
 
 /** 遠景地標（與 StylizedWorld 的位置一致） */
 const LANDMARKS = {
@@ -41,15 +42,52 @@ function Pavilion({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   );
 }
 
+/** 乘船點：藍底白框圓章＋小船（小地圖會跟著轉，圖示另外轉回正） */
+function DockMarker({ x, y, s, rot, label }: { x: number; y: number; s: number; rot: number; label: boolean }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} style={{ pointerEvents: 'none' }}>
+      <circle r={5.2} fill="rgba(14,116,144,0.28)" />
+      <circle r={4} fill="#0e7490" stroke="#fff6dc" strokeWidth={1} />
+      {/* 船身＋帆 */}
+      <path d="M -2.7 0.9 L 2.7 0.9 L 1.8 2.1 L -1.8 2.1 Z" fill="#fff6dc" />
+      <path d="M -0.1 0.5 L -0.1 -2.7 L 2 0.5 Z" fill="#fff6dc" />
+      <path d="M -0.5 0.5 L -0.5 -2 L -2.1 0.5 Z" fill="#fde68a" />
+      {label && (
+        <text y={8.6} textAnchor="middle" fontSize={3.6} fontWeight={900} fill="#0b4f63" className="kx-serif" stroke="rgba(255,248,230,0.95)" strokeWidth={1.1} style={{ paintOrder: 'stroke' }}>
+          乘船
+        </text>
+      )}
+    </g>
+  );
+}
+
+/** 登山口（往塔樓山台） */
+function TrailMarker({ x, y, s, rot, label }: { x: number; y: number; s: number; rot: number; label: boolean }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} style={{ pointerEvents: 'none' }}>
+      <circle r={4} fill="#5b6a3a" stroke="#fff6dc" strokeWidth={1} />
+      <path d="M -2.6 2 L -0.6 -1.6 L 0.6 0.2 L 1.4 -0.8 L 2.8 2 Z" fill="#fff6dc" />
+      {label && (
+        <text y={8.6} textAnchor="middle" fontSize={3.6} fontWeight={900} fill="#3c4a22" className="kx-serif" stroke="rgba(255,248,230,0.95)" strokeWidth={1.1} style={{ paintOrder: 'stroke' }}>
+          登山口
+        </text>
+      )}
+    </g>
+  );
+}
+
 /** 共用的地圖內容（世界座標 x、z 直接當 SVG 座標） */
 export function WorldMapContent({
   activeRegionId,
   onSelectRegion,
   detail,
+  iconRot = 0,
 }: {
   activeRegionId: RegionId;
   onSelectRegion?: (id: RegionId) => void;
   detail: 'full' | 'mini';
+  /** 小地圖會整張旋轉：圖示反向轉回正 */
+  iconRot?: number;
 }) {
   const full = detail === 'full';
   return (
@@ -149,6 +187,14 @@ export function WorldMapContent({
           </g>
         );
       })}
+      {/* 乘船點、登山口（畫在最上層，很明顯） */}
+      {DOCKS.map((d) => (
+        <g key={d.id} data-dock={d.id}>
+          <line x1={d.landX} y1={d.landZ} x2={d.waterX} y2={d.waterZ} stroke="#7a5532" strokeWidth={1.6} strokeLinecap="round" />
+          <DockMarker x={d.waterX} y={d.waterZ} s={full ? 1.7 : 1.4} rot={iconRot} label={full} />
+        </g>
+      ))}
+      <TrailMarker x={TRAIL.x} y={TRAIL.z} s={full ? 1.5 : 1.25} rot={iconRot} label={full} />
       {full && (
         <g className="kx-serif" fontSize={6} fill={INK} fontWeight={700} textAnchor="middle">
           <text x={0} y={LANDMARKS.north.faceZ + 16}>{LANDMARKS.north.name}</text>
@@ -216,7 +262,7 @@ export function CompassMinimap({
         <g clipPath="url(#kx-mini-clip)">
           <circle r={R} fill="url(#kx-sea)" />
           <g transform={`rotate(${yawDeg}) translate(${-playerPos.x} ${-playerPos.z})`}>
-            <WorldMapContent activeRegionId={activeRegionId} detail="mini" />
+            <WorldMapContent activeRegionId={activeRegionId} detail="mini" iconRot={-yawDeg} />
           </g>
         </g>
         {/* 外圈刻度與方位 */}
@@ -270,6 +316,13 @@ export function WorldMapModal({
     const p = pt.matrixTransform(m.inverse());
     e.stopPropagation();
     e.preventDefault();
+    // 點在乘船點圖示附近：直接走到那個渡口岸邊
+    const dock = DOCKS.find((d) => Math.hypot(d.waterX - p.x, d.waterZ - p.y) < 7 || Math.hypot(d.landX - p.x, d.landZ - p.y) < 3);
+    if (dock) {
+      onGoToPoint(dock.landX, dock.landZ);
+      onClose();
+      return;
+    }
     onGoToPoint(p.x, p.y);
     onClose();
   };
@@ -282,7 +335,7 @@ export function WorldMapModal({
               創點源・五島全圖
             </h3>
             <p className="text-[12.5px]" style={{ color: '#6b5236' }}>
-              點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你現在的位置與面向
+              點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你現在的位置與面向；藍色船章是乘船點，點它直接走到渡口
             </p>
           </div>
           <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
