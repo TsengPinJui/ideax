@@ -330,11 +330,10 @@ export function createArcadeFacade(b: BuildingInteractable): { group: THREE.Grou
     });
     sweep(pts, sides, ws, 0.28);
   };
-  // 西翼（本地 -X）往前掃到地面；東翼（本地 +X，靠展覽館那側）往後收，免得擋到展覽館門前
-  wing(-1, -1.0, v3(-(w / 2 + 3.8), h * 0.66, d / 2 + 2.0), v3(-(w / 2 + 3.5), h * 0.26, d / 2 + 1.0), v3(-(w / 2 + 2.8), 0.05, d / 2 - 0.6), 3.0, 1.4);
-  wing(1, 1.0, v3(w / 2 + 3.4, h * 0.62, d / 2 + 1.0), v3(w / 2 + 2.9, h * 0.26, d / 2 - 1.6), v3(w / 2 + 2.0, 0.05, d / 2 - 4.6), 3.0, 1.4);
-  // 後側一道翅膀（東側），讓輪廓不對稱、更有流動感
-  wing(1, Math.PI - 0.95, v3(w / 2 + 3.6, h * 0.6, -d / 2 - 1.4), v3(w / 2 + 3.2, h * 0.22, -d / 2 - 0.4), v3(w / 2 + 2.6, 0.05, -d / 2 + 1.6), 2.6, 1.2);
+  // 兩翼與後翼：從屋簷往外掃下來，尾端停在 2.8 公尺以上的半空中（人可以從底下走過，不會擋路）
+  wing(-1, -1.0, v3(-(w / 2 + 3.8), h * 0.7, d / 2 + 2.0), v3(-(w / 2 + 3.6), h * 0.42, d / 2 + 1.0), v3(-(w / 2 + 3.0), 2.9, d / 2 - 0.6), 3.0, 1.4);
+  wing(1, 1.0, v3(w / 2 + 3.4, h * 0.7, d / 2 + 1.0), v3(w / 2 + 3.0, h * 0.42, d / 2 - 1.6), v3(w / 2 + 2.4, 2.9, d / 2 - 4.6), 3.0, 1.4);
+  wing(1, Math.PI - 0.95, v3(w / 2 + 3.6, h * 0.66, -d / 2 - 1.4), v3(w / 2 + 3.2, h * 0.4, -d / 2 - 0.4), v3(w / 2 + 2.6, 2.9, -d / 2 + 1.6), 2.6, 1.2);
 
   // ── 正門兩側的銀色鰭柱：從地面升起接到前簷 ──
   for (const s of [-1, 1]) {
@@ -778,6 +777,260 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
       }
     }
     void doorW;
+  }
+
+  mergeByMaterial(stat);
+  root.updateMatrixWorld(true);
+  return { group: root, colliders };
+}
+
+/* ---------------- 徵才島（照設計圖）：人才獵頭的白色石材方盒、翰林院的木格柵玻璃書院 ---------------- */
+
+function careerSignTex(lines: string[], sub: string, dark: boolean, vertical = false) {
+  const W = vertical ? 320 : 1024;
+  const H = vertical ? 1024 : 300;
+  return canvasTex(W, H, (g) => {
+    g.fillStyle = dark ? '#1d1a17' : 'rgba(0,0,0,0)';
+    g.fillRect(0, 0, W, H);
+    if (dark) {
+      g.strokeStyle = '#8a7a62';
+      g.lineWidth = 4;
+      g.strokeRect(12, 12, W - 24, H - 24);
+    }
+    g.fillStyle = dark ? '#fff4dc' : '#5a564e';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    if (dark) {
+      g.shadowColor = '#ffd9a0';
+      g.shadowBlur = 16;
+    }
+    if (vertical) {
+      const cols = lines.length;
+      lines.forEach((ln, ci) => {
+        const chars = Array.from(ln);
+        const x = W / 2 + (cols === 1 ? 0 : (cols / 2 - ci - 0.5) * 130);
+        g.font = `900 120px ${KAI}`;
+        chars.forEach((ch, i) => g.fillText(ch, x, 120 + i * 150));
+      });
+      g.font = '600 44px Georgia, serif';
+      g.fillText(sub, W / 2, H - 110);
+      g.fillRect(W / 2 - 80, H - 76, 160, 3);
+    } else {
+      g.font = `900 ${lines.length > 1 ? 92 : 130}px ${KAI}`;
+      lines.forEach((ln, i) => g.fillText(ln, W / 2, lines.length > 1 ? 80 + i * 105 : 120));
+      g.font = '600 40px Georgia, serif';
+      g.fillText(sub, W / 2, H - 40);
+    }
+  });
+}
+
+function inkScrollTex(text: string) {
+  return canvasTex(256, 768, (g) => {
+    g.fillStyle = '#f4ecdb';
+    g.fillRect(0, 0, 256, 768);
+    g.fillStyle = '#2a2622';
+    g.textAlign = 'center';
+    g.font = `900 64px ${KAI}`;
+    const chars = Array.from(text);
+    const half = Math.ceil(chars.length / 2);
+    chars.forEach((ch, i) => g.fillText(ch, i < half ? 160 : 96, 110 + (i % half) * 78));
+    // 水墨山
+    g.fillStyle = 'rgba(40,40,40,0.55)';
+    g.beginPath();
+    g.moveTo(10, 690);
+    g.lineTo(70, 560);
+    g.lineTo(120, 640);
+    g.lineTo(170, 520);
+    g.lineTo(246, 690);
+    g.fill();
+    g.fillStyle = 'rgba(40,40,40,0.25)';
+    g.beginPath();
+    g.moveTo(10, 700);
+    g.lineTo(100, 610);
+    g.lineTo(200, 700);
+    g.fill();
+    g.fillStyle = '#7a5a36';
+    g.fillRect(0, 0, 256, 16);
+    g.fillRect(0, 752, 256, 16);
+  });
+}
+
+export function createCareerFacade(b: BuildingInteractable): { group: THREE.Group; colliders: Collider[] } {
+  const root = new THREE.Group();
+  root.name = `facade_${b.id}`;
+  root.position.copy(b.position);
+  root.rotation.y = b.facingYaw;
+  const stat = new THREE.Group();
+  root.add(stat);
+  const colliders: Collider[] = [];
+  const cy = Math.cos(b.facingYaw);
+  const sy = Math.sin(b.facingYaw);
+  const toWorld = (lx: number, lz: number): [number, number] => [b.position.x + lx * cy + lz * sy, b.position.z - lx * sy + lz * cy];
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, parent: THREE.Object3D = stat) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  };
+  const plane = (tex: THREE.Texture, w: number, h: number, x: number, y: number, z: number, ry = 0, emissive = 0.5, transparent = false) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: emissive, roughness: 0.6, transparent })
+    );
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.userData.noMerge = true;
+    root.add(m);
+    return m;
+  };
+  let cid = 0;
+  const cyl = (x: number, z: number, r: number) => {
+    const [wx, wz] = toWorld(x, z);
+    colliders.push({ id: `${b.id}-cf-${cid++}`, type: 'cylinder', x: wx, z: wz, radius: r });
+  };
+  const w = b.width;
+  const d = b.depth;
+  const h = b.height;
+  const fz = d / 2 + 0.25;
+  const doorW = b.doorWidth || 3.6;
+  const doorH = Math.min(3.6, h - 0.8);
+  const warm = new THREE.MeshBasicMaterial({ color: 0xffdfae });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff4dc, emissive: 0xffd9a0, emissiveIntensity: 1.3, roughness: 0.5 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.5, metalness: 0.4 });
+  const cubeLamp = (x: number, z: number) => {
+    add(new THREE.BoxGeometry(0.5, 0.1, 0.5), frameMat, x, 0.05, z);
+    add(new THREE.BoxGeometry(0.4, 0.62, 0.4), lampMat, x, 0.41, z);
+    add(new THREE.BoxGeometry(0.54, 0.08, 0.54), frameMat, x, 0.76, z);
+    cyl(x, z, 0.32);
+  };
+  const pine = (x: number, z: number, s: number, seed: number) => {
+    const bark = new THREE.MeshStandardMaterial({ color: 0x4a3426, roughness: 1 });
+    const leaf = new THREE.MeshStandardMaterial({ color: 0x2f5530, roughness: 0.85 });
+    let q = seed;
+    const r = () => ((q = (q * 9301 + 49297) % 233280) / 233280);
+    const pts = [v3(x, 0.3, z), v3(x + 0.3 * s, 1.0 * s, z), v3(x - 0.25 * s, 1.8 * s, z + 0.1), v3(x + 0.15 * s, 2.5 * s, z)];
+    stat.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.12 * s, 6, false), bark));
+    for (const [dx, y, rr] of [
+      [0.8, 1.3, 0.85],
+      [-0.8, 1.8, 0.8],
+      [0.4, 2.3, 0.7],
+      [-0.1, 2.8, 0.5],
+    ] as [number, number, number][]) {
+      const m = add(new THREE.SphereGeometry(rr * s, 9, 6), leaf, x + (dx + (r() - 0.5) * 0.2) * s, y * s, z);
+      m.scale.set(1.45, 0.4, 1.1);
+    }
+  };
+
+  if (b.exterior === 'stoneBox') {
+    const stone = new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.6, emissive: 0x2c2a26, emissiveIntensity: 0.35 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0xdfeaf2, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
+    const steel = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.4, metalness: 0.6 });
+    // 正面整片玻璃（門洞留空）：透出暖光大廳與樓梯
+    const gx0 = -w / 2 + 1.5;
+    const gx1 = w / 2 - 0.2;
+    const atr = atriumTex();
+    const pane = (x0: number, x1: number, y0: number, y1: number) => {
+      if (x1 - x0 < 0.05 || y1 - y0 < 0.05) return;
+      const t = atr.clone();
+      t.needsUpdate = true;
+      t.repeat.set((x1 - x0) / (gx1 - gx0), (y1 - y0) / (h - 0.4));
+      t.offset.set((x0 - gx0) / (gx1 - gx0), y0 / (h - 0.4));
+      plane(t, x1 - x0, y1 - y0, (x0 + x1) / 2, (y0 + y1) / 2, fz + 0.02, 0, 0.8);
+      const gl = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), glass);
+      gl.position.set((x0 + x1) / 2, (y0 + y1) / 2, fz + 0.12);
+      gl.userData.noMerge = true;
+      gl.renderOrder = 3;
+      root.add(gl);
+    };
+    pane(gx0, -doorW / 2, 0.05, h - 0.4);
+    pane(doorW / 2, gx1, 0.05, h - 0.4);
+    pane(-doorW / 2, doorW / 2, doorH, h - 0.4);
+    for (let k = 0; k <= 6; k++) add(new THREE.BoxGeometry(0.06, h - 0.4, 0.08), steel, gx0 + ((gx1 - gx0) * k) / 6, (h - 0.4) / 2, fz + 0.14);
+    add(new THREE.BoxGeometry(gx1 - gx0, 0.08, 0.1), steel, (gx0 + gx1) / 2, doorH, fz + 0.14);
+    // 左側高起的石鰭（一道暖光細縫＋直書招牌）
+    add(new THREE.BoxGeometry(1.3, h + 1.6, 1.8), stone, -w / 2 + 0.55, (h + 1.6) / 2, fz + 0.3);
+    add(new THREE.BoxGeometry(0.1, h + 0.6, 0.04), warm, -w / 2 + 1.0, (h + 0.6) / 2 + 0.3, fz + 1.22);
+    plane(careerSignTex(['人才獵頭', '專家媒合中心'], 'IdeaX', false, true), 0.95, 3.0, -w / 2 + 0.4, 3.0, fz + 1.21, 0, 0.15, true);
+    cyl(-w / 2 + 0.55, fz + 0.3, 0.95);
+    // 懸挑的白石簷板
+    add(new THREE.BoxGeometry(w + 0.4, 0.4, 2.4), stone, 0.2, h + 0.3, fz + 0.9);
+    add(new THREE.BoxGeometry(w - 0.4, 0.03, 2.0), warm, 0.2, h + 0.09, fz + 0.9);
+    // 玻璃上緣的招牌
+    plane(careerSignTex(['人才獵頭・專家媒合中心'], 'IdeaX', false), 4.6, 1.35, 1.0, h - 0.95, fz + 0.15, 0, 0.1, true);
+    // 門前石台、松樹、方燈
+    add(new THREE.BoxGeometry(w + 1.0, 0.12, 2.2), stone, 0, 0.06, fz + 1.4);
+    add(new THREE.BoxGeometry(w + 1.0, 0.02, 0.05), warm, 0, 0.13, fz + 2.48);
+    pine(w / 2 + 0.6, fz + 1.4, 1.0, 11);
+    cyl(w / 2 + 0.6, fz + 1.4, 0.6);
+    cubeLamp(doorW / 2 + 0.6, fz + 2.2);
+    cubeLamp(-doorW / 2 - 0.6, fz + 2.2);
+  } else {
+    // ── 翰林院：木格柵玻璃書院 ──
+    const wood = new THREE.MeshStandardMaterial({ color: 0xc9925a, roughness: 0.7 });
+    const woodDark = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.8 });
+    const stone = new THREE.MeshStandardMaterial({ color: 0xd8d2c6, roughness: 0.85 });
+    // 石砌台基＋前方臨水平台與台階
+    add(new THREE.BoxGeometry(w + 1.4, 0.3, d + 1.4), stone, 0, 0.15, 0);
+    add(new THREE.BoxGeometry(w + 1.4, 0.3, 2.6), stone, 0, 0.15, fz + 1.3);
+    add(new THREE.BoxGeometry(doorW + 1.6, 0.15, 0.7), stone, 0, 0.075, fz + 2.95);
+    // 四周的直木格柵（離牆 0.35 公尺；正面門口、兩側各留一段空）
+    const slat = new THREE.BoxGeometry(0.07, h - 0.3, 0.14);
+    const mats: THREE.Matrix4[] = [];
+    const m4 = (x: number, z: number, ry = 0) => new THREE.Matrix4().compose(v3(x, 0.3 + (h - 0.3) / 2, z), new THREE.Quaternion().setFromAxisAngle(UP, ry), v3(1, 1, 1));
+    const step = 0.34;
+    for (let x = -w / 2 - 0.3; x <= w / 2 + 0.3; x += step) {
+      if (Math.abs(x) > doorW / 2 + 0.3 && !(Math.abs(x) > 2.6 && Math.abs(x) < 3.9)) mats.push(m4(x, fz + 0.35));
+      mats.push(m4(x, -d / 2 - 0.6));
+    }
+    for (let z = -d / 2 - 0.3; z <= d / 2 + 0.3; z += step) {
+      for (const s of [-1, 1]) if (!(z > -1.2 && z < 1.2)) mats.push(m4(s * (w / 2 + 0.6), z, Math.PI / 2));
+    }
+    // 格柵碰撞（正面門口留空）
+    const segc = (x1: number, z1: number, x2: number, z2: number) => {
+      const [a1, b1] = toWorld(x1, z1);
+      const [a2, b2] = toWorld(x2, z2);
+      colliders.push({ id: `${b.id}-slat-${cid++}`, type: 'segment', x1: a1, z1: b1, x2: a2, z2: b2, halfThickness: 0.12 });
+    };
+    segc(-w / 2 - 0.6, fz + 0.35, -doorW / 2 - 0.3, fz + 0.35);
+    segc(doorW / 2 + 0.3, fz + 0.35, w / 2 + 0.6, fz + 0.35);
+    segc(-w / 2 - 0.6, -d / 2 - 0.6, w / 2 + 0.6, -d / 2 - 0.6);
+    for (const sx of [-1, 1]) segc(sx * (w / 2 + 0.6), -d / 2 - 0.6, sx * (w / 2 + 0.6), fz + 0.35);
+    const im = new THREE.InstancedMesh(slat, wood, mats.length);
+    mats.forEach((m, i) => im.setMatrixAt(i, m));
+    im.castShadow = true;
+    root.add(im);
+    // 格柵上下的橫木
+    for (const y of [0.32, h - 0.05]) {
+      add(new THREE.BoxGeometry(w + 1.3, 0.12, 0.16), wood, 0, y, fz + 0.35);
+      add(new THREE.BoxGeometry(w + 1.3, 0.12, 0.16), wood, 0, y, -d / 2 - 0.6);
+      for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.16, 0.12, d + 1.0), wood, s * (w / 2 + 0.6), y, 0);
+    }
+    // 屋簷下一整片細木條天花（深出簷底下）
+    {
+      const n = Math.round((w + 4) / 0.22);
+      const geo = new THREE.BoxGeometry(0.06, 0.05, d + 4.2);
+      const ims = new THREE.InstancedMesh(geo, wood, n);
+      for (let i = 0; i < n; i++) ims.setMatrixAt(i, new THREE.Matrix4().makeTranslation(-w / 2 - 2 + i * 0.22, h + 0.05, 0));
+      root.add(ims);
+      add(new THREE.BoxGeometry(w + 4.2, 0.04, d + 4.2), new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 1 }), 0, h + 0.12, 0);
+    }
+    // 粗木柱（正面）
+    for (const x of [-w / 2 - 0.6, -doorW / 2 - 0.5, doorW / 2 + 0.5, w / 2 + 0.6]) {
+      add(new THREE.BoxGeometry(0.32, h, 0.32), woodDark, x, h / 2 + 0.15, fz + 0.5);
+      cyl(x, fz + 0.5, 0.3);
+    }
+    // 招牌：門右側黑底發光直匾「翰林院 IdeaX」；門左側水墨掛軸
+    plane(careerSignTex(['翰林院'], 'IdeaX', true, true), 1.5, 4.0, doorW / 2 + 1.5, 2.55, fz + 0.48, 0, 0.6);
+    plane(inkScrollTex('江南創新・藏賢納士'), 1.2, 3.4, -doorW / 2 - 1.5, 2.6, fz + 0.48, 0, 0.25);
+    // 臨水平台上的方燈、兩側松樹
+    cubeLamp(doorW / 2 + 0.9, fz + 2.4);
+    cubeLamp(-doorW / 2 - 0.9, fz + 2.4);
+    pine(-w / 2 - 1.6, fz + 1.2, 1.15, 5);
+    pine(w / 2 + 1.6, fz + 1.0, 1.0, 19);
+    cyl(-w / 2 - 1.6, fz + 1.2, 0.6);
+    cyl(w / 2 + 1.6, fz + 1.0, 0.6);
   }
 
   mergeByMaterial(stat);

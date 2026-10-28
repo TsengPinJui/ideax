@@ -1262,3 +1262,51 @@ export function graniteWallTexture() {
     return toTexture(c);
   });
 }
+
+/** 翰林院（木格柵玻璃書院）的玻璃牆：暖光室內、書架與字畫剪影、細木直櫺（一個單元寬 3.2 公尺、高＝整面牆） */
+export function latticeGlassTexture(emissive = false) {
+  return cached(`lattice_glass_${emissive ? 'e' : 'c'}`, () => {
+    const W = 256;
+    const H = 512;
+    const [c, g] = makeCanvas(W, H);
+    const gr = g.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, emissive ? '#6a4a26' : '#e9cfa0');
+    gr.addColorStop(0.6, emissive ? '#a87a44' : '#f3dcb0');
+    gr.addColorStop(1, emissive ? '#4a3018' : '#c9a06a');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, W, H);
+    // 室內書架、字畫
+    g.fillStyle = emissive ? 'rgba(40,24,10,0.6)' : 'rgba(90,60,30,0.55)';
+    g.fillRect(20, H * 0.35, 90, H * 0.5);
+    for (let k = 0; k < 5; k++) {
+      g.fillStyle = emissive ? 'rgba(255,220,160,0.35)' : 'rgba(255,240,210,0.5)';
+      g.fillRect(24, H * 0.37 + k * 46, 82, 6);
+    }
+    g.fillStyle = emissive ? 'rgba(255,245,220,0.55)' : '#f8efdc';
+    g.fillRect(150, H * 0.3, 60, 150);
+    g.strokeStyle = emissive ? 'rgba(40,24,10,0.6)' : '#6a4a2a';
+    g.lineWidth = 3;
+    g.strokeRect(150, H * 0.3, 60, 150);
+    g.fillStyle = emissive ? 'rgba(30,20,10,0.5)' : 'rgba(60,50,40,0.45)';
+    g.beginPath();
+    g.moveTo(158, H * 0.3 + 120);
+    g.lineTo(180, H * 0.3 + 70);
+    g.lineTo(202, H * 0.3 + 120);
+    g.fill();
+    // 細木直櫺（每 0.8 公尺一根）＋上下橫木
+    g.fillStyle = emissive ? '#000' : '#8a5a2e';
+    for (let k = 0; k < 4; k++) g.fillRect(k * 64, 0, 7, H);
+    g.fillRect(0, 0, W, 10);
+    g.fillRect(0, H - 14, W, 14);
+    if (!emissive) {
+      g.fillStyle = 'rgba(255,255,255,0.1)';
+      g.beginPath();
+      g.moveTo(80, 0);
+      g.lineTo(140, 0);
+      g.lineTo(60, H);
+      g.lineTo(0, H);
+      g.fill();
+    }
+    return toTexture(c, { srgb: !emissive });
+  });
+}

@@ -201,7 +201,7 @@ const TEA_BOARD_NOTE = '茶藝街街道佈告欄：張貼日常交流、生活�
 const DISCUSSION_PROPS: StreetProp[] = [
   // ── 西區：茶藝街（真正的一條南北向江南茶街，街心 x = 55.8，西側主茶樓＋茶鋪朝東，東側茶鋪＋茶攤朝西）
   DISC('tea-gate', 'gate', '茶藝街', '日常・生活・職場・靈感', 'tea', 55.8, -28.0, 0, 'tea_daily', TEA_NOTE),
-  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.5, -34.2, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.6, -60.4, Math.PI / 2, 'tea_daily', TEA_NOTE),
   DISC('tea-1', 'shop', '雅韻茶樓', '生活慢調茶館', 'tea', 62.2, -35.0, -Math.PI / 2, 'tea_life', TEA_NOTE),
   DISC('tea-2', 'shop', '龍井茶寮', '職場江湖茶館', 'tea', 62.2, -43.5, -Math.PI / 2, 'tea_work', TEA_NOTE),
   DISC('tea-3', 'shop', '茗香茶點', '靈感悟道茶館', 'sweets', 62.2, -52.0, -Math.PI / 2, 'tea_idea', TEA_NOTE),

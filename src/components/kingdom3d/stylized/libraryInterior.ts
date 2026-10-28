@@ -12,6 +12,32 @@ import { HALL_ZONES } from './exhibitHall';
  * 位置在論道廣場地底深處（不會和地面上的東西重疊）
  */
 export const LIB_HALL = { cx: 72, cz: -48, Y: -40, R: 17, H: 22 };
+/** 中央書塔的螺旋階梯（走得上去）：踏板在 TR+0.25～rs+0.85 的環帶上，從南邊（角度 π/2）起步，繞 2.2 圈到頂端觀景平台 */
+export const LIB_STAIR = (() => {
+  const TR = 2.3;
+  const rs = TR + 1.1;
+  const turns = 2.2;
+  const rise = LIB_HALL.H * 0.82;
+  const sMax = turns * Math.PI * 2;
+  return { TR, rs, turns, rise, start: Math.PI / 2, inner: TR + 0.3, outer: rs + 0.85, sMax, pitch: rise / sMax, top: 0.2 + rise, landingGap: 0.9 };
+})();
+
+/** 站在螺旋梯環帶上某個角度時，各段踏板（和頂端平台）的腳下高度（相對書廳地板） */
+export function libStairHeights(x: number, z: number): number[] {
+  const S = LIB_STAIR;
+  let phi = Math.atan2(z - LIB_HALL.cz, x - LIB_HALL.cx) - S.start;
+  phi = ((phi % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const out: number[] = [];
+  for (let k = 0; k < 4; k++) {
+    const sv = phi + k * Math.PI * 2;
+    if (sv <= S.sMax) out.push(0.2 + sv * S.pitch);
+  }
+  // 頂端平台：從階梯終點接著繞一圈（最後一小段讓給階梯）
+  const phiEnd = S.sMax % (Math.PI * 2);
+  const rel = (((phi - phiEnd) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  if (rel <= Math.PI * 2 - S.landingGap) out.push(S.top);
+  return out;
+}
 
 const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
@@ -111,6 +137,7 @@ function signTexture(text: string, sub: string) {
 
 export function createLibraryInterior(b: BuildingInteractable): THREE.Group {
   const { cx, cz, Y, R, H } = LIB_HALL;
+  const VH = H * 5.5;
   const root = new THREE.Group();
   root.name = `hall_${b.id}`;
   root.visible = false;
@@ -131,39 +158,37 @@ export function createLibraryInterior(b: BuildingInteractable): THREE.Group {
   const white = new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.35, emissive: 0xf1ede4, emissiveIntensity: 0.22 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0c0c10, roughness: 0.08, metalness: 0.85, emissive: 0x050507, emissiveIntensity: 1 });
   const railMat = new THREE.MeshStandardMaterial({ color: 0x18181c, roughness: 0.4, metalness: 0.7 });
+  /** 同一個形狀疊很多層（一次畫完） */
+  const stack = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, z: number, ys: number[]) => {
+    const im = new THREE.InstancedMesh(geo, mat, ys.length);
+    const m = new THREE.Matrix4();
+    ys.forEach((y, i) => im.setMatrixAt(i, m.makeTranslation(x, y, z)));
+    im.instanceMatrix.needsUpdate = true;
+    im.frustumCulled = false;
+    root.add(im);
+    return im;
+  };
 
   // ── 鏡面地板、鏡面天花（滿天小燈） ──
   add(new THREE.CircleGeometry(R + 0.5, 64).rotateX(-Math.PI / 2), black, cx, Y + 0.01, cz);
   // 地上一圈圈細金線，倒影感
   for (const r of [4.6, 9.2, 13.6]) add(new THREE.RingGeometry(r - 0.04, r + 0.04, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a6a2a }), cx, Y + 0.02, cz);
-  add(new THREE.CircleGeometry(R + 0.5, 64).rotateX(Math.PI / 2), black, cx, Y + H, cz);
+  // 書牆往上看不到頂：一路蓋到 VH 高，上面一層層半透明黑幕，越往上越暗，看起來無限高
   {
-    const dot = new THREE.CircleGeometry(0.09, 8).rotateX(Math.PI / 2);
-    const n = 260;
-    const im = new THREE.InstancedMesh(dot, new THREE.MeshBasicMaterial({ color: 0xfff1d0 }), n);
-    const m = new THREE.Matrix4();
-    for (let i = 0; i < n; i++) {
-      const a = i * 2.399963;
-      const rr = Math.sqrt((i + 0.5) / n) * (R - 0.8);
-      m.makeTranslation(cx + Math.cos(a) * rr, Y + H - 0.02, cz + Math.sin(a) * rr);
-      im.setMatrixAt(i, m);
-    }
-    root.add(im);
+    const mk = new THREE.MeshBasicMaterial({ color: 0x050407, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    for (let y = H + 8; y < VH; y += 16) add(new THREE.CircleGeometry(R + 0.5, 64).rotateX(Math.PI / 2), mk, cx, Y + y, cz).renderOrder = 5;
+    add(new THREE.CircleGeometry(R + 0.5, 64).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x050407 }), cx, Y + VH, cz);
   }
 
   // ── 外圈：整面發亮的書牆 ──
   {
     const circ = Math.PI * 2 * R;
-    const wall = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 96, 1, true), shelfMat(1, circ / 4.5, H / 4.5));
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(R, R, VH, 96, 1, true), shelfMat(1, circ / 4.5, VH / 4.5));
     wall.material.side = THREE.BackSide;
-    wall.position.set(cx, Y + H / 2, cz);
+    wall.position.set(cx, Y + VH / 2, cz);
     root.add(wall);
     // 書牆上每隔幾層一圈白色曲面腰帶
-    for (let k = 1; k < 5; k++) {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(R - 0.1, 0.12, 6, 96).rotateX(Math.PI / 2), white);
-      band.position.set(cx, Y + (k * H) / 5, cz);
-      root.add(band);
-    }
+    stack(new THREE.TorusGeometry(R - 0.1, 0.12, 6, 96).rotateX(Math.PI / 2), white, cx, cz, Array.from({ length: 27 }, (_, k) => Y + ((k + 1) * H) / 5));
     const N = 72;
     for (let i = 0; i < N; i++) {
       const a0 = (i / N) * Math.PI * 2;
@@ -242,19 +267,13 @@ export function createLibraryInterior(b: BuildingInteractable): THREE.Group {
   // ── 中央書塔＋螺旋階梯 ──
   {
     const TR = 2.3;
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(TR, TR, H, 48, 1, true), shelfMat(3, (Math.PI * 2 * TR) / 4.2, H / 4.2, 1.0));
-    tower.position.set(cx, Y + H / 2, cz);
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(TR, TR, VH, 48, 1, true), shelfMat(3, (Math.PI * 2 * TR) / 4.2, VH / 4.2, 1.0));
+    tower.position.set(cx, Y + VH / 2, cz);
     root.add(tower);
-    for (let k = 0; k <= 9; k++) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(TR + 0.05, 0.09, 6, 48).rotateX(Math.PI / 2), white);
-      ring.position.set(cx, Y + (k * H) / 9, cz);
-      root.add(ring);
-    }
+    stack(new THREE.TorusGeometry(TR + 0.05, 0.09, 6, 48).rotateX(Math.PI / 2), white, cx, cz, Array.from({ length: 50 }, (_, k) => Y + (k * H) / 9));
     // 螺旋階梯：白色踏板繞著書塔往上，外側黑色扶手
-    const turns = 2.2;
+    const { turns, rise, rs } = LIB_STAIR;
     const steps = 120;
-    const rise = H * 0.82;
-    const rs = TR + 1.1;
     const stepGeo = new THREE.BoxGeometry(1.7, 0.16, 0.55);
     const ims = new THREE.InstancedMesh(stepGeo, white, steps);
     const m4 = new THREE.Matrix4();
@@ -305,7 +324,29 @@ export function createLibraryInterior(b: BuildingInteractable): THREE.Group {
       bal.setMatrixAt(i / 2, m4);
     }
     root.add(bal);
-    colliders.push({ id: 'lib-tower', type: 'cylinder', x: cx, z: cz, radius: rs + 1.0 });
+    // 頂端觀景平台（一圈白色環台＋黑鐵欄杆）
+    {
+      const S = LIB_STAIR;
+      const A0 = S.start + S.sMax;
+      const L = Math.PI * 2 - S.landingGap;
+      const top = Y + S.top - 0.02;
+      const land = new THREE.Mesh(new THREE.RingGeometry(TR + 0.05, S.outer + 0.05, 64, 1, -(A0 + L), L).rotateX(-Math.PI / 2), white);
+      land.position.y = top;
+      root.add(land);
+      const landU = new THREE.Mesh(new THREE.RingGeometry(TR + 0.05, S.outer + 0.05, 64, 1, -(A0 + L), L).rotateX(Math.PI / 2), white);
+      landU.position.y = top - 0.18;
+      root.add(landU);
+      const lr = new THREE.Mesh(new THREE.TorusGeometry(S.outer + 0.02, 0.05, 6, 64).rotateX(Math.PI / 2), railMat);
+      lr.position.set(cx, top + 1.0, cz);
+      root.add(lr);
+      void top;
+      land.position.x = cx;
+      land.position.z = cz;
+      landU.position.x = cx;
+      landU.position.z = cz;
+    }
+    // 只擋住書塔本身；階梯環帶的上下樓由 FirstPersonKingdomView 依高度處理（走得上去）
+    colliders.push({ id: 'lib-tower', type: 'cylinder', x: cx, z: cz, radius: TR + 0.25 });
   }
 
   // ── 兩側較細的書塔（東、西）──
@@ -313,31 +354,21 @@ export function createLibraryInterior(b: BuildingInteractable): THREE.Group {
     const tr = 1.35;
     const x = cx + s * 6.4;
     const z = cz - 1.5;
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, H, 36, 1, true), shelfMat(20 + s, (Math.PI * 2 * tr) / 4.2, H / 4.2, 1.0));
-    t.position.set(x, Y + H / 2, z);
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, VH, 36, 1, true), shelfMat(20 + s, (Math.PI * 2 * tr) / 4.2, VH / 4.2, 1.0));
+    t.position.set(x, Y + VH / 2, z);
     root.add(t);
-    for (let k = 0; k <= 11; k++) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(tr + 0.04, 0.07, 6, 36).rotateX(Math.PI / 2), white);
-      ring.position.set(x, Y + (k * H) / 11, z);
-      root.add(ring);
-    }
+    stack(new THREE.TorusGeometry(tr + 0.04, 0.07, 6, 36).rotateX(Math.PI / 2), white, x, z, Array.from({ length: 61 }, (_, k) => Y + (k * H) / 11));
     colliders.push({ id: `lib-side-tower-${s}`, type: 'cylinder', x, z, radius: tr + 0.4 });
   }
 
   // ── 上方一圈懸空的弧形書廊（看得到、走不到，像照片裡層層疊疊的書架） ──
-  for (const yy of [9.5, 15.5]) {
-    const g = new THREE.Mesh(new THREE.CylinderGeometry(RI + 1.8, RI + 1.8, 2.4, 96, 1, true), shelfMat(40 + yy, (Math.PI * 2 * (RI + 1.8)) / 4.2, 2.4 / 4.2 * 1.0, 0.9));
-    g.position.set(cx, Y + yy + 1.2, cz);
-    root.add(g);
-    const floorRing = new THREE.Mesh(new THREE.RingGeometry(RI + 1.8, R, 96).rotateX(-Math.PI / 2), white);
-    floorRing.position.set(cx, Y + yy, cz);
-    root.add(floorRing);
-    const under = new THREE.Mesh(new THREE.RingGeometry(RI + 1.8, R, 96).rotateX(Math.PI / 2), white);
-    under.position.set(cx, Y + yy - 0.25, cz);
-    root.add(under);
-    const railRing = new THREE.Mesh(new THREE.TorusGeometry(RI + 1.75, 0.05, 6, 96).rotateX(Math.PI / 2), railMat);
-    railRing.position.set(cx, Y + yy + 1.05, cz);
-    root.add(railRing);
+  {
+    const ys: number[] = [];
+    for (let yy = 9.5; yy < VH - 4; yy += 6) ys.push(Y + yy);
+    stack(new THREE.CylinderGeometry(RI + 1.8, RI + 1.8, 2.4, 96, 1, true).translate(0, 1.2, 0), shelfMat(40, (Math.PI * 2 * (RI + 1.8)) / 4.2, 2.4 / 4.2, 0.9), cx, cz, ys);
+    stack(new THREE.RingGeometry(RI + 1.8, R, 96).rotateX(-Math.PI / 2), white, cx, cz, ys);
+    stack(new THREE.RingGeometry(RI + 1.8, R, 96).rotateX(Math.PI / 2).translate(0, -0.25, 0), white, cx, cz, ys);
+    stack(new THREE.TorusGeometry(RI + 1.75, 0.05, 6, 96).rotateX(Math.PI / 2).translate(0, 1.05, 0), railMat, cx, cz, ys);
   }
 
   // ── 南邊出口：發光拱門「回到論道廣場」 ──

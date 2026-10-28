@@ -11,6 +11,7 @@ import {
   templeFacadeTexture,
   arcadeGlassTexture,
   graniteWallTexture,
+  latticeGlassTexture,
   roofTileTexture,
   ceilingTexture,
   signboardTexture,
@@ -618,7 +619,7 @@ export interface StyledBuildingInput {
   tiers?: number;
   floors?: number;
   basements?: number;
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop' | 'libraryTower';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop' | 'libraryTower' | 'stoneBox' | 'lattice';
   /** 招牌名稱下方的小字；沒有就用 previewBadge */
   signSub?: string;
   npc?: 'soso';
@@ -629,6 +630,9 @@ export interface StyledBuildingInput {
 let extMats: {
   cream: THREE.MeshStandardMaterial;
   granite: THREE.MeshStandardMaterial;
+  whiteStone: THREE.MeshStandardMaterial;
+  warmGlass: THREE.MeshStandardMaterial;
+  lightWood: THREE.MeshStandardMaterial;
   arcade: THREE.MeshStandardMaterial;
   arcadeTrim: THREE.MeshStandardMaterial;
   glass: THREE.MeshStandardMaterial;
@@ -644,6 +648,10 @@ function exteriorMats() {
     cream: std({ color: 0xf3ead6, roughness: 0.9 }),
     // 展覽館（照參考圖重建）：白色花崗岩
     granite: std({ map: graniteWallTexture(), roughness: 0.55, emissive: new THREE.Color(0x2a2620), emissiveIntensity: 0.3 }),
+    // 徵才島（照設計圖）：人才獵頭的白色石材、翰林院的暖光玻璃與淺色木
+    whiteStone: std({ color: 0xf1eee8, roughness: 0.6, emissive: new THREE.Color(0x2c2a26), emissiveIntensity: 0.35 }),
+    warmGlass: std({ map: latticeGlassTexture(false), emissiveMap: latticeGlassTexture(true), emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.85, roughness: 0.25, metalness: 0.1 }),
+    lightWood: std({ color: 0xc9925a, roughness: 0.7 }),
     // 電玩城（未來流線版）：深藍玻璃帷幕、銀色金屬柱
     arcade: std({ map: arcadeGlassTexture(false), emissiveMap: arcadeGlassTexture(true), emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.9, roughness: 0.18, metalness: 0.35 }),
     arcadeTrim: std({ color: 0xdfe4ec, roughness: 0.22, metalness: 0.85 }),
@@ -760,14 +768,15 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const tiers = b.tiers || 1;
   const hv = hashStr(b.id);
   const ext = b.exterior;
-  const em = ext === 'exhibition' || ext === 'arcade' ? exteriorMats() : null;
+  const modern = ext === 'stoneBox' || ext === 'lattice';
+  const em = ext === 'exhibition' || ext === 'arcade' || modern ? exteriorMats() : null;
   // 徽派（討論島，照 /island）：白牆黛瓦、深色木柱、兩側馬頭牆
   const huizhou = ext === 'huizhou';
   // 廟宇（求職廟）：朱紅牆、金黃琉璃瓦，前面另外加三川殿門廊、龍柱、剪黏雙龍搶珠
   const temple = ext === 'temple';
-  const facade = ext === 'exhibition' ? exteriorMats().granite : huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
+  const facade = ext === 'stoneBox' ? exteriorMats().whiteStone : ext === 'lattice' ? exteriorMats().warmGlass : ext === 'exhibition' ? exteriorMats().granite : huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
   // 柱子：展覽館與徽派深色木柱、電玩城深色金屬，其餘紅柱
-  const pillarMat = ext === 'exhibition' ? exteriorMats().granite : huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
+  const pillarMat = ext === 'stoneBox' ? exteriorMats().whiteStone : ext === 'lattice' ? exteriorMats().lightWood : ext === 'exhibition' ? exteriorMats().granite : huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
   const themes: RoofTheme[] = ['slate', 'teal', 'slate', 'red'];
   const theme: RoofTheme = b.exterior === 'huizhou' ? 'slate' : temple || tiers >= 4 ? 'gold' : themes[hv % themes.length];
   const plinthH = 0.45;
@@ -834,7 +843,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   wall(wingW, thick, w / 2 - wingW / 2, d / 2);
   // 門楣
   const lintelH = lay ? 0.6 : Math.max(0.6, h - doorH);
-  addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), ext === 'arcade' ? em!.arcade : ext === 'exhibition' ? em!.granite : mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
+  addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), ext === 'arcade' ? em!.arcade : ext === 'exhibition' ? em!.granite : ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
   if (lay) {
     // 門楣上方到頂樓之間的正面牆
     const fh0 = doorH + lintelH;
@@ -931,7 +940,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   addMesh(body, new THREE.BoxGeometry(doorW + 0.7, 0.18, thick + 0.25), mats.gold, 0, doorH, d / 2);
 
   // 屋簷下的額枋（展覽館：奶油色簷口；電玩城：深色平台；徽派：深色木枋）
-  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'exhibition' ? em!.granite : ext === 'arcade' ? em!.arcadeTrim : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
+  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : ext === 'exhibition' ? em!.granite : ext === 'arcade' ? em!.arcadeTrim : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
   // 斗拱：額枋上方一排青綠彩繪的托架（中式樓閣才有）
   if (!em && !huizhou) {
     const blockGeo = new THREE.BoxGeometry(0.3, 0.22, 0.3);
@@ -959,7 +968,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
   }
   // 敞開的朱漆大門（門扇貼在前牆內側，不擋路）
-  for (const sx of ext === 'arcade' || ext === 'exhibition' ? [] : [-1, 1]) {
+  for (const sx of ext === 'arcade' || ext === 'exhibition' || modern ? [] : [-1, 1]) {
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(doorW / 2 - 0.05, doorH - 0.1, 0.08), mats.door);
     leaf.position.set(sx * (doorW / 2 + doorW / 4), (doorH - 0.1) / 2 + 0.05, d / 2 - thick / 2 - 0.06);
     if (sx > 0) leaf.rotation.y = Math.PI;
@@ -980,6 +989,14 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const rimY = h + 0.1;
     addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.granite, 0, rimY + 0.18, 0);
     // 玻璃大廳屋頂、兩側樓閣、門面布置由 hallFacades.ts 另外蓋（照參考圖）
+  } else if (ext === 'stoneBox') {
+    // 人才獵頭：平頂白石方盒（玻璃正面、石鰭、懸挑簷板由 futureFacades.ts 另外蓋）
+    addMesh(body, scaledBox(w + 0.5, 0.4, d + 0.5, 3, 0.4, 3), em!.whiteStone, 0, h + 0.3, 0);
+  } else if (ext === 'lattice') {
+    // 翰林院：低緩的大屋簷，出簷很深（木格柵、簷下木條由 futureFacades.ts 另外蓋）
+    const roof = buildRoofTier(w + 0.6, d + 0.6, { rise: 1.7, overhang: 2.1, curl: 0.45, theme: 'slate', ridge: true });
+    roof.position.y = h + 0.1;
+    body.add(roof);
   } else if (ext === 'arcade') {
     const rimY = h + 0.1;
     addMesh(body, scaledBox(w + 0.8, 0.3, d + 0.8, 3, 0.3, 3), em!.arcadeTrim, 0, rimY + 0.15, 0);
@@ -1082,10 +1099,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   }
   // 多樓層：一樓樓梯的扶手碰撞
   if (lay) extraColliders.push(...(levelColliders(b as any, lay, lay.basements) as any));
-  if (b.npc === 'soso') {
-    const [wx, wz] = toWorld(2.6, -d * 0.25 + 0.4);
-    extraColliders.push({ id: `${b.id}-soso`, type: 'cylinder', x: wx, z: wz, radius: 0.9 });
-  }
+  // 搜搜（求職廟裡的人物）不放碰撞：人物之間可以穿過去
   root.userData.colliders = extraColliders;
 
   // 門口一對大燈籠、兩側旗幟、牌匾

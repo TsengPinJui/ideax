@@ -15,7 +15,7 @@ import { createLibraryTower } from './stylized/libraryTower';
 import { createEggProps } from './stylized/eggProps';
 import { createTempleExtras } from './stylized/temple';
 import { createPlazaMedallions } from './stylized/hallFacades';
-import { createArcadeFacade, createExhibitionFacade } from './stylized/futureFacades';
+import { createArcadeFacade, createExhibitionFacade, createCareerFacade } from './stylized/futureFacades';
 import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
 import { FARMLANDS, farmHouseLayout, chimneyTop, TRAILHEAD } from './stylized/basinLayout';
 import { seeded } from './stylized/textures';
@@ -273,8 +273,8 @@ export class RegionManager {
         extraColliders.push(...tx.colliders);
       }
       // 展覽館：金框玻璃大廳＋兩側飛簷樓閣；電玩城：木構框粉紅格窗＋霓虹手把布幔（照參考圖）
-      if (b.exterior === 'exhibition' || b.exterior === 'arcade') {
-        const fx = b.exterior === 'exhibition' ? createExhibitionFacade(b) : createArcadeFacade(b);
+      if (b.exterior === 'exhibition' || b.exterior === 'arcade' || b.exterior === 'stoneBox' || b.exterior === 'lattice') {
+        const fx = b.exterior === 'exhibition' ? createExhibitionFacade(b) : b.exterior === 'arcade' ? createArcadeFacade(b) : createCareerFacade(b);
         group.add(fx.group);
         extraColliders.push(...fx.colliders);
       }

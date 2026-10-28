@@ -133,7 +133,7 @@ export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: 
   { id: 'dock-pain-ne', regionId: 'region-pain', deg: -43, name: '痛點島東北渡口' },
   { id: 'dock-pain-sw', regionId: 'region-pain', deg: 128, name: '痛點島西南渡口' },
   { id: 'dock-home-n', regionId: 'region-home', deg: -90, name: '主島北渡口' },
-  { id: 'dock-home-w', regionId: 'region-home', deg: 180, name: '主島西渡口' },
+  { id: 'dock-home-s', regionId: 'region-home', deg: 90, name: '主島南渡口' }, // 原本在西邊，改到南邊（往湖心亭方向）
   { id: 'dock-disc-nw', regionId: 'region-discussion', deg: -139, name: '討論島西北渡口' },
   { id: 'dock-disc-s', regionId: 'region-discussion', deg: 82, name: '討論島南渡口' },
   { id: 'dock-career-ne', regionId: 'region-career', deg: -22, name: '徵才島東北渡口' }, // 院牆東北角外會和牆疊在一起，挪到東牆外的空地

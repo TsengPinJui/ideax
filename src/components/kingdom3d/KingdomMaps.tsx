@@ -236,7 +236,8 @@ export function CompassMinimap({
   onOpen: () => void;
 }) {
   const R = 46; // 半徑（世界公尺）
-  const yawDeg = (yawRad * 180) / Math.PI;
+  // 地圖固定北方朝上，只有中間的玩家箭頭跟著面向轉動
+  const yawDeg = 0;
   const labels: [string, number][] = [
     ['北', 0],
     ['東', 90],
@@ -268,18 +269,18 @@ export function CompassMinimap({
         {/* 外圈刻度與方位 */}
         <circle r={R - 1} fill="none" stroke="rgba(30,17,10,0.55)" strokeWidth={5} />
         {Array.from({ length: 24 }).map((_, i) => {
-          const a = (i / 24) * Math.PI * 2 + yawRad;
+          const a = (i / 24) * Math.PI * 2;
           return <line key={i} x1={Math.sin(a) * (R - 3.5)} y1={-Math.cos(a) * (R - 3.5)} x2={Math.sin(a) * (R - (i % 6 === 0 ? 0.5 : 1.6))} y2={-Math.cos(a) * (R - (i % 6 === 0 ? 0.5 : 1.6))} stroke="#e2b85a" strokeWidth={i % 6 === 0 ? 1.2 : 0.6} />;
         })}
         {labels.map(([t, deg]) => {
-          const a = (deg * Math.PI) / 180 + yawRad;
+          const a = (deg * Math.PI) / 180;
           return (
             <text key={t} x={Math.sin(a) * (R - 9)} y={-Math.cos(a) * (R - 9) + 3} textAnchor="middle" fontSize={8} fontWeight={900} fill={t === '北' ? '#ffcf6a' : '#f6e7c4'} className="kx-serif" style={{ paintOrder: 'stroke' }} stroke="rgba(20,10,5,0.8)" strokeWidth={2}>
               {t}
             </text>
           );
         })}
-        <PlayerArrow x={0} y={0} yawRad={0} size={5} />
+        <PlayerArrow x={0} y={0} yawRad={yawRad} size={5} />
       </svg>
     </button>
   );

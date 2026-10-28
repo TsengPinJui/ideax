@@ -734,6 +734,11 @@ export class StylizedWorld {
       const last = t === 4;
       const roof = buildRoofTier(s, s, { rise: last ? 3.2 : 1.3, overhang: 1.5, curl: 0.9, theme: t % 2 ? 'teal' : 'slate', ridge: last, finial: last });
       roof.position.y = y;
+      // 最上面兩層屋簷：人在塔頂眺望時會暫時藏起來，風景不會被屋簷擋住
+      if (t >= 3) {
+        roof.name = 'pagoda-top-roof';
+        roof.traverse((o) => (o.userData.noMerge = true));
+      }
       g.add(roof);
       y += last ? 0 : 0.55;
     }
