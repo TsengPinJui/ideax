@@ -25,7 +25,7 @@ export const DUO_QUESTS: DuoQuest[] = [
   { id: 'tour-home', title: '一起遊覽主島中央廣場', hint: '兩人一起在主島中央廣場待滿 5 分鐘', place: { x: 0, z: 0, r: 17 } },
   { id: 'tour-plaza', title: '一起遊覽論道廣場', hint: '兩人一起在討論島藏書閣前的論道廣場待滿 5 分鐘', place: { x: 72, z: -47, r: 13 } },
   { id: 'tour-garden', title: '一起遊覽江南園林', hint: '兩人一起在徵才島院牆內的江南園林待滿 5 分鐘', place: { x: 82, z: 57, r: 13 } },
-  { id: 'tour-market', title: '一起遊覽創意市集', hint: '兩人一起在創意島待滿 5 分鐘', place: { x: -68, z: 48, r: 22 } },
+  { id: 'tour-market', title: '一起遊覽薈萃廣場', hint: '兩人一起在創意島的薈萃廣場待滿 5 分鐘', place: { x: -68, z: 48, r: 16 } },
   { id: 'tour-plateau', title: '一起遊覽聚雲塔山台', hint: '兩人一起在聚雲塔山台待滿 5 分鐘', place: { x: TRAIL.plateauX, z: TRAIL.plateauZ, r: 14, minY: 25 } },
 ];
 

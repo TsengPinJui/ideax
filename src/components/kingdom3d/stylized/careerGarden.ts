@@ -20,7 +20,8 @@ const BRIDGE: [number, number][] = [
   [88.4, 58.3],
   [93.2, 59.5],
 ];
-const PAVILION = { x: 85, z: 51.4 };
+// 小亭靠東，讓出求職廟正前方的視野
+const PAVILION = { x: 91.2, z: 52.6 };
 const ROCKERY = { x: 78.6, z: 65.0 };
 const WILLOWS: [number, number][] = [
   [92.3, 64.6],
@@ -309,13 +310,14 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
   ]);
   path([
     [93.2, 59.5],
-    [94.4, 56.0],
-    [93.0, 52.5],
-    [87.6, 51.4],
+    [94.3, 56.6],
+    [93.6, 54.4],
   ]);
   path([
-    [82.4, 51.4],
-    [79.0, 50.0],
+    [89.0, 52.2],
+    [86.0, 50.6],
+    [82.4, 50.2],
+    [79.0, 49.8],
     [75.0, 49.0],
   ]);
   // 塘邊石燈

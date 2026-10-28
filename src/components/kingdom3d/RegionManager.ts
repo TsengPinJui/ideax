@@ -11,6 +11,7 @@ import { createCareerGarden } from './stylized/careerGarden';
 import { createFauna } from './stylized/fauna';
 import { createDiscussionPlaza } from './stylized/discussionPlaza';
 import { createEggProps } from './stylized/eggProps';
+import { createTempleExtras } from './stylized/temple';
 import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
 import { FARMLANDS, farmHouseLayout, chimneyTop } from './stylized/basinLayout';
 import { seeded } from './stylized/textures';
@@ -245,6 +246,12 @@ export class RegionManager {
       // 創點樓整棟就是圓形土樓（環形迴廊＋露天中庭），其他建築照原本的樓閣
       const bld = b.exterior === 'tulou' ? createRingTower(b) : b.exterior === 'board' ? createNoticeBoard(b) : createStyledBuilding(b);
       group.add(bld);
+      // 求職廟：三川殿門廊、龍柱、燕尾脊、雙龍搶珠、天公爐、金爐
+      if (b.exterior === 'temple') {
+        const tx = createTempleExtras(b);
+        group.add(tx.group);
+        extraColliders.push(...tx.colliders);
+      }
       // 點畫面上的建築就能打開左側介紹（土樓自己帶點擊範圍）
       if (b.exterior !== 'tulou' && b.exterior !== 'board') group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));

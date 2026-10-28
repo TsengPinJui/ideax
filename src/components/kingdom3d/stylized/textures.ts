@@ -1008,3 +1008,81 @@ export function disposeTextureCache() {
   for (const t of cache.values()) t.dispose();
   cache.clear();
 }
+
+/** 廟宇牆面：上方彩繪樑枋、朱紅牆身配金框竹節窗、下方花崗石裙堵（emissive＝夜裡窗格透光） */
+export function templeFacadeTexture(emissive = false) {
+  return cached(`temple_facade_${emissive ? 'e' : 'c'}`, () => {
+    const W = 256;
+    const H = 512;
+    const [c, ctx] = makeCanvas(W, H);
+    const top = 78;
+    const winTop = 124;
+    const winBot = 292;
+    const dado = 352;
+    if (emissive) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffb04a';
+      ctx.fillRect(56, winTop, W - 112, winBot - winTop);
+      ctx.fillStyle = '#000';
+      for (let x = 56; x <= W - 56; x += 18) ctx.fillRect(x, winTop, 8, winBot - winTop);
+    } else {
+      // 樑枋彩繪：藍綠底、金色框、旋子花紋
+      ctx.fillStyle = '#1f4f6b';
+      ctx.fillRect(0, 0, W, top);
+      ctx.fillStyle = '#e0b040';
+      ctx.fillRect(0, 4, W, 5);
+      ctx.fillRect(0, top - 9, W, 5);
+      for (let x = 18; x < W; x += 56) {
+        ctx.fillStyle = '#2e8a6e';
+        ctx.beginPath();
+        ctx.ellipse(x + 10, top / 2, 20, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#f2cf6b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#c0392b';
+        ctx.beginPath();
+        ctx.arc(x + 10, top / 2, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 朱紅牆身
+      const g = ctx.createLinearGradient(0, top, 0, dado);
+      g.addColorStop(0, '#b5221a');
+      g.addColorStop(1, '#8f1a14');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, top, W, dado - top);
+      // 金框竹節窗
+      ctx.fillStyle = '#d9a63a';
+      ctx.fillRect(46, winTop - 10, W - 92, winBot - winTop + 20);
+      ctx.fillStyle = '#3a1a10';
+      ctx.fillRect(56, winTop, W - 112, winBot - winTop);
+      for (let x = 56; x <= W - 64; x += 18) {
+        ctx.fillStyle = '#3f7d4f';
+        ctx.fillRect(x + 8, winTop, 10, winBot - winTop);
+        ctx.fillStyle = '#6fae6a';
+        for (let y = winTop + 20; y < winBot; y += 34) ctx.fillRect(x + 7, y, 12, 4);
+      }
+      // 窗上的小匾（福字）
+      ctx.fillStyle = '#e0b040';
+      ctx.font = '900 30px "DFKai-SB","BiauKai","Kaiti TC","KaiTi",serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('福', W / 2, (top + winTop - 10) / 2 + 2);
+      // 花崗石裙堵
+      ctx.fillStyle = '#8e8a82';
+      ctx.fillRect(0, dado, W, H - dado);
+      ctx.strokeStyle = 'rgba(40,36,30,0.55)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(24, dado + 22, W - 48, H - dado - 48);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(W / 2, dado + (H - dado) / 2 - 2, 46, 30, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#d9a63a';
+      ctx.fillRect(0, dado - 6, W, 6);
+    }
+    return toTexture(c, { srgb: !emissive });
+  });
+}

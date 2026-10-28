@@ -11,20 +11,20 @@ import { makePickProxy } from '../picking';
 
 const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
-const AGENTS: [string, string][] = [
-  ['小燈泡', '調節器 Agent'],
-  ['搜搜', '探索者 Agent'],
-  ['白喵', '市場顧問 Agent'],
-  ['頂多慧', '官方客服 Agent'],
-  ['007', 'AI CRM Agent'],
-  ['大熊', '預備神兵'],
+const AGENTS: [string, string, string][] = [
+  ['小燈泡', '調節器 Agent', '/agents/xiaodengpao.webp'],
+  ['搜搜', '探索者 Agent', '/agents/sousou.webp'],
+  ['白喵', '市場顧問 Agent', '/agents/baimiao.webp'],
+  ['頂多慧', '官方客服 Agent', '/agents/duohui.webp'],
+  ['007', 'AI CRM Agent', '/agents/agent007.webp'],
+  ['大熊', '預備神兵', '/agents/bear.webp'],
 ];
 
 const ISLANDS: [string, string, number, number][] = [
   ['主島', '中央廣場・貿易街', 0, 0],
   ['痛點島', '創點樓', -1, -1],
   ['討論島', '藏書閣・百工坊・茶藝街', 1, -1],
-  ['創意島', '薈萃樓・電玩城・創意集', -1, 1],
+  ['創意島', '展覽館・電玩城・創意集', -1, 1],
   ['徵才島', '翰林院・求職廟', 1, 1],
 ];
 
@@ -128,10 +128,14 @@ export function drawHomeBoardTexture(id: string, questions: Question[] = []) {
       const row = Math.floor(i / 2);
       const x = 60 + col * 480;
       const y = 175 + row * 112;
-      ctx.fillStyle = '#d8b86a';
+      // 頭像框（圖片載入後畫進圓框裡）
+      ctx.fillStyle = '#f6e7c4';
       ctx.beginPath();
-      ctx.arc(x + 40, y, 40, 0, Math.PI * 2);
+      ctx.arc(x + 40, y, 44, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = '#b3261e';
+      ctx.lineWidth = 4;
+      ctx.stroke();
       ctx.fillStyle = '#4a2a10';
       ctx.textAlign = 'center';
       ctx.font = `900 30px ${KAI}`;
@@ -139,15 +143,49 @@ export function drawHomeBoardTexture(id: string, questions: Question[] = []) {
       ctx.textAlign = 'left';
       ctx.fillStyle = '#2b1a0c';
       ctx.font = `900 36px ${KAI}`;
-      ctx.fillText(name, x + 100, y - 16);
+      ctx.fillText(name, x + 104, y - 16);
       ctx.fillStyle = '#6b4a2a';
       ctx.font = `700 26px ${KAI}`;
-      ctx.fillText(role, x + 100, y + 24);
+      ctx.fillText(role, x + 104, y + 24);
     });
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  if (id === 'home-agents' && typeof Image !== 'undefined') {
+    // Agent 頭像：載入後畫進圓框（照片可能比較大，畫成圓形頭像）
+    AGENTS.forEach(([, , src], i) => {
+      const img = new Image();
+      img.onload = () => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const cx = 60 + col * 480 + 40;
+        const cy = 175 + row * 112;
+        const r = 42;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#f6e7c4';
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        // 取圖片上半部（頭臉）放大填滿圓框
+        const iw = img.naturalWidth || img.width;
+        const ih = img.naturalHeight || img.height;
+        const side = Math.min(iw, ih * 0.62);
+        const sx = (iw - side) / 2;
+        const sy = Math.max(0, ih * 0.04);
+        ctx.drawImage(img, sx, sy, side, side, cx - r, cy - r, r * 2, r * 2);
+        ctx.restore();
+        ctx.strokeStyle = '#b3261e';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
+        ctx.stroke();
+        t.needsUpdate = true;
+      };
+      img.src = src;
+    });
+  }
   return t;
 }
 

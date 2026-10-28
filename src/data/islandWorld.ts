@@ -509,7 +509,7 @@ const rawIslands: IdeaXIsland[] = [
     ] },
   ]),
   createIsland('creative', '創意島', '創意島', '展覽館與電玩城，發現軟體作品、遊戲和提案。', '💡', { x: 8, y: 92, size: 'large', land: '#b8cf9b', edge: '#6f9666' }, [
-    { id: 'creative-exhibition', name: '薈萃樓', subtitle: '展覽館・作品、AI 工具與創新提案主題展館（二級展場 ➔ 三級個案攤位）', streets: [
+    { id: 'creative-exhibition', name: '展覽館', subtitle: '作品、AI 工具與創新提案主題展館（二級展場 ➔ 三級個案攤位）', streets: [
       {
         id: 'creative-ai-booth',
         name: 'AI 工具展場',
