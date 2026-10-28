@@ -41,6 +41,20 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#253',
+    version: 'v4.4.7',
+    releaseDate: '2026.10.29',
+    releaseTime: '03:38',
+    author: 'IdeaX 創點子核心',
+    summary: '提案與作品自述痛點會同步發布為獨立痛點貼文並互相關聯；推薦區名稱調整；地圖入口改稱實境漫遊',
+    changes: [
+      '提案或軟體作品選取既有痛點時，保留其痛點貼文連結；直接填寫自述痛點時，自動建立獨立痛點貼文並建立相互關聯。',
+      '痛點頁的方案區可查看引用該痛點的提案與軟體作品；提案／作品內頁可直接開啟所引用的痛點貼文。',
+      '作品內頁與提案內頁的「類似推薦」統一更名為「相似推薦」。',
+      '創點島地圖的漫遊入口顯示為「實境漫遊」，說明拖曳小人即可進入互動場景。',
+    ],
+  },
+  {
     seqNumber: '#252',
     version: 'v4.4.6',
     releaseDate: '2026.10.29',

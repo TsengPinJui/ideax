@@ -3254,7 +3254,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           />
         )}
 
-        {/* 頁尾：「類似推薦」橫向右滑探索區塊 */}
+        {/* 頁尾：「相似推薦」橫向右滑探索區塊 */}
         <SimilarRecommendationsSection
           currentQuestion={liveQuestion || question}
           onSelectQuestion={handleSelectQuestion}

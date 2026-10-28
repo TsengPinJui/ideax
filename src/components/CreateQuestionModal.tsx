@@ -63,6 +63,7 @@ import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatfor
 import { AdminQuickOnboardAppModal } from './AdminQuickOnboardAppModal';
 import type { PublishedPlatform } from '../types';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
+import { extractPainPointId } from '../utils/painPointLinking';
 import {
   processUploadedImageFile,
   optimizeProposalImages,
@@ -1088,6 +1089,43 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         cardDisplayImage: resolvedCardImage || undefined,
       });
 
+      // 提案／作品若填的是自述痛點，先建立一篇獨立痛點貼文，再以貼文 ID 建立雙向關聯。
+      // 若選到既有痛點，沿用既有 ID，不重複刊登。
+      let finalReferencedPainPoint = referencedPainPoint.trim() || undefined;
+      if ((postType === 'innovation_proposal' || postType === 'vibecoding_app') && finalReferencedPainPoint) {
+        const referencedId = extractPainPointId(finalReferencedPainPoint);
+        const existingPainPoint = referencedId
+          ? questions.find((q) => q.id === referencedId && q.postType === 'pain_point' && q.status !== 'delisted')
+          : questions.find((q) => q.postType === 'pain_point' && q.status !== 'delisted' && q.title.trim() === finalReferencedPainPoint);
+
+        if (existingPainPoint) {
+          finalReferencedPainPoint = `[${existingPainPoint.id}] ${existingPainPoint.title}`;
+        } else {
+          const painPointText = finalReferencedPainPoint.replace(/^\[[^\]]+\]\s*/, '').trim();
+          const painPointTitle = painPointText.length > 50 ? `${painPointText.slice(0, 49).trimEnd()}…` : painPointText;
+          if (painPointTitle) {
+            const createdPainPoint = createQuestion({
+              title: painPointTitle,
+              description: `此痛點由「${appName.trim() || title.trim()}」的提案者補充：\n\n${painPointText}`,
+              category: '創新創業',
+              subcategory: postType === 'vibecoding_app' ? selectedVibeCategory : selectedInnovationCategory,
+              tags: ['痛點', postType === 'vibecoding_app' ? selectedVibeCategory : selectedInnovationCategory].filter(Boolean),
+              level: 'L0',
+              bounty: 0,
+              deadline: '永久',
+              postType: 'pain_point',
+              authorId,
+              authorName,
+              authorAvatar,
+              authorTitle,
+            });
+            if (createdPainPoint) {
+              finalReferencedPainPoint = `[${createdPainPoint.id}] ${createdPainPoint.title}`;
+            }
+          }
+        }
+      }
+
       const newQuestion = createQuestion({
         appName: (postType === 'vibecoding_app' || postType === 'innovation_proposal') ? appName.trim() : undefined,
         title,
@@ -1113,7 +1151,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         postType,
         specialZone: postType === 'vibecoding_app' ? 'vibecoding' : undefined,
         isComingSoon: postType === 'vibecoding_app' ? isComingSoon : undefined,
-        referencedPainPoint: referencedPainPoint.trim() || undefined,
+        referencedPainPoint: finalReferencedPainPoint,
         targetGoal: targetGoal.trim() || undefined,
         mindMap: (postType === 'innovation_proposal' || postType === 'vibecoding_app') ? (sanitizeMindMap(mindMap) || undefined) : undefined,
         currentVersion: postType === 'vibecoding_app' ? (currentVersion.trim() || undefined) : undefined,
@@ -1903,6 +1941,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 questions={questions}
                 placeholder="輸入關鍵字自動搜尋公開痛點，或直接填寫提案者自述痛點"
               />
+              <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
+                選取既有痛點會建立引用；直接輸入新痛點時，發布提案／作品會同步建立一篇痛點貼文，並自動互相關聯。
+              </p>
             </div>
 
             <div>

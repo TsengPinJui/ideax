@@ -11,14 +11,6 @@ interface PainPointAutocompleteInputProps {
   questions?: Question[];
 }
 
-const DEFAULT_DEMO_PAIN_POINTS = [
-  { id: 'P-101', title: '傳統工廠機台備料排隊與人工抄表高錯率痛點', category: '機械工業' },
-  { id: 'P-102', title: '早餐店晨間尖峰備料損耗與POS系統離線卡單痛點', category: '服務餐飲' },
-  { id: 'P-103', title: '診所跨科別紙本病歷同步與藥物交互作用提醒痛點', category: '生醫材料' },
-  { id: 'P-104', title: '高樓層無電梯住宅冷鏈快遞退件率高痛點', category: '資訊科技' },
-  { id: 'P-105', title: '長照機構老人生理監測與急診送醫通報時差痛點', category: '生醫材料' },
-];
-
 export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProps> = ({
   value,
   onChange,
@@ -50,7 +42,7 @@ export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProp
           safeTitle.includes('痛點') ||
           (Array.isArray(q.tags) && q.tags.some((t) => typeof t === 'string' && t.includes('痛點'))),
       };
-    });
+    }).filter((item) => item.isPainPoint);
 
     // 優先排列痛點標記對象
     const sortedQuestions = listFromQuestions.sort((a, b) => {
@@ -65,14 +57,6 @@ export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProp
       if (item.id && !seenIds.has(item.id)) {
         seenIds.add(item.id);
         combined.push(item);
-      }
-    });
-
-    // 補齊 demo 痛點若無重複
-    DEFAULT_DEMO_PAIN_POINTS.forEach((demo) => {
-      if (!seenIds.has(demo.id) && !combined.some((item) => item.title === demo.title)) {
-        seenIds.add(demo.id);
-        combined.push({ ...demo, category: demo.category as any, isPainPoint: true });
       }
     });
 

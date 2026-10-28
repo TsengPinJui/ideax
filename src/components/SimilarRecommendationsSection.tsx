@@ -111,7 +111,7 @@ export const SimilarRecommendationsSection: React.FC<SimilarRecommendationsSecti
           </div>
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight flex items-center gap-1.5">
-              <span>類似推薦</span>
+              <span>相似推薦</span>
               <span className="text-[11px] font-normal text-indigo-700 bg-indigo-100/70 border border-indigo-200/60 px-2 py-0.2 rounded-full hidden sm:inline-block">
                 可向右滑動探索更多
               </span>

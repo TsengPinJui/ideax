@@ -1026,7 +1026,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         onOpenUpdateModal={onOpenUpdateModal}
       />
 
-      {/* 6. 頁尾：「類似推薦」橫向滑動卡片列 */}
+      {/* 6. 頁尾：「相似推薦」橫向滑動卡片列 */}
       <SimilarRecommendationsSection
         currentQuestion={question}
         onSelectQuestion={(q) => setSelectedQuestion?.(q)}

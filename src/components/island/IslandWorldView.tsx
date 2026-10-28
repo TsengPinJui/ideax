@@ -1036,10 +1036,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             </span>
             <span
               className="island-mode-pill is-hint"
-              title="將右下角小人拖曳到地圖上，從指定位置進入實境漫遊"
+              title="將右下角小人拖曳到地圖上，進入實境漫遊互動場景"
             >
               <Footprints size={15} strokeWidth={2.2} />
-              <span>拖曳小人漫遊</span>
+              <span>實境漫遊</span>
             </span>
           </div>
         </div>
