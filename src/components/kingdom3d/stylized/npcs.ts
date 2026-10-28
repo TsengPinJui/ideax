@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { makePickProxy } from '../picking';
-import { buildSousou } from './agents3d';
+import { AgentSprite, SPRITES } from './agentSprites';
 
-/** 搜搜（照 /island）：白毛、深藍衣、金色頭箍，駕著白色筋斗雲（雲上有藍色漩渦） */
+/** 求職廟裡的搜搜：和島上空飛的搜搜同一套角色設定圖看板人 */
 export function createSosoNpc(): THREE.Group {
   const g = new THREE.Group();
   g.name = 'npc_soso';
-  // 造型和島上空飛的搜搜同一套（agents3d：銀髮藍頭巾、白藍衣、金藍棍、筋斗雲）
-  const body = buildSousou();
-  body.scale.setScalar(1.3);
-  body.position.y = 0.45;
+  // 造型和島上空飛的搜搜同一套（角色設定圖看板人）
+  const sp = new AgentSprite({ ...SPRITES.sousou, height: 2.3 });
+  const body = sp.group;
+  body.position.y = 0.3;
   g.add(body);
   // 名牌
   const c = document.createElement('canvas');
@@ -37,7 +37,9 @@ export function createSosoNpc(): THREE.Group {
   g.add(makePickProxy(1.8, 2.6, 1.6, 0, 0, 0, { kind: 'npc', id: 'soso' }));
   // 輕輕上下飄（由畫面每幀呼叫 userData.tick）
   g.userData.tick = (t: number) => {
-    body.position.y = 0.45 + Math.sin(t * 1.6) * 0.08;
+    body.position.y = 0.3 + Math.sin(t * 1.6) * 0.08;
+    sp.facing = 0;
+    sp.update(AgentSprite.cam.x, AgentSprite.cam.z, AgentSprite.cam.tod);
   };
   return g;
 }

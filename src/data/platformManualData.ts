@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#237',
+    version: 'v4.3.3',
+    releaseDate: '2026.10.28',
+    releaseTime: '19:30',
+    author: 'System Architect',
+    summary: '3D 實境漫遊的六位 Agent 改用官方角色設定圖：白喵、頂多慧、007、大熊、搜搜、小燈泡都和角色設定一模一樣，繞著走會換正面、斜側、側面、背面',
+    changes: [
+      '六位 Agent 不再用幾何積木拼，改成角色設定圖（三視圖與動作圖）去背做成的立體看板人：一律面向鏡頭，並依角色面朝方向與你站的位置換正面／斜側／側面／背面圖，左右自動鏡像，繞著角色走一圈就看得到不同角度。',
+      '動作也換成設定圖裡的姿勢：白喵散步、跑跑、跳跳、在橋頭睡覺；頂多慧有人走近時轉過來揮翅膀；大熊扛起木槌敲敲打打；007 在翰林院屋簷上拿平板指揮；搜搜駕筋斗雲飛過五島上空；小燈泡散步、跳起來、跌倒暈眼。',
+      '角色依時段調色（黃昏偏暖、夜晚偏暗），腳下有圓形影子；求職廟裡的搜搜也換成同一套。',
+    ],
+  },
+  {
     seqNumber: '#236',
     version: 'v4.3.2',
     releaseDate: '2026.10.28',
