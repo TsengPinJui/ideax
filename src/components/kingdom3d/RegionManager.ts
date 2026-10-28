@@ -6,6 +6,7 @@ import { createRingTower, TULOU_RADIUS } from './stylized/tulou';
 import { createExhibitHall, isFloorsHall } from './stylized/exhibitHall';
 import { lobbyPitPolygon } from './stylized/hallLobby';
 import { createNoticeBoard } from './stylized/noticeBoard';
+import { createDocks, createPlateauExtras } from './stylized/docks';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -192,6 +193,14 @@ export class RegionManager {
       // 讓出主執行緒，載入時畫面不會卡住
       await new Promise((r) => setTimeout(r, 0));
     }
+
+    // 渡口（乘船點）與塔樓登山口；痛點島另外帶山上塔外空地的下山石碑
+    const docks = createDocks(manifest.id);
+    if (docks) {
+      group.add(docks.group);
+      extraColliders.push(...docks.colliders);
+    }
+    if (manifest.id === 'region-pain') group.add(createPlateauExtras().group);
 
     // 商店街、市集攤位、牌坊（街景；四周有碰撞）
     const street = createStreetProps(manifest.id);

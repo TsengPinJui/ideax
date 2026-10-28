@@ -80,7 +80,7 @@ const ISLANDS = getGlobalWalkableZones()
   .filter((z) => z.type === 'ellipse')
   .map((z) => z as { cx: number; cz: number; rx: number; rz: number });
 
-function landAt(x: number, z: number) {
+export function landAt(x: number, z: number) {
   // 島（含草地外環與山崖）
   for (const e of ISLANDS) {
     const dx = (x - e.cx) / (e.rx + 9);
@@ -117,7 +117,39 @@ function landAt(x: number, z: number) {
   return false;
 }
 
-function openWater(x: number, z: number, margin: number) {
+/** 船可以划的地方：不是島、田園、山、湖心亭；荷花荷葉與拱橋底下都可以穿過去 */
+export function navigable(x: number, z: number, margin = 1.4) {
+  const solid = (px: number, pz: number) => {
+    for (const e of ISLANDS) {
+      const dx = (px - e.cx) / (e.rx + 9);
+      const dz = (pz - e.cz) / (e.rz + 9);
+      if (dx * dx + dz * dz < 1) return true;
+    }
+    for (const l of FARMLANDS) {
+      const c = Math.cos(-l.rot);
+      const s = Math.sin(-l.rot);
+      const rx = px - l.cx;
+      const rz = pz - l.cz;
+      const lx = rx * c - rz * s;
+      const lz = rx * s + rz * c;
+      const dx = lx / (l.rx * 1.12);
+      const dz = lz / (l.rz * 1.12);
+      if (dx * dx + dz * dz < 1) return true;
+    }
+    for (const p of MOUNTAIN_RING) if (Math.hypot(px - p.x, pz - p.z) < p.r * 1.0) return true;
+    if ((px / 150) ** 2 + (pz / 128) ** 2 > 1) return true;
+    if (Math.hypot(px, pz - 64) < 7.5) return true;
+    return false;
+  };
+  if (solid(x, z)) return false;
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    if (solid(x + Math.cos(a) * margin, z + Math.sin(a) * margin)) return false;
+  }
+  return true;
+}
+
+export function openWater(x: number, z: number, margin: number) {
   if (landAt(x, z)) return false;
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2;
@@ -179,7 +211,7 @@ function hullGeometry(len: number, beam: number, depth: number) {
   return g;
 }
 
-interface BoatMats {
+export interface BoatMats {
   hull: THREE.MeshStandardMaterial;
   hullTrim: THREE.MeshStandardMaterial;
   canopy: THREE.MeshStandardMaterial;
@@ -192,7 +224,7 @@ interface BoatMats {
   lantern: THREE.MeshBasicMaterial;
 }
 
-function boatMats(): BoatMats {
+export function boatMats(): BoatMats {
   const std = (color: number, rough = 0.8, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
   return {
     hull: std(0x5a3a22),
@@ -217,7 +249,7 @@ function addM(g: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material,
 }
 
 /** 白天：烏篷漁船（竹編拱棚、船尾搖櫓的漁夫） */
-function fishingBoat(m: BoatMats) {
+export function fishingBoat(m: BoatMats) {
   const g = new THREE.Group();
   addM(g, hullGeometry(5.2, 1.5, 0.55), m.hull, 0, 0, 0);
   addM(g, new THREE.BoxGeometry(1.25, 0.06, 4.0), m.hullTrim, 0, 0.32, 0);
@@ -240,7 +272,7 @@ function fishingBoat(m: BoatMats) {
 }
 
 /** 晚上：畫舫遊船（朱紅廊柱、黛瓦攢尖頂、四角宮燈） */
-function pleasureBoat(m: BoatMats) {
+export function pleasureBoat(m: BoatMats) {
   const g = new THREE.Group();
   addM(g, hullGeometry(6.4, 2.1, 0.6), m.red, 0, 0, 0);
   addM(g, new THREE.BoxGeometry(1.8, 0.08, 5.0), m.hullTrim, 0, 0.34, 0);
