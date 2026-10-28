@@ -133,7 +133,7 @@ export interface BuildingInteractable {
   /** 地下樓層數（例如創點樓的地下一樓） */
   basements?: number;
   /** 外觀造型（照 /island）：展覽館＝白牆木柱＋藍玻璃採光穹頂；電玩城＝深色館體＋屋頂大手把；土樓＝圓形土樓包住中央樓閣 */
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop' | 'libraryTower';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop' | 'libraryTower' | 'stoneBox' | 'lattice';
   /** 招牌名稱下方的小字 */
   signSub?: string;
   /** 館內駐守的角色（求職廟：搜搜，兩側畫卷顯示搜尋結果） */

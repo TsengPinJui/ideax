@@ -119,8 +119,23 @@ export function landAt(x: number, z: number) {
 }
 
 /** 船可以划的地方：不是島、田園、山、湖心亭；荷花荷葉與拱橋底下都可以穿過去 */
+/** 拱橋底下的水道（橋洞）：兩座橋墩之間，船可以從橋下穿過去 */
+function underBridge(px: number, pz: number) {
+  for (const b of WORLD_BRIDGES) {
+    const dx = b.x2 - b.x1;
+    const dz = b.z2 - b.z1;
+    const L = Math.hypot(dx, dz) || 1;
+    const t = ((px - b.x1) * dx + (pz - b.z1) * dz) / (L * L);
+    if (t < 0.36 || t > 0.66) continue;
+    const perp = Math.abs((px - b.x1) * dz - (pz - b.z1) * dx) / L;
+    if (perp < b.halfWidth + 9) return true;
+  }
+  return false;
+}
+
 export function navigable(x: number, z: number, margin = 1.4) {
   const solid = (px: number, pz: number) => {
+    if (underBridge(px, pz)) return false;
     for (const e of ISLANDS) {
       const dx = (px - e.cx) / (e.rx + 9);
       const dz = (pz - e.cz) / (e.rz + 9);

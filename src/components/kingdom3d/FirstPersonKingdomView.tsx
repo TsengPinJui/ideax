@@ -63,7 +63,7 @@ import {
   DeepBoothSpot,
 } from './stylized/exhibitHall';
 import { LIB_TOWER, atLibraryDoor } from './stylized/libraryTower';
-import { atLibraryExit } from './stylized/libraryInterior';
+import { atLibraryExit, LIB_HALL, LIB_STAIR, libStairHeights } from './stylized/libraryInterior';
 
 const LIBRARY_ID = 'discussion-library';
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
@@ -506,6 +506,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // 藏書閣大門／書廳出口的觸發（離開觸發點後才重新上膛，避免一傳送就又被傳回去）
   const libDoorArmedRef = useRef(true);
   const libExitArmedRef = useRef(false);
+  // 藏書閣螺旋梯：目前腳下離書廳地板多高
+  const libStairHRef = useRef(0);
+  // 小燈泡照明：按 C 或點【照明(C)】呼喚，拿在手上照亮四周
+  const [bulbOn, setBulbOn] = useState(false);
+  const bulbOnRef = useRef(false);
+  const [darkHint, setDarkHint] = useState(false);
+  const darkHintRef = useRef(false);
+  const toggleBulb = useCallback(() => {
+    bulbOnRef.current = !bulbOnRef.current;
+    setBulbOn(bulbOnRef.current);
+    playSoundEffect('interact');
+    if (bulbOnRef.current) triggerEggRef.current?.('bulb');
+  }, []);
+  const toggleBulbRef = useRef(toggleBulb);
+  toggleBulbRef.current = toggleBulb;
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
     towersRef.current.set(PLATEAU_ID, plateauTower());
@@ -991,6 +1006,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Region state
   const [activeRegionId, setActiveRegionId] = useState<RegionId>(initialRegionId);
   const [regionStatus, setRegionStatus] = useState<RegionStatus>('loading');
+  // 第一次進入：載入完還要暖機一下（編譯材質、等幀率穩定）才拿掉載入畫面
+  const [warmDone, setWarmDone] = useState(false);
   const [loadProgress, setLoadProgress] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -1344,9 +1361,50 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const regionManager = new RegionManager(scene);
     regionManagerRef.current = regionManager;
 
+    // 第一次載入完成後先「暖機」：編譯所有材質、往四周各畫一次（上傳貼圖），等幀率穩定才拿掉載入畫面
+    let warmStarted = false;
+    const warmUp = async () => {
+      const t0 = performance.now();
+      try {
+        await new Promise((r) => setTimeout(r, 30));
+        const r2 = renderer as THREE.WebGLRenderer & { compileAsync?: (s: THREE.Object3D, c: THREE.Camera) => Promise<unknown> };
+        if (r2.compileAsync) await r2.compileAsync(scene, camera);
+        else renderer.compile(scene, camera);
+        const q = camera.quaternion.clone();
+        for (let k = 0; k < 4; k++) {
+          camera.rotation.set(0, (k / 4) * Math.PI * 2, 0);
+          camera.updateMatrixWorld();
+          renderer.render(scene, camera);
+          await new Promise((r) => setTimeout(r, 0));
+        }
+        camera.quaternion.copy(q);
+        camera.updateMatrixWorld();
+      } catch {
+        /* 暖機失敗也沒關係，直接進入 */
+      }
+      // 等連續 18 幀都順（< 45ms），最少 0.8 秒、最多 4 秒
+      await new Promise<void>((resolve) => {
+        let last = performance.now();
+        let good = 0;
+        const tick = () => {
+          const now = performance.now();
+          const dt = now - last;
+          last = now;
+          good = dt < 45 ? good + 1 : 0;
+          if ((good >= 18 && now - t0 > 800) || now - t0 > 4000) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      setWarmDone(true);
+    };
     regionManager.onStatusChange = (status, progress) => {
       setRegionStatus(status);
       setLoadProgress(progress);
+      if (status === 'active' && !warmStarted) {
+        warmStarted = true;
+        void warmUp();
+      }
       if (status === 'error') {
         controls.unlockPointer();
       }
@@ -1414,6 +1472,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 8. Keydown for E Interaction
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        toggleBulbRef.current();
+        return;
+      }
       if (e.code === 'KeyE') {
         if (nearBuildingRef.current) {
           playSoundEffect('interact');
@@ -1729,10 +1791,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         rr.vz += (tz - rr.vz) * acc;
         const nx = ride.x + rr.vx * delta;
         const nz = ride.z + rr.vz * delta;
-        if (navigable(nx, ride.z)) ride.x = nx;
-        else rr.vx *= -0.2;
-        if (navigable(ride.x, nz)) ride.z = nz;
-        else rr.vz *= -0.2;
+        // 先試整步（斜著穿過橋洞這種窄水道也過得去），不行再分開試 X、Z
+        if (navigable(nx, nz)) {
+          ride.x = nx;
+          ride.z = nz;
+        } else {
+          if (navigable(nx, ride.z)) ride.x = nx;
+          else rr.vx *= -0.2;
+          if (navigable(ride.x, nz)) ride.z = nz;
+          else rr.vz *= -0.2;
+        }
         ride.speed = Math.hypot(rr.vx, rr.vz);
         if (ride.speed > 0.3) {
           let dy = Math.atan2(-rr.vx, -rr.vz) - ride.yaw;
@@ -1852,6 +1920,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     let stepAcc = 0;
     const globalWalkableZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.6, rz: z.rz + 5.6 } : z));
     let lodTick = 14;
+    const pagodaRoofs: THREE.Object3D[] = [];
+    let pagodaRoofHidden = false;
 
     const animate = () => {
       rafIdRef.current = requestAnimationFrame(animate);
@@ -1890,6 +1960,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         const desiredVelocity = controls.getDesiredVelocity();
         const activeColliders = tower ? tower.cols[story.level + tower.basements] || [] : regionManager.getAllColliders();
 
+        const prevX = controls.position.x;
+        const prevZ = controls.position.z;
+        const prevY = controls.position.y;
         const newPos = PhysicsController.movePlayer(
           controls.position,
           desiredVelocity,
@@ -1899,6 +1972,40 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           tower ? [] : WORLD_BRIDGES,
           tower ? (tower.floorY ? tower.floorY(story.level) : story.level * FLOOR_H) : 0
         );
+
+        // 藏書閣書海：中央螺旋梯走得上去（依所在角度找最接近目前高度的那段踏板）
+        if (tower?.b.id === LIBRARY_ID && story.level < 0) {
+          const S = LIB_STAIR;
+          const baseY = LIB_HALL.Y;
+          const hOld = libStairHRef.current;
+          const rOf = (p: THREE.Vector3) => Math.hypot(p.x - LIB_HALL.cx, p.z - LIB_HALL.cz);
+          let r = rOf(newPos);
+          if (hOld > 0.6 && (r > S.outer - 0.05 || r < S.inner + 0.05)) {
+            // 在階梯上：被扶手擋住，沿著環帶滑動
+            const k = Math.max(S.inner + 0.06, Math.min(S.outer - 0.06, r)) / Math.max(1e-3, r);
+            newPos.x = LIB_HALL.cx + (newPos.x - LIB_HALL.cx) * k;
+            newPos.z = LIB_HALL.cz + (newPos.z - LIB_HALL.cz) * k;
+            r = rOf(newPos);
+          }
+          let hNew = 0;
+          if (r > S.inner && r < S.outer) {
+            const cands = libStairHeights(newPos.x, newPos.z);
+            let best = Infinity;
+            for (const c of cands) if (Math.abs(c - hOld) < Math.abs(best - hOld)) best = c;
+            if (Math.abs(best - hOld) < 1.0) hNew = best;
+            else if (hOld < 0.3 && cands.every((c) => c > 2.1)) hNew = 0;
+            else {
+              // 太高（或太低）跨不過去：留在原地
+              newPos.x = prevX;
+              newPos.z = prevZ;
+              hNew = hOld;
+            }
+          }
+          libStairHRef.current = hNew;
+          newPos.y = THREE.MathUtils.lerp(prevY, baseY + hNew, Math.min(1, delta * 18));
+        } else {
+          libStairHRef.current = 0;
+        }
 
         controls.position.copy(newPos);
         controls.updateCameraTransform(delta);
@@ -2020,6 +2127,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
 
       for (const [id, g] of hallGroups) g.visible = story.level < 0 && story.towerId === id;
+      // 聚雲塔頂眺望：藏起最上面兩層屋簷，看出去不被擋住
+      {
+        const onTop = story.towerId === PLATEAU_ID && story.level >= 2;
+        if (onTop !== pagodaRoofHidden) {
+          pagodaRoofHidden = onTop;
+          if (!pagodaRoofs.length) scene.traverse((o) => o.name === 'pagoda-top-roof' && pagodaRoofs.push(o));
+          for (const r of pagodaRoofs) r.visible = !onTop;
+        }
+      }
       // 人在地下展廳時，把一樓大樓梯井（伸到地下的部分）藏起來
       {
         const inDeep = story.level < 0 && isFloorsHall(story.towerId);
@@ -2033,6 +2149,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       faunaEnv.camZ = camera.position.z;
       faunaEnv.camYaw = controls.yaw;
       faunaEnv.onBoat = Boolean(boatRideRef.current);
+      faunaEnv.bulbOn = bulbOnRef.current;
+      // 在暗處待了一下、又沒開燈：顯示照明提示（只在狀態改變時更新畫面）
+      if (faunaEnv.darkFor > 1.6 !== darkHintRef.current) {
+        darkHintRef.current = faunaEnv.darkFor > 1.6;
+        setDarkHint(darkHintRef.current);
+      }
       faunaEnv.indoor = story.level !== 0;
       for (const tk of tickers) tk(now);
       if (lodTick % 10 === 0) {
@@ -2224,7 +2346,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.pitch = pitch;
           controls.updateCameraTransform(0);
         },
-        getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
+        getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level, stairH: libStairHRef.current, tw: storyRef.current.towerId }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
         // 不靠畫面幀數：直接用物理一步步走過去，回傳走到哪裡（檢查空氣牆用）
         simWalk: (x: number, z: number, tx: number, tz: number) => {
@@ -2525,7 +2647,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       />
 
       {/* 載入畫面（水墨風） */}
-      {regionStatus === 'loading' && (
+      {(regionStatus === 'loading' || (!warmDone && regionStatus !== 'error')) && (
         <div className="kx-root absolute inset-0 z-40 flex flex-col items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center, #2b1a10 0%, #120a06 75%)' }}>
           <svg viewBox="0 0 120 70" className="w-40 h-24 mb-3 opacity-90" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -2534,11 +2656,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             <path d="M 0 66 Q 30 50 60 62 T 120 60 L 120 70 L 0 70 Z" fill="rgba(226,184,90,0.18)" />
           </svg>
           <div className="kx-title text-xl sm:text-2xl">創點源・五島</div>
-          <div className="kx-sub text-[13px] mt-1">正在搭起樓閣、點亮燈籠…</div>
+          <div className="kx-sub text-[13px] mt-1">{regionStatus === 'loading' ? '正在搭起樓閣、點亮燈籠…' : '最後整理一下，讓畫面更順暢…'}</div>
           <div className="w-60 h-1.5 mt-5 rounded-full overflow-hidden" style={{ background: 'rgba(226,184,90,0.18)' }}>
             <div className="h-full transition-all duration-200" style={{ width: `${Math.max(8, loadProgress)}%`, background: 'linear-gradient(90deg,#b3261e,#e2b85a)' }} />
           </div>
-          <div className="kx-sub text-[12px] mt-2 tabular-nums">{loadProgress}%</div>
+          <div className="kx-sub text-[12px] mt-2 tabular-nums">{regionStatus === 'loading' ? loadProgress : 100}%</div>
         </div>
       )}
 
@@ -2649,6 +2771,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           onWeatherMode: setWeatherMode,
           autoHint: `「自動」跟著${cityRef.current.name}目前的時間與即時天氣。`,
         }}
+        bulbOn={bulbOn}
+        onToggleBulb={toggleBulb}
+        darkHint={darkHint}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {
           handleChangeQuality({

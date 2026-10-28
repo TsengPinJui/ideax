@@ -216,6 +216,9 @@ export class PhysicsController {
   /**
    * Resolves player movement with sub-stepping, angled wall sliding, and bridge elevation
    */
+  /** 上一個正常（在可走範圍內、沒卡牆）的位置，用來防卡住 */
+  private static lastValid: THREE.Vector3 | null = null;
+
   public static movePlayer(
     currentPos: THREE.Vector3,
     velocity: THREE.Vector3,
@@ -230,6 +233,37 @@ export class PhysicsController {
     const totalMoveX = velocity.x * delta;
     const totalMoveZ = velocity.z * delta;
     const totalDist = Math.hypot(totalMoveX, totalMoveZ);
+
+    // 防卡住：如果現在的位置本身就卡在牆裡（或站到可走範圍外），讓玩家能自己走出來，不會被看不見的牆困住
+    {
+      const inZone = this.isInsideWalkableZones(currentPos.x, currentPos.z, walkableZones);
+      const inWall = this.checkCollision(currentPos, colliders);
+      if (inZone && !inWall) {
+        this.lastValid = this.lastValid || new THREE.Vector3();
+        this.lastValid.set(currentPos.x, 0, currentPos.z);
+      } else if (totalDist > 1e-5) {
+        const cand = currentPos.clone();
+        cand.x += totalMoveX;
+        cand.z += totalMoveZ;
+        const candZone = this.isInsideWalkableZones(cand.x, cand.z, walkableZones);
+        let ok: boolean;
+        if (inZone) {
+          // 卡在碰撞體裡：只要還在可走範圍內就放行
+          ok = candZone;
+        } else {
+          // 在可走範圍外：走回範圍內、或往上一個正常位置靠近都放行
+          const lv = this.lastValid;
+          const far = !lv || Math.hypot(currentPos.x - lv.x, currentPos.z - lv.z) > 25;
+          ok = candZone || far || Math.hypot(cand.x - lv!.x, cand.z - lv!.z) < Math.hypot(currentPos.x - lv!.x, currentPos.z - lv!.z);
+        }
+        if (ok) {
+          nextPos.copy(cand);
+          const targetY = this.getGroundHeight(nextPos.x, nextPos.z, bridges, baseGround);
+          nextPos.y = THREE.MathUtils.lerp(nextPos.y, targetY, Math.min(1, delta * 20));
+          return nextPos;
+        }
+      }
+    }
 
     // Sub-step movement (max 0.08m per step) so player never tunnels through walls
     const steps = Math.max(1, Math.min(14, Math.ceil(totalDist / 0.08)));

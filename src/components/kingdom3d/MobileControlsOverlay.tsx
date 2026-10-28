@@ -25,6 +25,7 @@ import {
   Smartphone,
   Download,
   Copy,
+  Lightbulb,
 } from 'lucide-react';
 import { CompassMinimap, WorldMapModal } from './KingdomMaps';
 import {
@@ -53,6 +54,11 @@ interface MobileControlsOverlayProps {
   onDesktopRequestLock: () => void;
   isFastWalk: boolean;
   onToggleFastWalk: () => void;
+  /** 小燈泡照明（按 C 或點按鍵呼喚，拿在手上照亮四周） */
+  bulbOn?: boolean;
+  onToggleBulb?: () => void;
+  /** 在暗處時顯示「覺得暗？點擊【照明(C)】…」提示 */
+  darkHint?: boolean;
   timeOfDay?: 'day' | 'dusk' | 'night';
   onCycleTimeOfDay?: () => void;
   isFancy?: boolean;
@@ -149,6 +155,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onDesktopRequestLock,
   isFastWalk,
   onToggleFastWalk,
+  bulbOn,
+  onToggleBulb,
+  darkHint,
   timeOfDay,
   onCycleTimeOfDay,
   isFancy,
@@ -855,22 +864,50 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           data-ui-panel="true"
           className="relative pointer-events-auto flex flex-col items-end gap-2 sm:gap-2.5 shrink-0"
         >
-          {/* 下排：特大版跑步／疾走鍵 */}
+          {/* 照明鍵：呼喚小燈泡拿在手上 */}
+          {onToggleBulb && (
+            <button
+              type="button"
+              onClick={onToggleBulb}
+              data-on={Boolean(bulbOn)}
+              className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg"
+              title={bulbOn ? '收起小燈泡（C）' : '照明：呼喚小燈泡（C）'}
+              aria-label="照明"
+            >
+              <Lightbulb className="w-6 h-6 sm:w-7 sm:h-7" />
+              <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{bulbOn ? '收起' : '照明(C)'}</span>
+            </button>
+          )}
+          {/* 下排：特大版疾走鍵 */}
           <button
             type="button"
             onClick={onToggleFastWalk}
             data-on={isFastWalk || shiftHeld}
             className="kx-round w-20 h-20 sm:w-24 sm:h-24 flex-col gap-0.5 shadow-lg"
-            title={isFastWalk ? '跑步疾走中（點一下恢復常速，或按住 Shift）' : '跑步／疾走（或按住 Shift）'}
-            aria-label="跑步／疾走"
+            title={isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）'}
+            aria-label="疾走"
           >
             <Footprints className="w-9 h-9 sm:w-11 sm:h-11" />
             <span className="text-[11px] sm:text-xs font-bold tracking-wider leading-none">
-              {isFastWalk || shiftHeld ? '疾走中' : '跑步'}
+              {isFastWalk || shiftHeld ? '疾走中' : '疾走'}
             </span>
           </button>
         </div>
       </div>
+
+      {/* 暗處提示：點【照明(C)】呼喚小燈泡 */}
+      {darkHint && !bulbOn && onToggleBulb && (
+        <div data-ui-panel="true" className="absolute left-1/2 -translate-x-1/2 top-24 sm:top-20 pointer-events-auto">
+          <div className="kx-panel px-4 py-2 text-[13px] sm:text-[14px] whitespace-nowrap flex items-center gap-1.5">
+            <Lightbulb className="w-4 h-4 text-amber-200 shrink-0" />
+            覺得暗？點擊
+            <button type="button" onClick={onToggleBulb} className="font-bold text-amber-200 underline underline-offset-2 cursor-pointer">
+              【照明(C)】
+            </button>
+            呼喚小燈泡助你前途光明！
+          </div>
+        </div>
+      )}
 
       {/* 電腦版提示 */}
       {!isDesktopPointerLocked && (

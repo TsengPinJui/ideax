@@ -18,7 +18,22 @@ import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
  */
 
 /** 由環境（時段、天氣）寫入：晴朗白天才有雁群；夜裡或下雨時農夫收工回家、雞進雞舍 */
-export const faunaEnv: { tod: string; weather: string; camX: number; camY: number; camZ: number; camYaw: number; onBoat: boolean; indoor: boolean } = {
+export const faunaEnv: {
+  tod: string;
+  weather: string;
+  camX: number;
+  camY: number;
+  camZ: number;
+  camYaw: number;
+  onBoat: boolean;
+  indoor: boolean;
+  /** 玩家按 C／【照明】呼喚小燈泡拿在手上 */
+  bulbOn: boolean;
+  /** 夜裡在沒有燈光的地方待了幾秒（給「覺得暗？」提示用） */
+  darkFor: number;
+} = {
+  bulbOn: false,
+  darkFor: 0,
   tod: 'dusk',
   weather: 'clear',
   camX: 0,
@@ -104,7 +119,7 @@ export const CHARACTERS: Record<CharacterId, { name: string; role: string; line:
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
   sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
-  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「覺得暗嗎？別怕，有小燈泡在！」', where: '夜裡沒有燈光的地方（搭船經過暗處時也會跳上船）' },
+  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「覺得暗嗎？別怕，有小燈泡在！」', where: '按 C 或點【照明(C)】呼喚，拿在手上照亮四周' },
   bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街的大熊匠鋪' },
 };
 
@@ -636,8 +651,8 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const bub = speechBubble(CHARACTERS.baimiao.name, CHARACTERS.baimiao.line);
     root.add(bub);
     const PATH: [number, number][] = [
-      [66, 50.5],
-      [53.2, 49.6],
+      [59.5, 47.6],
+      [53.6, 44.0],
       [52.6, 37.2],
       [48, 35.5],
       [46, 35],
@@ -673,9 +688,9 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       sp.pose = null;
       if (c < LOOP) {
         const a = (c / LOOP) * Math.PI * 4;
-        g.position.set(66 + Math.cos(a) * 5.5 - 5.5, 0, 50.5 + Math.sin(a) * 3.2);
+        g.position.set(59.5 + Math.cos(a) * 4.5 - 4.5, 0, 47.6 + Math.sin(a) * 1.7);
         // 前進方向＝繞圈切線
-        sp.facing = Math.atan2(-Math.sin(a) * 5.5, Math.cos(a) * 3.2);
+        sp.facing = Math.atan2(-Math.sin(a) * 4.5, Math.cos(a) * 1.7);
         if (c > LOOP - 7) {
           // 停下來蹦蹦跳跳打滾
           sp.pose = 'jump';
@@ -712,13 +727,16 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const bub = speechBubble(CHARACTERS.sousou.name, CHARACTERS.sousou.line);
     root.add(bub);
     const pos = (t: number): [number, number, number] => [Math.sin(t * 0.028) * 78, 14 + Math.sin(t * 0.11) * 2.2, Math.sin(t * 0.056) * 46];
-    anims.push((t) => {
+    // 飛快一點：筋斗雲的速度約為原本的 2.6 倍
+    const SPD = 2.6;
+    anims.push((t0) => {
+      const t = t0 * SPD;
       const [x, y, z] = pos(t);
       const [nx, , nz] = pos(t + 0.5);
       g.position.set(x, y, z);
       sp.facing = Math.atan2(nx - x, nz - z);
-      sp.tilt = Math.sin(t * 0.7) * 0.06;
-      sp.hop = Math.sin(t * 1.8) * 0.12;
+      sp.tilt = Math.sin(t0 * 0.7) * 0.1;
+      sp.hop = Math.sin(t0 * 1.8) * 0.12;
       bubbleTick(bub, x, y + 3.0, z, 14);
     });
   }
@@ -728,7 +746,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const Z = -11.0;
     const sp = spriteOf('duohui', 'char-duohui');
     sp.group.position.set(X, 0, Z);
-    colliders.push({ id: 'char-duohui', type: 'cylinder', x: X, z: Z, radius: 0.6 });
+    // 人物之間可以穿過去（不放碰撞）
     pick('duohui', 1.2, 1.9, X, Z);
     const bub = speechBubble(CHARACTERS.duohui.name, CHARACTERS.duohui.line);
     root.add(bub);
@@ -745,13 +763,13 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   // 007：坐在翰林院一層屋簷上吹風看平板（面向庭院）
   {
     const sp = spriteOf('agent007', 'char-007');
-    sp.group.position.set(63.2, 6.45, 47.0);
+    sp.group.position.set(66.6, 5.75, 46.4);
     sp.facing = 0;
-    pick('agent007', 1.4, 1.9, 63.2, 47.0, 6.0);
+    pick('agent007', 1.4, 1.9, 66.6, 46.4, 5.3);
     const bub = speechBubble(CHARACTERS.agent007.name, CHARACTERS.agent007.line);
     root.add(bub);
     anims.push((t) => {
-      bubbleTick(bub, 63.2, 8.3, 47.2, 9);
+      bubbleTick(bub, 66.6, 7.6, 46.6, 9);
       sp.pose = t % 10 < 4 ? 'hero' : null;
       sp.hop = Math.sin(t * 1.3) * 0.04;
     });
@@ -763,7 +781,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const sp = spriteOf('bear', 'char-bear');
     sp.group.position.set(bwx, 0.1, bwz);
     sp.facing = -Math.PI / 2;
-    colliders.push({ id: 'char-bear', type: 'cylinder', x: bwx, z: bwz, radius: 0.7 });
+    // 人物之間可以穿過去（不放碰撞）
     pick('bear', 1.6, 2.2, bwx, bwz);
     const bub = speechBubble(CHARACTERS.bear.name, CHARACTERS.bear.line);
     root.add(bub);
@@ -776,7 +794,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       sp.hop = sp.pose ? 0 : Math.abs(Math.sin(t * 1.2)) * 0.02;
     });
   }
-  // 小燈泡：夜裡走到沒有燈光的地方就會冒出來陪你（搭船經過暗處時跳上船），走回有燈的地方就揮揮手消失
+  // 小燈泡：按 C 或點【照明(C)】呼喚出來，拿在手上照亮四周（夜裡走到暗處會提示，不會自己冒出來）
   {
     const sp = new AgentSprite(SPRITES.xiaodengpao, { selfLit: true });
     sp.group.name = 'char-bulb';
@@ -784,14 +802,33 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     sprites.push(sp);
     const g = sp.group;
     g.visible = false;
-    // 自己會發光：照亮身邊一圈
-    const light = new THREE.PointLight(0xffd27a, 0, 9, 1.6);
-    light.position.y = 0.9;
+    // 手上的燈：照亮一大圈
+    const light = new THREE.PointLight(0xffd88a, 0, 26, 1.1);
+    light.position.y = 0.5;
     g.add(light);
-    const proxy = makePickProxy(1.0, 1.6, 1.0, 0, -50, 0, { kind: 'character', id: 'xiaodengpao' });
-    root.add(proxy);
-    const bub = speechBubble(CHARACTERS.xiaodengpao.name, CHARACTERS.xiaodengpao.line);
-    root.add(bub);
+    // 燈泡周圍的柔光
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: (() => {
+          const c = document.createElement('canvas');
+          c.width = c.height = 128;
+          const x = c.getContext('2d')!;
+          const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+          gr.addColorStop(0, 'rgba(255,236,170,0.95)');
+          gr.addColorStop(0.35, 'rgba(255,214,120,0.45)');
+          gr.addColorStop(1, 'rgba(255,200,100,0)');
+          x.fillStyle = gr;
+          x.fillRect(0, 0, 128, 128);
+          return new THREE.CanvasTexture(c);
+        })(),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    halo.scale.setScalar(1.6);
+    halo.position.y = 0.55;
+    g.add(halo);
     // 場景裡所有燈籠、石燈的位置（每隔幾秒重新收集；換島後燈也會變）
     let lights: number[] = [];
     let lastScan = -99;
@@ -826,13 +863,8 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       }
       return Math.sqrt(best);
     };
-    let dark = 0; // 在暗處待了幾秒
-    let lit = 0; // 回到亮處幾秒
     let shown = 0; // 出現程度 0..1
     let lastT = 0;
-    let phase: 'hidden' | 'in' | 'stay' | 'out' = 'hidden';
-    let bx = 0;
-    let bz = 0;
     anims.push((t) => {
       const dt = lastT ? Math.min(0.5, t - lastT) : 0;
       lastT = t;
@@ -844,77 +876,24 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       const cz = faunaEnv.camZ;
       const night = faunaEnv.tod === 'night';
       const isDark = night && !faunaEnv.indoor && nearestLight(cx, cz) > (faunaEnv.onBoat ? 7 : 9);
-      if (isDark) {
-        dark += dt;
-        lit = 0;
-      } else {
-        lit += dt;
-        dark = 0;
-      }
-      if (phase === 'hidden' && dark > 1.6) {
-        phase = 'in';
-        // 從身邊冒出來
-        const fx = -Math.sin(faunaEnv.camYaw);
-        const fz = -Math.cos(faunaEnv.camYaw);
-        bx = cx + fx * 2.4 - fz * 0.9;
-        bz = cz + fz * 2.4 + fx * 0.9;
-      }
-      if ((phase === 'in' || phase === 'stay') && lit > 2.5) phase = 'out';
-      if (phase === 'out' && isDark) phase = 'stay';
-      if (phase === 'in') {
-        shown = Math.min(1, shown + dt * 1.6);
-        if (shown >= 1) phase = 'stay';
-      } else if (phase === 'out') {
-        shown = Math.max(0, shown - dt * 1.2);
-        if (shown <= 0) phase = 'hidden';
-      }
+      faunaEnv.darkFor = isDark && !faunaEnv.bulbOn ? faunaEnv.darkFor + dt : 0;
+      shown = faunaEnv.bulbOn ? Math.min(1, shown + dt * 3) : Math.max(0, shown - dt * 3);
       g.visible = shown > 0.01;
-      light.intensity = shown * 2.2;
-      if (typeof location !== 'undefined' && location.hostname === 'localhost') (window as any).__bulbDbg = { phase, dark, lit, shown, night, n: lights.length / 2, near: nearestLight(cx, cz), indoor: faunaEnv.indoor };
-      if (!g.visible) {
-        proxy.position.set(0, -50, 0);
-        bubbleTick(bub, 0, -50, 0);
-        return;
-      }
+      light.intensity = shown * (night ? 9 : faunaEnv.tod === 'dusk' ? 5 : 2.5);
+      if (!g.visible) return;
+      // 拿在手上：鏡頭右前方、略低於視線，跟著視角轉
       const fx = -Math.sin(faunaEnv.camYaw);
       const fz = -Math.cos(faunaEnv.camYaw);
-      let y = 0;
-      if (faunaEnv.onBoat) {
-        // 坐在船頭（鏡頭前方偏右一點），跟著船走
-        bx = cx + fx * 1.5 - fz * 0.55;
-        bz = cz + fz * 1.5 + fx * 0.55;
-        y = faunaEnv.camY - 1.35;
-        sp.pose = null;
-        sp.facing = Math.atan2(cx - bx, cz - bz);
-        sp.hop = Math.abs(Math.sin(t * 2.4)) * 0.05;
-        sp.tilt = Math.sin(t * 1.3) * 0.05;
-      } else {
-        // 跟在身邊：保持 2～3 公尺，太遠就小跑步跟上
-        const tx = cx + fx * 2.2 - fz * 1.0;
-        const tz = cz + fz * 2.2 + fx * 1.0;
-        const dx = tx - bx;
-        const dz = tz - bz;
-        const dist = Math.hypot(dx, dz);
-        const walking = dist > 0.5;
-        if (dist > 12) {
-          bx = tx;
-          bz = tz;
-        } else if (walking) {
-          const step = Math.min(dist, dt * (dist > 3 ? 4.5 : 2.2));
-          bx += (dx / dist) * step;
-          bz += (dz / dist) * step;
-        }
-        y = Math.max(0, faunaEnv.camY - 1.6);
-        sp.pose = phase === 'in' ? 'jump' : phase === 'out' ? 'jump' : null;
-        // 走路時面向前進方向，停下來就看著你
-        sp.facing = walking ? Math.atan2(dx, dz) : Math.atan2(cx - bx, cz - bz);
-        sp.hop = sp.pose === 'jump' ? Math.abs(Math.sin(t * 6)) * 0.4 : walking ? Math.abs(Math.sin(t * 7)) * 0.07 : Math.sin(t * 2) * 0.02;
-        sp.tilt = walking ? Math.sin(t * 7) * 0.06 : 0;
-      }
+      const bx = cx + fx * 0.95 - fz * 0.42;
+      const bz = cz + fz * 0.95 + fx * 0.42;
+      const y = faunaEnv.camY - 0.62 + Math.sin(t * 2.2) * 0.02;
+      sp.pose = null;
+      sp.facing = Math.atan2(cx - bx, cz - bz);
+      sp.hop = 0;
+      sp.tilt = Math.sin(t * 1.6) * 0.04;
       g.position.set(bx, y, bz);
-      g.scale.setScalar(0.3 + shown * 0.7);
-      proxy.position.set(bx, y + 0.8, bz);
-      bubbleTick(bub, bx, y + 2.1, bz);
+      g.scale.setScalar(0.34 * (0.4 + shown * 0.6));
+      halo.scale.setScalar(4.2);
     });
   }
 
