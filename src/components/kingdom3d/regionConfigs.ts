@@ -344,7 +344,8 @@ export const WEST_LANDING = {
   /** 船靠岸的水面 */
   dockWater: [-111.0, 15.0] as [number, number],
   /** 山腳登山口 */
-  trail: [-143.0, -6.0] as [number, number],
+  // 原本在山體裡面（被山腳擋住），挪到山腳外、離渡口約 9 公尺；山台山體的山腳也往內收
+  trail: [-129.9, 11.5] as [number, number],
   /** 石板路半寬 */
   halfWidth: 2.2,
   /** 田園地面高度（田埂上） */
@@ -393,8 +394,9 @@ const homeBuildings: BuildingInteractable[] = [
     id: 'home-explore',
     name: '探索看板',
     subtitle: '中央廣場・直接逛全站最新公開內容',
-    position: new THREE.Vector3(-14, 0, -9),
-    facingYaw: Math.PI / 4,
+    // 移到南面，和角色介紹並排（都面向廣場中央）
+    position: new THREE.Vector3(-5.2, 0, 15.5),
+    facingYaw: Math.PI,
     width: 6.4,
     depth: 1.4,
     height: 5.0,
@@ -449,7 +451,7 @@ const homeBuildings: BuildingInteractable[] = [
     id: 'home-agents',
     name: '角色介紹',
     subtitle: '中央廣場・創點源六隻守護 Agent 介紹與身分證名冊',
-    position: new THREE.Vector3(0, 0, 15.5),
+    position: new THREE.Vector3(5.0, 0, 15.5),
     facingYaw: Math.PI,
     width: 7.0,
     depth: 1.4,
@@ -752,7 +754,8 @@ const careerBuildings: BuildingInteractable[] = [
     name: '翰林院',
     subtitle: '徵才島・五大領域專家智庫，分藏各領域名冊',
     // 照設計圖：木格柵大屋簷的玻璃書院（縮小一些，讓出庭園）
-    position: new THREE.Vector3(64, 0, 40.5),
+    // 緊貼北牆（讓開北月洞門）
+    position: new THREE.Vector3(63.0, 0, 33.2),
     facingYaw: 0, // Door faces South (+Z) into the courtyard
     width: 10.0,
     depth: 8.4,
@@ -780,7 +783,8 @@ const careerBuildings: BuildingInteractable[] = [
     id: 'career-temple',
     name: '求職廟',
     subtitle: '徵才島・求籤祈願：填需求 · 匯職缺',
-    position: new THREE.Vector3(84, 0, 41),
+    // 緊貼北牆（大小不變）
+    position: new THREE.Vector3(84, 0, 33.5),
     facingYaw: 0, // Door faces South (+Z) into the courtyard
     width: 12.5,
     depth: 9.5,
@@ -809,7 +813,8 @@ const careerBuildings: BuildingInteractable[] = [
     name: '人才獵頭/媒合專家',
     subtitle: '徵才島・高階人才獵頭尋訪與跨域專家媒合委託',
     // 照設計圖：白色石材方盒＋整面玻璃（縮小一些、移到庭園西側，面向水池）
-    position: new THREE.Vector3(54, 0, 56),
+    // 緊貼西牆
+    position: new THREE.Vector3(52.7, 0, 56),
     facingYaw: Math.PI / 2, // Door faces East (+X) toward the pond
     width: 9.0,
     depth: 8.0,

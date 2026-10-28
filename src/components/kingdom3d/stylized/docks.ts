@@ -65,10 +65,13 @@ export const TRAIL = (() => {
   // 西側田園山腳（WEST_LANDING.trail）：牌坊背對山、面向從渡口走過來的人；yaw 朝向山（下山回來時面向渡口）
   const [x, z] = WEST_LANDING.trail;
   const wp = BASIN_LANDMARKS.westPlateau;
+  // 牌坊正面朝向渡口
+  const fdx = WEST_LANDING.dockLand[0] - x;
+  const fdz = WEST_LANDING.dockLand[1] - z;
   return {
     x,
     z,
-    yaw: Math.PI / 2,
+    yaw: Math.atan2(-fdx, -fdz) - Math.PI,
     /** 山台頂（塔在 wp.x+2）：空地在塔的東側，面向塔 */
     topX: wp.x + 9.4,
     topZ: wp.z + 2.0,
@@ -172,6 +175,17 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
     const stele = add(tg, new THREE.BoxGeometry(0.9, 1.6, 0.25), sm.stone, 2.6, 0.8, 0.8);
     stele.rotation.y = -0.4;
     tg.add(makePickProxy(4.4, 4.2, 2.4, 0, 0.6, 0, { kind: 'trail', dir: 'up' }));
+    if (regionId === 'west') {
+      // 牌坊後面的山腳：一座石砌隧道口（登山步道從這裡鑽進山裡）
+      const arch = add(tg, new THREE.TorusGeometry(2.4, 0.45, 8, 20, Math.PI), sm.stone, 0, 0.2, 2.6);
+      arch.scale.set(1, 1.15, 1.6);
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(2.4, 24, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x0a0806 }));
+      hole.position.set(0, 0.2, 2.9);
+      hole.rotation.y = Math.PI;
+      hole.scale.y = 1.15;
+      tg.add(hole);
+      for (const sx of [-1, 1]) add(tg, scaledBox(0.9, 0.6, 2.4, 1, 1, 1), sm.stone, sx * 2.4, 0.3, 2.6);
+    }
   }
   if (regionId === 'west') {
     // 渡口到登山口的田間石板路（兩旁石燈）

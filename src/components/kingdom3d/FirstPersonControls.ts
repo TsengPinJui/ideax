@@ -273,6 +273,9 @@ export class FirstPersonControls {
   /**
    * Update camera position and orientation with subtle head bobbing
    */
+  /** 坐下時視線往下降（負值） */
+  public eyeOffset = 0;
+
   public updateCameraTransform(delta: number) {
     let bobOffset = 0;
     if (this.settings.headBob && this.isMoving) {
@@ -285,7 +288,7 @@ export class FirstPersonControls {
 
     this.camera.position.set(
       this.position.x,
-      this.position.y + PhysicsController.EYE_HEIGHT + bobOffset,
+      this.position.y + PhysicsController.EYE_HEIGHT + bobOffset + this.eyeOffset,
       this.position.z
     );
 

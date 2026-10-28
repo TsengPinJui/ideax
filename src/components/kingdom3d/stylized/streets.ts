@@ -201,11 +201,11 @@ const TEA_BOARD_NOTE = '茶藝街街道佈告欄：張貼日常交流、生活�
 const DISCUSSION_PROPS: StreetProp[] = [
   // ── 西區：茶藝街（真正的一條南北向江南茶街，街心 x = 55.8，西側主茶樓＋茶鋪朝東，東側茶鋪＋茶攤朝西）
   DISC('tea-gate', 'gate', '茶藝街', '日常・生活・職場・靈感', 'tea', 55.8, -28.0, 0, 'tea_daily', TEA_NOTE),
-  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.6, -60.4, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.9, -54.6, Math.PI / 2, 'tea_daily', TEA_NOTE),
   DISC('tea-1', 'shop', '雅韻茶樓', '生活慢調茶館', 'tea', 62.2, -35.0, -Math.PI / 2, 'tea_life', TEA_NOTE),
   DISC('tea-2', 'shop', '龍井茶寮', '職場江湖茶館', 'tea', 62.2, -43.5, -Math.PI / 2, 'tea_work', TEA_NOTE),
   DISC('tea-3', 'shop', '茗香茶點', '靈感悟道茶館', 'sweets', 62.2, -52.0, -Math.PI / 2, 'tea_idea', TEA_NOTE),
-  DISC('tea-stall-0', 'stall', '春毫茶攤', '新茶試飲・日常閒聊', 'tea', 50.2, -54.2, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  DISC('tea-stall-0', 'stall', '春毫茶攤', '新茶試飲・日常閒聊', 'tea', 49.6, -60.4, Math.PI / 2, 'tea_daily', TEA_NOTE),
   DISC('tea-seat-0', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -38.8, 0, 'tea_life', TEA_NOTE),
   DISC('tea-seat-1', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -48.5, 0, 'tea_idea', TEA_NOTE),
   DISC('tea-board-0', 'board', '茶街討論欄・日常生活', '街道佈告欄・張貼日常與生活討論', 'tea', 52.8, -30.8, Math.PI / 2, 'tea_board', TEA_BOARD_NOTE, 2.7, 0.62),
@@ -215,11 +215,11 @@ const DISCUSSION_PROPS: StreetProp[] = [
   DISC('craft-gate', 'gate', '百工坊', '百工佈告欄・大熊匠鋪', 'general', 88.2, -28.0, 0, 'craft_board', CRAFT_NOTE),
 
   // ── 百工坊街左側白牆邊的佈告欄（原本立在鋪子之間會擋路，改成貼牆一排；面向街道）
-  DISC('craft-board-0', 'board', '百工佈告欄・水電實務', '白牆佈告欄・張貼水電討論', 'general', 81.05, -33.9, Math.PI / 2, 'craft_plumbing', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-1', 'board', '百工佈告欄・室內裝修', '白牆佈告欄・張貼裝修討論', 'crafts', 81.05, -37.1, Math.PI / 2, 'craft_interior', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-2', 'board', '百工佈告欄・法律智財', '白牆佈告欄・張貼法務討論', 'books', 81.05, -40.3, Math.PI / 2, 'craft_law', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-3', 'board', '百工佈告欄・會計稅務', '白牆佈告欄・張貼財稅討論', 'ink', 81.05, -43.5, Math.PI / 2, 'craft_tax', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-4', 'board', '百工佈告欄・企業管理', '白牆佈告欄・張貼企管討論', 'lanterns', 81.05, -46.7, Math.PI / 2, 'craft_mgmt', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-0', 'board', '百工佈告欄・水電實務', '白牆佈告欄・張貼水電討論', 'general', 81.05, -33.5, Math.PI / 2, 'craft_plumbing', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-1', 'board', '百工佈告欄・室內裝修', '白牆佈告欄・張貼裝修討論', 'crafts', 81.05, -36.7, Math.PI / 2, 'craft_interior', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-2', 'board', '百工佈告欄・法律智財', '白牆佈告欄・張貼法務討論', 'books', 81.05, -39.9, Math.PI / 2, 'craft_law', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-3', 'board', '百工佈告欄・會計稅務', '白牆佈告欄・張貼財稅討論', 'ink', 81.05, -43.1, Math.PI / 2, 'craft_tax', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-4', 'board', '百工佈告欄・企業管理', '白牆佈告欄・張貼企管討論', 'lanterns', 81.05, -50.0, Math.PI / 2, 'craft_mgmt', CRAFT_BOARD_NOTE, 2.75, 0.62),
   DISC('craft-board-5', 'board', '百工佈告欄・百業熱議', '白牆佈告欄・張貼綜合討論', 'general', 81.05, -53.4, Math.PI / 2, 'craft_board', CRAFT_BOARD_NOTE, 2.75, 0.62),
 ];
 

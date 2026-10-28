@@ -313,8 +313,11 @@ export function createArcadeFacade(b: BuildingInteractable): { group: THREE.Grou
 
   // ── 兩側翅膀：從屋簷前角掃到地面 ──
   const wing = (s: number, t0: number, p1: V, p2: V, p3: V, w0: number, w1: number) => {
-    const curve = new THREE.CatmullRomCurve3([brim(t0), p1, p2, p3]);
-    const N = 44;
+    // 尾端往外、往上微微翹起並收尖（像飄帶的末梢），不會看起來像被切斷
+    const out = p3.clone().sub(p2).setY(0).normalize();
+    const p4 = p3.clone().addScaledVector(out, 1.6).add(v3(0, 1.3, 0));
+    const curve = new THREE.CatmullRomCurve3([brim(t0), p1, p2, p3, p4], false, 'centripetal');
+    const N = 56;
     const pts = curve.getPoints(N - 1);
     const sides: V[] = [];
     const ws: number[] = [];
@@ -326,9 +329,11 @@ export function createArcadeFacade(b: BuildingInteractable): { group: THREE.Grou
       if (S.dot(v3(s, 0.2, 0.4)) < 0) S.negate();
       S.lerp(UP, 0.25).normalize();
       sides.push(S);
-      ws.push(w0 + (w1 - w0) * (i / (N - 1)));
+      const t = i / (N - 1);
+      const base = w0 + (w1 - w0) * Math.min(1, t / 0.75);
+      ws.push(t < 0.72 ? base : base * Math.max(0.08, Math.cos(((t - 0.72) / 0.28) * Math.PI * 0.5)));
     });
-    sweep(pts, sides, ws, 0.28);
+    sweep(pts, sides, ws, 0.24);
   };
   // 兩翼與後翼：從屋簷往外掃下來，尾端停在 2.8 公尺以上的半空中（人可以從底下走過，不會擋路）
   wing(-1, -1.0, v3(-(w / 2 + 3.8), h * 0.7, d / 2 + 2.0), v3(-(w / 2 + 3.6), h * 0.42, d / 2 + 1.0), v3(-(w / 2 + 3.0), 2.9, d / 2 - 0.6), 3.0, 1.4);
@@ -665,7 +670,8 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
 
   // ── 左側：斜頂的清水模高牆（「親子同樂」直幡） ──
   {
-    const x0 = -12.6;
+    // 左牆收窄、變薄：和電玩城之間留一條走得過去的巷道
+    const x0 = -10.4;
     const x1 = -EX - 0.4;
     const shape = new THREE.Shape();
     shape.moveTo(x0, 0);
@@ -674,11 +680,11 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
     shape.lineTo(x0 + 1.2, h + 4.8);
     shape.lineTo(x0, h + 4.2);
     shape.closePath();
-    const ex = new THREE.ExtrudeGeometry(shape, { depth: 2.4, bevelEnabled: false });
+    const ex = new THREE.ExtrudeGeometry(shape, { depth: 1.6, bevelEnabled: false });
     const m = add(ex, concrete(x1 - x0, h + 4), 0, 0, fz - 0.1);
     void m;
-    plane(exhibitBannerTex('親子同樂'), 1.7, 6.2, (x0 + x1) / 2 + 0.6, 7.4, fz + 2.33, 0, 0.35);
-    rect(x0, fz - 0.1, x1, fz + 2.3);
+    plane(exhibitBannerTex('親子同樂'), 1.7, 6.2, (x0 + x1) / 2 + 0.3, 7.4, fz + 1.53, 0, 0.35);
+    rect(x0, fz - 0.1, x1, fz + 1.5);
   }
 
   // ── 右前：斜頂清水模牆（掛「雅俗共賞」） ──
@@ -772,7 +778,7 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
       add(new THREE.BoxGeometry(0.24, 0.02, 0.12), glow, x, 0.11, z + 0.12);
     };
     // 左側斜頂高牆
-    for (const x of [-12.0, -10.2, -8.4, -6.8]) wash(x, fz + 2.32, h + 1.4);
+    for (const x of [-9.8, -8.2, -6.8]) wash(x, fz + 1.52, h + 1.4);
     // 右前高牆
     for (const x of [EX + 1.2, EX + 3.0, EX + 4.8, EX + 6.4]) wash(x, fz + 1.52, h + 1.2);
     // 側面圓洞牆外側
@@ -809,7 +815,8 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
     const zb = fz + 6.9;
     for (const s of [-1, 1]) {
       const xa = s * WALK;
-      const xb = s * 13.6;
+      // 西側（靠電玩城）水池短一點，留出巷道
+      const xb = s > 0 ? 13.6 : -9.6;
       const xc = (xa + xb) / 2;
       const zc = (za + zb) / 2;
       const ww = Math.abs(xb - xa);
@@ -842,7 +849,6 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
     const pine = new THREE.MeshStandardMaterial({ color: 0x2f5530, roughness: 0.85 });
     for (const [px, pz, s] of [
       [11.2, fz + 4.9, 1],
-      [-11.2, fz + 4.9, -1],
     ] as [number, number, number][]) {
       add(new THREE.BoxGeometry(3.2, 0.6, 1.8), concretePlain, px, 0.3, pz);
       const pts = [v3(px, 0.6, pz), v3(px + s * 0.4, 1.6, pz + 0.1), v3(px - s * 0.3, 2.6, pz), v3(px + s * 0.2, 3.4, pz)];

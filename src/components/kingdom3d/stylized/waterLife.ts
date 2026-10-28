@@ -288,6 +288,57 @@ export function fishingBoat(m: BoatMats) {
   return g;
 }
 
+/** 沒屋頂的小舟（照參考照片）：細長木舟、兩頭微翹、中間一座低矮的拱形竹篷，船尾船夫搖櫓、船頭坐著一位客人；船尾掛一盞小燈 */
+export function sampanBoat(m: BoatMats) {
+  const g = new THREE.Group();
+  const hull = new THREE.MeshStandardMaterial({ color: 0x2e2620, roughness: 0.8 });
+  addM(g, hullGeometry(6.6, 1.35, 0.5), hull, 0, 0, 0);
+  addM(g, new THREE.BoxGeometry(1.05, 0.06, 5.2), m.hullTrim, 0, 0.3, 0);
+  // 兩頭微翹的船首、船尾
+  for (const sz of [-1, 1]) {
+    const post = addM(g, new THREE.BoxGeometry(0.12, 0.08, 1.2), hull, 0, 0.42, sz * 3.15);
+    post.rotation.x = sz * 0.42;
+    const tip = addM(g, new THREE.BoxGeometry(0.06, 0.5, 0.06), m.hullTrim, 0, 0.72, sz * 3.66);
+    tip.rotation.x = sz * 0.5;
+  }
+  // 低矮的拱形竹篷（篷口暗暗的）
+  const canopy = addM(g, new THREE.CylinderGeometry(0.6, 0.6, 2.3, 16, 1, true, -Math.PI / 2, Math.PI), m.canopy, 0, 0.36, -0.2);
+  canopy.rotation.x = Math.PI / 2;
+  (canopy.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+  for (const zz of [-1.35, -0.6, 0.15, 0.9]) {
+    const rib = addM(g, new THREE.TorusGeometry(0.61, 0.025, 4, 12, Math.PI), m.straw, 0, 0.36, zz);
+    void rib;
+  }
+  const mouth = addM(g, new THREE.CircleGeometry(0.58, 14, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x120e0a, side: THREE.DoubleSide }), 0, 0.37, -1.33);
+  void mouth;
+  // 篷頂上一捲藍布
+  const roll = addM(g, new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x2f4f8a, roughness: 0.8 }), 0, 0.98, 0.3);
+  roll.rotation.x = Math.PI / 2;
+  // 船夫（站在船尾搖櫓）
+  const man = new THREE.Group();
+  man.position.set(0, 0.32, 2.3);
+  addM(man, new THREE.CylinderGeometry(0.15, 0.26, 0.85, 10), m.robe, 0, 0.43, 0);
+  addM(man, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 1.0, 0);
+  const oar = addM(man, new THREE.CylinderGeometry(0.03, 0.03, 2.6, 6), m.hullTrim, 0.3, 0.45, 0.6);
+  oar.rotation.x = 0.95;
+  g.add(man);
+  g.userData.oar = oar;
+  // 船頭坐著的客人
+  const guest = new THREE.Group();
+  guest.position.set(0.1, 0.32, -2.1);
+  addM(guest, new THREE.CylinderGeometry(0.15, 0.26, 0.5, 10), new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.8 }), 0, 0.25, 0);
+  addM(guest, new THREE.SphereGeometry(0.14, 12, 10), m.skin, 0, 0.62, 0);
+  g.add(guest);
+  // 船尾小燈（晚上亮）
+  const lamp = addM(g, new THREE.SphereGeometry(0.12, 10, 8), m.lantern, 0, 1.15, 3.05);
+  addM(g, new THREE.CylinderGeometry(0.02, 0.02, 0.9, 4), m.hullTrim, 0, 0.75, 3.05);
+  g.userData.lamps = [lamp];
+  return g;
+}
+
+/** 五艘裡面有一艘是有屋頂的畫舫，其餘是沒屋頂的小舟 */
+export const boatHasRoof = (index: number) => index % 5 === 0;
+
 /** 晚上：畫舫遊船（朱紅廊柱、黛瓦攢尖頂、四角宮燈） */
 export function pleasureBoat(m: BoatMats) {
   const g = new THREE.Group();
@@ -405,9 +456,11 @@ export class WaterLife {
     const routes = findRoutes(6, this.rand);
     routes.forEach((r, i) => {
       const group = new THREE.Group();
-      const day = fishingBoat(m);
-      const night = pleasureBoat(m);
-      group.add(day, night);
+      // 五艘裡一艘是有屋頂的畫舫，其餘是沒屋頂的小舟（白天、晚上都一樣）
+      const model = boatHasRoof(i) ? pleasureBoat(m) : sampanBoat(m);
+      const day = model;
+      const night = model;
+      group.add(model);
       // 彩蛋：白天「見漁人…」、夜裡遊船「夜半鐘聲到客船」
       group.add(makePickProxy(1.8, 1.8, 4.6, 0, 0, 0, { kind: 'egg', egg: 'boat', maxDist: 70 }, -0.3));
       this.boats.push({ group, day, night, a: r.a, b: r.b, t: this.rand(), dir: i % 2 ? 1 : -1, speed: 0.9 + this.rand() * 0.5, phase: this.rand() * 6 });
@@ -488,8 +541,8 @@ export class WaterLife {
     const night = this.tod === 'night';
     for (const b of this.boats) {
       b.group.visible = clear;
-      b.day.visible = !night;
-      b.night.visible = night;
+      b.day.visible = true;
+      b.night.visible = true;
     }
     this.waterLanterns.visible = clear && night;
     this.skyGroup.visible = clear && night;

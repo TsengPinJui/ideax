@@ -3,11 +3,11 @@ import { TRAIL } from './stylized/docks';
 /**
  * 任務清單：
  * - 單人：收集彩蛋（和 3D 地圖共用收集冊）
- * - 雙人（要先和另一位旅人綁定羈絆）：一起遊船、一起登上聚雲塔、在指定地點一起遊覽 5 分鐘
+ * - 雙人（要先和另一位旅人綁定羈絆）：一起遊船、一起登上聚雲塔、桃樹下同坐、在指定地點一起遊覽 5 分鐘
  * 進度存在這台裝置（localStorage）；兩個人各自的畫面都會判斷，條件一樣就會一起完成
  */
 
-export type DuoQuestId = 'boat' | 'tower' | 'tour-home' | 'tour-plaza' | 'tour-garden' | 'tour-plateau' | 'tour-market';
+export type DuoQuestId = 'boat' | 'tower' | 'peach' | 'tour-home' | 'tour-plaza' | 'tour-garden' | 'tour-plateau' | 'tour-market';
 
 export interface DuoQuest {
   id: DuoQuestId;
@@ -22,6 +22,7 @@ export const TOUR_SECONDS = 300;
 export const DUO_QUESTS: DuoQuest[] = [
   { id: 'boat', title: '一起遊船', hint: '和羈絆夥伴坐上同一艘船，或各划一艘靠在一起遊湖' },
   { id: 'tower', title: '一起登上聚雲塔', hint: '兩人一起站上聚雲塔塔頂眺望' },
+  { id: 'peach', title: '桃樹下同坐', hint: '和羈絆夥伴一起坐在同一棵桃樹下（按 C 坐下），桃花就會落下來' },
   { id: 'tour-home', title: '一起遊覽主島中央廣場', hint: '兩人一起在主島中央廣場待滿 5 分鐘', place: { x: 0, z: 0, r: 17 } },
   { id: 'tour-plaza', title: '一起遊覽論道廣場', hint: '兩人一起在討論島藏書閣前的論道廣場待滿 5 分鐘', place: { x: 72, z: -47, r: 13 } },
   { id: 'tour-garden', title: '一起遊覽江南園林', hint: '兩人一起在徵才島院牆內的江南園林待滿 5 分鐘', place: { x: 82, z: 57, r: 13 } },
@@ -75,6 +76,8 @@ export function stepQuests(
     partner: { x: number; y: number; z: number } | null;
     onBoat: boolean;
     onTowerTop: boolean;
+    /** 兩人一起坐在同一棵桃樹下 */
+    peachTogether?: boolean;
   }
 ): { changed: boolean; completed: DuoQuest[] } {
   const completed: DuoQuest[] = [];
@@ -94,6 +97,8 @@ export function stepQuests(
     if (qq.id === 'boat') {
       // 同一艘船，或各自划船靠在一起（兩邊畫面各自判斷自己有沒有在船上）
       if (ctx.onBoat && d < 8 && dy < 1.5) finish(qq);
+    } else if (qq.id === 'peach') {
+      if (ctx.peachTogether) finish(qq);
     } else if (qq.id === 'tower') {
       if (ctx.onTowerTop && d < 5 && partner.y > TRAIL.topFloorY - 2) finish(qq);
     } else if (qq.place) {

@@ -13,7 +13,7 @@ import { getStyleMaterials, mergeByMaterial, LanternBatch } from './architecture
 const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
 /** 西側白牆：牆的西面（朝廣場）在 x0、東面（朝百工坊街）在 x1 */
-export const CRAFT_WALL = { x0: 80.0, x1: 80.6, z0: -55.6, z1: -32.0, h: 4.6, gateZ: -50.0, gateR: 1.45 };
+export const CRAFT_WALL = { x0: 80.0, x1: 80.6, z0: -55.6, z1: -32.0, h: 4.6, gateZ: -46.6, gateR: 1.45 };
 
 /** 大熊匠鋪裡大熊站的位置（本地座標：x 沿街、z 朝街為正） */
 export const BEAR_LOCAL = { x: 7.2, z: 1.3 };
