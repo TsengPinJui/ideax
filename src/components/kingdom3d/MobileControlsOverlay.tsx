@@ -96,7 +96,7 @@ function getBuildingFeatureLabel(b: BuildingInteractable): string {
     case 'discussion-library':
       return b.name.includes('・') ? b.name : '藏書閣（交流討論／地下圖書館）';
     case 'discussion-workshop':
-      return '百工坊（技術討論）';
+      return '大熊匠鋪（百工坊・技術討論）';
     case 'discussion-street':
       return '茶藝街（主題討論）';
     case 'creative-exhibition':

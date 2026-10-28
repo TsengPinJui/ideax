@@ -254,8 +254,18 @@ function arcWall(r: number, y0: number, h: number, t0: number, t1: number, seg: 
 /** 平放的環形板（θ 範圍 t0..t1；本地極座標） */
 function annulus(r0: number, r1: number, t0: number, t1: number, seg: number, faceUp = true) {
   const g = new THREE.RingGeometry(r0, r1, seg, 1, t0 - Math.PI / 2, t1 - t0);
-  g.rotateX(faceUp ? -Math.PI / 2 : Math.PI / 2);
-  if (!faceUp) g.scale(1, 1, -1);
+  g.rotateX(-Math.PI / 2);
+  // 朝下（天花）：位置一樣、三角形反過來繞，從下面往上看才看得到
+  // （以前用鏡射翻面，鏡射會把繞向又翻回朝上，一樓抬頭看不到二樓樓板，整片外牆一路透到屋頂）
+  if (!faceUp) {
+    const idx = g.index!;
+    for (let i = 0; i < idx.count; i += 3) {
+      const a = idx.getX(i + 1);
+      idx.setX(i + 1, idx.getX(i + 2));
+      idx.setX(i + 2, a);
+    }
+    idx.needsUpdate = true;
+  }
   const p = g.attributes.position as THREE.BufferAttribute;
   const uv = g.attributes.uv as THREE.BufferAttribute;
   for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / 2.5, p.getZ(i) / 2.5);
@@ -331,15 +341,33 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
 
   // ── 樓板（二樓、三樓）：內圈整環＋外圈在樓梯井處留洞；底面當下一層的天花
   const holeHalf = (f: RingFlight) => (f.L / 2 + 0.3) / RING.RC;
+  // 天花板用暖色木板（深色木在迴廊裡看起來像一片黑），下面再排一圈徑向木樑
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x9a6a40, roughness: 0.85 });
+  for (let k = 1; k < RING.floors; k++) {
+    const y = k * FH;
+    const f = fl[k - 1];
+    const hh = holeHalf(f);
+    const nb = 48;
+    for (let i = 0; i < nb; i++) {
+      const th = (i / nb) * Math.PI * 2;
+      const dth = Math.atan2(Math.sin(th - f.theta), Math.cos(th - f.theta));
+      const r0 = RI - 0.2;
+      // 樓梯井那一段只排到內外圈分界
+      const r1 = Math.abs(dth) < hh ? RING.SPLIT : RO - 0.05;
+      add(new THREE.BoxGeometry(0.18, 0.22, r1 - r0), mats.darkWood, Math.sin(th) * ((r0 + r1) / 2), y - 0.36, Math.cos(th) * ((r0 + r1) / 2), th);
+    }
+    // 外牆內側沿著天花的一圈托樑
+    add(arcWall(RO - 0.06, y - 0.5, 0.25, 0, Math.PI * 2, 96), mats.darkWood);
+  }
   for (let k = 1; k < RING.floors; k++) {
     const y = k * FH;
     const f = fl[k - 1];
     add(annulus(RI - 0.25, RING.SPLIT, 0, Math.PI * 2, 96), mats.woodFloor, 0, y, 0);
-    add(annulus(RI - 0.25, RING.SPLIT, 0, Math.PI * 2, 96, false), mats.darkWood, 0, y - 0.25, 0);
+    add(annulus(RI - 0.25, RING.SPLIT, 0, Math.PI * 2, 96, false), ceilMat, 0, y - 0.25, 0);
     const a0 = f.theta + holeHalf(f);
     const a1 = f.theta - holeHalf(f) + Math.PI * 2;
     add(annulus(RING.SPLIT, RO, a0, a1, 84), mats.woodFloor, 0, y, 0);
-    add(annulus(RING.SPLIT, RO, a0, a1, 84, false), mats.darkWood, 0, y - 0.25, 0);
+    add(annulus(RING.SPLIT, RO, a0, a1, 84, false), ceilMat, 0, y - 0.25, 0);
     add(arcWall(RI - 0.25, y - 0.25, 0.25, 0, Math.PI * 2, 96), mats.redLacquer);
     // 迴廊欄杆（朝中庭）
     add(arcWall(RI - 0.02, y, 0.9, 0, Math.PI * 2, 96), mats.balustrade);

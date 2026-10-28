@@ -29,7 +29,7 @@ import { getStoryLayout, levelColliders, levelY } from './multiStory';
 import { makePickProxy } from '../picking';
 import { DOOR_COUPLETS } from '../couplets';
 import { bridgeRailRange } from '../regionConfigs';
-import { drawJobScrollTexture } from './jobScroll';
+import { drawJobScrollTexture, JOB_SCROLLS } from './jobScroll';
 import { createSosoNpc } from './npcs';
 import { hallOf, createHallStairEntrance, isFloorsHall } from './exhibitHall';
 import { createHallLobby, lobbyPit } from './hallLobby';
@@ -617,7 +617,7 @@ export interface StyledBuildingInput {
   tiers?: number;
   floors?: number;
   basements?: number;
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop';
   /** 招牌名稱下方的小字；沒有就用 previewBadge */
   signSub?: string;
   npc?: 'soso';
@@ -1116,19 +1116,28 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const inner = new THREE.Group();
   // 求職廟：兩側換成搜搜的尋職畫卷（內容只畫在自己的畫面上）＋搜搜本人
   if (b.npc === 'soso') {
-    for (const side of [0, 1]) {
-      const sx = side === 0 ? -1 : 1;
-      const scroll = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.44), new THREE.MeshStandardMaterial({ map: drawJobScrollTexture(side, [], 'idle'), roughness: 0.85 }));
-      scroll.position.set(sx * (w / 2 - thick / 2 - 0.05), 2.35, -0.2);
+    // 左右牆各三卷（共 JOB_SCROLLS 卷、每卷 5 筆）：搜出來的職缺通常不少，一次多列一些
+    const per = JOB_SCROLLS / 2;
+    const sw = 1.95;
+    const shh = sw * (860 / 600);
+    const gapZ = 0.42;
+    const span = per * sw + (per - 1) * gapZ;
+    for (let side = 0; side < JOB_SCROLLS; side++) {
+      const sx = side < per ? -1 : 1;
+      const k = side % per;
+      // 面向牆時由左往右讀：左牆（朝 +x）從裡到外、右牆（朝 -x）從外到裡
+      const zz = sx < 0 ? -span / 2 + sw / 2 + k * (sw + gapZ) - 0.2 : span / 2 - sw / 2 - k * (sw + gapZ) - 0.2;
+      const scroll = new THREE.Mesh(new THREE.PlaneGeometry(sw, shh), new THREE.MeshStandardMaterial({ map: drawJobScrollTexture(side, [], 'idle'), roughness: 0.85 }));
+      scroll.position.set(sx * (w / 2 - thick / 2 - 0.05), 2.4, zz);
       scroll.rotation.y = -sx * (Math.PI / 2);
       scroll.userData.noMerge = true;
       scroll.userData.jobScroll = { side };
       scroll.userData.pick = { kind: 'jobScroll' };
       inner.add(scroll);
-      for (const yy of [2.35 + 1.78, 2.35 - 1.78]) {
-        const rod = addMesh(inner, new THREE.CylinderGeometry(0.07, 0.07, 2.7, 10), mats.darkWood, sx * (w / 2 - thick / 2 - 0.12), yy, -0.2);
+      for (const yy of [2.4 + shh / 2 + 0.06, 2.4 - shh / 2 - 0.06]) {
+        const rod = addMesh(inner, new THREE.CylinderGeometry(0.06, 0.06, sw + 0.24, 10), mats.darkWood, sx * (w / 2 - thick / 2 - 0.12), yy, zz);
         rod.rotation.x = Math.PI / 2;
-        for (const e of [-1, 1]) addMesh(inner, new THREE.SphereGeometry(0.1, 8, 6), mats.gold, sx * (w / 2 - thick / 2 - 0.12), yy, -0.2 + e * 1.38);
+        for (const e of [-1, 1]) addMesh(inner, new THREE.SphereGeometry(0.085, 8, 6), mats.gold, sx * (w / 2 - thick / 2 - 0.12), yy, zz + e * (sw / 2 + 0.12));
       }
     }
     const soso = createSosoNpc();
@@ -1137,11 +1146,15 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     soso.userData.noMerge = true;
     root.add(soso);
   }
+  // 徵才島的翰林院、人才獵頭：兩側牆各掛一排卷軸（一般建築兩幅）
+  const manyScrolls = b.id === 'career-academy' || b.id === 'hanlin-headhunter';
+  const nScroll = manyScrolls ? 5 : 2;
   for (const sx of lay || b.npc === 'soso' ? [] : [-1, 1]) {
-    for (let k = 0; k < 2; k++) {
+    for (let k = 0; k < nScroll; k++) {
       const pm = new THREE.MeshStandardMaterial({ map: scrollPaintingTexture(hv % 7 + k + (sx > 0 ? 3 : 0)), roughness: 0.9 });
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.2), pm);
-      p.position.set(sx * (w / 2 - thick / 2 - 0.03), 2.2, -d / 4 + k * (d / 2.4));
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(manyScrolls ? 0.95 : 0.9, manyScrolls ? 2.5 : 2.2), pm);
+      const zk = manyScrolls ? -d / 2 + 1.2 + (k * (d - 2.6)) / (nScroll - 1) : -d / 4 + k * (d / 2.4);
+      p.position.set(sx * (w / 2 - thick / 2 - 0.03), manyScrolls ? 2.4 : 2.2, zk);
       p.rotation.y = -sx * Math.PI / 2;
       p.userData.noMerge = true;
       inner.add(p);

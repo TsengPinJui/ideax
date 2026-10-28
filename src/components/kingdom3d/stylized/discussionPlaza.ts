@@ -29,7 +29,7 @@ const TABLES: [number, number][] = [
 export type WallBoardWhich = 'tea' | 'craft';
 export const WALL_BOARDS: { which: WallBoardWhich; x: number; z: number; yaw: number; propId: string }[] = [
   { which: 'tea', x: 64.2, z: -43.5, yaw: Math.PI / 2, propId: 'region-discussion-tea-board-0' },
-  { which: 'craft', x: 79.8, z: -43.5, yaw: -Math.PI / 2, propId: 'region-discussion-craft-board-5' },
+  { which: 'craft', x: 80.0, z: -43.5, yaw: -Math.PI / 2, propId: 'region-discussion-craft-board-5' },
 ];
 const WALL_BOARD_TEXT: Record<WallBoardWhich, { title: string; sub: string }> = {
   tea: { title: '茶藝街・熱門茶話', sub: '日常・生活・職場・靈感' },

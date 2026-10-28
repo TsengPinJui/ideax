@@ -357,8 +357,9 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     [84, 48.2],
     [60, 51.6],
   ];
-  nests.forEach(([nx, nz], i) => {
-    for (let k = 0; k < 2; k++) {
+  // 一處一隻就好（以前每處兩隻、共六隻，太多了）；只留翰林院、求職廟門前各一隻
+  nests.slice(0, 2).forEach(([nx, nz], i) => {
+    for (let k = 0; k < 1; k++) {
       const s = swallow();
       root.add(s.g);
       birds.push({ ...s, cx: nx, cz: nz, r: 3 + rand() * 2.5, sp: (1.1 + rand() * 0.5) * (k ? 1 : -1), ph: rand() * 6, y: 3.6 + rand() * 1.6 + i * 0.2 });
