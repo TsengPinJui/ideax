@@ -10,6 +10,7 @@ import { rateLimit, requireAdminMiddleware, requireSignedInForAi } from './serve
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
+import { claimXpTask, getMyXpState, adminGetXpConfig, adminSetXpConfig, adminGetUserXp, adminGrantXp, publicXpConfig } from './server/xpSystem';
 import { applyPointsOp, completeProjectPlanExport, findUserDocByAuth, grantSignupBonus, grantFirstPostBonus, PointsError, processSubscriptionExpiry, refundProjectPlanExport, spendProjectPlanExport } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
@@ -59,6 +60,7 @@ app.use('/api/ai/customer-analytics', requireAdminMiddleware);
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
 app.use('/api/auth/claim-signup-bonus', rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'signup-bonus' }));
 app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
+app.use('/api/xp', rateLimit({ windowMs: 60 * 1000, max: 60, name: 'xp' }));
 app.use('/api/ai/project-plan-export', rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'project-plan-export' }));
 app.use('/api/answers', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'answers' }));
 app.use('/api/mascot/ask', rateLimit({ windowMs: 60 * 1000, max: 12, name: 'mascot-ask' }));
@@ -4156,6 +4158,77 @@ app.post('/api/ai/project-plan-export', async (req: Request, res: Response) => {
       return res.status(status).json({ success: false, error: message, balance: refundedBalance });
     }
     res.status(status).json({ success: false, error: message });
+  }
+});
+
+// 等級與經驗值：XP、升級與升級點數一律由伺服器判定（前端只能說「我完成了哪個任務」，數值由伺服器決定）
+const xpError = (res: Response, err: any, label: string) => {
+  const status = err instanceof PointsError ? err.status : 500;
+  if (status >= 500) console.error(`[XP] ${label}`, err?.message || err);
+  res.status(status).json({ success: false, error: err?.message || '經驗值處理失敗' });
+};
+app.get('/api/xp/config', async (_req: Request, res: Response) => {
+  try {
+    res.json({ success: true, config: await publicXpConfig() });
+  } catch (err: any) {
+    xpError(res, err, 'config');
+  }
+});
+app.get('/api/xp/me', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請登入後查看等級' });
+    res.json({ success: true, ...(await getMyXpState(authUser, { lite: req.query.lite === '1' })) });
+  } catch (err: any) {
+    xpError(res, err, 'me');
+  }
+});
+app.post('/api/xp/claim', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請登入後領取經驗值' });
+    const { taskId, refId } = req.body || {};
+    res.json({ success: true, ...(await claimXpTask(authUser, { taskId, refId })) });
+  } catch (err: any) {
+    xpError(res, err, 'claim');
+  }
+});
+app.get('/api/admin/xp/config', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入' });
+    res.json({ success: true, ...(await adminGetXpConfig(authUser)) });
+  } catch (err: any) {
+    xpError(res, err, 'admin config');
+  }
+});
+app.post('/api/admin/xp/config', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入' });
+    res.json({ success: true, ...(await adminSetXpConfig(authUser, req.body || {})) });
+  } catch (err: any) {
+    xpError(res, err, 'admin set config');
+  }
+});
+app.get('/api/admin/xp/user/:userId', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入' });
+    res.json({ success: true, ...(await adminGetUserXp(authUser, String(req.params.userId || ''))) });
+  } catch (err: any) {
+    xpError(res, err, 'admin user');
+  }
+});
+app.post('/api/admin/xp/grant', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入' });
+    res.json({ success: true, ...(await adminGrantXp(authUser, req.body || {})) });
+  } catch (err: any) {
+    xpError(res, err, 'admin grant');
   }
 });
 

@@ -43890,7 +43890,7 @@ var require_websocket = __commonJS({
     var http3 = __require("http");
     var net2 = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes3, createHash: createHash2 } = __require("crypto");
+    var { randomBytes: randomBytes3, createHash: createHash3 } = __require("crypto");
     var { Duplex, Readable: Readable2 } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -44558,7 +44558,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest2 = createHash2("sha1").update(key + GUID).digest("base64");
+        const digest2 = createHash3("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest2) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -44927,7 +44927,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter = __require("events");
     var http3 = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash2 } = __require("crypto");
+    var { createHash: createHash3 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -45234,7 +45234,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest2 = createHash2("sha1").update(key + GUID).digest("base64");
+        const digest2 = createHash3("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -96598,9 +96598,9 @@ var init_build2 = __esm({
           rune1 = r2 >> 3;
           width1 = r2 & 7;
         }
-        let flag;
-        if (currentPos === 0) flag = Utils.emptyOpContext(-1, rune);
-        else flag = input.context(currentPos);
+        let flag2;
+        if (currentPos === 0) flag2 = Utils.emptyOpContext(-1, rune);
+        else flag2 = input.context(currentPos);
         while (true) {
           if (runq.isEmpty()) {
             if ((startCond & Utils.EMPTY_BEGIN_TEXT) !== 0 && currentPos !== 0) break;
@@ -96616,19 +96616,19 @@ var init_build2 = __esm({
               r2 = input.step(currentPos + width);
               rune1 = r2 >> 3;
               width1 = r2 & 7;
-              flag = input.context(currentPos);
+              flag2 = input.context(currentPos);
             }
           }
-          if (currentPos === 0 && this.prog.numLb > 0) for (let i2 = 0; i2 < this.prog.lbStarts.length; i2++) this.add(runq, this.prog.lbStarts[i2], currentPos, this.matchcap, 0, flag);
+          if (currentPos === 0 && this.prog.numLb > 0) for (let i2 = 0; i2 < this.prog.lbStarts.length; i2++) this.add(runq, this.prog.lbStarts[i2], currentPos, this.matchcap, 0, flag2);
           if (!this.matched && (currentPos === 0 || anchor === RE2Flags.UNANCHORED)) {
             if (currentPos >= matchStartPos) {
               if (this.ncap > 0) this.matchcap[0] = currentPos;
-              this.add(runq, this.prog.start, currentPos, this.matchcap, 0, flag);
+              this.add(runq, this.prog.start, currentPos, this.matchcap, 0, flag2);
             }
           }
           const nextPos = currentPos + width;
-          flag = input.context(nextPos);
-          this.step(runq, nextq, currentPos, nextPos, rune, flag, anchor, currentPos === input.endPos());
+          flag2 = input.context(nextPos);
+          this.step(runq, nextq, currentPos, nextPos, rune, flag2, anchor, currentPos === input.endPos());
           if (width === 0) break;
           if (this.ncap === 0 && this.matched) break;
           currentPos += width;
@@ -96664,19 +96664,19 @@ var init_build2 = __esm({
           rune1 = r2 >> 3;
           width1 = r2 & 7;
         }
-        let flag = currentPos === 0 ? Utils.emptyOpContext(-1, rune) : input.context(currentPos);
+        let flag2 = currentPos === 0 ? Utils.emptyOpContext(-1, rune) : input.context(currentPos);
         const matches = /* @__PURE__ */ new Set();
         while (true) {
           if (runq.isEmpty()) {
             if ((startCond & Utils.EMPTY_BEGIN_TEXT) !== 0 && currentPos !== 0) break;
             if ((anchor === RE2Flags.ANCHOR_START || anchor === RE2Flags.ANCHOR_BOTH) && currentPos !== 0) break;
           }
-          if (currentPos === 0 && this.prog.numLb > 0) for (let i2 = 0; i2 < this.prog.lbStarts.length; i2++) this.add(runq, this.prog.lbStarts[i2], currentPos, this.matchcap, 0, flag);
+          if (currentPos === 0 && this.prog.numLb > 0) for (let i2 = 0; i2 < this.prog.lbStarts.length; i2++) this.add(runq, this.prog.lbStarts[i2], currentPos, this.matchcap, 0, flag2);
           if (currentPos === 0 || anchor === RE2Flags.UNANCHORED) {
-            if (currentPos >= matchStartPos) this.add(runq, this.prog.start, currentPos, this.matchcap, 0, flag);
+            if (currentPos >= matchStartPos) this.add(runq, this.prog.start, currentPos, this.matchcap, 0, flag2);
           }
           const nextPos = currentPos + width;
-          flag = input.context(nextPos);
+          flag2 = input.context(nextPos);
           for (let j = 0; j < runq.size; j++) {
             const pc = runq.densePcs[j];
             const i2 = this.prog.inst[pc];
@@ -96702,7 +96702,7 @@ var init_build2 = __esm({
               default:
                 continue;
             }
-            if (add) this.add(nextq, i2.out, nextPos, runq.denseCaps, capOffset, flag);
+            if (add) this.add(nextq, i2.out, nextPos, runq.denseCaps, capOffset, flag2);
           }
           runq.clear();
           if (width === 0) break;
@@ -97200,8 +97200,8 @@ var init_build2 = __esm({
                   continue;
                 }
               case Inst.EMPTY_WIDTH: {
-                const flag = input.context(currentPos);
-                if ((inst.arg & ~flag) !== 0) break;
+                const flag2 = input.context(currentPos);
+                if ((inst.arg & ~flag2) !== 0) break;
                 currentPc = inst.out;
                 continue;
               }
@@ -97587,7 +97587,7 @@ var init_build2 = __esm({
             width1 = r1 & 7;
           }
         }
-        let flag = pos === 0 ? Utils.emptyOpContext(-1, rune) : input.context(pos);
+        let flag2 = pos === 0 ? Utils.emptyOpContext(-1, rune) : input.context(pos);
         let pc = onepass.start;
         let inst;
         while (true) {
@@ -97622,7 +97622,7 @@ var init_build2 = __esm({
             case Inst.NOP:
               continue;
             case Inst.EMPTY_WIDTH:
-              if ((inst.arg & ~flag) !== 0) return null;
+              if ((inst.arg & ~flag2) !== 0) return null;
               continue;
             case Inst.CAPTURE:
               if (inst.arg < matchcap.length) matchcap[inst.arg] = pos;
@@ -97631,7 +97631,7 @@ var init_build2 = __esm({
               throw new RE2JSInternalException("bad inst");
           }
           if (width === 0) break;
-          flag = Utils.emptyOpContext(rune, rune1);
+          flag2 = Utils.emptyOpContext(rune, rune1);
           pos += width;
           rune = rune1;
           width = width1;
@@ -98144,13 +98144,13 @@ var init_build2 = __esm({
         return [i2.op === Inst.MATCH, prefix];
       }
       startCond() {
-        let flag = 0;
+        let flag2 = 0;
         let pc = this.start;
         loop: for (; ; ) {
           const i2 = this.inst[pc];
           switch (i2.op) {
             case Inst.EMPTY_WIDTH:
-              flag |= i2.arg;
+              flag2 |= i2.arg;
               break;
             case Inst.FAIL:
               return -1;
@@ -98162,7 +98162,7 @@ var init_build2 = __esm({
           }
           pc = i2.out;
         }
-        return flag;
+        return flag2;
       }
       patch(l, val) {
         let head = l.head;
@@ -135033,12 +135033,12 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       updatedLikes = [...likedList, proposalId];
       newLikeCount = baseCount + 1;
     }
-    const nowIso2 = (/* @__PURE__ */ new Date()).toISOString();
+    const nowIso3 = (/* @__PURE__ */ new Date()).toISOString();
     if (propSnap.exists) {
       transaction.update(propRef, {
         likeCount: newLikeCount,
         likesCount: newLikeCount,
-        updatedAt: nowIso2
+        updatedAt: nowIso3
       });
     } else {
       transaction.set(
@@ -135047,7 +135047,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
           id: proposalId,
           likeCount: newLikeCount,
           likesCount: newLikeCount,
-          updatedAt: nowIso2
+          updatedAt: nowIso3
         },
         { merge: true }
       );
@@ -135056,7 +135056,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       transaction.update(questionRef, {
         likes: newLikeCount,
         secondedCount: newLikeCount,
-        updatedAt: nowIso2
+        updatedAt: nowIso3
       });
     }
     transaction.set(
@@ -135064,7 +135064,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       {
         userId,
         proposalIds: updatedLikes,
-        updatedAt: nowIso2
+        updatedAt: nowIso3
       },
       { merge: true }
     );
@@ -171316,6 +171316,12 @@ ${need}` : ""}${reply?.data?.shouldHandoverToHuman ? "\n\u5EFA\u8B70\u4F60\u89AA
   return result;
 }
 
+// server/xpSystem.ts
+init_app();
+init_firebase_applet_config();
+init_competitionService();
+import { createHash as createHash2 } from "node:crypto";
+
 // server/pointsLedger.ts
 init_app();
 init_firebase_applet_config();
@@ -171950,6 +171956,536 @@ async function loadFeeRateResolver(db) {
     const r2 = typeof fromCustom === "number" ? fromCustom : base3;
     return Math.max(-0.2, Math.min(0.5, Number(r2) || 0));
   };
+}
+
+// src/data/xpRules.ts
+var XP_TIMEZONE = "Asia/Taipei";
+var xpToNextLevel = (level) => 500 + 100 * (Math.max(1, Math.floor(level)) - 1);
+var cumulativeXpForLevel = (level) => {
+  const n = Math.max(1, Math.floor(level));
+  return 50 * (n - 1) * (n + 8);
+};
+function levelFromXp(totalXp, maxLevel = DEFAULT_MAX_LEVEL) {
+  const xp = Math.max(0, Math.floor(Number(totalXp) || 0));
+  let n = Math.floor((-7 + Math.sqrt(49 + 4 * (8 + xp / 50))) / 2);
+  n = Math.max(1, n);
+  while (n > 1 && cumulativeXpForLevel(n) > xp) n--;
+  while (cumulativeXpForLevel(n + 1) <= xp) n++;
+  return Math.min(n, Math.max(1, maxLevel));
+}
+function levelProgress(totalXp, maxLevel = DEFAULT_MAX_LEVEL) {
+  const xp = Math.max(0, Math.floor(Number(totalXp) || 0));
+  const level = levelFromXp(xp, maxLevel);
+  const isMax = level >= maxLevel;
+  const base3 = cumulativeXpForLevel(level);
+  const span = xpToNextLevel(level);
+  const cur = xp - base3;
+  return {
+    level,
+    totalXp: xp,
+    currentLevelXp: isMax ? Math.min(cur, span) : cur,
+    levelSpan: span,
+    toNext: isMax ? 0 : Math.max(0, base3 + span - xp),
+    nextLevelXp: base3 + span,
+    progress: isMax ? 1 : Math.min(1, Math.max(0, cur / span)),
+    isMax
+  };
+}
+var DEFAULT_MAX_LEVEL = 70;
+var DEFAULT_LEVEL_REWARDS = {
+  5: 30,
+  10: 20,
+  20: 30,
+  30: 40,
+  40: 50,
+  50: 60,
+  60: 70,
+  70: 80
+};
+var DEFAULT_LEVEL_REWARD = 1;
+var rewardForLevel = (level, cfg) => {
+  const v = cfg.levelRewards[String(level)];
+  return typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : Math.max(0, Math.floor(cfg.defaultLevelReward));
+};
+var XP_TASKS = [
+  { id: "profile", title: "\u5B8C\u6210\u500B\u4EBA\u8CC7\u6599\u8A2D\u5B9A", desc: "\u586B\u597D\u540D\u7A31\u3001\u982D\u50CF\u8207\u81F3\u5C11 10 \u500B\u5B57\u7684\u81EA\u6211\u4ECB\u7D39", xp: 500, kind: "once", group: "start" },
+  { id: "world", title: "\u9996\u6B21\u9032\u5165 3D \u5275\u9EDE\u6E90\u4E16\u754C", desc: "\u5F9E\u9996\u9801\u9032\u5165\u5BE6\u5883\u6F2B\u904A\u6216 3D \u5730\u5716", xp: 300, kind: "once", group: "start" },
+  { id: "island", title: "\u9996\u6B21\u63A2\u7D22\u6BCF\u5EA7\u5CF6\u5DBC", desc: "\u8D70\u4E0A\u4E3B\u5CF6\u3001\u75DB\u9EDE\u5CF6\u3001\u8A0E\u8AD6\u5CF6\u3001\u5275\u610F\u5CF6\u3001\u5FB5\u624D\u5CF6\uFF08\u6BCF\u5EA7\u4E00\u6B21\uFF09", xp: 300, kind: "oncePerRef", group: "explore" },
+  { id: "venue", title: "\u9996\u6B21\u9032\u5165\u6BCF\u500B\u5834\u9928", desc: "\u8D70\u9032\u85CF\u66F8\u95A3\u3001\u5C55\u89BD\u9928\u3001\u96FB\u73A9\u57CE\u3001\u7FF0\u6797\u9662\u3001\u6C42\u8077\u5EDF\u7B49\u5834\u9928\uFF08\u6BCF\u9928\u4E00\u6B21\uFF09", xp: 150, kind: "oncePerRef", group: "explore" },
+  { id: "daily_checkin", title: "\u6BCF\u65E5\u7C3D\u5230", desc: "\u6BCF\u5929\u767B\u5165 IdeaX", xp: 100, kind: "daily", group: "daily" },
+  { id: "daily_roam", title: "\u6BCF\u65E5\u6F2B\u904A", desc: "\u6BCF\u5929\u9032\u5165 3D \u5275\u9EDE\u6E90\u4E16\u754C\u901B\u4E00\u901B", xp: 100, kind: "daily", group: "daily" },
+  { id: "daily_post", title: "\u6BCF\u65E5\u767C\u8A00", desc: "\u6BCF\u5929\u767C\u8868\u4E00\u5247\u6709\u6548\u7684\u63D0\u554F\u6216\u56DE\u7B54", xp: 100, kind: "daily", group: "daily" },
+  { id: "weekly_explore", title: "\u6BCF\u9031\u63A2\u7D22\u6311\u6230", desc: "\u540C\u4E00\u9031\u5167\u8D70\u904E\u5168\u90E8\u4E94\u5EA7\u5CF6\u5DBC", xp: 1e3, kind: "weekly", group: "weekly" },
+  { id: "question", title: "\u63D0\u51FA\u6709\u6548\u554F\u984C", desc: "\u6A19\u984C\u52A0\u5167\u5BB9\u81F3\u5C11 20 \u5B57\uFF1B\u6BCF\u65E5\u6700\u591A\u8A08 5 \u5247", xp: 100, kind: "event", group: "contribute" },
+  { id: "answer", title: "\u63D0\u4F9B\u6709\u6548\u56DE\u7B54", desc: "\u56DE\u7B54\u5225\u4EBA\u7684\u554F\u984C\u3001\u81F3\u5C11 30 \u5B57\uFF1B\u540C\u4E00\u984C\u53EA\u8A08\u4E00\u6B21\uFF0C\u6BCF\u65E5\u6700\u591A 10 \u5247", xp: 200, kind: "event", group: "contribute" },
+  { id: "accepted", title: "\u56DE\u7B54\u88AB\u63D0\u554F\u8005\u63A1\u7D0D", desc: "\u6BCF\u7B46\u56DE\u7B54\u4E00\u6B21\uFF08\u4E0D\u542B\u81EA\u554F\u81EA\u7B54\uFF09", xp: 400, kind: "event", group: "contribute" },
+  { id: "quality", title: "\u512A\u8CEA\u5C08\u696D\u8CA2\u737B", desc: "\u7D93\u5E73\u53F0\u5BE9\u6838\u7684\u512A\u8CEA\u5167\u5BB9\uFF0C\u734E\u52F5 500\u20131,000 XP", xp: 500, kind: "admin", group: "contribute" }
+];
+var DEFAULT_DAILY_CAPS = { question: 5, answer: 10, accepted: 5 };
+var DEFAULT_XP_CONFIG = {
+  maxLevel: DEFAULT_MAX_LEVEL,
+  levelRewards: Object.fromEntries(Object.entries(DEFAULT_LEVEL_REWARDS).map(([k, v]) => [k, v])),
+  defaultLevelReward: DEFAULT_LEVEL_REWARD,
+  rewardPointType: "platform",
+  taskXp: Object.fromEntries(XP_TASKS.map((t2) => [t2.id, t2.xp])),
+  dailyCaps: { ...DEFAULT_DAILY_CAPS }
+};
+var XP_ISLANDS = {
+  "region-home": "\u4E3B\u5CF6",
+  "region-pain": "\u75DB\u9EDE\u5CF6",
+  "region-discussion": "\u8A0E\u8AD6\u5CF6",
+  "region-creative": "\u5275\u610F\u5CF6",
+  "region-career": "\u5FB5\u624D\u5CF6"
+};
+var XP_VENUES = {
+  "discussion-library": "\u85CF\u66F8\u95A3",
+  "discussion-street": "\u8336\u85DD\u8857\u4E3B\u8336\u6A13",
+  "discussion-workshop": "\u5927\u718A\u5320\u92EA",
+  "creative-exhibition": "\u5C55\u89BD\u9928",
+  "creative-arcade": "\u96FB\u73A9\u57CE",
+  "career-academy": "\u7FF0\u6797\u9662",
+  "career-temple": "\u6C42\u8077\u5EDF",
+  "hanlin-headhunter": "\u4EBA\u624D\u7375\u982D\uFF0F\u5A92\u5408\u5C08\u5BB6",
+  "pain-innovation-tower": "\u5275\u9EDE\u6A13",
+  "plateau-pagoda": "\u805A\u96F2\u5854"
+};
+function taipeiDay(d = /* @__PURE__ */ new Date()) {
+  return d.toLocaleDateString("en-CA", { timeZone: XP_TIMEZONE });
+}
+function taipeiWeek(d = /* @__PURE__ */ new Date()) {
+  const day = taipeiDay(d);
+  const [y, m2, dd] = day.split("-").map(Number);
+  const utc = new Date(Date.UTC(y, m2 - 1, dd));
+  const dow = (utc.getUTCDay() + 6) % 7;
+  utc.setUTCDate(utc.getUTCDate() - dow);
+  return utc.toISOString().slice(0, 10);
+}
+
+// server/xpSystem.ts
+var cfgCache = null;
+var testDb = null;
+async function getAdminDb2() {
+  if (testDb) return testDb;
+  if (!hasAdminCredentials) throw new PointsError("\u4F3A\u670D\u5668\u5C1A\u672A\u8A2D\u5B9A FIREBASE_SERVICE_ACCOUNT", 503);
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+var sha = (s2) => createHash2("sha256").update(s2).digest("hex").slice(0, 40);
+var nowIso2 = () => (/* @__PURE__ */ new Date()).toISOString();
+function mergeConfig(raw) {
+  const d = DEFAULT_XP_CONFIG;
+  const num = (v, def, min = 0, max = 1e7) => {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n >= min && n <= max ? n : def;
+  };
+  const rewards = { ...d.levelRewards };
+  if (raw?.levelRewards && typeof raw.levelRewards === "object") {
+    for (const [k, v] of Object.entries(raw.levelRewards)) {
+      const lv = Math.floor(Number(k));
+      if (lv >= 2 && lv <= 999) rewards[String(lv)] = num(v, 0, 0, 1e5);
+    }
+  }
+  const taskXp = { ...d.taskXp };
+  if (raw?.taskXp && typeof raw.taskXp === "object") {
+    for (const t2 of XP_TASKS) if (raw.taskXp[t2.id] !== void 0) taskXp[t2.id] = num(raw.taskXp[t2.id], d.taskXp[t2.id], 0, 1e5);
+  }
+  const dailyCaps = { ...d.dailyCaps };
+  if (raw?.dailyCaps && typeof raw.dailyCaps === "object") {
+    for (const k of Object.keys(d.dailyCaps)) if (raw.dailyCaps[k] !== void 0) dailyCaps[k] = num(raw.dailyCaps[k], d.dailyCaps[k], 0, 1e3);
+  }
+  return {
+    maxLevel: num(raw?.maxLevel, d.maxLevel, 2, 999),
+    levelRewards: rewards,
+    defaultLevelReward: num(raw?.defaultLevelReward, d.defaultLevelReward, 0, 1e5),
+    rewardPointType: "platform",
+    taskXp,
+    dailyCaps
+  };
+}
+async function getXpConfig() {
+  if (cfgCache && Date.now() - cfgCache.at < 6e4) return cfgCache.cfg;
+  try {
+    const { db } = await getAdminDb2();
+    const snap = await db.collection("xp_config").doc("main").get();
+    const cfg = mergeConfig(snap.exists ? snap.data() : null);
+    cfgCache = { at: Date.now(), cfg };
+    return cfg;
+  } catch {
+    return mergeConfig(null);
+  }
+}
+async function grantXp(input) {
+  const { db } = await getAdminDb2();
+  const cfg = await getXpConfig();
+  const eventId = sha(`${input.userId}|${input.taskId}|${input.period}|${input.refId || ""}`);
+  const ledgerRef = db.collection("xp_ledger").doc(eventId);
+  const xpRef = db.collection("user_xp").doc(input.userId);
+  const userRef = db.collection("users").doc(input.userId);
+  const claimRef = db.collection("task_claims").doc(`${input.userId}__${input.taskId}__${input.period || "once"}`.slice(0, 600));
+  const today = taipeiDay();
+  return db.runTransaction(async (tx) => {
+    const [prior, xpSnap, userSnap] = await Promise.all([tx.get(ledgerRef), tx.get(xpRef), tx.get(userRef)]);
+    const cur = xpSnap.exists ? xpSnap.data() : {};
+    const totalBefore = Math.max(0, Math.floor(Number(cur.totalXp) || 0));
+    const levelBefore = levelFromXp(totalBefore, cfg.maxLevel);
+    if (prior.exists) return { granted: false, reason: "already", xp: 0, totalXp: totalBefore, level: levelBefore, levelUps: [] };
+    if (!userSnap.exists) throw new PointsError("\u627E\u4E0D\u5230\u6703\u54E1\u8CC7\u6599", 404);
+    const daily = cur.daily && cur.daily.day === today ? { day: today, counts: { ...cur.daily.counts || {} } } : { day: today, counts: {} };
+    if (input.capKey && input.cap !== void 0 && (daily.counts[input.capKey] || 0) >= input.cap) {
+      return { granted: false, reason: "cap", xp: 0, totalXp: totalBefore, level: levelBefore, levelUps: [] };
+    }
+    const xp = Math.max(0, Math.floor(input.xp));
+    const totalAfter = totalBefore + xp;
+    const levelAfter = levelFromXp(totalAfter, cfg.maxLevel);
+    const rewardedLevel = Math.max(1, Math.floor(Number(cur.rewardedLevel) || 1));
+    const levels = [];
+    for (let L = rewardedLevel + 1; L <= levelAfter; L++) levels.push(L);
+    const rewardRefs = levels.map((L) => db.collection("level_rewards").doc(`${input.userId}__L${L}`));
+    const rewardSnaps = rewardRefs.length ? await Promise.all(rewardRefs.map((r2) => tx.get(r2))) : [];
+    const createdAt = nowIso2();
+    tx.create(ledgerRef, {
+      eventId,
+      userId: input.userId,
+      taskId: input.taskId,
+      period: input.period || null,
+      refId: input.refId || null,
+      delta: xp,
+      reason: input.reason,
+      totalAfter,
+      levelAfter,
+      by: input.by || "system",
+      createdAt
+    });
+    if (input.claimDoc) {
+      tx.set(claimRef, { userId: input.userId, taskId: input.taskId, period: input.period || "once", status: "claimed", xp, eventId, claimedAt: createdAt });
+    }
+    if (input.capKey) daily.counts[input.capKey] = (daily.counts[input.capKey] || 0) + 1;
+    const levelUps = [];
+    let balance = Number(userSnap.get("balance")) || 0;
+    levels.forEach((L, i2) => {
+      if (rewardSnaps[i2]?.exists) return;
+      const points = rewardForLevel(L, cfg);
+      levelUps.push({ level: L, points });
+      tx.create(rewardRefs[i2], {
+        rewardId: `${input.userId}__L${L}`,
+        userId: input.userId,
+        level: L,
+        points,
+        rewardType: cfg.rewardPointType,
+        status: "granted",
+        eventId,
+        createdAt
+      });
+      if (points > 0) {
+        balance += points;
+        tx.create(db.collection("points_ledger").doc(`level_reward_${sha(`${input.userId}|L${L}`)}`), {
+          userId: input.userId,
+          op: "earn",
+          source: "level_reward",
+          delta: points,
+          balanceAfter: balance,
+          level: L,
+          note: `\u5347\u7D1A\u5230 Lv.${L} \u734E\u52F5 ${points} \u5E73\u53F0\u9EDE`,
+          createdAt
+        });
+      }
+    });
+    const newRewarded = Math.max(rewardedLevel, levelAfter);
+    tx.set(xpRef, { userId: input.userId, totalXp: totalAfter, level: levelAfter, rewardedLevel: newRewarded, daily, updatedAt: createdAt }, { merge: true });
+    const userPatch = { level: levelAfter, totalXp: totalAfter, xpUpdatedAt: createdAt };
+    if (levelUps.some((u) => u.points > 0)) userPatch.balance = balance;
+    tx.update(userRef, userPatch);
+    return { granted: true, xp, totalXp: totalAfter, level: levelAfter, levelUps };
+  });
+}
+var plain = (s2) => String(s2 || "").replace(/<[^>]*>/g, " ").replace(/[#*_`>\-\[\]()!]/g, " ").replace(/\s+/g, "").trim();
+async function flag(userId, kind, detail) {
+  try {
+    const { db } = await getAdminDb2();
+    await db.collection("xp_flags").add({ userId, kind, ...detail, createdAt: nowIso2() });
+  } catch {
+  }
+}
+var within = (iso, ms) => {
+  const t2 = Date.parse(String(iso || ""));
+  return Number.isFinite(t2) && Date.now() - t2 < ms;
+};
+async function claimXpTask(auth, body) {
+  const { db } = await getAdminDb2();
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError("\u627E\u4E0D\u5230\u60A8\u7684\u6703\u54E1\u8CC7\u6599\uFF0C\u8ACB\u7A0D\u5F8C\u91CD\u65B0\u6574\u7406", 404);
+  const userId = userRef.id;
+  const cfg = await getXpConfig();
+  const taskId = String(body.taskId || "");
+  const refId = body.refId ? String(body.refId).slice(0, 200) : "";
+  const xpOf = (id) => cfg.taskXp[id] ?? 0;
+  const day = taipeiDay();
+  const week = taipeiWeek();
+  const results = [];
+  const add = (r2) => results.push(r2);
+  switch (taskId) {
+    case "profile": {
+      const u = (await userRef.get()).data() || {};
+      const missing = [];
+      if (!String(u.name || "").trim() || /^(訪客|旅人|新會員)$/.test(String(u.name).trim())) missing.push("\u540D\u7A31");
+      if (!String(u.avatar || "").trim()) missing.push("\u982D\u50CF");
+      if (plain(u.bio).length < 10) missing.push("\u81EA\u6211\u4ECB\u7D39\uFF08\u81F3\u5C11 10 \u5B57\uFF09");
+      if (missing.length) throw new PointsError(`\u500B\u4EBA\u8CC7\u6599\u9084\u5DEE\uFF1A${missing.join("\u3001")}`, 400);
+      add(await grantXp({ userId, taskId, period: "once", xp: xpOf(taskId), reason: "\u5B8C\u6210\u500B\u4EBA\u8CC7\u6599\u8A2D\u5B9A", claimDoc: true }));
+      break;
+    }
+    case "world": {
+      add(await grantXp({ userId, taskId, period: "once", xp: xpOf(taskId), reason: "\u9996\u6B21\u9032\u5165 3D \u5275\u9EDE\u6E90\u4E16\u754C", claimDoc: true }));
+      add(await grantXp({ userId, taskId: "daily_roam", period: day, xp: xpOf("daily_roam"), reason: "\u6BCF\u65E5\u6F2B\u904A", claimDoc: true }));
+      break;
+    }
+    case "island": {
+      if (!XP_ISLANDS[refId]) throw new PointsError("\u4E0D\u8A8D\u5F97\u7684\u5CF6\u5DBC", 400);
+      add(await grantXp({ userId, taskId, period: refId, xp: xpOf(taskId), reason: `\u9996\u6B21\u63A2\u7D22${XP_ISLANDS[refId]}`, refId, claimDoc: true }));
+      const wRef = db.collection("weekly_visits").doc(`${userId}__${week}`);
+      const islands = await db.runTransaction(async (tx) => {
+        const s2 = await tx.get(wRef);
+        const list = s2.exists ? s2.get("islands") || [] : [];
+        if (!list.includes(refId)) list.push(refId);
+        tx.set(wRef, { userId, week, islands: list, updatedAt: nowIso2() }, { merge: true });
+        return list;
+      });
+      if (Object.keys(XP_ISLANDS).every((id) => islands.includes(id))) {
+        add(await grantXp({ userId, taskId: "weekly_explore", period: week, xp: xpOf("weekly_explore"), reason: "\u6BCF\u9031\u63A2\u7D22\u6311\u6230\uFF1A\u4E00\u9031\u8D70\u904D\u4E94\u5EA7\u5CF6", claimDoc: true }));
+      }
+      break;
+    }
+    case "venue": {
+      if (!XP_VENUES[refId]) throw new PointsError("\u4E0D\u8A8D\u5F97\u7684\u5834\u9928", 400);
+      add(await grantXp({ userId, taskId, period: refId, xp: xpOf(taskId), reason: `\u9996\u6B21\u9032\u5165${XP_VENUES[refId]}`, refId, claimDoc: true }));
+      break;
+    }
+    case "daily_checkin":
+    case "daily_roam": {
+      add(await grantXp({ userId, taskId, period: day, xp: xpOf(taskId), reason: taskId === "daily_checkin" ? "\u6BCF\u65E5\u7C3D\u5230" : "\u6BCF\u65E5\u6F2B\u904A", claimDoc: true }));
+      break;
+    }
+    case "question": {
+      const q = await db.collection("questions").doc(refId).get();
+      if (!q.exists) throw new PointsError("\u9084\u627E\u4E0D\u5230\u9019\u5247\u554F\u984C\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66", 409);
+      const d = q.data() || {};
+      const mine = d.authorAuthUid === auth.uid || d.authorId === userId;
+      if (!mine) throw new PointsError("\u53EA\u80FD\u9818\u53D6\u81EA\u5DF1\u767C\u8868\u7684\u554F\u984C", 403);
+      if (d.isOfficial || d.status === "delisted") throw new PointsError("\u9019\u5247\u554F\u984C\u4E0D\u7B26\u5408\u734E\u52F5\u689D\u4EF6", 400);
+      if (!within(d.createdAt, 3 * 24 * 3600 * 1e3)) throw new PointsError("\u53EA\u6709 3 \u5929\u5167\u767C\u8868\u7684\u554F\u984C\u53EF\u4EE5\u9818\u53D6", 400);
+      if (plain(d.title).length + plain(d.description).length < 20) throw new PointsError("\u554F\u984C\u5167\u5BB9\u592A\u77ED\uFF08\u6A19\u984C\u52A0\u5167\u5BB9\u81F3\u5C11 20 \u5B57\uFF09", 400);
+      const r2 = await grantXp({ userId, taskId, period: "q", refId, xp: xpOf(taskId), reason: "\u63D0\u51FA\u6709\u6548\u554F\u984C", capKey: "question", cap: cfg.dailyCaps.question });
+      if (r2.reason === "cap") await flag(userId, "question_cap", { refId });
+      add(r2);
+      if (r2.granted) add(await grantXp({ userId, taskId: "daily_post", period: day, xp: xpOf("daily_post"), reason: "\u6BCF\u65E5\u767C\u8A00", claimDoc: true }));
+      break;
+    }
+    case "answer": {
+      const a = await db.collection("answers").doc(refId).get();
+      if (!a.exists) throw new PointsError("\u9084\u627E\u4E0D\u5230\u9019\u5247\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66", 409);
+      const d = a.data() || {};
+      const mine = d.solverAuthUid === auth.uid || d.solverId === userId;
+      if (!mine) throw new PointsError("\u53EA\u80FD\u9818\u53D6\u81EA\u5DF1\u7684\u56DE\u7B54", 403);
+      if (!within(d.createdAt, 3 * 24 * 3600 * 1e3)) throw new PointsError("\u53EA\u6709 3 \u5929\u5167\u7684\u56DE\u7B54\u53EF\u4EE5\u9818\u53D6", 400);
+      const q = d.questionId ? await db.collection("questions").doc(String(d.questionId)).get() : null;
+      if (!q || !q.exists) throw new PointsError("\u627E\u4E0D\u5230\u56DE\u7B54\u7684\u554F\u984C", 400);
+      const qd = q.data() || {};
+      if (qd.authorAuthUid === auth.uid || qd.authorId === userId) {
+        await flag(userId, "self_answer", { refId, questionId: d.questionId });
+        throw new PointsError("\u56DE\u7B54\u81EA\u5DF1\u7684\u554F\u984C\u4E0D\u8A08\u7D93\u9A57\u503C", 400);
+      }
+      let text = plain(d.freePreview) + plain(d.fullContent);
+      if (text.length < 30 && d.hasProtectedContent) {
+        const sec = await db.collection("answer_secrets").doc(refId).get();
+        if (sec.exists) text += plain(sec.get("fullContent"));
+      }
+      if (text.length < 30) throw new PointsError("\u56DE\u7B54\u5167\u5BB9\u592A\u77ED\uFF08\u81F3\u5C11 30 \u5B57\uFF09", 400);
+      const r2 = await grantXp({ userId, taskId, period: `q:${d.questionId}`, refId: String(d.questionId), xp: xpOf(taskId), reason: "\u63D0\u4F9B\u6709\u6548\u56DE\u7B54", capKey: "answer", cap: cfg.dailyCaps.answer });
+      if (r2.reason === "cap") await flag(userId, "answer_cap", { refId });
+      add(r2);
+      if (r2.granted) add(await grantXp({ userId, taskId: "daily_post", period: day, xp: xpOf("daily_post"), reason: "\u6BCF\u65E5\u767C\u8A00", claimDoc: true }));
+      break;
+    }
+    case "accepted": {
+      const a = await db.collection("answers").doc(refId).get();
+      if (!a.exists) throw new PointsError("\u9084\u627E\u4E0D\u5230\u9019\u5247\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66", 409);
+      const d = a.data() || {};
+      if (d.isAccepted !== true) throw new PointsError("\u9019\u5247\u56DE\u7B54\u5C1A\u672A\u88AB\u63A1\u7D0D", 409);
+      const q = d.questionId ? await db.collection("questions").doc(String(d.questionId)).get() : null;
+      if (!q || !q.exists) throw new PointsError("\u627E\u4E0D\u5230\u56DE\u7B54\u7684\u554F\u984C", 400);
+      const qd = q.data() || {};
+      const solverId = String(d.solverId || "");
+      const askerId = String(qd.authorId || "");
+      const callerIsSolver = d.solverAuthUid === auth.uid || solverId === userId;
+      const callerIsAsker = qd.authorAuthUid === auth.uid || askerId === userId;
+      if (!callerIsSolver && !callerIsAsker) throw new PointsError("\u6C92\u6709\u6B0A\u9650", 403);
+      if (!solverId || solverId === askerId || d.solverAuthUid && d.solverAuthUid === qd.authorAuthUid) {
+        await flag(solverId || userId, "self_accept", { refId });
+        throw new PointsError("\u81EA\u554F\u81EA\u7B54\u7684\u63A1\u7D0D\u4E0D\u8A08\u7D93\u9A57\u503C", 400);
+      }
+      const month = day.slice(0, 7);
+      const pairRef = db.collection("xp_pairs").doc(`${askerId}__${solverId}__${month}`);
+      const pair = await pairRef.get();
+      if ((Number(pair.get?.("count")) || 0) >= 3) {
+        await flag(solverId, "accept_pair_cap", { refId, askerId });
+        add({ granted: false, reason: "pair_cap", xp: 0, totalXp: 0, level: 1, levelUps: [] });
+        break;
+      }
+      const r2 = await grantXp({ userId: solverId, taskId, period: "a", refId, xp: xpOf(taskId), reason: "\u56DE\u7B54\u88AB\u63D0\u554F\u8005\u63A1\u7D0D", capKey: "accepted", cap: cfg.dailyCaps.accepted });
+      if (r2.granted) {
+        const { FieldValue: FieldValue4 } = await getAdminDb2();
+        await pairRef.set({ askerId, solverId, month, count: FieldValue4.increment(1), updatedAt: nowIso2() }, { merge: true });
+      }
+      add(callerIsSolver ? r2 : { ...r2, levelUps: [], totalXp: 0, level: 0, reason: r2.granted ? "granted_to_solver" : r2.reason });
+      break;
+    }
+    default:
+      throw new PointsError("\u4E0D\u8A8D\u5F97\u7684\u4EFB\u52D9", 400);
+  }
+  const granted = results.filter((r2) => r2.granted);
+  const xp = granted.reduce((a, r2) => a + r2.xp, 0);
+  const levelUps = results.flatMap((r2) => r2.levelUps);
+  return { granted: granted.length > 0, xp, levelUps, results: results.map((r2) => ({ granted: r2.granted, reason: r2.reason, xp: r2.xp })), state: await getMyXpState(auth, { lite: true }) };
+}
+async function getMyXpState(auth, opts = {}) {
+  const { db } = await getAdminDb2();
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError("\u627E\u4E0D\u5230\u60A8\u7684\u6703\u54E1\u8CC7\u6599", 404);
+  const userId = userRef.id;
+  const cfg = await getXpConfig();
+  const xpSnap = await db.collection("user_xp").doc(userId).get();
+  const totalXp = xpSnap.exists ? Math.max(0, Math.floor(Number(xpSnap.get("totalXp")) || 0)) : 0;
+  const prog = levelProgress(totalXp, cfg.maxLevel);
+  const nextLevel = prog.isMax ? null : prog.level + 1;
+  const base3 = {
+    userId,
+    ...prog,
+    maxLevel: cfg.maxLevel,
+    nextLevel,
+    nextLevelReward: nextLevel ? rewardForLevel(nextLevel, cfg) : 0,
+    nextLevelIsSpecial: nextLevel ? cfg.levelRewards[String(nextLevel)] !== void 0 : false
+  };
+  if (opts.lite) return base3;
+  const day = taipeiDay();
+  const week = taipeiWeek();
+  const [claimsSnap, ledgerSnap, rewardsSnap, weekSnap] = await Promise.all([
+    db.collection("task_claims").where("userId", "==", userId).limit(400).get(),
+    db.collection("xp_ledger").where("userId", "==", userId).limit(200).get(),
+    db.collection("level_rewards").where("userId", "==", userId).limit(200).get(),
+    db.collection("weekly_visits").doc(`${userId}__${week}`).get()
+  ]);
+  const claims = claimsSnap.docs.map((d) => d.data());
+  const has = (taskId, period) => claims.some((c) => c.taskId === taskId && c.period === period);
+  const daily = xpSnap.exists && xpSnap.get("daily")?.day === day ? xpSnap.get("daily").counts || {} : {};
+  const tasks = XP_TASKS.map((t2) => {
+    let status = "todo";
+    let progress;
+    if (t2.kind === "once") status = has(t2.id, "once") ? "done" : "todo";
+    else if (t2.kind === "daily") status = has(t2.id, day) ? "done" : "todo";
+    else if (t2.kind === "weekly") {
+      status = has(t2.id, week) ? "done" : "todo";
+      const n = weekSnap.exists ? (weekSnap.get("islands") || []).length : 0;
+      progress = `${n}/5 \u5EA7\u5CF6`;
+    } else if (t2.kind === "oncePerRef") {
+      const list = t2.id === "island" ? XP_ISLANDS : XP_VENUES;
+      const n = Object.keys(list).filter((id) => has(t2.id, id)).length;
+      status = n === Object.keys(list).length ? "done" : n > 0 ? "partial" : "todo";
+      progress = `${n}/${Object.keys(list).length}`;
+    } else if (t2.kind === "event" && cfg.dailyCaps[t2.id] !== void 0) {
+      progress = `\u4ECA\u65E5 ${daily[t2.id] || 0}/${cfg.dailyCaps[t2.id]}`;
+    }
+    return { ...t2, xp: cfg.taskXp[t2.id] ?? t2.xp, status, progress };
+  });
+  const ledger = ledgerSnap.docs.map((d) => d.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50).map((e2) => ({ taskId: e2.taskId, delta: e2.delta, reason: e2.reason, createdAt: e2.createdAt, levelAfter: e2.levelAfter }));
+  const rewards = rewardsSnap.docs.map((d) => d.data()).sort((a, b) => b.level - a.level).map((r2) => ({ level: r2.level, points: r2.points, status: r2.status, createdAt: r2.createdAt }));
+  const preview = Array.from({ length: Math.min(cfg.maxLevel, 70) - 1 }, (_, i2) => i2 + 2).filter((L) => cfg.levelRewards[String(L)] !== void 0).map((L) => ({ level: L, points: rewardForLevel(L, cfg), xp: 50 * (L - 1) * (L + 8) }));
+  return {
+    ...base3,
+    tasks,
+    ledger,
+    rewards,
+    rewardPreview: { special: preview, defaultPoints: cfg.defaultLevelReward },
+    resets: { daily: "\u6BCF\u5929 00:00\uFF08\u53F0\u5317\u6642\u9593\uFF09", weekly: "\u6BCF\u9031\u4E00 00:00\uFF08\u53F0\u5317\u6642\u9593\uFF09", today: day, week }
+  };
+}
+async function requireAdmin2(auth) {
+  if (!await isVerifiedAdmin(auth.uid)) throw new PointsError("\u9700\u8981\u7BA1\u7406\u54E1\u6B0A\u9650", 403);
+}
+async function adminGetXpConfig(auth) {
+  await requireAdmin2(auth);
+  const { db } = await getAdminDb2();
+  const logs = await db.collection("xp_config_log").orderBy("createdAt", "desc").limit(30).get();
+  return { config: await getXpConfig(), logs: logs.docs.map((d) => d.data()) };
+}
+async function adminSetXpConfig(auth, body) {
+  await requireAdmin2(auth);
+  const { db } = await getAdminDb2();
+  const before = await getXpConfig();
+  const next = mergeConfig({ ...before, ...body?.config || {} });
+  await db.collection("xp_config").doc("main").set({ ...next, updatedAt: nowIso2(), updatedBy: auth.uid });
+  await db.collection("xp_config_log").add({ before, after: next, by: auth.uid, note: String(body?.note || "").slice(0, 300), createdAt: nowIso2() });
+  cfgCache = null;
+  return { config: next };
+}
+async function adminGetUserXp(auth, userId) {
+  await requireAdmin2(auth);
+  const { db } = await getAdminDb2();
+  const cfg = await getXpConfig();
+  const [xpSnap, ledger, rewards, flags] = await Promise.all([
+    db.collection("user_xp").doc(userId).get(),
+    db.collection("xp_ledger").where("userId", "==", userId).limit(300).get(),
+    db.collection("level_rewards").where("userId", "==", userId).limit(200).get(),
+    db.collection("xp_flags").where("userId", "==", userId).limit(100).get()
+  ]);
+  const totalXp = xpSnap.exists ? Number(xpSnap.get("totalXp")) || 0 : 0;
+  const sortDesc = (a, b) => String(b.createdAt).localeCompare(String(a.createdAt));
+  return {
+    userId,
+    ...levelProgress(totalXp, cfg.maxLevel),
+    ledger: ledger.docs.map((d) => d.data()).sort(sortDesc),
+    rewards: rewards.docs.map((d) => d.data()).sort((a, b) => a.level - b.level),
+    flags: flags.docs.map((d) => d.data()).sort(sortDesc)
+  };
+}
+async function adminGrantXp(auth, body) {
+  await requireAdmin2(auth);
+  const userId = String(body?.userId || "").trim();
+  if (!userId) throw new PointsError("\u8ACB\u586B\u6703\u54E1 ID", 400);
+  const kind = body?.kind === "correction" ? "correction" : "quality";
+  const note = String(body?.note || "").trim().slice(0, 300);
+  if (!note) throw new PointsError("\u8ACB\u586B\u5BEB\u539F\u56E0", 400);
+  const refId = String(body?.refId || "").trim().slice(0, 200) || `manual-${Date.now()}`;
+  if (kind === "quality") {
+    const xp = Math.floor(Number(body?.xp));
+    if (!(xp >= 500 && xp <= 1e3)) throw new PointsError("\u512A\u8CEA\u8CA2\u737B\u734E\u52F5\u9700\u4ECB\u65BC 500\u20131,000 XP", 400);
+    return grantXp({ userId, taskId: "quality", period: "quality", refId, xp, reason: `\u512A\u8CEA\u5C08\u696D\u8CA2\u737B\uFF1A${note}`, by: auth.uid });
+  }
+  const delta = Math.floor(Number(body?.xp));
+  if (!Number.isFinite(delta) || delta === 0 || Math.abs(delta) > 1e5) throw new PointsError("\u66F4\u6B63\u6578\u503C\u4E0D\u6B63\u78BA", 400);
+  const { db } = await getAdminDb2();
+  const cfg = await getXpConfig();
+  const eventId = sha(`${userId}|correction|${refId}`);
+  return db.runTransaction(async (tx) => {
+    const ledgerRef = db.collection("xp_ledger").doc(eventId);
+    const xpRef = db.collection("user_xp").doc(userId);
+    const userRef = db.collection("users").doc(userId);
+    const [prior, xpSnap, userSnap] = await Promise.all([tx.get(ledgerRef), tx.get(xpRef), tx.get(userRef)]);
+    if (prior.exists) throw new PointsError("\u9019\u7B46\u66F4\u6B63\u5DF2\u7D93\u8655\u7406\u904E", 409);
+    if (!userSnap.exists) throw new PointsError("\u627E\u4E0D\u5230\u6703\u54E1", 404);
+    const total = Math.max(0, (Number(xpSnap.exists ? xpSnap.get("totalXp") : 0) || 0) + delta);
+    const level = levelFromXp(total, cfg.maxLevel);
+    const createdAt = nowIso2();
+    tx.create(ledgerRef, { eventId, userId, taskId: "correction", refId, delta, reason: `\u66F4\u6B63\uFF1A${note}`, totalAfter: total, levelAfter: level, by: auth.uid, createdAt });
+    tx.set(xpRef, { userId, totalXp: total, level, updatedAt: createdAt }, { merge: true });
+    tx.update(userRef, { level, totalXp: total, xpUpdatedAt: createdAt });
+    return { granted: true, xp: delta, totalXp: total, level, levelUps: [] };
+  });
+}
+async function publicXpConfig() {
+  const cfg = await getXpConfig();
+  return { maxLevel: cfg.maxLevel, levelRewards: cfg.levelRewards, defaultLevelReward: cfg.defaultLevelReward, taskXp: cfg.taskXp, dailyCaps: cfg.dailyCaps };
 }
 
 // server/answerContent.ts
@@ -173766,7 +174302,7 @@ ${filters.countries?.length ? `\u6307\u5B9A\u570B\u5BB6\uFF1A${filters.countries
       6
     );
     const verifiedJobs = [];
-    const nowIso2 = (/* @__PURE__ */ new Date()).toISOString();
+    const nowIso3 = (/* @__PURE__ */ new Date()).toISOString();
     for (let i2 = 0; i2 < uniqueRawJobs.length; i2++) {
       const raw = uniqueRawJobs[i2];
       const v = verifiedUrls[i2];
@@ -173800,7 +174336,7 @@ ${filters.countries?.length ? `\u6307\u5B9A\u570B\u5BB6\uFF1A${filters.countries
         aiScore: Math.min(99, Math.max(75, Number(raw.aiScore) || 88)),
         sourcePlatform: platform,
         postedAtText: raw.postedAtText || "\u8FD1\u671F",
-        postedAt: raw.postedAt || nowIso2
+        postedAt: raw.postedAt || nowIso3
       };
       verifiedJobs.push(jobItem);
       if (options2?.onBatch && (verifiedJobs.length % 3 === 0 || i2 === uniqueRawJobs.length - 1)) {
@@ -173843,7 +174379,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.3.11";
+var APP_VERSION = "4.4.0";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
@@ -173928,6 +174464,7 @@ app.use("/api/ai/customer-analytics", requireAdminMiddleware);
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
 app.use("/api/auth/claim-signup-bonus", rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "signup-bonus" }));
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
+app.use("/api/xp", rateLimit({ windowMs: 60 * 1e3, max: 60, name: "xp" }));
 app.use("/api/ai/project-plan-export", rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "project-plan-export" }));
 app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));
 app.use("/api/mascot/ask", rateLimit({ windowMs: 60 * 1e3, max: 12, name: "mascot-ask" }));
@@ -177491,6 +178028,75 @@ ${sourceText}`;
     res.status(status).json({ success: false, error: message2 });
   }
 });
+var xpError = (res, err, label) => {
+  const status = err instanceof PointsError ? err.status : 500;
+  if (status >= 500) console.error(`[XP] ${label}`, err?.message || err);
+  res.status(status).json({ success: false, error: err?.message || "\u7D93\u9A57\u503C\u8655\u7406\u5931\u6557" });
+};
+app.get("/api/xp/config", async (_req, res) => {
+  try {
+    res.json({ success: true, config: await publicXpConfig() });
+  } catch (err) {
+    xpError(res, err, "config");
+  }
+});
+app.get("/api/xp/me", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, private, max-age=0");
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u767B\u5165\u5F8C\u67E5\u770B\u7B49\u7D1A" });
+    res.json({ success: true, ...await getMyXpState(authUser, { lite: req.query.lite === "1" }) });
+  } catch (err) {
+    xpError(res, err, "me");
+  }
+});
+app.post("/api/xp/claim", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, private, max-age=0");
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u767B\u5165\u5F8C\u9818\u53D6\u7D93\u9A57\u503C" });
+    const { taskId, refId } = req.body || {};
+    res.json({ success: true, ...await claimXpTask(authUser, { taskId, refId }) });
+  } catch (err) {
+    xpError(res, err, "claim");
+  }
+});
+app.get("/api/admin/xp/config", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165" });
+    res.json({ success: true, ...await adminGetXpConfig(authUser) });
+  } catch (err) {
+    xpError(res, err, "admin config");
+  }
+});
+app.post("/api/admin/xp/config", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165" });
+    res.json({ success: true, ...await adminSetXpConfig(authUser, req.body || {}) });
+  } catch (err) {
+    xpError(res, err, "admin set config");
+  }
+});
+app.get("/api/admin/xp/user/:userId", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165" });
+    res.json({ success: true, ...await adminGetUserXp(authUser, String(req.params.userId || "")) });
+  } catch (err) {
+    xpError(res, err, "admin user");
+  }
+});
+app.post("/api/admin/xp/grant", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165" });
+    res.json({ success: true, ...await adminGrantXp(authUser, req.body || {}) });
+  } catch (err) {
+    xpError(res, err, "admin grant");
+  }
+});
 app.post("/api/points/op", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
@@ -178344,7 +178950,7 @@ app.post("/api/admin/public-metrics-config", async (req, res) => {
     res.status(500).json({ ok: false, reason: "write_failed" });
   }
 });
-var requireAdmin2 = async (req, res) => {
+var requireAdmin3 = async (req, res) => {
   const au = await verifyAuthToken(req.headers.authorization);
   if (!au) {
     res.status(401).json({ ok: false, error: "\u767B\u5165\u72C0\u614B\u5DF2\u904E\u671F\uFF0C\u8ACB\u91CD\u65B0\u767B\u5165\u5F8C\u518D\u8A66" });
@@ -178357,7 +178963,7 @@ var requireAdmin2 = async (req, res) => {
   return au;
 };
 app.get("/api/admin/ai-provider", async (req, res) => {
-  if (!await requireAdmin2(req, res)) return;
+  if (!await requireAdmin3(req, res)) return;
   const efforts = await getAllEfforts();
   res.setHeader("Cache-Control", "no-store");
   res.json({
@@ -178377,7 +178983,7 @@ app.get("/api/admin/ai-provider", async (req, res) => {
   });
 });
 app.post("/api/admin/ai-provider", async (req, res) => {
-  if (!await requireAdmin2(req, res)) return;
+  if (!await requireAdmin3(req, res)) return;
   try {
     const p = req.body?.provider;
     if (p) {
@@ -178395,7 +179001,7 @@ app.post("/api/admin/ai-provider", async (req, res) => {
   }
 });
 app.post("/api/admin/ai-provider/test", async (req, res) => {
-  if (!await requireAdmin2(req, res)) return;
+  if (!await requireAdmin3(req, res)) return;
   const p = AI_PROVIDERS.includes(req.body?.provider) ? req.body.provider : await getAiProvider();
   const sample = String(req.body?.message || "\u60F3\u5728\u53F0\u5317\u7AEF\u76E4\u5B50\uFF0C\u4E0D\u8981\u592A\u7D2F\uFF0C\u4E0B\u5348\u8981\u63A5\u5C0F\u5B69\uFF0C\u6708\u85AA\u4E09\u842C\u4E94").slice(0, 200);
   const prompt = `\u628A\u9019\u53E5\u6C42\u8077\u9700\u6C42\u6574\u7406\u6210 JSON \u7269\u4EF6\uFF0C\u6B04\u4F4D\uFF1Aroles\uFF08\u6B63\u5F0F\u8077\u7A31\u9663\u5217\uFF09\u3001location\u3001salaryText\u3001preferences\uFF08[{label, value}]\uFF09\u3002\u53E3\u8A9E\u8981\u8F49\u6210\u5177\u9AD4\u689D\u4EF6\uFF0C\u4F8B\u5982\u300C\u7AEF\u76E4\u5B50\u300D\u2192\u300C\u670D\u52D9\u751F\uFF08\u5916\u5834\uFF09\u300D\u3002

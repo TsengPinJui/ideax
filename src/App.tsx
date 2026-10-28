@@ -1,3 +1,6 @@
+import XpToastLayer from './components/xp/XpToastLayer';
+import { reportXp } from './services/xpService';
+import { taipeiDay } from './data/xpRules';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { openInKingdomPanel } from './utils/kingdomPanel';
 import { AppProvider, useApp } from './context/AppContext';
@@ -178,6 +181,16 @@ function MainContent() {
     allowGuestPosting,
     setQuestions,
   } = useApp();
+
+  // 經驗值：每日簽到、完成個人資料（伺服器判定，同一天／同一項只會發一次）
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.id === 'user-guest' || currentUser.id === 'guest') return;
+    const t = window.setTimeout(() => {
+      void reportXp('daily_checkin', taipeiDay());
+      if (currentUser.name && currentUser.avatar && String(currentUser.bio || '').replace(/\s/g, '').length >= 10) void reportXp('profile');
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [currentUser?.id, currentUser?.bio, currentUser?.avatar, currentUser?.name]);
 
   // 在 3D 實境漫遊左側欄裡內嵌顯示網站（?panel=kingdom）：不顯示頁尾、底部導覽、吉祥物、開場畫面等浮動元件
   const inKingdomPanel = (() => {
@@ -4290,6 +4303,7 @@ function MainContent() {
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
+      {!inKingdomPanel && <XpToastLayer />}
     </div>
   );
 }

@@ -1,3 +1,7 @@
+import LevelCard from './xp/LevelCard';
+import LevelTasksPanel from './xp/LevelTasksPanel';
+import AdminXpPanel from './xp/AdminXpPanel';
+import { fetchMyXp, XP_STATE_EVENT, type XpLite } from '../services/xpService';
 import { realSurvey } from '../utils/surveyData';
 import { isLocalDevHost } from '../services/accountGuard';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -177,6 +181,8 @@ export type UserDashboardTab =
   | 'admin_mail_disputes'
   | 'questions_management'
   | 'honors_achievements'
+  | 'level_tasks'
+  | 'admin_xp'
   | 'proposals'
   | 'transactions'
   | 'subscriptions'
@@ -2033,6 +2039,23 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   };
 
   // 分頁名稱映射
+  // 等級與經驗值（以伺服器為準）
+  const [myXp, setMyXp] = useState<XpLite | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const isGuestUser = currentUser.id === 'user-guest' || currentUser.id === 'guest';
+    if (!isGuestUser) void fetchMyXp(false).then((d) => alive && d && setMyXp(d as XpLite));
+    const on = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d && typeof d.level === 'number') setMyXp(d as XpLite);
+    };
+    window.addEventListener(XP_STATE_EVENT, on);
+    return () => {
+      alive = false;
+      window.removeEventListener(XP_STATE_EVENT, on);
+    };
+  }, [currentUser.id]);
+
   const TAB_NAME_MAP: Record<string, string> = {
     proposals: '我的案件',
     questions_management: '提問管理',
@@ -2056,6 +2079,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     admin_mail_disputes: '申訴與郵件',
     settings: '帳號與基本資料',
     honors_achievements: '成就與榮譽',
+    level_tasks: '等級與任務',
+    admin_xp: '等級與經驗值',
     ai_crm: 'AI-CRM 客戶關係管理',
     ai_assistant_settings: 'AI-CRM 客戶關係管理',
   };
@@ -2121,6 +2146,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         { key: 'proposals', label: '我的案件', icon: Briefcase, onSelect: openTab('proposals'), active: activeTab === 'proposals', trailing: allProposals.length ? String(allProposals.length) : undefined },
         { key: 'questions', label: '問題或提案', icon: MessageSquare, onSelect: openTab('questions_management'), active: activeTab === 'questions_management', trailing: myQuestions.length ? String(myQuestions.length) : undefined },
         { key: 'honors', label: '成就與榮譽', icon: Award, onSelect: openTab('honors_achievements'), active: activeTab === 'honors_achievements' },
+        { key: 'level', label: '等級與任務', icon: Trophy, onSelect: openTab('level_tasks'), active: activeTab === 'level_tasks', trailing: myXp ? `Lv.${myXp.level}` : undefined },
       ],
     },
     {
@@ -2196,6 +2222,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       title: '用戶與認證',
       items: [
         { key: 'users', label: '用戶管理', icon: UserCheck, onSelect: openTab('admin_user_management'), active: activeTab === 'admin_user_management' },
+        { key: 'xp', label: '等級與經驗值', icon: Trophy, onSelect: openTab('admin_xp'), active: activeTab === 'admin_xp' },
         { key: 'certs', label: '受理認證', icon: BadgeCheck, onSelect: openTab('admin_certifications'), active: activeTab === 'admin_certifications' },
         { key: 'analytics', label: '用戶分佈與習慣', icon: BarChart3, onSelect: openTab('admin_user_analytics'), active: activeTab === 'admin_user_analytics' },
       ],
@@ -3865,6 +3892,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           ) : (
             <div className="space-y-7">
+              <section>
+                <LevelCard xp={myXp} onOpen={openTab('level_tasks')} />
+              </section>
               <section>
                 <h2 className="text-[15px] font-semibold text-stone-900">帳戶概況</h2>
                 <div className="mt-3 grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -5850,6 +5880,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
 
         {/* TAB: 個人數據與榮譽牆（只顯示真實數據；還沒達成的徽章標示未解鎖） */}
+        {activeTab === 'level_tasks' && <LevelTasksPanel />}
+        {activeTab === 'admin_xp' && currentUser.role === 'admin' && <AdminXpPanel />}
         {activeTab === 'honors_achievements' && (() => {
           const solutionCount = userSolutionAnswers.length;
           const acceptedCount = userAcceptedAnswers.length;

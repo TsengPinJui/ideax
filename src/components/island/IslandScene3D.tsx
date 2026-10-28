@@ -1,3 +1,4 @@
+import { reportXp } from '../../services/xpService';
 import React, { useEffect, useRef, useState } from 'react';
 import { createMapDocksAndTrail } from './mapDocks';
 import { enterRoamAt } from '../kingdom3d/roamEntry';
@@ -771,6 +772,12 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
   const onFocusIslandRef = useRef(onFocusIsland);
   onFocusIslandRef.current = onFocusIsland;
+
+  // 經驗值：首次進入 3D 創點源世界＋每日漫遊（伺服器判定）
+  useEffect(() => {
+    const t = window.setTimeout(() => void reportXp('world'), 4000);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const container = mountRef.current;

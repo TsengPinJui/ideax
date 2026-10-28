@@ -65,6 +65,8 @@ import {
 import { LIB_TOWER, atLibraryDoor } from './stylized/libraryTower';
 import { atLibraryExit, LIB_HALL, LIB_STAIR, libStairHeights } from './stylized/libraryInterior';
 import { GARDEN_ARCH_BRIDGE } from './stylized/careerGarden';
+import { reportXp } from '../../services/xpService';
+import { XP_ISLANDS, XP_VENUES } from '../../data/xpRules';
 
 const LIBRARY_ID = 'discussion-library';
 // 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
@@ -1999,6 +2001,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     let stepAcc = 0;
     const globalWalkableZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.6, rz: z.rz + 5.6 } : z));
     let lodTick = 14;
+    let xpLastRegion = '';
+    let xpLastVenue = '';
+    // 經驗值：首次進入 3D 創點源世界＋每日漫遊
+    window.setTimeout(() => void reportXp('world'), 4000);
     // 桃樹（粉紅花樹）的位置：桃樹下同坐用（第一次用到時才收集）
     let peachPts: number[] | null = null;
     const collectPeach = () => {
@@ -2198,6 +2204,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.position.x,
           controls.position.z
         );
+        // 經驗值：首次探索每座島、首次進入每個場館（伺服器判定是否第一次）
+        if (spatial.regionId !== xpLastRegion) {
+          xpLastRegion = spatial.regionId;
+          if (XP_ISLANDS[spatial.regionId]) void reportXp('island', spatial.regionId);
+        }
+        {
+          const venueId = story.towerId || spatial.insideBuilding?.id || '';
+          if (venueId !== xpLastVenue) {
+            xpLastVenue = venueId;
+            if (XP_VENUES[venueId]) void reportXp('venue', venueId);
+          }
+        }
         regionManager.syncActiveRegionByPosition(spatial.regionId);
         setActiveRegionId(spatial.regionId);
 
