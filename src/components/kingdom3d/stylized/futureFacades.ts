@@ -681,38 +681,119 @@ export function createExhibitionFacade(b: BuildingInteractable): { group: THREE.
     rect(x0, fz - 0.1, x1, fz + 2.3);
   }
 
-  // ── 右側：大圓洞清水模牆（從圓洞看見後面的玻璃展廊） ──
+  // ── 右前：斜頂清水模牆（掛「雅俗共賞」） ──
   {
     const x0 = EX + 0.4;
-    const x1 = 13.6;
-    const H = h + 2.8;
-    const R = 4.6;
-    const cxh = (x0 + x1) / 2 + 0.6;
-    const cyh = 6.4;
+    const x1 = 12.6;
     const shape = new THREE.Shape();
     shape.moveTo(x0, 0);
     shape.lineTo(x1, 0);
-    shape.lineTo(x1, H);
-    shape.lineTo(x0, H - 1.6);
+    shape.lineTo(x1, h + 3.2);
+    shape.lineTo(x0, h + 1.0);
+    shape.closePath();
+    add(new THREE.ExtrudeGeometry(shape, { depth: 1.6, bevelEnabled: false }), concrete(x1 - x0, h + 3), 0, 0, fz - 0.1);
+    plane(exhibitBannerTex('雅俗共賞'), 1.6, 5.8, x0 + 1.4, 6.8, fz + 1.53, 0, 0.35);
+    rect(x0, fz - 0.1, x1, fz + 1.5);
+  }
+
+  // ── 側面：大圓洞清水模牆（立在建築側邊，從圓洞看見裡面的玻璃展廊） ──
+  {
+    const side = new THREE.Group();
+    side.position.set(w / 2 + 1.2, 0, 0);
+    side.rotation.y = Math.PI / 2; // 本組 +Z＝建築側面往外，本組 +X＝往建築後方
+    root.add(side);
+    const u0 = -(d / 2 + 1.6);
+    const u1 = d / 2 - 0.4;
+    const H = h + 2.6;
+    const R = 4.6;
+    const cu = (u0 + u1) / 2;
+    const cyh = 6.2;
+    const shape = new THREE.Shape();
+    shape.moveTo(u0, 0);
+    shape.lineTo(u1, 0);
+    shape.lineTo(u1, H - 1.4);
+    shape.lineTo(u0, H);
     shape.closePath();
     const hole = new THREE.Path();
-    hole.absarc(cxh, cyh, R, 0, Math.PI * 2, true);
+    hole.absarc(cu, cyh, R, 0, Math.PI * 2, true);
     shape.holes.push(hole);
-    const ex = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false, curveSegments: 48 });
-    add(ex, concrete(x1 - x0, H), 0, 0, fz + 1.6);
-    // 圓洞內緣一圈光
-    const ring = add(new THREE.TorusGeometry(R - 0.04, 0.05, 6, 80), warm, cxh, cyh, fz + 2.82);
-    void ring;
-    // 圓洞後面的玻璃展廊
-    plane(atriumTex(), 7.2, 5.0, cxh, 4.0, fz + 0.04, 0, 0.7);
-    for (let k = 0; k <= 4; k++) add(new THREE.BoxGeometry(0.07, 5.0, 0.08), steel, cxh - 3.6 + k * 1.8, 4.0, fz + 0.12);
-    add(new THREE.BoxGeometry(7.6, 0.2, 1.4), concretePlain, cxh, 6.6, fz + 0.75);
-    // 「雅俗共賞」直幡掛在圓洞牆左段
-    plane(exhibitBannerTex('雅俗共賞'), 1.5, 5.6, x0 + 1.0, 6.6, fz + 2.83, 0, 0.35);
-    // 圓洞牆碰撞（下緣到地，圓洞底在 1.8 公尺：整面擋住）
-    rect(x0, fz + 1.6, x1, fz + 2.8);
-    // 牆後與立面之間的縫也擋住
-    seg(x1, fz, x1, fz + 1.6);
+    const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false, curveSegments: 48 }), concrete(u1 - u0, H));
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    side.add(wall);
+    // 圓洞內緣一圈暖光（貼在洞口內側）
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R - 0.02, 0.05, 6, 80), warm);
+    ring.position.set(cu, cyh, 0.6);
+    side.add(ring);
+    // 圓洞後面：建築側牆上的玻璃展廊（暖光）
+    const gal = new THREE.Mesh(
+      new THREE.PlaneGeometry(9.6, 6.4),
+      new THREE.MeshStandardMaterial({ map: atriumTex(), emissive: 0xffffff, emissiveMap: atriumTex(), emissiveIntensity: 0.75, roughness: 0.6 })
+    );
+    gal.position.set(cu, 3.4, -1.15);
+    gal.userData.noMerge = true;
+    side.add(gal);
+    for (let k = 0; k <= 5; k++) {
+      const mu = new THREE.Mesh(new THREE.BoxGeometry(0.07, 6.4, 0.08), steel);
+      mu.position.set(cu - 4.8 + k * 1.92, 3.4, -1.1);
+      side.add(mu);
+    }
+    // 碰撞：牆身＋牆與建築之間的縫
+    rect(w / 2, -(d / 2 - 0.4), w / 2 + 2.4, d / 2 + 1.6);
+  }
+
+  // ── 正面打光：牆腳洗牆燈（地上一顆顆燈具，往上打出一道道暖光）、招牌量體下緣的燈帶 ──
+  {
+    const washTex = canvasTex(64, 256, (g) => {
+      const gr = g.createLinearGradient(0, 256, 0, 0);
+      gr.addColorStop(0, 'rgba(255,214,150,0.85)');
+      gr.addColorStop(0.35, 'rgba(255,200,130,0.35)');
+      gr.addColorStop(1, 'rgba(255,190,120,0)');
+      g.fillStyle = gr;
+      g.beginPath();
+      g.moveTo(22, 256);
+      g.lineTo(42, 256);
+      g.lineTo(64, 0);
+      g.lineTo(0, 0);
+      g.closePath();
+      g.fill();
+    });
+    const washMat = new THREE.MeshBasicMaterial({ map: washTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const fixture = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.5, metalness: 0.5 });
+    const glow = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
+    const wash = (x: number, z: number, hh: number, ry = 0) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, hh), washMat);
+      m.position.set(x, hh / 2 + 0.05, z);
+      m.rotation.y = ry;
+      m.userData.noMerge = true;
+      m.renderOrder = 4;
+      root.add(m);
+      add(new THREE.BoxGeometry(0.34, 0.1, 0.22), fixture, x, 0.05, z + 0.12);
+      add(new THREE.BoxGeometry(0.24, 0.02, 0.12), glow, x, 0.11, z + 0.12);
+    };
+    // 左側斜頂高牆
+    for (const x of [-12.0, -10.2, -8.4, -6.8]) wash(x, fz + 2.32, h + 1.4);
+    // 右前高牆
+    for (const x of [EX + 1.2, EX + 3.0, EX + 4.8, EX + 6.4]) wash(x, fz + 1.52, h + 1.2);
+    // 側面圓洞牆外側
+    for (const zz of [d / 2 + 0.6, d / 2 - 2.0, -1.0, -4.0, -d / 2 + 1.4]) wash(w / 2 + 2.42, zz, h + 1.0, Math.PI / 2);
+    // 招牌量體下緣、玻璃入口兩側的直燈帶
+    add(new THREE.BoxGeometry(EX * 2 + 1.0, 0.05, 0.06), glow, 0, 5.92, fz + 2.98);
+    for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.06, 5.5, 0.06), glow, sx * (EX + 0.05), 2.8, fz + 0.4);
+    // 入口前地面一片暖光
+    const pool = new THREE.Mesh(
+      new THREE.CircleGeometry(4.2, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: canvasTex(128, 128, (g) => {
+        const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+        gr.addColorStop(0, 'rgba(255,214,150,0.55)');
+        gr.addColorStop(1, 'rgba(255,214,150,0)');
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 128, 128);
+      }), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+    );
+    pool.position.set(0, 0.06, fz + 2.4);
+    pool.userData.noMerge = true;
+    root.add(pool);
   }
 
   // ── 屋頂邊的玻璃帶與懸挑板 ──
