@@ -246,7 +246,7 @@ export const BASIN_LANDMARKS = {
   })(),
   eastFalls: (() => {
     const p = MOUNTAIN_RING.find((q) => q.i === 1)!;
-    return { x: p.x, z: p.z, r: p.r, faceX: p.x - p.r * 0.92, name: '東山飛瀑' };
+    return { x: p.x, z: p.z, caveZ: p.z + 6, r: p.r, faceX: p.x - p.r * 0.92, name: '東山飛瀑' };
   })(),
   lakePavilion: { x: 0, z: 72, name: '湖心亭' },
 };

@@ -581,16 +581,16 @@ export class StylizedWorld {
 
     // 東山飛瀑與水濂洞：洞口朝向湖面，水幕兩側落下，中間留出遊船通道。
     const ef = BASIN_LANDMARKS.eastFalls;
-    const eastFallAt = { base: new THREE.Vector3(ef.faceX - 60, 0, ef.z), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) };
+    const eastFallAt = { base: new THREE.Vector3(ef.faceX - 60, 0, ef.caveZ), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) };
     {
-      for (const side of [-1, 1]) this.addConformingFall(g, { ...eastFallAt, base: eastFallAt.base.clone().setZ(ef.z + side * 6.5) }, 36, -0.3, 5.5, 1.0);
+      for (const side of [-1, 1]) this.addConformingFall(g, { ...eastFallAt, base: eastFallAt.base.clone().setZ(ef.caveZ + side * 6.5) }, 36, -0.3, 5.5, 1.0);
       this.addConformingFall(g, eastFallAt, 36, -0.3, 1.0, 0.9, 99, 0);
-      const waterBase = new THREE.Vector3(ef.faceX - 48, 0, ef.z);
-      for (const side of [-1, 1]) this.addConformingFall(g, { base: waterBase.clone().setZ(ef.z + side * 6.5), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 18, -0.3, 3.4, 1.0);
+      const waterBase = new THREE.Vector3(ef.faceX - 48, 0, ef.caveZ);
+      for (const side of [-1, 1]) this.addConformingFall(g, { base: waterBase.clone().setZ(ef.caveZ + side * 6.5), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 18, -0.3, 3.4, 1.0);
       this.addConformingFall(g, { base: waterBase, dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 10, -0.3, 1.0, 0.9, 99, 0);
       const cg = new THREE.Group();
       cg.name = 'shuilian_cave';
-      cg.position.set(ef.faceX + 0.25, -0.1, ef.z);
+      cg.position.set(ef.faceX + 0.25, -0.1, ef.caveZ);
       cg.rotation.y = -Math.PI / 2;
       this.root.add(cg);
       const darkMat = new THREE.MeshBasicMaterial({ color: 0x05090c });

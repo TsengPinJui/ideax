@@ -139,7 +139,7 @@ export function navigable(x: number, z: number, margin = 1.4) {
   const east = BASIN_LANDMARKS.eastFalls;
   // 東山水濂洞的水道從湖面穿過山壁；南、北傳送洞口也保留一段可接近水域。
   const caveChannel = (px: number, pz: number) => {
-    if (Math.abs(pz - east.z) < 5.2 && px > east.faceX - 12 && px < east.faceX + 28) return true;
+    if (Math.abs(pz - east.caveZ) < 5.2 && px > east.faceX - 12 && px < east.faceX + 28) return true;
     const north = BASIN_LANDMARKS.northFalls;
     const south = BASIN_LANDMARKS.southCave;
     if (Math.abs(px - north.x) < 5.2 && pz > north.faceZ - 4 && pz < north.faceZ + 9) return true;
