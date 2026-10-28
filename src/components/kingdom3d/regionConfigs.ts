@@ -930,7 +930,8 @@ export const REGION_DISCUSSION: RegionManifest = {
   plazaColorHex: 0xe7e5e4,
   walkableZones: getGlobalWalkableZones(),
   colliders: [
-    ...discussionBuildings.flatMap(generateBuildingWallColliders),
+    // 大熊匠鋪是兩座開放式工棚（中間有路穿過去），碰撞由工棚模型自己提供，不套一般房子的四面牆＋中間桌
+    ...discussionBuildings.filter((b) => b.exterior !== 'bearShop').flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
   buildings: discussionBuildings,
