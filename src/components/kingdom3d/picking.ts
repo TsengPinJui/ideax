@@ -16,7 +16,10 @@ export type PickTarget =
   | { kind: 'goFloor'; buildingId: string; level: number }
   /** 展覽館、電玩城一樓：正對大門的大螢幕、左右牆的精選榜／熱度榜 */
   | { kind: 'lobbyScreen'; buildingId: string }
-  | { kind: 'lobbyRank'; buildingId: string; which: 'featured' | 'hot' };
+  | { kind: 'lobbyRank'; buildingId: string; which: 'featured' | 'hot' }
+  /** 渡口（乘船點）、塔樓登山口／下山石碑 */
+  | { kind: 'dock'; id: string }
+  | { kind: 'trail'; dir: 'up' | 'down' };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 

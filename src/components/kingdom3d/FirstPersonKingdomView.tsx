@@ -54,6 +54,11 @@ import {
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
+import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS } from './stylized/docks';
+import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/waterLife';
+import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
+import type { WalkableZone } from './types';
+import { BoatOverlay } from './BoatOverlay';
 import { getFeaturedGames, getFeaturedProposalsAndSoftware, getHotRankedGames, getHotRankedProposalsAndSoftware } from '../../data/hotGamesData';
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
@@ -105,7 +110,43 @@ type Tower = {
   stair: (level: number, x: number, z: number, from: THREE.Vector3) => { pts: THREE.Vector3[]; toLevel: number; hallEnter?: boolean } | null;
   /** 各層地板高度（沒有就是 level × 4.5 m） */
   floorY?: (level: number) => number;
+  /** 這座「樓」自己的可走範圍（例如山上的塔外空地） */
+  walk?: WalkableZone[];
 };
+
+/** 西側塔樓山台（從痛點島登山口直上）：當成一座只有「樓上」的樓 */
+const PLATEAU_ID = 'plateau-pagoda';
+const PLATEAU_B: BuildingInteractable = {
+  id: PLATEAU_ID,
+  name: '塔樓山台',
+  subtitle: '西側平頂山台・五層塔與塔外空地',
+  position: new THREE.Vector3(TRAIL.plateauX, 0, TRAIL.plateauZ),
+  facingYaw: 0,
+  width: 22,
+  depth: 22,
+  height: 30,
+  colorHex: 0x7c5a3a,
+  interactionRadius: 8,
+  description: '西側的平頂山台，五層塔立在山頂，塔外的空地可以眺望五座島與整片湖面。點山上的「下山」石碑就能回到痛點島的登山口。',
+  targetModule: '',
+  previewBadge: '塔樓山台',
+  previewFeatures: ['從痛點島西岸的「塔樓登山口」一點直上', '塔外空地眺望五島與湖面', '「下山」石碑回到登山口'],
+  mockData: { stats: '海拔約 30 公尺', notice: '山上風大，慢慢逛。', primaryActionLabel: '塔樓山台' },
+} as unknown as BuildingInteractable;
+
+function plateauTower(): Tower {
+  return {
+    b: PLATEAU_B,
+    basements: 0,
+    cols: [[], PLATEAU_COLLIDERS],
+    floorY: (level) => (level > 0 ? TRAIL.topY : 0),
+    stair: () => null,
+    walk: [{ type: 'ellipse', cx: TRAIL.plateauX, cz: TRAIL.plateauZ, rx: TRAIL.plateauR, rz: TRAIL.plateauR }],
+  };
+}
+
+/** 船上座位（船的本地座標：船頭朝 -Z） */
+const BOAT_SEATS = { owner: new THREE.Vector3(0, 0, 1.75), passenger: new THREE.Vector3(0, 0, -0.4) };
 
 function rectTower(b: BuildingInteractable, lay: StoryLayout): Tower {
   return {
@@ -191,9 +232,10 @@ type StoryState = {
 
 const BOOTHS_PER_ZONE = 16;
 
-const REGION_BUILDINGS = new Map<string, BuildingInteractable>(
-  Object.values(REGION_CONFIGS).flatMap((r) => r.buildings.map((b) => [b.id, b] as [string, BuildingInteractable]))
-);
+const REGION_BUILDINGS = new Map<string, BuildingInteractable>([
+  ...Object.values(REGION_CONFIGS).flatMap((r) => r.buildings.map((b) => [b.id, b] as [string, BuildingInteractable])),
+  [PLATEAU_ID, PLATEAU_B],
+]);
 
 /** 攤位圖片面板：顯示第 slide 張（載入完才換上；載不到就維持原樣） */
 function showBoothMedia(media: THREE.Mesh, slide: number) {
@@ -355,6 +397,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setDrawer(q ? { kind: 'question', question: q, back: zoneState } : zoneState);
     } else if (t.kind === 'goFloor') {
       goFloorRef.current?.(t.buildingId, t.level);
+    } else if (t.kind === 'dock') {
+      setBoatDock(t.id);
+    } else if (t.kind === 'trail') {
+      goTrailRef.current?.(t.dir);
     } else if (t.kind === 'lobbyRank') {
       setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: t.which });
     } else if (t.kind === 'lobbyScreen') {
@@ -363,12 +409,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     }
   }, []);
   const openForTargetRef = useRef<((t: PickTarget) => void) | null>(null);
+  const goTrailRef = useRef<((dir: 'up' | 'down') => void) | null>(null);
+  // 遊湖乘船
+  const [boatDock, setBoatDock] = useState<string | null>(null);
+  const [boatTick, setBoatTick] = useState(0);
+  const [riding, setRiding] = useState<null | { role: 'owner' | 'passenger'; owner?: string }>(null);
+  const boatingRef = useRef<BoatingService>(new BoatingService());
+  const queuedDockRef = useRef<string | null>(null);
+  const boatRideRef = useRef<null | { role: 'owner' | 'passenger'; slot: number; x: number; z: number; yaw: number; speed: number; dockId: string }>(null);
+  const boardBoatRef = useRef<((dockId: string, join?: BoatSlot | null) => Promise<void>) | null>(null);
+  const leaveBoatRef = useRef<(() => void) | null>(null);
   openForTargetRef.current = openForTarget;
   const nearBoothRef = useRef<{ buildingId: string; index: number } | null>(null);
   const lobbyScreenCurrentRef = useRef<Map<string, Question>>(new Map());
   const goFloorRef = useRef<((buildingId: string, level: number, zone?: number) => void) | null>(null);
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
+    towersRef.current.set(PLATEAU_ID, plateauTower());
     for (const r of Object.values(REGION_CONFIGS)) {
       for (const b of r.buildings) {
         if (b.exterior === 'tulou') {
@@ -1187,6 +1244,182 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
     mp.start();
 
+    // ── 遊湖乘船：渡口上船、自由划船、下船回最近的渡口 ──
+    const boating = boatingRef.current;
+    boating.onChange = () => setBoatTick((n) => (n + 1) % 1000000);
+    let boatingKey = '';
+    const boatingTimer = window.setInterval(() => {
+      const k = mp.presenceKey;
+      if (k && k !== boatingKey && !boatRideRef.current) {
+        boatingKey = k;
+        boating.start(mp.database, k, currentUserNameRef.current || mp.displayName, () => mp.serverNow);
+      }
+    }, 2000);
+    const bMats = boatMats();
+    const makeBoat = () => {
+      const g = new THREE.Group();
+      const day = fishingBoat(bMats);
+      const night = pleasureBoat(bMats);
+      g.add(day, night);
+      g.userData.day = day;
+      g.userData.night = night;
+      scene.add(g);
+      return g;
+    };
+    const styleBoat = (g: THREE.Group) => {
+      const night = world.timeOfDay === 'night';
+      (g.userData.day as THREE.Object3D).visible = !night;
+      (g.userData.night as THREE.Object3D).visible = night;
+    };
+    const myBoat = makeBoat();
+    myBoat.visible = false;
+    const remoteBoats = new Map<number, THREE.Group>();
+    const seatTmp = new THREE.Vector3();
+    goTrailRef.current = (dir) => {
+      playSoundEffect('portal');
+      if (dir === 'up') {
+        storyRef.current = { towerId: PLATEAU_ID, level: 1, armed: false, tween: null };
+        setFloorLevel(1);
+        setStoryTowerId(PLATEAU_ID);
+        controls.setSpawn(new THREE.Vector3(TRAIL.topX, TRAIL.topY, TRAIL.topZ), TRAIL.topYaw);
+      } else {
+        storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
+        setFloorLevel(0);
+        setStoryTowerId(null);
+        controls.setSpawn(new THREE.Vector3(TRAIL.x, 0, TRAIL.z), TRAIL.yaw + Math.PI);
+      }
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      setDrawer(null);
+    };
+    boardBoatRef.current = async (dockId, join) => {
+      const dock = findDock(dockId) || DOCKS[0];
+      let ride: NonNullable<typeof boatRideRef.current> | null = null;
+      if (join) {
+        const ok = await boating.join(join.index);
+        if (ok) ride = { role: 'passenger', slot: join.index, x: join.x, z: join.z, yaw: join.r, speed: 0, dockId };
+      }
+      if (!ride) {
+        const slot = await boating.claim(dock.waterX, dock.waterZ, dock.waterYaw, dock.id);
+        if (slot === null) {
+          // 船滿了：排隊
+          queuedDockRef.current = dock.id;
+          await boating.enqueue();
+          setBoatTick((n) => n + 1);
+          return;
+        }
+        ride = { role: 'owner', slot, x: dock.waterX, z: dock.waterZ, yaw: dock.waterYaw, speed: 0, dockId: dock.id };
+      }
+      (ride as any).vx = 0;
+      (ride as any).vz = 0;
+      boatRideRef.current = ride;
+      queuedDockRef.current = null;
+      storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
+      setFloorLevel(0);
+      setStoryTowerId(null);
+      controls.yaw = ride.yaw;
+      controls.pitch = -0.05;
+      setRiding({ role: ride.role, owner: join?.on });
+      setBoatDock(null);
+      setDrawer(null);
+      playSoundEffect('portal');
+    };
+    leaveBoatRef.current = () => {
+      const ride = boatRideRef.current;
+      if (!ride) return;
+      boatRideRef.current = null;
+      void boating.leave();
+      myBoat.visible = false;
+      const d = nearestDock(ride.x, ride.z);
+      controls.setSpawn(new THREE.Vector3(d.landX, 0, d.landZ), d.landYaw + Math.PI);
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      setRiding(null);
+      playSoundEffect('portal');
+    };
+    const updateBoats = (delta: number) => {
+      const ride = boatRideRef.current;
+      // 其他人的船（自己當船主的那艘由本機畫）
+      const seen = new Set<number>();
+      for (const sl of boating.slots) {
+        if (ride && ride.role === 'owner' && sl.index === ride.slot) continue;
+        seen.add(sl.index);
+        let g = remoteBoats.get(sl.index);
+        if (!g) {
+          g = makeBoat();
+          g.position.set(sl.x, -0.3, sl.z);
+          g.rotation.y = sl.r;
+          remoteBoats.set(sl.index, g);
+        }
+        styleBoat(g);
+        const k = Math.min(1, delta * 4);
+        g.position.x += (sl.x - g.position.x) * k;
+        g.position.z += (sl.z - g.position.z) * k;
+        let dy = sl.r - g.rotation.y;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        g.rotation.y += dy * k;
+        g.position.y = -0.3 + Math.sin(performance.now() / 700 + sl.index) * 0.04;
+      }
+      for (const [i, g] of remoteBoats) {
+        if (!seen.has(i)) {
+          scene.remove(g);
+          remoteBoats.delete(i);
+        }
+      }
+      if (!ride) return;
+      const rr = ride as typeof ride & { vx: number; vz: number };
+      if (ride.role === 'owner') {
+        const v = controls.getDesiredVelocity();
+        const maxV = 6;
+        const len = Math.hypot(v.x, v.z);
+        const tx = len > 0.01 ? (v.x / len) * Math.min(maxV, len) : 0;
+        const tz = len > 0.01 ? (v.z / len) * Math.min(maxV, len) : 0;
+        const acc = Math.min(1, delta * (len > 0.01 ? 1.4 : 0.9));
+        rr.vx += (tx - rr.vx) * acc;
+        rr.vz += (tz - rr.vz) * acc;
+        const nx = ride.x + rr.vx * delta;
+        const nz = ride.z + rr.vz * delta;
+        if (navigable(nx, ride.z)) ride.x = nx;
+        else rr.vx *= -0.2;
+        if (navigable(ride.x, nz)) ride.z = nz;
+        else rr.vz *= -0.2;
+        ride.speed = Math.hypot(rr.vx, rr.vz);
+        if (ride.speed > 0.3) {
+          let dy = Math.atan2(-rr.vx, -rr.vz) - ride.yaw;
+          dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+          ride.yaw += dy * Math.min(1, delta * 1.6);
+        }
+        const nd = nearestDock(ride.x, ride.z);
+        const nearDock = Math.hypot(nd.waterX - ride.x, nd.waterZ - ride.z) < 16;
+        if (nearDock && nd.id !== ride.dockId) {
+          ride.dockId = nd.id;
+          boating.setDock(nd.id);
+        }
+        boating.push(ride.x, ride.z, ride.yaw, nearDock && ride.speed < 0.3);
+        myBoat.visible = true;
+        styleBoat(myBoat);
+        myBoat.position.set(ride.x, -0.3 + Math.sin(performance.now() / 700) * 0.04, ride.z);
+        myBoat.rotation.y = ride.yaw;
+        myBoat.rotation.z = Math.sin(performance.now() / 900) * 0.02;
+      } else {
+        const sl = boating.slots.find((x) => x.index === ride.slot);
+        if (!sl || (boating.online && sl.p !== boating.myKey)) {
+          // 船主下船了：送回最近的渡口
+          leaveBoatRef.current?.();
+          return;
+        }
+        const k = Math.min(1, delta * 4);
+        ride.x += (sl.x - ride.x) * k;
+        ride.z += (sl.z - ride.z) * k;
+        let dy = sl.r - ride.yaw;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        ride.yaw += dy * k;
+      }
+      seatTmp.copy(ride.role === 'owner' ? BOAT_SEATS.owner : BOAT_SEATS.passenger).applyAxisAngle(new THREE.Vector3(0, 1, 0), ride.yaw);
+      controls.position.set(ride.x + seatTmp.x, 0.05, ride.z + seatTmp.z);
+      controls.updateCameraTransform(delta);
+    };
+
     // 換樓層：樓層表、下樓口、地下室的上樓梯（直接把玩家放到那一層）
     goFloorRef.current = (buildingId, level, zone) => {
       const b = REGION_BUILDINGS.get(buildingId);
@@ -1265,7 +1498,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setIsDesktopPointerLocked(controls.isLocked);
 
       const story = storyRef.current;
-      if (story.tween && regionManager.status === 'active') {
+      updateBoats(delta);
+      if (boatRideRef.current && regionManager.status === 'active') {
+        // 乘船中：位置由船決定（上面 updateBoats 已經處理）
+        const spatial = detectPlayerSpatialContext(controls.position.x, controls.position.z);
+        regionManager.syncActiveRegionByPosition(spatial.regionId);
+        setActiveRegionId(spatial.regionId);
+        nearBuildingRef.current = null;
+        setNearBuilding(null);
+      } else if (story.tween && regionManager.status === 'active') {
         // 上下樓：沿樓梯走一段（約 1.8 秒）
         const tw = story.tween;
         tw.t += delta / tw.dur;
@@ -1292,7 +1533,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           desiredVelocity,
           delta,
           activeColliders,
-          globalWalkableZones,
+          tower?.walk || globalWalkableZones,
           tower ? [] : WORLD_BRIDGES,
           tower ? (tower.floorY ? tower.floorY(story.level) : story.level * FLOOR_H) : 0
         );
@@ -1460,6 +1701,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
         goFloor: (id: string, level: number, zone?: number) => goFloorRef.current?.(id, level, zone),
+        openDock: (id: string) => setBoatDock(id),
+        trail: (dir: 'up' | 'down') => goTrailRef.current?.(dir),
+        ride: () => JSON.stringify(boatRideRef.current),
+        docks: () => JSON.stringify(DOCKS.map((d) => [d.id, Math.round(d.landX), Math.round(d.landZ), Math.round(d.waterX), Math.round(d.waterZ)])),
         findNaN: () => {
           const out: string[] = [];
           scene.traverse((o) => {
@@ -1492,6 +1737,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       weatherAlive = false;
+      window.clearInterval(boatingTimer);
+      boating.stop();
+      boatRideRef.current = null;
       if (resumeClearTimer) window.clearTimeout(resumeClearTimer);
       renderer.domElement.removeEventListener('mousedown', onDown);
       window.removeEventListener('mouseup', onUp);
@@ -1822,7 +2070,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
           handleChangeQuality({ fancy: next, shadows: next });
         }}
-        placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? `${REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, '')}・${floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)}` : undefined}
+        placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? [REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, ''), floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)].filter(Boolean).join('・') : undefined}
         timeOfDay={timeOfDay}
         onCycleTimeOfDay={() => {
           const order: TimeOfDay[] = ['day', 'dusk', 'night'];
@@ -1838,7 +2086,26 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
       />
 
-      {dirBuilding && floorEntries.length > 0 && regionStatus === 'active' && (
+      {/* 遊湖乘船：渡口面板、排隊、輪到時的通知、乘船中 */}
+      <BoatOverlay
+        tick={boatTick}
+        dockId={boatDock}
+        riding={riding}
+        service={boatingRef.current}
+        onClose={() => setBoatDock(null)}
+        onBoard={(dockId, join) => void boardBoatRef.current?.(dockId, join)}
+        onQueue={(dockId) => {
+          queuedDockRef.current = dockId;
+          void boatingRef.current.enqueue();
+          setBoatDock(null);
+        }}
+        onAcceptOffer={() => void boardBoatRef.current?.(queuedDockRef.current || DOCKS[0].id)}
+        onLater={(timedOut) => void boatingRef.current.requeue(timedOut)}
+        onLeaveQueue={() => void boatingRef.current.leaveQueue()}
+        onLeaveBoat={() => leaveBoatRef.current?.()}
+      />
+
+      {!riding && dirBuilding && floorEntries.length > 0 && regionStatus === 'active' && (
         <FloorDirectory
           title={dirBuilding.name.replace(/[（(].*$/, '')}
           entries={floorEntries}

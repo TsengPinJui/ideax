@@ -118,11 +118,12 @@ const HOME_SHOPS = ringProps(
   6,
   4.4,
   3.0,
-  [163, 180, 197, -17, 0, 17, 240, 255, 270, 285, 300].map((deg, i) => ({
+  // 180°（西）與 270°（北）留給渡口
+  [163, 197, -17, 0, 17, 240, 255, 285, 300].map((deg, i) => ({
     deg,
     name: `貿易街・${TRADE_NUMS[i]}號鋪`,
     sub: '歡迎掌櫃進駐',
-    goods: (['crafts', 'tea', 'books', 'toys', 'lanterns', 'ink', 'sweets', 'general', 'crafts', 'tea', 'books'] as ShopKind[])[i],
+    goods: (['crafts', 'books', 'toys', 'lanterns', 'ink', 'sweets', 'general', 'tea', 'books'] as ShopKind[])[i],
   }))
 ).map((p) => withPartner(p, TRADE_NOTE));
 

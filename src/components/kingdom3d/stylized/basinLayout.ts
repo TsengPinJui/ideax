@@ -54,11 +54,8 @@ const RAW_LANDS: Landmass[] = [
   // 北岸
   { cx: -30.5, cz: -47.5, rx: 19.5, rz: 12.2, seed: 1.4, rot: 0.04 },
   { cx: 30.5, cz: -47.5, rx: 19.5, rz: 12.2, seed: 2.8, rot: -0.04 },
-  // 西岸
-  { cx: -48.5, cz: 0, rx: 17.5, rz: 11.5, seed: 4.1, rot: 0 },
-  { cx: -50.5, cz: -15.5, rx: 19, rz: 13.5, seed: 4.3, rot: 0.06 },
-  { cx: -50.5, cz: 15.5, rx: 19, rz: 13.5, seed: 4.7, rot: -0.06 },
-  { cx: -55.5, cz: 0, rx: 14.5, rz: 32, seed: 9.7, rot: 0 },
+  // 西岸（貼著塔樓山台山腳；痛點島、創意島西邊留出一片湖面）
+  { cx: -63, cz: 0, rx: 7, rz: 24, seed: 9.7, rot: 0 },
   { cx: -47.5, cz: -34.5, rx: 16.5, rz: 12.5, seed: 10.3, rot: 0.12 },
   { cx: -47.5, cz: 34.5, rx: 16.5, rz: 12.5, seed: 11.1, rot: -0.12 },
   // 東岸
@@ -127,6 +124,96 @@ export const FARMLANDS: Landmass[] = (() => {
   }
   return out;
 })();
+
+/**
+ * 乘船點（渡口）：在島的岸邊，角度是從島中心往外的方向（世界座標 atan2(z, x)，度）
+ * 登山口：痛點島西岸，點了直通西側塔樓山台
+ */
+export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: string }[] = [
+  { id: 'dock-pain-ne', regionId: 'region-pain', deg: -43, name: '痛點島東北渡口' },
+  { id: 'dock-pain-sw', regionId: 'region-pain', deg: 128, name: '痛點島西南渡口' },
+  { id: 'dock-home-n', regionId: 'region-home', deg: -90, name: '主島北渡口' },
+  { id: 'dock-home-w', regionId: 'region-home', deg: 180, name: '主島西渡口' },
+  { id: 'dock-disc-nw', regionId: 'region-discussion', deg: -139, name: '討論島西北渡口' },
+  { id: 'dock-disc-s', regionId: 'region-discussion', deg: 82, name: '討論島南渡口' },
+  { id: 'dock-career-ne', regionId: 'region-career', deg: -40, name: '徵才島東北渡口' },
+  { id: 'dock-career-sw', regionId: 'region-career', deg: 133, name: '徵才島西南渡口' },
+  { id: 'dock-creative-se', regionId: 'region-creative', deg: 30, name: '創意島東南渡口' },
+];
+export const TRAILHEAD = { regionId: 'region-pain', deg: 168, name: '塔樓登山口' };
+
+/**
+ * 島與外圍田園之間補上的陸地（田園、民居）：從島中心往外的方向（度）
+ * 會自動往外推到不壓到島、拱橋與渡口為止
+ */
+const fillRange = (regionId: string, from: number, to: number, step = 14) => {
+  const out: { regionId: string; deg: number }[] = [];
+  for (let d = from; d <= to + 0.01; d += step) out.push({ regionId, deg: d });
+  return out;
+};
+const FILL_SPOTS: { regionId: string; deg: number }[] = [
+  // 痛點島西北一帶
+  ...fillRange('region-pain', 178, 290),
+  // 討論島北、東
+  ...fillRange('region-discussion', 252, 384),
+  // 創意島西南、南
+  ...fillRange('region-creative', 92, 190),
+  // 徵才島南、東
+  ...fillRange('region-career', 52, 116),
+  ...fillRange('region-career', -8, 22),
+];
+
+/** 島邊某個方向的岸點（可走範圍的邊緣） */
+export function islandEdge(regionId: string, deg: number, extra = 0): [number, number] {
+  const r = REGION_CONFIGS[regionId as keyof typeof REGION_CONFIGS];
+  const [cx, cz] = r.center;
+  const walk = getGlobalWalkableZones();
+  const e = walk.find((z) => z.type === 'ellipse' && Math.abs(z.cx - cx) < 0.5 && Math.abs(z.cz - cz) < 0.5) as { rx: number; rz: number } | undefined;
+  const rx = (e ? e.rx : r.islandRadiusX) + extra;
+  const rz = (e ? e.rz : r.islandRadiusZ) + extra;
+  const a = (deg * Math.PI) / 180;
+  return [cx + Math.cos(a) * rx, cz + Math.sin(a) * rz];
+}
+
+const FILLS: Landmass[] = (() => {
+  const walk = getGlobalWalkableZones().filter((z) => z.type === 'ellipse') as { cx: number; cz: number; rx: number; rz: number }[];
+  const reserve = [...BOARDING_SPOTS, TRAILHEAD].map((d) => islandEdge(d.regionId, d.deg, 12));
+  const out: Landmass[] = [];
+  FILL_SPOTS.forEach((f, i) => {
+    const r = REGION_CONFIGS[f.regionId as keyof typeof REGION_CONFIGS];
+    const [cx, cz] = r.center;
+    const a = (f.deg * Math.PI) / 180;
+    let dist = 14;
+    let l: Landmass | null = null;
+    for (let k = 0; k < 50; k++, dist += 0.8) {
+      const [x, z] = islandEdge(f.regionId, f.deg, dist);
+      const cand: Landmass = { cx: x, cz: z, rx: 11, rz: 8, seed: 20 + i * 1.7, rot: a + Math.PI / 2 };
+      let hit = false;
+      for (let j = 0; j < 36 && !hit; j++) {
+        const t = (j / 36) * Math.PI * 2;
+        const c = Math.cos(cand.rot);
+        const sn = Math.sin(cand.rot);
+        const lx = Math.cos(t) * cand.rx * 1.08;
+        const lz = Math.sin(t) * cand.rz * 1.08;
+        const px = cand.cx + lx * c - lz * sn;
+        const pz = cand.cz + lx * sn + lz * c;
+        if (walk.some((o) => insideEllipse(px, pz, { cx: o.cx, cz: o.cz, rx: o.rx + 8.5, rz: o.rz + 8.5 }))) hit = true;
+        if (WORLD_BRIDGES.some((b) => distToSeg(px, pz, b.x1, b.z1, b.x2, b.z2) < b.halfWidth + 6)) hit = true;
+        if (reserve.some(([rx0, rz0]) => Math.hypot(px - rx0, pz - rz0) < 9)) hit = true;
+      }
+      if (!hit) {
+        l = cand;
+        break;
+      }
+    }
+    void cx;
+    void cz;
+    if (l) out.push(l);
+  });
+  return out;
+})();
+
+FARMLANDS.push(...FILLS);
 
 export const LOTUS_PATCHES: [number, number, number][] = [
   [-7.5, -42, 6],

@@ -88,6 +88,20 @@ export class KingdomMultiplayer {
     this.color = h % AVATAR_COLORS.length;
   }
 
+  /** 給乘船系統用：資料庫、這個分頁的身分鍵、暱稱、伺服器時間 */
+  get database() {
+    return this.db;
+  }
+  get presenceKey() {
+    return `${this.activeUid}_${this.sid}`.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 60);
+  }
+  get displayName() {
+    return this.name;
+  }
+  get serverNow() {
+    return Date.now() + this.serverOffset;
+  }
+
   setName(name: string) {
     this.name = (name || '旅人').trim().slice(0, 20) || '旅人';
     this.last.x = NaN; // 下次一定送出
