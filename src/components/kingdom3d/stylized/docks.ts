@@ -165,7 +165,7 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
     const roof = buildRoofTier(4.6, 1.3, { rise: 0.55, overhang: 0.4, curl: 0.35, theme: 'slate', ridge: true, lite: true, horns: false });
     roof.position.y = 3.8;
     tg.add(roof);
-    const s1 = sign('塔樓登山口', '點這裡直上塔樓山台', 2.6);
+    const s1 = sign('聚雲塔登山口', '點這裡直上聚雲塔山台', 2.6);
     s1.position.set(0, 2.75, -0.42);
     s1.rotation.y = Math.PI;
     tg.add(s1);
@@ -207,8 +207,48 @@ export function createPlateauExtras(): { group: THREE.Group; colliders: Collider
     fl.position.set(TRAIL.pagodaX, TRAIL.topFloorY + 0.04, TRAIL.pagodaZ);
     g.add(fl);
   }
+  // 塔匾「聚雲塔」（一樓東面，朝向五島）
+  {
+    const plaque = sign('聚雲塔', '西側山台・五層塔', 2.8);
+    plaque.position.set(TRAIL.pagodaX + 3.8, TRAIL.topY + 3.95, TRAIL.pagodaZ);
+    plaque.rotation.y = Math.PI / 2;
+    g.add(plaque);
+  }
+  // 山頂的低雲（觸手可及；點雲：坐看雲起時）
+  {
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.9, emissive: new THREE.Color(0xdfe8f2), emissiveIntensity: 0.35, depthWrite: false });
+    const rand = seeded(3131);
+    const clouds: { m: THREE.Group; bx: number; bz: number; by: number; ph: number }[] = [];
+    const ANG = [95, 140, 185, 228, 272, 318, 25];
+    ANG.forEach((deg, i) => {
+      const a = deg * DEG;
+      const r = i === 6 ? 12.5 : 8.6 + rand() * 2.6;
+      const cx = TRAIL.plateauX + Math.cos(a) * r;
+      const cz = TRAIL.plateauZ + Math.sin(a) * r;
+      const cy = TRAIL.topY + 0.5 + rand() * 1.0;
+      const cg = new THREE.Group();
+      const n = 5 + Math.floor(rand() * 3);
+      for (let k = 0; k < n; k++) {
+        const sz = 0.55 + rand() * 0.6;
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(sz, 12, 9), cloudMat);
+        puff.position.set((rand() - 0.5) * 2.2, (rand() - 0.3) * 0.5, (rand() - 0.5) * 1.4);
+        puff.scale.y = 0.7;
+        puff.renderOrder = 2;
+        cg.add(puff);
+      }
+      cg.position.set(cx, cy, cz);
+      g.add(cg);
+      clouds.push({ m: cg, bx: cx, bz: cz, by: cy, ph: rand() * 10 });
+      // 跟著雲飄的點擊範圍
+      cg.add(makePickProxy(2.8, 1.6, 2.0, 0, 0, 0, { kind: 'egg', egg: 'mist', maxDist: 30, minY: 20 }, -0.7));
+    });
+    g.userData.tick = (t: number) => {
+      for (const c of clouds) {
+        c.m.position.set(c.bx + Math.sin(t * 0.07 + c.ph) * 0.9, c.by + Math.sin(t * 0.35 + c.ph) * 0.15, c.bz + Math.cos(t * 0.05 + c.ph) * 0.7);
+      }
+    };
+  }
   void REGION_CONFIGS;
-  void DEG;
   return { group: g, colliders: PLATEAU_COLLIDERS };
 }
 

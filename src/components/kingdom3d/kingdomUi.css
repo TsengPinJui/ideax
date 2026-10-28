@@ -159,3 +159,18 @@
 .kx-kai *:not(svg):not(path) {
   font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'Kaiti TC', 'STKaiti', 'KaiTi', 'LXGW WenKai TC', 'CWTeXKai', 'Noto Serif TC', serif;
 }
+
+/* 彩蛋詩句卷軸：從上方淡入 */
+.kx-egg-toast {
+  animation: kx-egg-in 0.45s ease-out both;
+}
+@keyframes kx-egg-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

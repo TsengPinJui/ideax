@@ -487,6 +487,8 @@ export class StylizedWorld {
     dark.position.z = 1.5;
     dark.rotation.y = Math.PI;
     dark.scale.y = 1.15;
+    // 彩蛋：南山洞口（初極狹，纔通人…）
+    dark.userData.pick = { kind: 'egg', egg: 'cave', maxDist: 260 };
     cave.add(dark);
     cave.position.y = -0.4;
     this.root.add(cave);
@@ -501,6 +503,8 @@ export class StylizedWorld {
       const sp = new THREE.Sprite(this.cloudMat);
       sp.position.set(Math.cos(a) * r * 1.08, 22 + (i % 4) * 5, Math.sin(a) * r * 0.94);
       sp.scale.set(70, 22, 1);
+      // 彩蛋：山腰雲霧（坐看雲起時）：登上山台或塔頂才點得到
+      sp.userData.pick = { kind: 'egg', egg: 'mist', maxDist: 260, minY: 20 };
       this.root.add(sp);
     }
   }
@@ -576,7 +580,10 @@ export class StylizedWorld {
     this.ownedTextures.push(tex);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff });
     this.waterfalls.push(mat);
-    this.root.add(new THREE.Mesh(geo, mat));
+    const fallMesh = new THREE.Mesh(geo, mat);
+    // 彩蛋：飛瀑（垂涎三尺…）
+    fallMesh.userData.pick = { kind: 'egg', egg: 'waterfall', maxDist: 220 };
+    this.root.add(fallMesh);
     const bottom = pts[n];
     const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }));
     mist.scale.set(width * 2.4, width * 1.3, 1);
@@ -597,6 +604,7 @@ export class StylizedWorld {
     grp.position.set(x, 0, z);
     grp.rotation.y = faceYaw;
     const fall = new THREE.Mesh(new THREE.PlaneGeometry(width, len), mat);
+    fall.userData.pick = { kind: 'egg', egg: 'waterfall', maxDist: 220 };
     fall.position.set(0, bottomY + len / 2, Math.sin(tilt) * len * 0.5);
     fall.rotation.x = -tilt;
     grp.add(fall);

@@ -11,6 +11,7 @@ import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO, o
 import { isTypingTarget } from './FirstPersonControls';
 import { hallOf, hallZoneItems, HALL_ZONES } from './stylized/exhibitHall';
 import { CHARACTERS, CharacterId } from './stylized/fauna';
+import { plazaTopics } from './stylized/discussionPlaza';
 import './kingdomUi.css';
 
 /** 左側面板目前顯示的內容（照 /island：點畫面上的東西，細節在左側彈出） */
@@ -29,7 +30,9 @@ export type DrawerState =
   /** 展覽館、電玩城一樓：精選榜／熱度榜 */
   | { kind: 'hallRank'; buildingId: string; which: 'featured' | 'hot' }
   /** 創點源原創角色小卡 */
-  | { kind: 'character'; id: CharacterId };
+  | { kind: 'character'; id: CharacterId }
+  /** 討論島論道廣場：議題碑上的討論（熱門／最新） */
+  | { kind: 'discList'; which: 'hot' | 'new' };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
 export const findStreetProp = (id: string) => ALL_PROPS.find((p) => p.id === id) || null;
@@ -817,6 +820,38 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'discList') {
+    const list = plazaTopics(questions, state.which).slice(0, 40);
+    body = (
+      <>
+        <Header title={state.which === 'hot' ? '熱門議題' : '最新議題'} badge="討論島・論道廣場" sub="藏書閣門前的議題碑，刻著站上的討論" onClose={close} />
+        <div className="px-4 pt-3">
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['hot', 'new'] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => onChange({ kind: 'discList', which: w })}
+                className="rounded-md px-1 py-1.5 text-[12.5px] cursor-pointer"
+                style={{
+                  background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
+                  border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
+                  color: '#f6e7c4',
+                }}
+              >
+                {w === 'hot' ? '熱門議題' : '最新議題'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <QuestionRows list={list} onPick={openQ} empty="還沒有討論，歡迎發起第一則！" />
+          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_discussion' })} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-2 cursor-pointer">
+            <PenLine className="w-4 h-4" /> 發起討論（新分頁）
+          </button>
+        </div>
+      </>
+    );
   } else if (state?.kind === 'character') {
     const c = CHARACTERS[state.id];
     body = (

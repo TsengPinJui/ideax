@@ -88,6 +88,8 @@ import {
 } from '../../services/islandIntroVideoService';
 import './IslandWorldView.css';
 import { IslandPegman } from './IslandPegman';
+import { trackFeature } from '../../services/featureUsage';
+import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from './easterEggBook';
 import { enterRoamAt, roamTargetForBuilding, roamTargetForIsland } from '../kingdom3d/roamEntry';
 
 interface IslandWorldViewProps {
@@ -118,6 +120,11 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const [showCityMenu, setShowCityMenu] = useState(false);
 
   const currentCity = useMemo(() => getCityConfig(selectedCityId), [selectedCityId]);
+
+  // 各大功能使用比例：打開 3D 地圖算一次（同一位訪客一天只算一次）
+  useEffect(() => {
+    trackFeature('map3d');
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -282,31 +289,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
   const [searchText, setSearchText] = useState('');
 
-  // 彩蛋收集冊（首次觸發即依發現順序刊登於收集冊格子，並記錄解鎖時間）
-  const EASTER_EGG_STORAGE_KEY = 'ideax_island_easter_egg_book_v1';
-  const [collectedEasterEggs, setCollectedEasterEggs] = useState<
-    Array<{ verse: string; unlockedAt: string }>
-  >(() => {
-    try {
-      const raw = localStorage.getItem('ideax_island_easter_egg_book_v1');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .filter(
-              (item) => item && typeof item.verse === 'string' && typeof item.unlockedAt === 'string',
-            )
-            .map((item) => ({
-              verse: item.verse,
-              unlockedAt: item.unlockedAt.split(' ')[0],
-            }));
-        }
-      }
-    } catch {
-      // Ignore storage error
-    }
-    return [];
-  });
+  // 彩蛋收集冊（首次觸發即依發現順序刊登於收集冊格子，並記錄解鎖時間）；和實境漫遊共用同一本
+  const [collectedEasterEggs, setCollectedEasterEggs] = useState<EasterEggRecord[]>(() => loadEasterEggBook());
+  useEffect(() => onEasterEggBookChange(setCollectedEasterEggs), []);
   const [showEasterEggBook, setShowEasterEggBook] = useState(false);
   const [recentUnlockedEggToast, setRecentUnlockedEggToast] = useState<{
     slotIndex: number;
@@ -316,40 +301,16 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const toastTimerRef = useRef<number | null>(null);
 
   const handleEasterEggTriggered = React.useCallback((rawVerse: string) => {
-    const trimmed = (rawVerse || '').trim();
-    if (!trimmed) return;
-    const normalized = trimmed.replace(/^[「『]+|[」』]+$/g, '').trim();
-    if (!normalized) return;
-    const displayVerse = `「${normalized}」`;
-
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const unlockedAt = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
-
-    setCollectedEasterEggs((prev) => {
-      const exists = prev.some(
-        (item) => item.verse.replace(/^[「『]+|[」』]+$/g, '').trim() === normalized,
-      );
-      if (exists) return prev;
-      const next = [...prev, { verse: displayVerse, unlockedAt }];
-      try {
-        localStorage.setItem(EASTER_EGG_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Ignore storage error
-      }
-      setRecentUnlockedEggToast({
-        slotIndex: next.length,
-        verse: displayVerse,
-        unlockedAt,
-      });
-      if (toastTimerRef.current) {
-        window.clearTimeout(toastTimerRef.current);
-      }
-      toastTimerRef.current = window.setTimeout(() => {
-        setRecentUnlockedEggToast(null);
-      }, 4200);
-      return next;
-    });
+    const r = addEasterEgg(rawVerse);
+    if (!r || !r.added) return;
+    setCollectedEasterEggs(r.list);
+    setRecentUnlockedEggToast({ slotIndex: r.slotIndex, verse: r.verse, unlockedAt: r.unlockedAt });
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setRecentUnlockedEggToast(null);
+    }, 4200);
   }, []);
 
   useEffect(() => {

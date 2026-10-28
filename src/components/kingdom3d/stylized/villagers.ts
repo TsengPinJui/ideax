@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getGlobalWalkableZones, WORLD_BRIDGES, ALL_REGION_IDS, REGION_CONFIGS, bridgeAnglerSpots } from '../regionConfigs';
 import { mergeByMaterial, getStyleMaterials } from './architecture';
 import { seeded } from './textures';
+import { makePickProxy } from '../picking';
 
 /**
  * 河邊的村民：草地上躺著曬太陽、坐著休憩、岸邊戴斗笠的漁人；橋上坐著釣魚的釣客。
@@ -110,6 +111,8 @@ export function createVillagers(): THREE.Group {
     v.position.set(x, y, z);
     v.rotation.y = yaw;
     statics.add(v);
+    // 彩蛋：漁人「見漁人…」、其他村民「阡陌交通…」（夜裡另有詩句）
+    root.add(makePickProxy(pose === 'lying' ? 1.8 : 1.0, pose === 'lying' ? 0.8 : 1.5, pose === 'lying' ? 1.8 : 1.0, x, z, yaw, { kind: 'egg', egg: pose === 'fisher' || pose === 'angler' ? 'fisherman' : 'villager', maxDist: 35 }, y));
     if (v.userData.rodPivot) rods.push({ pivot: v.userData.rodPivot, phase: seed * 0.7, tip: new THREE.Vector3() });
   };
   // 河邊草地：每座島 4 位（躺、坐、兩位漁人），避開拱橋

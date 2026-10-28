@@ -18,7 +18,11 @@ export type FeatureKey =
   | 'my_projects'
   | 'agents'
   | 'mascot_chat'
-  | 'customer_service';
+  | 'customer_service'
+  /** 3D 實境漫遊（第一人稱逛五島） */
+  | 'roam3d'
+  /** 3D 地圖（/island 俯視島嶼地圖） */
+  | 'map3d';
 
 const KEY = 'ideax_feature_usage_day_v1';
 

@@ -25,6 +25,8 @@ export const FEATURE_LABELS: Record<string, string> = {
   agents: '關於與角色',
   mascot_chat: '小燈泡對話',
   customer_service: '客服（多慧）',
+  roam3d: '實境漫遊',
+  map3d: '3D地圖',
 };
 
 async function getDb() {

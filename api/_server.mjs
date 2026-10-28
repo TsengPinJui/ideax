@@ -172645,7 +172645,9 @@ var FEATURE_LABELS = {
   my_projects: "\u6211\u7684\u6848\u4EF6",
   agents: "\u95DC\u65BC\u8207\u89D2\u8272",
   mascot_chat: "\u5C0F\u71C8\u6CE1\u5C0D\u8A71",
-  customer_service: "\u5BA2\u670D\uFF08\u591A\u6167\uFF09"
+  customer_service: "\u5BA2\u670D\uFF08\u591A\u6167\uFF09",
+  roam3d: "\u5BE6\u5883\u6F2B\u904A",
+  map3d: "3D\u5730\u5716"
 };
 async function getDb4() {
   if (!hasAdminCredentials) return null;
@@ -173841,7 +173843,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.1.16";
+var APP_VERSION = "4.1.17";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
