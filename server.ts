@@ -166,6 +166,66 @@ app.get('/api/media/island-intro-video', async (req: Request, res: Response) => 
 });
 
 // ==========================================
+// 3D 島覽：作品圖片轉送（展場攤位、大廳大螢幕要把作品封面貼到 3D 上，外站圖片需要允許跨網域）
+// 只轉送白名單網站的圖片，大小上限 4MB
+// ==========================================
+const KINGDOM_IMG_HOSTS = [
+  's0.wp.com',
+  'i.ytimg.com',
+  'img.youtube.com',
+  'firebasestorage.googleapis.com',
+  'storage.googleapis.com',
+  'lh3.googleusercontent.com',
+  'i.imgur.com',
+  'images.unsplash.com',
+  'raw.githubusercontent.com',
+  'user-images.githubusercontent.com',
+];
+const kingdomImgHostOk = (h: string) => KINGDOM_IMG_HOSTS.some((d) => h === d || h.endsWith(`.${d}`));
+app.get('/api/kingdom-img', async (req: Request, res: Response) => {
+  try {
+    const raw = String(req.query.u || '');
+    let target: URL;
+    try {
+      target = new URL(raw);
+    } catch {
+      res.status(400).json({ error: 'bad url' });
+      return;
+    }
+    if (target.protocol !== 'https:' || !kingdomImgHostOk(target.hostname.toLowerCase())) {
+      res.status(403).json({ error: 'host not allowed' });
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    const r = await fetch(target.toString(), { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'IdeaX-Kingdom/1.0' } }).finally(() => clearTimeout(timer));
+    const finalHost = (() => {
+      try {
+        return new URL(r.url).hostname.toLowerCase();
+      } catch {
+        return '';
+      }
+    })();
+    const type = r.headers.get('content-type') || '';
+    if (!r.ok || !kingdomImgHostOk(finalHost) || !/^image\//i.test(type)) {
+      res.status(502).json({ error: 'not an image' });
+      return;
+    }
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 4 * 1024 * 1024) {
+      res.status(413).json({ error: 'too large' });
+      return;
+    }
+    res.setHeader('Content-Type', type);
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(buf);
+  } catch (err: any) {
+    res.status(502).json({ error: 'fetch failed' });
+  }
+});
+
+// ==========================================
 // 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)
 // ==========================================
 // 創點島 3D 即時線上真人位置與建築物熱度追蹤 (/api/island/presence)

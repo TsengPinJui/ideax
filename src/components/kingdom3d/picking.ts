@@ -13,7 +13,10 @@ export type PickTarget =
   /** 展覽館、電玩城地下主展場的攤位 */
   | { kind: 'booth'; buildingId: string; zone: number; index: number }
   /** 換樓層：一樓大廳的下樓口（level -1）、地下室的上樓梯（level 0） */
-  | { kind: 'goFloor'; buildingId: string; level: number };
+  | { kind: 'goFloor'; buildingId: string; level: number }
+  /** 展覽館、電玩城一樓：正對大門的大螢幕、左右牆的精選榜／熱度榜 */
+  | { kind: 'lobbyScreen'; buildingId: string }
+  | { kind: 'lobbyRank'; buildingId: string; which: 'featured' | 'hot' };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 

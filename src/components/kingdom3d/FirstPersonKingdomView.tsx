@@ -32,7 +32,29 @@ import { DevStatsPanel } from './DevStatsPanel';
 import { painForFloor } from './PainFloorModal';
 import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
 import { RING, ringLevelColliders, ringStair, insideRing } from './stylized/tulou';
-import { HALL_BUILDINGS, HALL_ZONES, hallOf, hallArrival, hallZoneItems, drawBoothTexture, drawZoneSignTexture } from './stylized/exhibitHall';
+import {
+  HALL_BUILDINGS,
+  HALL_ZONES,
+  hallOf,
+  hallArrival,
+  hallZoneItems,
+  drawBoothTexture,
+  drawZoneSignTexture,
+  isFloorsHall,
+  hallFloorCount,
+  hallFloorY,
+  DEEP_SLOTS,
+  mediaOf,
+  loadMediaTexture,
+  drawDeepBoothTexture,
+  drawNameplateTexture,
+  drawFloorPlaqueTexture,
+  DeepBoothSpot,
+} from './stylized/exhibitHall';
+import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
+import { useShowcaseSlides } from '../HomeShowcasePlayer';
+import { drawHomeBoardTexture } from './stylized/noticeBoard';
+import { getFeaturedGames, getFeaturedProposalsAndSoftware, getHotRankedGames, getHotRankedProposalsAndSoftware } from '../../data/hotGamesData';
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
@@ -80,7 +102,9 @@ type Tower = {
   b: BuildingInteractable;
   basements: number;
   cols: Collider[][];
-  stair: (level: number, x: number, z: number, from: THREE.Vector3) => { pts: THREE.Vector3[]; toLevel: number } | null;
+  stair: (level: number, x: number, z: number, from: THREE.Vector3) => { pts: THREE.Vector3[]; toLevel: number; hallEnter?: boolean } | null;
+  /** 各層地板高度（沒有就是 level × 4.5 m） */
+  floorY?: (level: number) => number;
 };
 
 function rectTower(b: BuildingInteractable, lay: StoryLayout): Tower {
@@ -115,15 +139,42 @@ function ringTower(b: BuildingInteractable): Tower {
     stair: (rel, x, z, from) => (insideRing(b, x, z) ? ringStair(b, rel, x, z, from) : null),
   };
 }
-/** 地下主展場：地下一樓用展場自己的碰撞（展場組好後才填入），沒有走的樓梯，靠點下樓口／樓層表進出 */
+/**
+ * 地下展場：
+ * - 展覽館、電玩城：地下每一層是一類展場（共用同一座挑高展廳，碰撞相同）；一樓走進大樓梯口就往下走
+ * - 藏書閣：地下一樓圖書館，靠點下樓口／樓層表進出
+ */
 function hallTower(b: BuildingInteractable): Tower {
-  return { b, basements: 1, cols: [[]], stair: () => null };
+  const n = hallFloorCount(b.id);
+  const floors = isFloorsHall(b.id);
+  return {
+    b,
+    basements: n,
+    cols: Array.from({ length: n }, () => []),
+    floorY: (level) => hallFloorY(b.id, level),
+    stair: (rel, x, z, from) => {
+      if (!floors || rel !== 0) return null;
+      const [lx, lz] = toLocal(b, x, z);
+      if (!inLobbyStairTop(b, lx, lz)) return null;
+      const p = lobbyPit(b);
+      const P = (px: number, pz: number, y: number) => {
+        const [wx, wz] = toWorld(b, px, pz);
+        return new THREE.Vector3(wx, y, wz);
+      };
+      const sx = Math.max(p.x0 + 0.6, Math.min(p.x1 - 0.6, lx));
+      return { pts: [from.clone(), P(sx, p.zTop - 0.4, -0.2), P(sx * 0.5, p.zBot + 1.0, -p.depth + 0.4)], toLevel: -1, hallEnter: true };
+    },
+  };
 }
 
 /** 樓層顯示名稱（左上角地點、靠近時的提示） */
 function floorLabel(b: BuildingInteractable, level: number) {
   if (b.exterior === 'tulou') return (PAIN_FLOORS[level] || PAIN_FLOORS[0]).label;
   const h = hallOf(b.id);
+  if (h && h.mode === 'floors' && level < 0) {
+    const z = HALL_ZONES[h.kind][-level - 1];
+    return `B${-level}・${z ? z.name : '展場'}`;
+  }
   if (h) return level < 0 ? (h.kind === 'library' ? '地下圖書館' : '地下主展場') : h.lobby;
   return '';
 }
@@ -135,7 +186,7 @@ type StoryState = {
   towerId: string | null;
   level: number;
   armed: boolean;
-  tween: null | { pts: THREE.Vector3[]; t: number; dur: number; toLevel: number; towerId: string };
+  tween: null | { pts: THREE.Vector3[]; t: number; dur: number; toLevel: number; towerId: string; hallEnter?: boolean };
 };
 
 const BOOTHS_PER_ZONE = 16;
@@ -143,6 +194,25 @@ const BOOTHS_PER_ZONE = 16;
 const REGION_BUILDINGS = new Map<string, BuildingInteractable>(
   Object.values(REGION_CONFIGS).flatMap((r) => r.buildings.map((b) => [b.id, b] as [string, BuildingInteractable]))
 );
+
+/** 攤位圖片面板：顯示第 slide 張（載入完才換上；載不到就維持原樣） */
+function showBoothMedia(media: THREE.Mesh, slide: number) {
+  const imgs = (media.userData.images || []) as string[];
+  if (!imgs.length) {
+    media.visible = false;
+    media.userData.want = '';
+    return;
+  }
+  const url = imgs[slide % imgs.length];
+  media.userData.want = url;
+  loadMediaTexture(url).then((t) => {
+    if (media.userData.want !== url || !t) return;
+    const mat = media.material as THREE.MeshBasicMaterial;
+    mat.map = t;
+    mat.needsUpdate = true;
+    media.visible = true;
+  });
+}
 
 /** 沿折線取點（t 為 0~1） */
 function samplePath(pts: THREE.Vector3[], t: number) {
@@ -169,7 +239,53 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   initialRegionId = 'region-home',
   renderQuestionPage,
 }) => {
-  const { questions, currentUser } = useApp();
+  const { questions, currentUser, homeShowcaseConfig } = useApp();
+  // 展覽館（提案與軟體）、電玩城（遊戲）一樓：和首頁同一份精選榜、熱度榜
+  const slidesGames = useShowcaseSlides('games');
+  const slidesProposals = useShowcaseSlides('proposals_software');
+  const rankings = React.useMemo(() => {
+    const out: Record<string, { featured: Question[]; hot: Question[]; slides: { q: Question; badge: string }[] }> = {};
+    for (const [id, h] of Object.entries(HALL_BUILDINGS)) {
+      if (!h.showcase) continue;
+      const games = h.showcase === 'games';
+      const featured: Question[] = [];
+      const seen = new Set<string>();
+      for (const sl of games ? slidesGames : slidesProposals) {
+        if (featured.length >= 10) break;
+        if (!seen.has(sl.q.id)) {
+          seen.add(sl.q.id);
+          featured.push(sl.q);
+        }
+      }
+      for (const it of games ? getFeaturedGames(questions) : getFeaturedProposalsAndSoftware(questions)) {
+        if (featured.length >= 10) break;
+        if (!seen.has(it.question.id)) {
+          seen.add(it.question.id);
+          featured.push(it.question);
+        }
+      }
+      const cfg = homeShowcaseConfig || ({} as any);
+      const hot = (
+        games
+          ? getHotRankedGames(questions, cfg.hotGamesMode || 'custom', cfg.hotGameIds || [])
+          : getHotRankedProposalsAndSoftware(questions, cfg.hotProposalsMode || 'custom', cfg.hotProposalIds || [])
+      ).map((x) => x.question);
+      // 大螢幕：精選、熱度交錯輪播（同一件只播一次）
+      const slides: { q: Question; badge: string }[] = [];
+      const shown = new Set<string>();
+      for (let i = 0; i < 10; i++) {
+        for (const [list, name] of [[featured, '精選榜'], [hot, '熱度榜']] as [Question[], string][]) {
+          const q = list[i];
+          if (q && !shown.has(q.id)) {
+            shown.add(q.id);
+            slides.push({ q, badge: `${name} 第 ${i + 1} 名` });
+          }
+        }
+      }
+      out[id] = { featured, hot, slides };
+    }
+    return out;
+  }, [questions, homeShowcaseConfig, slidesGames, slidesProposals]);
   const questionsRef = useRef<Question[]>(questions);
   questionsRef.current = questions;
   const storyRef = useRef<StoryState>({ towerId: null, level: 0, armed: true, tween: null });
@@ -190,13 +306,19 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [onlineOthers, setOnlineOthers] = useState(0);
   const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
   const openForBuilding = useCallback((b: BuildingInteractable) => {
+    // 地下展場裡靠近攤位：按 E 直接看那個攤位
+    if (b.id === 'hall-booth' && nearBoothRef.current) {
+      const nb = nearBoothRef.current;
+      openForTargetRef.current?.({ kind: 'booth', buildingId: nb.buildingId, zone: -1, index: nb.index });
+      return;
+    }
     if (b.exterior === 'tulou' && towersRef.current.has(b.id)) {
       // story.level 是相對地面的樓層（0＝地面層、-1＝地下一樓）；懸賞牆的樓層編號要加上地下層數
       const tw = towersRef.current.get(b.id)!;
       const inside = storyRef.current.towerId === b.id || storyRef.current.level !== 0;
       setDrawer(inside ? { kind: 'painFloor', level: storyRef.current.level + tw.basements } : { kind: 'building', building: (REGION_BUILDINGS.get(b.id) || b) });
     } else if (hallOf(b.id) && storyRef.current.level < 0 && storyRef.current.towerId === b.id) {
-      setDrawer({ kind: 'hallZone', buildingId: b.id, zone: 0 });
+      setDrawer({ kind: 'hallZone', buildingId: b.id, zone: isFloorsHall(b.id) ? -storyRef.current.level - 1 : 0 });
     } else {
       setDrawer({ kind: 'building', building: REGION_BUILDINGS.get(b.id) || b });
     }
@@ -223,14 +345,27 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     } else if (t.kind === 'jobScroll') {
       setDrawer({ kind: sosoJobsCountRef.current > 0 ? 'jobs' : 'soso' });
     } else if (t.kind === 'booth') {
-      const items = hallZoneItems(t.buildingId, t.zone, questionsRef.current);
-      const zoneState: DrawerState = { kind: 'hallZone', buildingId: t.buildingId, zone: t.zone };
-      const q = t.index < BOOTHS_PER_ZONE - 1 || items.length <= BOOTHS_PER_ZONE ? items[t.index] : null;
+      // 展覽館、電玩城：所在樓層就是展區
+      const floors = isFloorsHall(t.buildingId);
+      const zone = floors ? Math.max(0, -storyRef.current.level - 1) : t.zone;
+      const slots = floors ? DEEP_SLOTS : BOOTHS_PER_ZONE;
+      const items = hallZoneItems(t.buildingId, zone, questionsRef.current);
+      const zoneState: DrawerState = { kind: 'hallZone', buildingId: t.buildingId, zone };
+      const q = t.index < slots - 1 || items.length <= slots ? items[t.index] : null;
       setDrawer(q ? { kind: 'question', question: q, back: zoneState } : zoneState);
     } else if (t.kind === 'goFloor') {
       goFloorRef.current?.(t.buildingId, t.level);
+    } else if (t.kind === 'lobbyRank') {
+      setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: t.which });
+    } else if (t.kind === 'lobbyScreen') {
+      const cur = lobbyScreenCurrentRef.current.get(t.buildingId);
+      setDrawer(cur ? { kind: 'question', question: cur, back: { kind: 'hallRank', buildingId: t.buildingId, which: 'featured' } } : { kind: 'hallRank', buildingId: t.buildingId, which: 'featured' });
     }
   }, []);
+  const openForTargetRef = useRef<((t: PickTarget) => void) | null>(null);
+  openForTargetRef.current = openForTarget;
+  const nearBoothRef = useRef<{ buildingId: string; index: number } | null>(null);
+  const lobbyScreenCurrentRef = useRef<Map<string, Question>>(new Map());
   const goFloorRef = useRef<((buildingId: string, level: number, zone?: number) => void) | null>(null);
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
@@ -291,6 +426,178 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       old?.dispose();
     });
   }, []);
+  /**
+   * 展覽館、電玩城的地下展廳：依所在樓層（展區）擺上作品
+   * 看板（名稱／簡述）、圖片（多張輪播）、攤主姓名牌、北牆樓層大匾
+   */
+  const refreshDeepHalls = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.traverse((o) => {
+      const id = o.userData?.hallId as string | undefined;
+      if (!id || !isFloorsHall(id)) return;
+      const h = hallOf(id)!;
+      const st = storyRef.current;
+      const zone = st.towerId === id && st.level < 0 ? -st.level - 1 : o.userData.currentZone || 0;
+      o.userData.currentZone = zone;
+      const z = HALL_ZONES[h.kind][zone];
+      if (!z) return;
+      const items = hallZoneItems(id, zone, questionsRef.current);
+      // 收集攤位零件（只做一次）
+      if (!o.userData.parts) {
+        const cards: THREE.Mesh[] = [];
+        const media: THREE.Mesh[] = [];
+        const plates: THREE.Mesh[] = [];
+        let plaque: THREE.Mesh | null = null;
+        o.traverse((c) => {
+          if (c.userData?.hallBooth) cards[c.userData.hallBooth.index] = c as THREE.Mesh;
+          if (c.userData?.boothMedia) media[c.userData.boothMedia.index] = c as THREE.Mesh;
+          if (c.userData?.boothPlate) plates[c.userData.boothPlate.index] = c as THREE.Mesh;
+          if (c.userData?.hallFloorSign) plaque = c as THREE.Mesh;
+        });
+        o.userData.parts = { cards, media, plates, plaque };
+      }
+      const parts = o.userData.parts as { cards: THREE.Mesh[]; media: THREE.Mesh[]; plates: THREE.Mesh[]; plaque: THREE.Mesh | null };
+      const zoneMat = o.userData.zoneMat as THREE.MeshStandardMaterial | undefined;
+      if (zoneMat && zoneMat.userData.zone !== zone) {
+        zoneMat.color.setHex(z.color);
+        zoneMat.emissive.setHex(z.color);
+        zoneMat.userData.zone = zone;
+      }
+      const setMap = (m: THREE.Mesh, key: string, draw: () => THREE.Texture) => {
+        if (m.userData.drawnKey === key) return;
+        m.userData.drawnKey = key;
+        const mat = m.material as THREE.MeshBasicMaterial;
+        const old = mat.map;
+        mat.map = draw();
+        mat.needsUpdate = true;
+        old?.dispose();
+      };
+      if (parts.plaque) setMap(parts.plaque, `${zone}|${items.length}`, () => drawFloorPlaqueTexture(`B${zone + 1}`, z.name, z.sub, items.length, z.color));
+      const titles: string[] = [];
+      const overflow = items.length > DEEP_SLOTS;
+      for (let i = 0; i < DEEP_SLOTS; i++) {
+        const card = parts.cards[i];
+        if (!card) continue;
+        const isMore = overflow && i === DEEP_SLOTS - 1;
+        const q = isMore ? null : items[i] || null;
+        const more = isMore ? items.length - (DEEP_SLOTS - 1) : 0;
+        const md = q ? mediaOf(q) : { images: [], video: false };
+        titles[i] = q ? ((q as any).appName || q.title || '').trim() : isMore ? `本層還有 ${more} 件` : '';
+        setMap(card, q ? `${zone}|${q.id}|${q.title}|${(q.description || '').length}|${md.images.length}|${md.video}` : `${zone}|${more ? `more${more}` : 'empty'}`, () =>
+          drawDeepBoothTexture(z.color, q, { more, video: md.video, hasMedia: false, slides: md.images.length })
+        );
+        // 圖片（多張時輪播）
+        const media = parts.media[i];
+        if (media) {
+          const key = q ? `${q.id}|${md.images.join(',')}` : '';
+          if (media.userData.mediaKey !== key) {
+            media.userData.mediaKey = key;
+            media.userData.images = md.images;
+            media.userData.slide = 0;
+            media.visible = false;
+            showBoothMedia(media, 0);
+          }
+        }
+        // 攤主姓名牌
+        const plate = parts.plates[i];
+        if (plate) {
+          plate.visible = Boolean(q);
+          if (q) setMap(plate, `${q.authorName}|${q.postType}`, () => drawNameplateTexture(q.authorName || '—', q.postType === 'innovation_proposal' ? '提案人' : '攤主'));
+        }
+      }
+      o.userData.boothTitles = titles;
+    });
+  }, []);
+  const refreshDeepHallsRef = useRef<() => void>(() => {});
+  refreshDeepHallsRef.current = refreshDeepHalls;
+
+  /** 一樓大廳：精選榜、熱度榜看板與大螢幕輪播 */
+  const rankingsRef = useRef<Record<string, { featured: Question[]; hot: Question[]; slides: { q: Question; badge: string }[] }>>({});
+  const lobbySlideRef = useRef<Record<string, number>>({});
+  const refreshLobbies = useCallback((advance = false) => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.traverse((o) => {
+      const rank = o.userData?.lobbyRank as { buildingId: string; which: 'featured' | 'hot' } | undefined;
+      const cap = o.userData?.lobbyScreenCaption as { buildingId: string } | undefined;
+      const img = o.userData?.lobbyScreenImage as { buildingId: string } | undefined;
+      if (!rank && !cap && !img) return;
+      const id = (rank || cap || img)!.buildingId;
+      const r = rankingsRef.current[id];
+      const games = hallOf(id)?.showcase === 'games';
+      const mesh = o as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+      if (rank) {
+        const list = (rank.which === 'featured' ? r?.featured : r?.hot) || [];
+        const key = list.map((q) => q.id).join(',');
+        if (mesh.userData.drawnKey === key) return;
+        mesh.userData.drawnKey = key;
+        const old = mat.map;
+        mat.map = drawRankBoard(rank.which === 'featured' ? '精選榜' : '熱度榜', games ? '遊戲 TOP 10' : '提案與軟體 TOP 10', list, games, rank.which === 'featured' ? '#9a6a12' : '#8e2420');
+        mat.needsUpdate = true;
+        old?.dispose();
+        return;
+      }
+      const slides = r?.slides || [];
+      const idx = slides.length ? (lobbySlideRef.current[id] || 0) % slides.length : 0;
+      const cur = slides[idx];
+      if (cur) lobbyScreenCurrentRef.current.set(id, cur.q);
+      if (cap) {
+        const key = `${idx}|${cur?.q.id || ''}|${slides.length}`;
+        if (mesh.userData.drawnKey === key) return;
+        mesh.userData.drawnKey = key;
+        const old = mat.map;
+        mat.map = drawScreenCaption(cur?.q || null, games, idx, slides.length, cur?.badge || '');
+        mat.needsUpdate = true;
+        old?.dispose();
+      } else if (img) {
+        const url = cur ? mediaOf(cur.q).images[0] || '' : '';
+        if (mesh.userData.url === url) return;
+        mesh.userData.url = url;
+        if (!url) {
+          mat.map = null;
+          mat.color.setHex(0x2a1a10);
+          mat.needsUpdate = true;
+          return;
+        }
+        loadMediaTexture(url).then((t) => {
+          if (mesh.userData.url !== url) return;
+          mat.map = t;
+          mat.color.setHex(t ? 0xffffff : 0x2a1a10);
+          mat.needsUpdate = true;
+        });
+      }
+    });
+    void advance;
+  }, []);
+  const refreshLobbiesRef = useRef<() => void>(() => {});
+  refreshLobbiesRef.current = refreshLobbies;
+
+  /** 主島探索看板佈告欄：張貼全站最新內容 */
+  const refreshHomeBoardsRef = useRef<() => void>(() => {});
+  refreshHomeBoardsRef.current = () => {
+    sceneRef.current?.traverse((o) => {
+      if (o.userData?.homeBoard !== 'home-explore') return;
+      const qs = questionsRef.current;
+      const key = qs
+        .slice()
+        .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
+        .slice(0, 6)
+        .map((q) => q.id)
+        .join(',');
+      if (o.userData.drawnKey === key) return;
+      o.userData.drawnKey = key;
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      const tex = drawHomeBoardTexture('home-explore', qs);
+      const old = mat.map;
+      mat.map = tex;
+      mat.emissiveMap = tex;
+      mat.needsUpdate = true;
+      old?.dispose();
+    });
+  };
+
   /** 創點樓各層懸賞牆：換上真實痛點（正反面與迴廊各面佈告欄皆能張貼展示） */
   const refreshPainBoards = useCallback(() => {
     const scene = sceneRef.current;
@@ -737,22 +1044,28 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const pickables: THREE.Object3D[] = [];
     const tickers: ((t: number) => void)[] = [];
     const hallGroups = new Map<string, THREE.Object3D>();
+    const lobbyPits: THREE.Object3D[] = [];
     const collectPickables = () => {
       pickables.length = 0;
       tickers.length = 0;
+      lobbyPits.length = 0;
       scene.traverse((o) => {
         if (o.userData?.pick || o.userData?.painBoard) pickables.push(o);
         if (typeof o.userData?.tick === 'function') tickers.push(o.userData.tick);
+        if (o.userData?.lobbyPit) lobbyPits.push(o);
         if (o.userData?.hallId) {
           hallGroups.set(o.userData.hallId, o);
           const tw = towersRef.current.get(o.userData.hallId);
-          if (tw && Array.isArray(o.userData.hallColliders)) tw.cols[0] = o.userData.hallColliders;
+          if (tw && Array.isArray(o.userData.hallColliders)) tw.cols = tw.cols.map(() => o.userData.hallColliders);
         }
       });
     };
     regionManager.onRegionReady = () => {
       refreshPainBoards();
       refreshHallBooths();
+      refreshDeepHallsRef.current();
+      refreshLobbiesRef.current();
+      refreshHomeBoardsRef.current();
       refreshStreetBoardsAndCarousels();
       collectPickables();
     };
@@ -820,6 +1133,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         const st = storyRef.current;
         const inHall = st.level < 0 && Boolean(hallOf(st.towerId));
         const hallThing = t.kind === 'booth' || (t.kind === 'goFloor' && t.level === 0);
+        if ((t.kind === 'lobbyScreen' || t.kind === 'lobbyRank' || (t.kind === 'goFloor' && t.level < 0)) && st.level !== 0) continue;
         if (inHall ? !hallThing || (t as { buildingId: string }).buildingId !== st.towerId : hallThing) continue;
         return t;
       }
@@ -882,12 +1196,30 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       let z: number;
       let yaw: number;
       const look = (fx: number, fz: number, tx: number, tz: number) => Math.atan2(-(tx - fx), -(tz - fz));
-      if (hallOf(buildingId) && level < 0) {
+      if (isFloorsHall(buildingId) && level < 0) {
+        // 展覽館、電玩城：每一層是一類展場（樓層表給的是展區時換算成樓層）
+        const n = hallFloorCount(buildingId);
+        if (zone !== undefined && zone >= 0) level = -(zone + 1);
+        level = Math.max(-n, Math.min(-1, level));
+        const a = hallArrival(buildingId);
+        x = a.x;
+        z = a.z;
+        yaw = a.yaw;
+        const hg = hallGroups.get(buildingId);
+        if (hg) hg.userData.currentZone = -level - 1;
+      } else if (hallOf(buildingId) && level < 0) {
         const a = hallArrival(buildingId, zone);
         x = a.x;
         z = a.z;
         yaw = a.yaw;
         level = -1;
+      } else if (isFloorsHall(buildingId)) {
+        // 一樓大廳：站在大樓梯口前，面向榜單大螢幕
+        const p = lobbyPit(b);
+        [x, z] = toWorld(b, 0, Math.min(b.depth / 2 - 1.2, p.zTop + 2.4));
+        const [tx, tz] = toWorld(b, 0, -b.depth / 2);
+        yaw = look(x, z, tx, tz);
+        level = 0;
       } else if (b.exterior === 'tulou') {
         if (level <= 0) {
           // 中庭，面向舞台
@@ -914,10 +1246,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       storyRef.current = { towerId: level !== 0 ? buildingId : null, level, armed: false, tween: null };
       setFloorLevel(level);
       setStoryTowerId(level !== 0 ? buildingId : null);
-      controls.setSpawn(new THREE.Vector3(x, level * FLOOR_H, z), yaw);
+      controls.setSpawn(new THREE.Vector3(x, tw.floorY ? tw.floorY(level) : level * FLOOR_H, z), yaw);
       controls.pitch = 0;
       controls.updateCameraTransform(0);
       setDrawer(null);
+      if (isFloorsHall(buildingId)) refreshDeepHallsRef.current();
     };
 
     // 9. Animation & Physics Game Loop
@@ -945,6 +1278,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           story.armed = false;
           setFloorLevel(story.level);
           setStoryTowerId(story.towerId);
+          // 走完一樓的大樓梯：到地下第一層展場
+          if (tw.hallEnter) goFloorRef.current?.(tw.towerId, -1);
         }
       } else if (regionManager.status === 'active') {
         // story.level：相對地面的樓層（0＝有大門的地面層，負數是地下）
@@ -959,7 +1294,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           activeColliders,
           globalWalkableZones,
           tower ? [] : WORLD_BRIDGES,
-          tower ? story.level * FLOOR_H : 0
+          tower ? (tower.floorY ? tower.floorY(story.level) : story.level * FLOOR_H) : 0
         );
 
         controls.position.copy(newPos);
@@ -975,7 +1310,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             const st = here.stair(story.level, controls.position.x, controls.position.z, controls.position);
             if (!st) story.armed = true;
             else if (story.armed) {
-              story.tween = { pts: st.pts, t: 0, dur: 2.1, toLevel: st.toLevel, towerId: here.b.id };
+              story.tween = { pts: st.pts, t: 0, dur: st.hallEnter ? 1.6 : 2.1, toLevel: st.toLevel, towerId: here.b.id, hallEnter: st.hallEnter };
               playSoundEffect('interact');
             }
           } else {
@@ -1008,6 +1343,38 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
         // 在樓上或地下時，所在的就是那棟建築
         if (tower) foundBuilding = REGION_BUILDINGS.get(tower.b.id) || tower.b;
+        // 地下展場：靠近攤位時提示「按 E 查看攤位」
+        nearBoothRef.current = null;
+        if (tower && isFloorsHall(tower.b.id) && story.level < 0) {
+          const hg = hallGroups.get(tower.b.id);
+          const spots = (hg?.userData.boothSpots || []) as DeepBoothSpot[];
+          let best: DeepBoothSpot | null = null;
+          let bd = 2.3;
+          for (const sp of spots) {
+            const dd = Math.hypot(sp.x - controls.position.x, sp.z - controls.position.z);
+            if (dd < bd) {
+              bd = dd;
+              best = sp;
+            }
+          }
+          if (best) {
+            nearBoothRef.current = { buildingId: tower.b.id, index: best.index };
+            const title = (hg?.userData.boothTitles as string[] | undefined)?.[best.index] || '';
+            const key = `booth-${tower.b.id}-${best.index}-${title}`;
+            let named = floorNameCache.current.get(key);
+            if (!named) {
+              named = {
+                ...tower.b,
+                id: 'hall-booth',
+                name: title ? `攤位・${title}` : '攤位',
+                mockData: { ...(tower.b.mockData || ({} as any)), primaryActionLabel: title ? `查看攤位：${title}` : '查看這個攤位' },
+              } as BuildingInteractable;
+              floorNameCache.current.set(key, named);
+            }
+            nearBuildingRef.current = named;
+            setNearBuilding(named);
+          }
+        }
         // 多樓層建築：提示顯示目前在第幾樓
         if (foundBuilding && towersRef.current.has(foundBuilding.id)) {
           const lvl = story.level;
@@ -1020,11 +1387,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
           foundBuilding = named;
         }
-        nearBuildingRef.current = foundBuilding;
-        setNearBuilding(foundBuilding);
+        if (!nearBoothRef.current) {
+          nearBuildingRef.current = foundBuilding;
+          setNearBuilding(foundBuilding);
+        }
       }
 
       for (const [id, g] of hallGroups) g.visible = story.level < 0 && story.towerId === id;
+      // 人在地下展廳時，把一樓大樓梯井（伸到地下的部分）藏起來
+      {
+        const inDeep = story.level < 0 && isFloorsHall(story.towerId);
+        for (const p of lobbyPits) p.visible = !inDeep;
+      }
 
       mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
       const now = performance.now() / 1000;
@@ -1086,6 +1460,22 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
         goFloor: (id: string, level: number, zone?: number) => goFloorRef.current?.(id, level, zone),
+        findNaN: () => {
+          const out: string[] = [];
+          scene.traverse((o) => {
+            const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+            const pa = g?.attributes?.position;
+            if (!pa) return;
+            for (let i = 0; i < pa.array.length; i++)
+              if (!Number.isFinite(pa.array[i] as number)) {
+                let path = '';
+                for (let q: THREE.Object3D | null = o; q; q = q.parent) path = `${q.name || q.type}/${path}`;
+                out.push(path);
+                break;
+              }
+          });
+          return out.slice(0, 10);
+        },
         place: (x: number, z: number, yaw: number) => {
           controls.position.x = x;
           controls.position.z = z;
@@ -1129,10 +1519,43 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
   }, [initialRegionId, playSoundEffect]);
 
+  // 一樓大廳榜單更新；大螢幕每 6 秒換下一件；攤位圖片每 5 秒輪播
+  useEffect(() => {
+    rankingsRef.current = rankings;
+    refreshLobbiesRef.current();
+  }, [rankings]);
+  useEffect(() => {
+    const t1 = window.setInterval(() => {
+      for (const id of Object.keys(rankingsRef.current)) lobbySlideRef.current[id] = (lobbySlideRef.current[id] || 0) + 1;
+      refreshLobbiesRef.current();
+    }, 6000);
+    const t2 = window.setInterval(() => {
+      const st = storyRef.current;
+      if (!(st.level < 0 && isFloorsHall(st.towerId))) return;
+      sceneRef.current?.traverse((o) => {
+        if (o.userData?.hallId !== st.towerId) return;
+        const parts = o.userData.parts as { media: THREE.Mesh[] } | undefined;
+        parts?.media.forEach((m) => {
+          const imgs = (m?.userData.images || []) as string[];
+          if (imgs.length > 1) {
+            m.userData.slide = ((m.userData.slide || 0) + 1) % imgs.length;
+            showBoothMedia(m, m.userData.slide);
+          }
+        });
+      });
+    }, 5000);
+    return () => {
+      window.clearInterval(t1);
+      window.clearInterval(t2);
+    };
+  }, []);
+
   // 痛點有新增或更新時，懸賞牆跟著換；作品有新增時，地下主展場的攤位跟著換；討論島佈告欄與店鋪輪播同步更新
   useEffect(() => {
     refreshPainBoards();
     refreshHallBooths();
+    refreshDeepHallsRef.current();
+    refreshHomeBoardsRef.current();
     refreshStreetBoardsAndCarousels();
   }, [questions, refreshPainBoards, refreshHallBooths, refreshStreetBoardsAndCarousels]);
 
@@ -1268,6 +1691,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const unit = isLib ? ' 冊' : ' 件';
     const zones = HALL_ZONES[h.kind].map((z, i) => ({ z, i, n: hallZoneItems(b.id, i, questions).length }));
     const total = zones.reduce((a, x) => a + x.n, 0);
+    if (h.mode === 'floors') {
+      // 展覽館、電玩城：每一層是一類展場
+      return [
+        { key: 'lobby', tag: '1F', name: `${h.lobby}・榜單`, count: total, unit, level: 0, current: here(0) },
+        ...zones.map(({ z, i, n }) => ({ key: `b${i + 1}`, tag: `B${i + 1}`, name: z.name, count: n, unit, level: -(i + 1), current: here(-(i + 1)) })),
+      ];
+    }
     return [
       { key: 'lobby', tag: '1F', name: h.lobby, count: total, unit, level: 0, current: here(0) },
       ...zones.map(({ z, i, n }) => ({
@@ -1423,6 +1853,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onChange={setDrawer}
         onAction={handleDrawerAction}
         soso={{ state: soso, send: sendSoso, search: searchSoso, reset: resetSoso }}
+        rankings={rankings}
         onOpenQuestion={(q) => {
           rememberPose();
           setDrawer(null);

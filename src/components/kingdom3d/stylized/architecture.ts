@@ -29,8 +29,9 @@ import { DOOR_COUPLETS } from '../couplets';
 import { bridgeRailRange } from '../regionConfigs';
 import { drawJobScrollTexture } from './jobScroll';
 import { createSosoNpc } from './npcs';
-import { hallOf, createHallStairEntrance } from './exhibitHall';
-import type { BuildingInteractable } from '../types';
+import { hallOf, createHallStairEntrance, isFloorsHall } from './exhibitHall';
+import { createHallLobby, lobbyPit } from './hallLobby';
+import type { BuildingInteractable, Collider } from '../types';
 import { drawPainBoardTexture, deskPaperTexture, MAIN_BOARD, SIDE_BOARD, PainBoardLayout } from './painBoard';
 
 /* =====================================================================
@@ -608,7 +609,7 @@ export interface StyledBuildingInput {
   tiers?: number;
   floors?: number;
   basements?: number;
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board';
   npc?: 'soso';
   colorHex: number;
 }
@@ -647,20 +648,61 @@ function hashStr(s: string) {
 }
 
 let lionGeoCache: THREE.BufferGeometry | null = null;
-/** 石獅（簡化造型：須彌座、蹲坐的身體、捲毛鬃、繡球） */
+/** 石獅：須彌座、蹲坐的身體（前腿直立、後腿蹲）、大頭與一圈圈捲毛鬃、眼眉鼻吻、頸上鈴帶、腳邊繡球、捲尾 */
 function getLionGeometry() {
   if (lionGeoCache) return lionGeoCache;
-  const parts = [
-    new THREE.BoxGeometry(0.9, 0.42, 1.05).translate(0, 0.21, 0),
-    new THREE.BoxGeometry(1.0, 0.08, 1.15).translate(0, 0.44, 0),
-    new THREE.SphereGeometry(0.36, 12, 9).scale(1, 0.95, 1.2).translate(0, 0.86, -0.08),
-    new THREE.SphereGeometry(0.4, 12, 9).scale(1.15, 1, 0.75).translate(0, 1.24, 0.12),
-    new THREE.SphereGeometry(0.27, 12, 9).translate(0, 1.32, 0.3),
-    new THREE.SphereGeometry(0.11, 8, 6).scale(1.2, 0.8, 1).translate(0, 1.26, 0.54),
-    new THREE.BoxGeometry(0.15, 0.45, 0.16).translate(-0.17, 0.68, 0.3),
-    new THREE.BoxGeometry(0.15, 0.45, 0.16).translate(0.17, 0.68, 0.3),
-    new THREE.SphereGeometry(0.15, 10, 8).translate(0.2, 0.62, 0.48),
+  const P = 0.57; // 座台頂面
+  const S = (r: number, ws = 12, hs = 10) => new THREE.SphereGeometry(r, ws, hs);
+  const parts: THREE.BufferGeometry[] = [
+    // 須彌座：底座、束腰、台面
+    new THREE.BoxGeometry(1.05, 0.25, 1.25).translate(0, 0.125, 0),
+    new THREE.BoxGeometry(0.86, 0.2, 1.06).translate(0, 0.35, 0),
+    new THREE.BoxGeometry(1.0, 0.12, 1.2).translate(0, 0.51, 0),
+    // 後腿（蹲坐的大腿）與後掌
+    S(0.3).scale(0.72, 0.85, 1.2).translate(-0.25, P + 0.26, -0.18),
+    S(0.3).scale(0.72, 0.85, 1.2).translate(0.25, P + 0.26, -0.18),
+    S(0.11).scale(1, 0.6, 1.4).translate(-0.27, P + 0.05, 0.12),
+    S(0.11).scale(1, 0.6, 1.4).translate(0.27, P + 0.05, 0.12),
+    // 胸腹（挺胸）
+    S(0.34, 14, 12).scale(0.95, 1.4, 0.9).rotateX(-0.25).translate(0, P + 0.55, 0.0),
+    // 前腿直立、前掌
+    new THREE.CylinderGeometry(0.085, 0.1, 0.6, 10).translate(-0.16, P + 0.3, 0.26),
+    new THREE.CylinderGeometry(0.085, 0.1, 0.6, 10).translate(0.16, P + 0.3, 0.26),
+    S(0.12).scale(1, 0.62, 1.35).translate(-0.16, P + 0.05, 0.34),
+    S(0.12).scale(1, 0.62, 1.35).translate(0.16, P + 0.05, 0.34),
+    // 頸上鈴帶與鈴鐺
+    new THREE.TorusGeometry(0.22, 0.035, 8, 20).rotateX(Math.PI / 2 - 0.5).translate(0, P + 0.86, 0.1),
+    S(0.065, 10, 8).translate(0, P + 0.74, 0.32),
+    // 大頭
+    S(0.33, 16, 14).scale(1.05, 0.95, 0.95).translate(0, P + 1.1, 0.12),
+    // 吻部、鼻、下巴
+    new THREE.BoxGeometry(0.28, 0.17, 0.2).translate(0, P + 1.0, 0.4),
+    S(0.075, 10, 8).scale(1.3, 0.9, 1).translate(0, P + 1.08, 0.5),
+    new THREE.BoxGeometry(0.2, 0.07, 0.14).translate(0, P + 0.88, 0.38),
+    // 凸眼與濃眉
+    S(0.07, 10, 8).translate(-0.12, P + 1.18, 0.39),
+    S(0.07, 10, 8).translate(0.12, P + 1.18, 0.39),
+    new THREE.BoxGeometry(0.15, 0.05, 0.07).rotateZ(0.25).translate(-0.12, P + 1.26, 0.4),
+    new THREE.BoxGeometry(0.15, 0.05, 0.07).rotateZ(-0.25).translate(0.12, P + 1.26, 0.4),
+    // 耳朵
+    S(0.08, 8, 6).scale(1, 1.2, 0.7).translate(-0.3, P + 1.24, 0.1),
+    S(0.08, 8, 6).scale(1, 1.2, 0.7).translate(0.3, P + 1.24, 0.1),
+    // 腳邊繡球（前掌按著）＋綵帶
+    S(0.16, 14, 10).translate(0.36, P + 0.16, 0.36),
+    new THREE.TorusGeometry(0.16, 0.025, 6, 16).rotateY(0.6).translate(0.36, P + 0.16, 0.36),
+    // 捲尾（沿背後往上捲）
+    S(0.11, 10, 8).translate(0, P + 0.3, -0.46),
+    S(0.1, 10, 8).translate(0, P + 0.5, -0.5),
+    S(0.09, 10, 8).translate(0, P + 0.68, -0.46),
+    S(0.08, 10, 8).translate(0, P + 0.8, -0.38),
   ];
+  // 捲毛鬃：頭後兩圈小螺髻，背上一列
+  for (let i = 0; i <= 10; i++) {
+    const a = -2.2 + (i / 10) * 4.4;
+    parts.push(S(0.095, 8, 6).translate(Math.sin(a) * 0.34, P + 1.1 + Math.cos(a) * 0.34, -0.02));
+    if (i % 2 === 0) parts.push(S(0.085, 8, 6).translate(Math.sin(a) * 0.24, P + 1.1 + Math.cos(a) * 0.24, -0.16));
+  }
+  for (let i = 0; i < 4; i++) parts.push(S(0.09, 8, 6).translate(0, P + 0.85 - i * 0.14, -0.2 - i * 0.04));
   lionGeoCache = mergeGeometries(parts)!;
   return lionGeoCache;
 }
@@ -719,15 +761,36 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const body = new THREE.Group();
   root.add(body);
 
-  // 室內木地板、紅地毯（有地下室時，地面層樓板另外蓋、留樓梯井）
-  if (!lay || lay.basements < 1) {
-    const floor = new THREE.Mesh(scaledBox(w - 0.2, 0.06, d - 0.2, 2.5, 0.06, 2.5), mats.woodFloor);
-    floor.position.y = 0.03;
-    body.add(floor);
+  // 室內木地板、紅地毯（有地下室時，地面層樓板另外蓋、留樓梯井；展覽館、電玩城中央留大樓梯井）
+  const floorsHall = isFloorsHall(b.id);
+  if (floorsHall) {
+    const pit = lobbyPit(b);
+    const xmin = -w / 2 + 0.1;
+    const xmax = w / 2 - 0.1;
+    const zmin = -d / 2 + 0.1;
+    const zmax = d / 2 - 0.1;
+    const pieces: [number, number, number, number][] = [
+      [xmin, pit.x0, zmin, zmax],
+      [pit.x1, xmax, zmin, zmax],
+      [pit.x0, pit.x1, zmin, pit.zBot],
+      [pit.x0, pit.x1, pit.zTop, zmax],
+    ];
+    for (const [x0, x1, z0, z1] of pieces) {
+      if (x1 - x0 < 0.05 || z1 - z0 < 0.05) continue;
+      addMesh(body, scaledBox(x1 - x0, 0.06, z1 - z0, 2.5, 0.06, 2.5), mats.woodFloor, (x0 + x1) / 2, 0.03, (z0 + z1) / 2);
+    }
+    const rugLen = d / 2 - pit.zTop;
+    addMesh(body, new THREE.BoxGeometry(doorW * 0.55, 0.02, rugLen), mats.rug, 0, 0.07, pit.zTop + rugLen / 2);
+  } else {
+    if (!lay || lay.basements < 1) {
+      const floor = new THREE.Mesh(scaledBox(w - 0.2, 0.06, d - 0.2, 2.5, 0.06, 2.5), mats.woodFloor);
+      floor.position.y = 0.03;
+      body.add(floor);
+    }
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(doorW * 0.55, 0.02, d * 0.62), mats.rug);
+    rug.position.set(0, 0.07, d * 0.12);
+    body.add(rug);
   }
-  const rug = new THREE.Mesh(new THREE.BoxGeometry(doorW * 0.55, 0.02, d * 0.62), mats.rug);
-  rug.position.set(0, 0.07, d * 0.12);
-  body.add(rug);
   // 門口石階
   addMesh(body, scaledBox(doorW + 0.8, 0.12, 1.5, 1.5, 0.12, 1.5), mats.stoneLight, 0, 0.06, d / 2 + 0.2);
 
@@ -1026,7 +1089,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   }
 
   // 門口石獅一對、轉角盆栽（另外加上碰撞，玩家不會穿過去）
-  const extraColliders: { id: string; type: 'cylinder'; x: number; z: number; radius: number }[] = [];
+  const extraColliders: Collider[] = [];
   const toWorld = (lx: number, lz: number): [number, number] => {
     const c = Math.cos(b.facingYaw);
     const sn = Math.sin(b.facingYaw);
@@ -1273,8 +1336,17 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     lanterns.addHanging(1.4, dy + 2.3, deskZ + 0.2, 0.6);
     // 點書桌就能填寫痛點
     root.add(makePickProxy(2.6, 1.6, 1.6, 0, deskZ, 0, { kind: 'desk', buildingId: b.id }, dy));
+  } else if (isFloorsHall(b.id)) {
+    // 展覽館、電玩城：大廳中央是很寬的大樓梯，正對的牆是榜單大螢幕，左右牆是精選榜、熱度榜
+    const lobby = createHallLobby(
+      b as BuildingInteractable,
+      { stone: mats.stoneLight, red: mats.redLacquer, gold: mats.gold, dark: mats.darkWood, floor: mats.woodFloor },
+      { back: -d / 2 + thick / 2, side: w / 2 - thick / 2, h: wallH }
+    );
+    root.add(lobby.group);
+    extraColliders.push(...lobby.colliders);
   } else if (hallOf(b.id)) {
-    // 展覽館、電玩城：大廳中央是往地下主展場的下樓口（不放寶珠台）
+    // 藏書閣：大廳中央是往地下圖書館的下樓口（不放寶珠台）
     root.add(createHallStairEntrance(b as BuildingInteractable, deskZ));
   } else {
     addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);

@@ -7,7 +7,7 @@ import { isGameQuestion } from '../../utils/gameClassification';
 import { painForFloor } from './PainFloorModal';
 import { PAIN_FLOORS } from './stylized/painBoard';
 import { STREET_PROPS, StreetProp, StallContent } from './stylized/streets';
-import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO } from './buildingActions';
+import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO, openInNewTab } from './buildingActions';
 import { isTypingTarget } from './FirstPersonControls';
 import { hallOf, hallZoneItems, HALL_ZONES } from './stylized/exhibitHall';
 import './kingdomUi.css';
@@ -24,7 +24,9 @@ export type DrawerState =
   | { kind: 'feature'; id: 'stage' | 'proposal' }
   | { kind: 'question'; question: Question; back: DrawerState | null }
   /** 展覽館、電玩城地下主展場的某個展區：列出全部作品 */
-  | { kind: 'hallZone'; buildingId: string; zone: number };
+  | { kind: 'hallZone'; buildingId: string; zone: number }
+  /** 展覽館、電玩城一樓：精選榜／熱度榜 */
+  | { kind: 'hallRank'; buildingId: string; which: 'featured' | 'hot' };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
 export const findStreetProp = (id: string) => ALL_PROPS.find((p) => p.id === id) || null;
@@ -302,7 +304,9 @@ export const KingdomSideDrawer: React.FC<{
   renderQuestionPage?: (q: Question, back: () => void) => React.ReactNode;
   /** 求職廟搜搜的對話與結果 */
   soso?: { state: SosoState; send: (t: string) => void; search: (brief: string) => void; reset: () => void };
-}> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage, soso }) => {
+  /** 展覽館、電玩城一樓的精選榜、熱度榜（和首頁同一份） */
+  rankings?: Record<string, { featured: Question[]; hot: Question[] }>;
+}> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage, soso, rankings }) => {
   const [draft, setDraft] = useState('');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -437,7 +441,7 @@ export const KingdomSideDrawer: React.FC<{
         <>
           <Header title={`${p.name}市集`} badge="創意島" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            <p className="kx-sub text-[13px]">每個攤位擺著平台上真實的作品與提案，點攤位就能逛。</p>
+            <p className="kx-sub text-[13px] leading-relaxed">創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
             <ActionList actions={actions} />
           </div>
         </>
@@ -523,14 +527,38 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     } else if (p) {
+      const badge = p.regionId === 'region-discussion' ? '討論島' : p.regionId === 'region-creative' ? '創意集' : '貿易街';
       body = (
         <>
-          <Header title={p.name} badge={p.regionId === 'region-discussion' ? '討論島' : '商店街'} sub={p.sub} onClose={close} />
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <Header
+            title={p.name}
+            badge={badge}
+            sub={p.partner ? p.sub : p.vacant ? '空鋪・歡迎掌櫃進駐' : p.sub}
+            onClose={close}
+            onBack={
+              p.kind === 'stall' && p.regionId === 'region-creative'
+                ? () => {
+                    const gate = STREET_PROPS[p.regionId].find((x) => x.kind === 'gate');
+                    onChange(gate ? { kind: 'street', propId: gate.id } : null);
+                  }
+                : undefined
+            }
+          />
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             <p className="kx-sub text-[13.5px] leading-relaxed flex gap-2">
               <Store className="w-4 h-4 shrink-0 mt-0.5 text-amber-300" />
-              {p.note || '主島商店街的店面目前是街景，還沒有開放買賣。想逛平台內容，可以到中央廣場的「探索看板」，或去創意島的創意集市集。'}
+              {p.note || '這裡目前是街景。'}
             </p>
+            {p.partner?.url && (
+              <button
+                type="button"
+                onClick={() => openInNewTab(p.partner!.url!)}
+                className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {p.partner.kind === 'game' ? '前往遊玩' : p.partner.kind === 'service' ? '查看服務' : '前往體驗'}（新分頁）
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </>
       );
@@ -559,6 +587,7 @@ export const KingdomSideDrawer: React.FC<{
                     color: '#f6e7c4',
                   }}
                 >
+                  {h.mode === 'floors' ? `B${i + 1}・` : ''}
                   {z.name.replace(/展場|展區|・.*/, '')}
                 </button>
               ))}
@@ -588,6 +617,42 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'hallRank') {
+    const h = hallOf(state.buildingId);
+    const r = rankings?.[state.buildingId];
+    const list = (state.which === 'featured' ? r?.featured : r?.hot) || [];
+    body = (
+      <>
+        <Header
+          title={state.which === 'featured' ? '精選榜' : '熱度榜'}
+          badge={h ? `${h.title}・一樓大廳` : undefined}
+          sub={h?.showcase === 'games' ? '遊戲 TOP 10（和首頁同一份榜單）' : '提案與軟體 TOP 10（和首頁同一份榜單）'}
+          onClose={close}
+        />
+        <div className="px-4 pt-3">
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['featured', 'hot'] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => onChange({ kind: 'hallRank', buildingId: state.buildingId, which: w })}
+                className="rounded-md px-1 py-1.5 text-[12.5px] cursor-pointer"
+                style={{
+                  background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
+                  border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
+                  color: '#f6e7c4',
+                }}
+              >
+                {w === 'featured' ? '精選榜' : '熱度榜'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          <QuestionRows list={list} onPick={openQ} empty="榜單整理中。" />
+        </div>
+      </>
+    );
   } else if (state?.kind === 'soso' && soso) {
     const st = soso.state;
     const submit = () => {

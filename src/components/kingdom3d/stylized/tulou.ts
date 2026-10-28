@@ -168,6 +168,75 @@ export function insideRing(b: Placed, x: number, z: number) {
 }
 
 let earthMat: THREE.MeshStandardMaterial | null = null;
+let facadeMat: THREE.MeshStandardMaterial | null = null;
+/** 迴廊內側的木構房間立面：一間一門兩窗（木格窗、雕花門、樑枋） */
+function roomFacade() {
+  if (facadeMat) return facadeMat;
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#6b3f22';
+  g.fillRect(0, 0, 512, 512);
+  // 上方樑枋與下方踢腳
+  g.fillStyle = '#4a2914';
+  g.fillRect(0, 0, 512, 46);
+  g.fillRect(0, 470, 512, 42);
+  g.fillStyle = '#b3261e';
+  g.fillRect(0, 40, 512, 10);
+  // 兩側柱
+  g.fillStyle = '#3d2210';
+  g.fillRect(0, 0, 22, 512);
+  g.fillRect(490, 0, 22, 512);
+  const lattice = (x: number, y: number, w: number, h: number, paper = '#e9d6a6') => {
+    g.fillStyle = paper;
+    g.fillRect(x, y, w, h);
+    g.strokeStyle = '#4a2914';
+    g.lineWidth = 5;
+    g.strokeRect(x, y, w, h);
+    g.lineWidth = 3;
+    for (let i = 1; i < 5; i++) {
+      g.beginPath();
+      g.moveTo(x + (w * i) / 5, y);
+      g.lineTo(x + (w * i) / 5, y + h);
+      g.stroke();
+    }
+    for (let j = 1; j < 6; j++) {
+      g.beginPath();
+      g.moveTo(x, y + (h * j) / 6);
+      g.lineTo(x + w, y + (h * j) / 6);
+      g.stroke();
+    }
+  };
+  // 兩扇木格窗＋中間雙扇門
+  lattice(44, 120, 110, 140);
+  lattice(358, 120, 110, 140);
+  g.fillStyle = '#58331a';
+  g.fillRect(186, 80, 140, 390);
+  lattice(196, 92, 56, 220, '#e3cd98');
+  lattice(260, 92, 56, 220, '#e3cd98');
+  g.fillStyle = '#4a2914';
+  g.fillRect(196, 320, 120, 150);
+  g.fillStyle = '#d8a945';
+  g.beginPath();
+  g.arc(244, 340, 6, 0, Math.PI * 2);
+  g.arc(268, 340, 6, 0, Math.PI * 2);
+  g.fill();
+  // 窗下木板
+  g.fillStyle = '#5a341b';
+  g.fillRect(44, 270, 110, 190);
+  g.fillRect(358, 270, 110, 190);
+  // 門楣小紅聯
+  g.fillStyle = '#b3261e';
+  g.fillRect(200, 56, 112, 20);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  facadeMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
+  return facadeMat;
+}
+
 function earth() {
   if (!earthMat) earthMat = new THREE.MeshStandardMaterial({ color: 0xd2b184, roughness: 0.97, side: THREE.DoubleSide });
   return earthMat;
@@ -230,7 +299,15 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
   add(arcWall(R + 0.55, 0, 0.5, t0 - 0.02, t1 + 0.02, 96), mats.stone);
   add(arcWall(R + 0.04, 0, 1.6, t0, t1, 96), mats.stone);
   add(arcWall(R, 1.6, H - 1.6, t0, t1, 96), earth());
-  add(arcWall(RO, 0, H, t0, t1, 96), earth());
+  // 外牆內側：每層一圈木構房間立面（門、木格窗、樑枋）
+  for (let k = 0; k < RING.floors; k++) {
+    const fg = new THREE.CylinderGeometry(RO, RO, FH, 96, 1, true, t0, t1 - t0);
+    fg.translate(0, k * FH + FH / 2, 0);
+    const uv = fg.attributes.uv as THREE.BufferAttribute;
+    const bays = Math.round((RO * (t1 - t0)) / 3.6);
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * bays, uv.getY(i));
+    add(fg, roomFacade());
+  }
   add(arcWall(R, gateH, H - gateH, -gap, gap, 8), earth());
   add(arcWall(RO, gateH, H - gateH, -gap, gap, 8), earth());
   for (const s of [-1, 1]) {
@@ -280,6 +357,17 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
       const np = Math.max(2, Math.round(len / 1.1));
       for (let i = 0; i <= np; i++) add(new THREE.BoxGeometry(0.08, 0.95, 0.08), mats.redLacquer, p.x + ((q.x - p.x) * i) / np, y + 0.475, p.y + ((q.y - p.y) * i) / np);
     }
+  }
+  // 每層樓板外緣的腰簷（黛瓦斜簷伸向中庭），一層一層疊上去才像土樓
+  for (let k = 1; k < RING.floors; k++) {
+    const y = k * FH;
+    const ep = [new THREE.Vector2(RI + 0.2, y + 0.55), new THREE.Vector2(RI - 0.6, y + 0.2), new THREE.Vector2(RI - 1.25, y - 0.12)];
+    const eg = new THREE.LatheGeometry(ep, 96);
+    const euv = eg.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < euv.count; i++) euv.setXY(i, (euv.getX(i) * Math.PI * 2 * RI) / 1.5, euv.getY(i));
+    add(eg, mats.roofs.slate, 0, -0.55, 0);
+    add(eg.clone(), mats.roofUnder, 0, -0.62, 0);
+    add(new THREE.TorusGeometry(RI - 1.25, 0.07, 6, 96).rotateX(Math.PI / 2), mats.ridges.slate, 0, y - 0.67, 0);
   }
   // 一樓迴廊地面（石板）與中庭邊的石緣
   add(annulus(RI - 0.25, RO, 0, Math.PI * 2, 96), mats.stoneLight, 0, 0.03, 0);
@@ -524,11 +612,11 @@ export function createRingTower(b: RingTowerInput): THREE.Group {
   }
   // 中庭佈告欄的碰撞
   for (const s of [-1, 1]) rect(`cboard-${s}`, s * 9.9, 5.4, 2.4, 0.2, -s * 0.75);
-  // 中庭中央的石燈與花台
-  lanterns.addPost(0, 0, 3.3, 2.4);
-  {
-    const [wx, wz] = W(b, 0, 3.3);
-    colliders.push({ id: `${b.id}-courtlamp`, type: 'cylinder', x: wx, z: wz, radius: 0.45 } as Collider);
+  // 舞台前兩側的石燈（中庭中央留空，進門就看得到舞台）
+  for (const sx of [-1, 1]) {
+    lanterns.addPost(sx * 3.6, 0, -8.6, 2.4);
+    const [wx, wz] = W(b, sx * 3.6, -8.6);
+    colliders.push({ id: `${b.id}-courtlamp-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.45 } as Collider);
   }
 
   mergeByMaterial(body);

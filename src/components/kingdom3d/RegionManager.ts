@@ -3,7 +3,9 @@ import { createStreetProps, streetAvoidAreas } from './stylized/streets';
 import { makePickProxy } from './picking';
 import { createVillagers } from './stylized/villagers';
 import { createRingTower, TULOU_RADIUS } from './stylized/tulou';
-import { createExhibitHall } from './stylized/exhibitHall';
+import { createExhibitHall, isFloorsHall } from './stylized/exhibitHall';
+import { lobbyPitPolygon } from './stylized/hallLobby';
+import { createNoticeBoard } from './stylized/noticeBoard';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -104,6 +106,8 @@ export class RegionManager {
           groundHoles: manifest.buildings
             .map((b) => {
               if (b.exterior === 'tulou') return null;
+              // 展覽館、電玩城大廳中央的大樓梯井
+              if (isFloorsHall(b.id)) return lobbyPitPolygon(b);
               const lay = getStoryLayout(b);
               return lay ? groundStairwell(b, lay) : null;
             })
@@ -177,10 +181,10 @@ export class RegionManager {
     const extraColliders: Collider[] = [];
     for (const b of manifest.buildings) {
       // 創點樓整棟就是圓形土樓（環形迴廊＋露天中庭），其他建築照原本的樓閣
-      const bld = b.exterior === 'tulou' ? createRingTower(b) : createStyledBuilding(b);
+      const bld = b.exterior === 'tulou' ? createRingTower(b) : b.exterior === 'board' ? createNoticeBoard(b) : createStyledBuilding(b);
       group.add(bld);
       // 點畫面上的建築就能打開左側介紹（土樓自己帶點擊範圍）
-      if (b.exterior !== 'tulou') group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
+      if (b.exterior !== 'tulou' && b.exterior !== 'board') group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
       // 展覽館、電玩城的地下主展場（只在走進去時才畫；碰撞由樓層系統各自處理）
       const hall = createExhibitHall(b);
