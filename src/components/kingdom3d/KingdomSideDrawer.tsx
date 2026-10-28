@@ -10,6 +10,7 @@ import { STREET_PROPS, StreetProp, StallContent } from './stylized/streets';
 import { actionsForBuilding, KingdomAction, KingdomActionButton, FEATURE_INFO, openInNewTab } from './buildingActions';
 import { isTypingTarget } from './FirstPersonControls';
 import { hallOf, hallZoneItems, HALL_ZONES } from './stylized/exhibitHall';
+import { CHARACTERS, CharacterId } from './stylized/fauna';
 import './kingdomUi.css';
 
 /** 左側面板目前顯示的內容（照 /island：點畫面上的東西，細節在左側彈出） */
@@ -26,7 +27,9 @@ export type DrawerState =
   /** 展覽館、電玩城地下主展場的某個展區：列出全部作品 */
   | { kind: 'hallZone'; buildingId: string; zone: number }
   /** 展覽館、電玩城一樓：精選榜／熱度榜 */
-  | { kind: 'hallRank'; buildingId: string; which: 'featured' | 'hot' };
+  | { kind: 'hallRank'; buildingId: string; which: 'featured' | 'hot' }
+  /** 創點源原創角色小卡 */
+  | { kind: 'character'; id: CharacterId };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
 export const findStreetProp = (id: string) => ALL_PROPS.find((p) => p.id === id) || null;
@@ -814,6 +817,27 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'character') {
+    const c = CHARACTERS[state.id];
+    body = (
+      <>
+        <Header title={c.name} badge={c.role} sub={c.where} onClose={close} />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.25)' }}>
+            <img src={c.img} alt={c.name} className="w-full h-48 object-contain" loading="lazy" />
+          </div>
+          <p className="text-[15px] leading-relaxed" style={{ color: '#f6e7c4' }}>{c.line}</p>
+          <button
+            type="button"
+            onClick={() => onAction({ kind: 'module', module: 'agents' })}
+            className="kx-btn-primary w-full px-4 py-3 text-[15px] flex items-center justify-center gap-2 cursor-pointer"
+          >
+            查看角色介紹 <ArrowRight className="w-5 h-5" />
+          </button>
+          <p className="kx-sub text-[12px]">角色介紹會開在新分頁，3D 這一頁會留在原地。</p>
+        </div>
+      </>
+    );
   } else if (state?.kind === 'feature') {
     const f = FEATURE_INFO[state.id];
     body = (

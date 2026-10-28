@@ -6,8 +6,9 @@ import { createRingTower, TULOU_RADIUS } from './stylized/tulou';
 import { createExhibitHall, isFloorsHall } from './stylized/exhibitHall';
 import { lobbyPitPolygon } from './stylized/hallLobby';
 import { createNoticeBoard } from './stylized/noticeBoard';
-import { createDocks, createPlateauExtras } from './stylized/docks';
+import { createDocks, createPlateauExtras, DOCKS, TRAIL } from './stylized/docks';
 import { createCareerGarden } from './stylized/careerGarden';
+import { createFauna } from './stylized/fauna';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -130,6 +131,26 @@ export class RegionManager {
     const villagers = createVillagers();
     this.archipelagoBaseGroup.add(villagers);
     if (Array.isArray(villagers.userData.colliders)) this.baseColliders.push(...(villagers.userData.colliders as Collider[]));
+    // 田園動物、農夫、雁群與原創角色（白喵、多慧、007、大熊）
+    const fauna = createFauna({
+      rims: ALL_REGION_IDS.flatMap((rid) => {
+        const [cx, cz] = REGION_CONFIGS[rid].center;
+        const e = walk.find((z) => z.type === 'ellipse' && Math.abs(z.cx - cx) < 0.5 && Math.abs(z.cz - cz) < 0.5);
+        return e && e.type === 'ellipse' ? [{ cx: e.cx, cz: e.cz, rx: e.rx, rz: e.rz }] : [];
+      }),
+      avoid: [
+        ...this.baseColliders,
+        // 石拱橋的橋面與橋頭：動物不擋路
+        ...WORLD_BRIDGES.map((b) => ({ id: `fauna-avoid-${b.id}`, type: 'segment' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfThickness: b.halfWidth + 3 })),
+      ],
+      avoidPts: [
+        ...DOCKS.map((d) => [d.landX, d.landZ] as [number, number]),
+        ...WORLD_BRIDGES.flatMap((b) => [[b.x1, b.z1], [b.x2, b.z2]] as [number, number][]),
+        [TRAIL.x, TRAIL.z],
+      ],
+    });
+    this.archipelagoBaseGroup.add(fauna.group);
+    this.baseColliders.push(...fauna.colliders);
     this.archipelagoBaseGroup.add(trees.build());
     this.archipelagoBaseGroup.add(grass.build());
   }

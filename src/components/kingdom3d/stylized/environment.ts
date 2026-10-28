@@ -1,5 +1,6 @@
 import { WaterLife, WeatherType, isUnderRoof } from './waterLife';
 import * as THREE from 'three';
+import { faunaEnv } from './fauna';
 import { disposeStreetMaterials } from './streets';
 import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
 import { isFloorsHall } from './exhibitHall';
@@ -385,6 +386,7 @@ export class StylizedWorld {
 
   /** 天氣：晴天才有漁船、遊船、水燈與天燈；下雨時飄細雨 */
   setWeather(w: WeatherType) {
+    faunaEnv.weather = w;
     this.life.setWeather(w);
   }
 
@@ -865,6 +867,7 @@ export class StylizedWorld {
 
   setTimeOfDay(t: TimeOfDay) {
     this.timeOfDay = t;
+    faunaEnv.tod = t;
     this.life?.setTimeOfDay(t);
     const p = PRESETS[t];
     const mats = getStyleMaterials();
