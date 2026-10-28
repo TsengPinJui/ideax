@@ -31,6 +31,13 @@ export function localToWorldXZ(
  * Automatically generate 5 wall segment colliders (Back, Left, Right, Front-Left, Front-Right)
  * plus an interior exhibit/desk pedestal collider for a hollow walk-in building.
  */
+/** 主島中央廣場佈告欄的碰撞：兩根柱子＋板子 */
+export function noticeBoardColliders(b: BuildingInteractable): Collider[] {
+  const [ax, az] = localToWorldXZ(b.position.x, b.position.z, b.facingYaw, -(b.width / 2 - 0.25), 0);
+  const [bx, bz] = localToWorldXZ(b.position.x, b.position.z, b.facingYaw, b.width / 2 - 0.25, 0);
+  return [{ id: `${b.id}-board`, type: 'segment', x1: ax, z1: az, x2: bx, z2: bz, halfThickness: 0.4 }];
+}
+
 export function generateBuildingWallColliders(b: BuildingInteractable): Collider[] {
   const cx = b.position.x;
   const cz = b.position.z;
@@ -367,9 +374,10 @@ const homeBuildings: BuildingInteractable[] = [
     subtitle: '中央廣場・直接逛全站最新公開內容',
     position: new THREE.Vector3(-14, 0, -9),
     facingYaw: Math.PI / 4,
-    width: 10.5,
-    depth: 8.5,
+    width: 6.4,
+    depth: 1.4,
     height: 5.0,
+    exterior: 'board',
     doorWidth: 3.8,
     tiers: 2,
     colorHex: 0xd97706,
@@ -380,7 +388,7 @@ const homeBuildings: BuildingInteractable[] = [
     previewFeatures: [
       '直接逛全站最新公開內容',
       '導覽員多慧駐守接待',
-      '可走入室內查看探索看板動態',
+      '中央廣場的大佈告欄，張貼全站最新內容',
     ],
     mockData: {
       stats: '所屬區域：主島・中央廣場',
@@ -394,9 +402,10 @@ const homeBuildings: BuildingInteractable[] = [
     subtitle: '中央廣場・新手導覽教學、平台介紹、運作說明、條款聲明',
     position: new THREE.Vector3(14, 0, -9),
     facingYaw: -Math.PI / 4,
-    width: 10.5,
-    depth: 8.5,
+    width: 6.4,
+    depth: 1.4,
     height: 5.0,
+    exterior: 'board',
     doorWidth: 3.8,
     tiers: 2,
     colorHex: 0x0284c7,
@@ -421,9 +430,10 @@ const homeBuildings: BuildingInteractable[] = [
     subtitle: '中央廣場・創點源六隻守護 Agent 介紹與身分證名冊',
     position: new THREE.Vector3(0, 0, 15.5),
     facingYaw: Math.PI,
-    width: 13.0,
-    depth: 9.0,
-    height: 5.4,
+    width: 7.0,
+    depth: 1.4,
+    height: 5.0,
+    exterior: 'board',
     doorWidth: 4.2,
     tiers: 2,
     colorHex: 0x7c3aed,
@@ -440,32 +450,6 @@ const homeBuildings: BuildingInteractable[] = [
       stats: '所屬區域：主島・中央廣場',
       notice: '小燈泡：「哈囉！我們是創點源的六位守護夥伴，點擊卡片就能查看大家的檔案與身分證喔！💡」',
       primaryActionLabel: '查看角色介紹',
-    },
-  },
-  {
-    id: 'home-trade-street',
-    name: '貿易街(開發中)',
-    subtitle: '主島・商案商品交易與專案競標市集（開發中，暫未開放）',
-    position: new THREE.Vector3(0, 0, -19.5),
-    facingYaw: 0,
-    width: 13.5,
-    depth: 8.0,
-    height: 4.8,
-    doorWidth: 4.4,
-    tiers: 1,
-    colorHex: 0x059669,
-    interactionRadius: 4.5,
-    description: '貿易街專案商品交易與專案競標市集籌備中，暫未開放。',
-    targetModule: 'topup',
-    previewBadge: '開發中',
-    previewFeatures: [
-      '商案商品交易與專案競標市集（開發中，暫未開放）',
-      '可先步入貿易街空間探索動線',
-    ],
-    mockData: {
-      stats: '所屬區域：主島・貿易街(開發中)',
-      notice: '貿易掌事：「貿易街目前正在籌備建設中，標示暫未開放，敬請期待後續功能！」',
-      primaryActionLabel: '暫未開放',
     },
   },
 ];
@@ -615,23 +599,25 @@ const creativeBuildings: BuildingInteractable[] = [
     facingYaw: Math.PI / 2,
     width: 26.0,
     depth: 18.0,
-    height: 8.5,
+    height: 12.5,
     exterior: 'exhibition',
     doorWidth: 6.4,
     tiers: 2,
     colorHex: 0x0284c7,
     interactionRadius: 5.5,
-    description: '作品、AI 工具與創新提案主題展館，內設「AI 工具展場」、「軟體應用展場」與「創新提案展場」。',
+    description: '作品、AI 工具與創新提案主題展館，一樓大廳有榜單大螢幕與精選榜、熱度榜，走下大樓梯是三層地下展場：B1 AI 工具展場、B2 軟體應用展場、B3 創新提案展場。',
     targetModule: 'vibecoding',
     previewBadge: '創意島',
     previewFeatures: [
-      '地下一樓是很大的主展場：三條展區走道、一個攤位展示一件真實作品，點攤位就能看作品',
+      '一樓大廳：進門正對精選榜＋熱度榜作品大螢幕輪播，左牆精選榜、右牆熱度榜（和首頁同一份榜單）',
+      '中央大樓梯往下：每一層是一類展場（B1 AI 工具、B2 軟體應用、B3 創新提案），用右側樓層表也能直接換樓層',
+      '一個攤位展示一件真實作品：上方名稱、中間圖片或影片縮圖（多張輪播）、下方簡述，櫃台上擺攤主姓名牌；靠近攤位按 E 或點攤位就能看',
       'AI 工具展場（小艾）：生成式 AI、智慧自動化、影像視覺與多媒體創作攤位',
       '軟體應用展場（程程）：網站平台、生活實用、商業營運與數位系統攤位',
       '創新提案展場（提提）：資訊科技、商業模式、日常生活文創、生醫療材提案攤位',
     ],
     mockData: {
-      stats: '館內展場：AI工具展場、軟體應用展場、創新提案展場',
+      stats: '地下三層展場：AI 工具、軟體應用、創新提案',
       notice: '走進展覽館即可瀏覽三大展場與各個別個案攤位。',
       primaryActionLabel: '進入展覽館',
     },
@@ -639,27 +625,28 @@ const creativeBuildings: BuildingInteractable[] = [
   {
     id: 'creative-arcade',
     name: '電玩城',
-    subtitle: '創意島・依照遊戲種類分設展區，點選各展區體驗精選作品',
+    subtitle: '創意島・每一層是一類遊戲展區，點攤位體驗作品',
     // 貼著創意島南緣
     position: new THREE.Vector3(-64, 0, 66),
     facingYaw: Math.PI,
     width: 22.0,
     depth: 16.0,
-    height: 8.0,
+    height: 11.5,
     exterior: 'arcade',
     doorWidth: 5.6,
     tiers: 2,
     colorHex: 0x9333ea,
     interactionRadius: 5.5,
-    description: '依照遊戲種類分設展區：休閒派對展區、策略益智展區、恐怖驚悚展區、解謎劇情展區、多人冒險展區、競技對戰展區、親子兒童展區、模擬體驗展區、卡牌桌遊展區、甜蜜浪漫展區。',
+    description: '遊戲展館，一樓大廳有遊戲榜單大螢幕與精選榜、熱度榜，走下大樓梯是四層地下展區：B1 休閒同樂、B2 益智解謎、B3 冒險競技、B4 模擬驚悚。',
     targetModule: 'vibecoding',
     previewBadge: '創意島',
     previewFeatures: [
-      '休閒派對展區、策略益智展區、競技對戰展區、冒險解謎展區、模擬體驗展區',
-      '恐怖驚悚展區、多人冒險展區、親子兒童展區、卡牌桌遊展區、甜蜜浪漫展區',
+      '一樓大廳：進門正對遊戲精選榜＋熱度榜大螢幕輪播，左牆精選榜、右牆熱度榜（和首頁同一份榜單）',
+      'B1 休閒同樂（休閒派對、親子兒童、甜蜜浪漫）、B2 益智解謎（策略益智、卡牌桌遊、解謎劇情）',
+      'B3 冒險競技（多人冒險、競技對戰）、B4 模擬驚悚（模擬體驗、恐怖驚悚）',
     ],
     mockData: {
-      stats: '下轄展區：10 大遊戲種類展區',
+      stats: '地下四層遊戲展區',
       notice: '樂樂：「想先玩一局輕鬆的小遊戲嗎？我帶你看看園區裡的作品。」',
       primaryActionLabel: '進入電玩城',
     },
@@ -828,7 +815,7 @@ export const REGION_HOME: RegionManifest = {
   name: '主島',
   shortName: '主島',
   compassLabel: '中央廣場',
-  subtitle: '中央廣場（探索看板、島覽地圖、角色介紹）・貿易街(開發中)',
+  subtitle: '中央廣場（探索看板、島覽地圖、角色介紹佈告欄）・貿易街',
   center: [0, 0],
   islandRadiusX: 32,
   islandRadiusZ: 30,
@@ -850,7 +837,7 @@ export const REGION_HOME: RegionManifest = {
     ...bridgeAnglerSpots().map((p) => ({ id: p.id, type: 'cylinder' as const, x: p.x, z: p.z, radius: 0.55 })),
     // 大燈泡雕像（八角石座，半徑約 3 公尺）
     { id: 'home-bulb-monument', type: 'cylinder', x: 0, z: -2, radius: 3.0 },
-    ...homeBuildings.flatMap(generateBuildingWallColliders),
+    ...homeBuildings.flatMap((b) => (b.exterior === 'board' ? noticeBoardColliders(b) : generateBuildingWallColliders(b))),
     ...getBridgeSideColliders(),
   ],
   buildings: homeBuildings,

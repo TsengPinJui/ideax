@@ -41,12 +41,44 @@ export interface StreetProp {
   goods: ShopKind;
   /** 市集攤位或街區店鋪對應的討論／作品內容（點店鋪會在左側列出） */
   content?: StallContent;
+  /** 空鋪（預留給合作夥伴）：不擺掌櫃與貨品，招牌寫「歡迎掌櫃進駐」 */
+  vacant?: boolean;
+  /** 已進駐的合作掌櫃（點了可前往體驗／遊玩，開新分頁到對方網站） */
+  partner?: StallPartner;
   x: number;
   z: number;
   yaw: number;
   w: number;
   d: number;
 }
+
+/** 合作掌櫃（創意集攤位、貿易街店鋪進駐後填入） */
+export interface StallPartner {
+  name: string;
+  sub?: string;
+  kind: 'game' | 'proposal' | 'service';
+  /** 點「前往體驗／遊玩」開啟的網址（新分頁） */
+  url?: string;
+  note?: string;
+}
+
+/**
+ * 已進駐的掌櫃：key 是攤位／店鋪 id（例如 'region-creative-stall-0'、'region-home-shop-0'）。
+ * 目前都還是空鋪，有合作夥伴進駐時在這裡加上即可。
+ */
+export const STALL_PARTNERS: Record<string, StallPartner> = {};
+
+const TRADE_NOTE =
+  '貿易街由一整排商鋪組成，預留給合作商進駐：未來可以用平台點數，在這裡直接兌換合作商的服務內容（尚未開放）。歡迎掌櫃進駐！';
+const MARKET_NOTE =
+  '創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！';
+
+const withPartner = (p: StreetProp, note: string): StreetProp => {
+  const partner = STALL_PARTNERS[p.id];
+  return partner
+    ? { ...p, name: partner.name, sub: partner.sub || p.sub, partner, vacant: false, note: partner.note || note }
+    : { ...p, vacant: true, note };
+};
 
 /** 讓本地 +Z（店面正面）朝向島中心 */
 function faceCenter(x: number, z: number, cx: number, cz: number) {
@@ -75,27 +107,49 @@ function ringProps(
   });
 }
 
-/** 主島：西、東、北三段商店街（避開四座拱橋與三棟主建築） */
-const HOME_SHOPS = ringProps('region-home', 'shop', 6, 4.4, 3.0, [
-  { deg: 163, name: '創意坊', sub: '文創小物', goods: 'crafts' },
-  { deg: 180, name: '點子茶舖', sub: '茶飲・茶點', goods: 'tea' },
-  { deg: 197, name: '靈感書肆', sub: '書冊・筆記', goods: 'books' },
-  { deg: -17, name: '匠心工坊', sub: '手作・木藝', goods: 'toys' },
-  { deg: 0, name: '燈籠鋪', sub: '花燈・紙燈', goods: 'lanterns' },
-  { deg: 17, name: '墨香文房', sub: '筆墨紙硯', goods: 'ink' },
-  // 北面讓開貿易街（0, -19.5，寬 13.5）與探索看板、島覽地圖兩棟
-  { deg: 240, name: '甜點心鋪', sub: '糕餅・糖果', goods: 'sweets' },
-  { deg: 300, name: '巧手雜貨', sub: '日用百貨', goods: 'general' },
-]);
+/**
+ * 主島：貿易街＝西、東、北三段商鋪（避開四座拱橋）
+ * 每間都預留給合作商：未來可用平台點數直接兌換合作商的服務（尚未開放），目前是空鋪「歡迎掌櫃進駐」
+ */
+const TRADE_NUMS = ['壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖', '拾', '拾壹'];
+const HOME_SHOPS = ringProps(
+  'region-home',
+  'shop',
+  6,
+  4.4,
+  3.0,
+  [163, 180, 197, -17, 0, 17, 240, 255, 270, 285, 300].map((deg, i) => ({
+    deg,
+    name: `貿易街・${TRADE_NUMS[i]}號鋪`,
+    sub: '歡迎掌櫃進駐',
+    goods: (['crafts', 'tea', 'books', 'toys', 'lanterns', 'ink', 'sweets', 'general', 'crafts', 'tea', 'books'] as ShopKind[])[i],
+  }))
+).map((p) => withPartner(p, TRADE_NOTE));
 
-/** 創意島北側：創意集市集（五個攤位＋牌坊） */
+/** 創意島北側：創意集市集（五個攤位＋牌坊）——預留給合作夥伴（遊戲或提案）進駐 */
 const CREATIVE_STALLS = ringProps('region-creative', 'stall', 3.6, 2.4, (rx, rz) => [rx * 0.76, rz * 0.76], [
-  { deg: -124, name: '新品攤', sub: '最新上架的作品與提案', goods: 'sweets', content: 'new' },
-  { deg: -107, name: '提案攤', sub: '創新提案', goods: 'ink', content: 'proposal' },
-  { deg: -90, name: '遊戲攤', sub: '遊戲作品', goods: 'toys', content: 'game' },
-  { deg: -73, name: '軟體攤', sub: '軟體應用與 AI 工具', goods: 'crafts', content: 'app' },
-  { deg: -56, name: '人氣攤', sub: '瀏覽最多的作品與提案', goods: 'lanterns', content: 'hot' },
-]);
+  { deg: -124, name: '一號攤', sub: '歡迎掌櫃進駐', goods: 'sweets' },
+  { deg: -107, name: '二號攤', sub: '歡迎掌櫃進駐', goods: 'ink' },
+  { deg: -90, name: '三號攤', sub: '歡迎掌櫃進駐', goods: 'toys' },
+  { deg: -73, name: '四號攤', sub: '歡迎掌櫃進駐', goods: 'crafts' },
+  { deg: -56, name: '五號攤', sub: '歡迎掌櫃進駐', goods: 'lanterns' },
+]).map((p) => withPartner(p, MARKET_NOTE));
+
+/** 主島北面：貿易街牌坊（原本的貿易街單棟拿掉，改成一整排商鋪） */
+const TRADE_GATE: StreetProp = {
+  id: 'region-home-gate',
+  regionId: 'region-home',
+  kind: 'gate',
+  name: '貿易街',
+  sub: '點數兌換・合作商鋪（籌備中）',
+  goods: 'general',
+  x: 0,
+  z: -19.2,
+  yaw: 0,
+  w: 7.6,
+  d: 1.2,
+  note: TRADE_NOTE,
+};
 
 const CREATIVE_GATE: StreetProp = (() => {
   const [cx, cz] = REGION_CONFIGS['region-creative'].center;
@@ -174,7 +228,7 @@ const DISCUSSION_PROPS: StreetProp[] = [
 ];
 
 export const STREET_PROPS: Record<RegionId, StreetProp[]> = {
-  'region-home': HOME_SHOPS,
+  'region-home': [...HOME_SHOPS, TRADE_GATE],
   'region-pain': [],
   'region-discussion': DISCUSSION_PROPS,
   'region-creative': [...CREATIVE_STALLS, CREATIVE_GATE],
@@ -565,13 +619,20 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   // 櫃檯
   add(g, new THREE.BoxGeometry(w - 1.3, 1.0, 0.6), sm.darkWood, 0, pl + 0.5, d / 2 - 0.6);
   add(g, new THREE.BoxGeometry(w - 1.1, 0.08, 0.76), sm.redLacquer, 0, pl + 1.04, d / 2 - 0.6);
-  // 櫃檯上的貨：陶罐、木盒
-  for (let k = 0; k < 4; k++) {
-    const x = -w / 2 + 1.2 + (k * (w - 2.4)) / 3;
-    if (k % 2) add(g, new THREE.CylinderGeometry(0.13, 0.17, 0.32, 10), sm.pot, x, pl + 1.24, d / 2 - 0.62);
-    else add(g, new THREE.BoxGeometry(0.34, 0.2, 0.26), sm.gold, x, pl + 1.18, d / 2 - 0.6);
+  if (p.vacant) {
+    // 空鋪：櫃檯上立「歡迎掌櫃進駐」小牌
+    const tag = signMesh('歡迎掌櫃進駐', '招商中', 1.6, 0.52);
+    tag.position.set(0, pl + 1.4, d / 2 - 0.58);
+    g.add(tag);
+  } else {
+    // 櫃檯上的貨：陶罐、木盒
+    for (let k = 0; k < 4; k++) {
+      const x = -w / 2 + 1.2 + (k * (w - 2.4)) / 3;
+      if (k % 2) add(g, new THREE.CylinderGeometry(0.13, 0.17, 0.32, 10), sm.pot, x, pl + 1.24, d / 2 - 0.62);
+      else add(g, new THREE.BoxGeometry(0.34, 0.2, 0.26), sm.gold, x, pl + 1.18, d / 2 - 0.6);
+    }
+    addKeeper(g, (hv % 3) - 1, pl, d / 2 - 1.35, hv);
   }
-  addKeeper(g, (hv % 3) - 1, pl, d / 2 - 1.35, hv);
   // 腰簷（一、二樓之間的披簷）
   const eave = new THREE.BoxGeometry(w + 1.0, 0.14, 1.35).rotateX(0.36);
   add(g, eave, sm.roofs[theme], 0, pl + H1 + 0.32, d / 2 + 0.5);
@@ -780,8 +841,13 @@ function buildStall(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, to
   add(g, new THREE.BoxGeometry(w - 0.3, 0.85, 0.7), sm.darkWood, 0, 0.425, d / 2 - 0.45);
   add(g, new THREE.PlaneGeometry(w - 0.35, 0.62), awn, 0, 0.46, d / 2 - 0.09);
   add(g, new THREE.BoxGeometry(w - 0.2, 0.06, 0.82), sm.redLacquer, 0, 0.88, d / 2 - 0.45);
-  // 櫃檯上的貨（依攤種）
-  for (let k = 0; k < 7; k++) {
+  // 櫃檯上的貨（依攤種）；空攤只立「歡迎掌櫃進駐」小牌
+  if (p.vacant) {
+    const tag = signMesh('歡迎掌櫃進駐', '招商中', 1.5, 0.5);
+    tag.position.set(0, 1.2, d / 2 - 0.42);
+    g.add(tag);
+  }
+  for (let k = 0; k < (p.vacant ? 0 : 7); k++) {
     const x = -w / 2 + 0.45 + (k * (w - 0.9)) / 6;
     const z = d / 2 - 0.45 + ((k % 2) - 0.5) * 0.22;
     if (p.goods === 'sweets' || p.goods === 'crafts') add(g, new THREE.SphereGeometry(0.1, 10, 8), m.fruits[(hv + k) % m.fruits.length], x, 0.99, z);
@@ -793,9 +859,9 @@ function buildStall(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, to
   const shelf = cachedMat(m.shelves, p.goods, () => new THREE.MeshStandardMaterial({ map: shopInteriorTexture(p.goods), roughness: 0.8, emissive: 0xffffff, emissiveMap: shopInteriorTexture(p.goods), emissiveIntensity: 0.18 }));
   add(g, new THREE.BoxGeometry(w - 0.3, 1.7, 0.12), sm.darkWood, 0, 0.85, -d / 2 + 0.1);
   add(g, new THREE.PlaneGeometry(w - 0.45, 1.5), shelf, 0, 0.88, -d / 2 + 0.17);
-  addKeeper(g, ((hv % 3) - 1) * 0.6, 0, -0.15, hv);
+  if (!p.vacant) addKeeper(g, ((hv % 3) - 1) * 0.6, 0, -0.15, hv);
   // 布棚前緣上方的招牌
-  const sign = signMesh(p.name, undefined, 1.8, 0.6);
+  const sign = signMesh(p.name, p.vacant ? '歡迎掌櫃進駐' : p.sub, 2.0, 0.66);
   sign.position.set(0, 2.72, d / 2 + 0.66);
   g.add(sign);
   const v = toWorld(g, (hv % 2 ? 1 : -1) * (w / 2 + 0.05), 1.95, d / 2 + 0.55);

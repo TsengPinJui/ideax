@@ -1,7 +1,9 @@
 import { WaterLife, WeatherType, isUnderRoof } from './waterLife';
 import * as THREE from 'three';
 import { disposeStreetMaterials } from './streets';
-import { REGION_CONFIGS } from '../regionConfigs';
+import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
+import { isFloorsHall } from './exhibitHall';
+import { lobbyPit } from './hallLobby';
 import {
   getStyleMaterials,
   disposeStyleMaterials,
@@ -113,8 +115,8 @@ function makeWaterMaterial() {
         uSunColor: { value: new THREE.Color() },
         uGlint: { value: 1 },
         // 有地下室的建築範圍：海面在這裡不畫，從樓梯井往下看才看得到地下室
-        uHole: { value: new THREE.Vector4(1e5, 1e5, 1, 0) },
-        uHoleSize: { value: new THREE.Vector2(0, 0) },
+        uHoles: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(1e5, 1e5, 1, 0)) },
+        uHoleSizes: { value: [0, 1, 2, 3].map(() => new THREE.Vector2(0, 0)) },
       },
     ]),
     vertexShader: /* glsl */ `
@@ -138,8 +140,8 @@ function makeWaterMaterial() {
       uniform vec3 uSunDir;
       uniform vec3 uSunColor;
       uniform float uGlint;
-      uniform vec4 uHole;
-      uniform vec2 uHoleSize;
+      uniform vec4 uHoles[4];
+      uniform vec2 uHoleSizes[4];
       varying vec3 vWorld;
       float wave(vec2 p) {
         return sin(p.x * 0.31 + uTime * 0.8) * 0.5
@@ -150,9 +152,12 @@ function makeWaterMaterial() {
       }
       void main() {
         vec2 p = vWorld.xz;
-        vec2 hd = p - uHole.xy;
-        vec2 hl = vec2(hd.x * uHole.z - hd.y * uHole.w, hd.x * uHole.w + hd.y * uHole.z);
-        if (abs(hl.x) < uHoleSize.x && abs(hl.y) < uHoleSize.y) discard;
+        for (int i = 0; i < 4; i++) {
+          vec4 hh = uHoles[i];
+          vec2 hd = p - hh.xy;
+          vec2 hl = vec2(hd.x * hh.z - hd.y * hh.w, hd.x * hh.w + hd.y * hh.z);
+          if (abs(hl.x) < uHoleSizes[i].x && abs(hl.y) < uHoleSizes[i].y) discard;
+        }
         float e = 0.2;
         vec3 n = normalize(vec3(
           -(wave(p + vec2(e, 0.0)) - wave(p - vec2(e, 0.0))) * 0.55,
@@ -314,13 +319,20 @@ export class StylizedWorld {
     // 海面
     this.waterMat = makeWaterMaterial();
     {
-      const bb = Object.values(REGION_CONFIGS)
-        .flatMap((r) => r.buildings)
-        .find((b) => (b.basements || 0) > 0);
-      if (bb) {
-        this.waterMat.uniforms.uHole.value.set(bb.position.x, bb.position.z, Math.cos(bb.facingYaw), Math.sin(bb.facingYaw));
-        this.waterMat.uniforms.uHoleSize.value.set(bb.width / 2, bb.depth / 2);
+      // 海面挖洞：有地下室的建築、展覽館與電玩城的大樓梯井（從上往下看才看得到樓梯）
+      const holes: { x: number; z: number; yaw: number; hx: number; hz: number }[] = [];
+      for (const bb of Object.values(REGION_CONFIGS).flatMap((r) => r.buildings)) {
+        if ((bb.basements || 0) > 0) holes.push({ x: bb.position.x, z: bb.position.z, yaw: bb.facingYaw, hx: bb.width / 2, hz: bb.depth / 2 });
+        else if (isFloorsHall(bb.id)) {
+          const p = lobbyPit(bb);
+          const [x, z] = localToWorldXZ(bb.position.x, bb.position.z, bb.facingYaw, (p.x0 + p.x1) / 2, (p.zTop + p.zBot) / 2);
+          holes.push({ x, z, yaw: bb.facingYaw, hx: (p.x1 - p.x0) / 2 + 0.5, hz: (p.zTop - p.zBot) / 2 + 0.5 });
+        }
       }
+      holes.slice(0, 4).forEach((hh, i) => {
+        this.waterMat.uniforms.uHoles.value[i].set(hh.x, hh.z, Math.cos(hh.yaw), Math.sin(hh.yaw));
+        this.waterMat.uniforms.uHoleSizes.value[i].set(hh.hx, hh.hz);
+      });
     }
     const water = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600, 1, 1), this.waterMat);
     water.rotation.x = -Math.PI / 2;

@@ -125431,6 +125431,7 @@ var init_firebase_applet_config = __esm({
       appId: "1:901207969430:web:dd6bbc19aa8070ebb17cb7",
       apiKey: "AIzaSyCZYTHffdGT1AYwNDk_RRZ1mMMWLfoQocE",
       authDomain: "ideax-2af9c.firebaseapp.com",
+      databaseURL: "https://ideax-2af9c-default-rtdb.asia-southeast1.firebasedatabase.app",
       firestoreDatabaseId: "ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c",
       storageBucket: "ideax-2af9c.firebasestorage.app",
       messagingSenderId: "901207969430",
@@ -173840,7 +173841,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.1.5";
+var APP_VERSION = "4.1.9";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
@@ -174010,6 +174011,61 @@ app.get("/api/media/island-intro-video", async (req, res) => {
   } catch (err) {
     console.error("[Media] Failed to load island intro video from Firestore:", err?.message || err);
     res.status(500).json({ error: "\u7121\u6CD5\u5F9E\u8CC7\u6599\u5EAB\u8F09\u5165\u5C0E\u89BD\u5F71\u7247" });
+  }
+});
+var KINGDOM_IMG_HOSTS = [
+  "s0.wp.com",
+  "i.ytimg.com",
+  "img.youtube.com",
+  "firebasestorage.googleapis.com",
+  "storage.googleapis.com",
+  "lh3.googleusercontent.com",
+  "i.imgur.com",
+  "images.unsplash.com",
+  "raw.githubusercontent.com",
+  "user-images.githubusercontent.com"
+];
+var kingdomImgHostOk = (h2) => KINGDOM_IMG_HOSTS.some((d) => h2 === d || h2.endsWith(`.${d}`));
+app.get("/api/kingdom-img", async (req, res) => {
+  try {
+    const raw = String(req.query.u || "");
+    let target;
+    try {
+      target = new URL(raw);
+    } catch {
+      res.status(400).json({ error: "bad url" });
+      return;
+    }
+    if (target.protocol !== "https:" || !kingdomImgHostOk(target.hostname.toLowerCase())) {
+      res.status(403).json({ error: "host not allowed" });
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9e3);
+    const r2 = await fetch(target.toString(), { signal: ctrl.signal, redirect: "follow", headers: { "User-Agent": "IdeaX-Kingdom/1.0" } }).finally(() => clearTimeout(timer));
+    const finalHost = (() => {
+      try {
+        return new URL(r2.url).hostname.toLowerCase();
+      } catch {
+        return "";
+      }
+    })();
+    const type = r2.headers.get("content-type") || "";
+    if (!r2.ok || !kingdomImgHostOk(finalHost) || !/^image\//i.test(type)) {
+      res.status(502).json({ error: "not an image" });
+      return;
+    }
+    const buf = Buffer.from(await r2.arrayBuffer());
+    if (buf.length > 4 * 1024 * 1024) {
+      res.status(413).json({ error: "too large" });
+      return;
+    }
+    res.setHeader("Content-Type", type);
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.end(buf);
+  } catch (err) {
+    res.status(502).json({ error: "fetch failed" });
   }
 });
 var ALL_ISLAND_BUILDING_IDS = [
