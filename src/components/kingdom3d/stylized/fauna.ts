@@ -182,6 +182,52 @@ function farmer(m: Record<string, THREE.Material>) {
   return g;
 }
 
+/** 在河岸散步的村民（本地 -Z 朝前）；有的挑著扁擔 */
+function walker(m: Record<string, THREE.Material>, rand: () => number, pole: boolean) {
+  const g = new THREE.Group();
+  const shirts = [m.blueCloth, m.shirtRed, m.shirtGreen, m.shirtWhite];
+  const shirt = shirts[Math.floor(rand() * shirts.length)];
+  const pants = rand() > 0.5 ? m.pantsBrown : m.blueCloth;
+  const body = new THREE.Group();
+  g.add(body);
+  addM(body, new THREE.CapsuleGeometry(0.19, 0.42, 4, 10), shirt, 0, 1.08, 0);
+  addM(body, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 1.55, 0);
+  if (rand() > 0.4) addM(body, new THREE.ConeGeometry(0.36, 0.18, 14), m.straw, 0, 1.7, 0);
+  else addM(body, new THREE.SphereGeometry(0.155, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m.hair, 0, 1.57, 0.01);
+  if (pole) {
+    // 扁擔與兩個竹籃
+    addM(body, new THREE.CylinderGeometry(0.025, 0.025, 1.9, 6).rotateZ(Math.PI / 2), m.wood, 0, 1.38, 0.05);
+    for (const s2 of [-1, 1]) {
+      addM(body, new THREE.CylinderGeometry(0.005, 0.005, 0.7, 3), m.wood, s2 * 0.88, 1.03, 0.05);
+      addM(body, new THREE.CylinderGeometry(0.22, 0.17, 0.26, 10, 1, true), m.basket, s2 * 0.88, 0.62, 0.05);
+      addM(body, new THREE.SphereGeometry(0.16, 8, 6), s2 < 0 ? m.veg : m.straw, s2 * 0.88, 0.72, 0.05);
+    }
+  }
+  const limbs: THREE.Group[] = [];
+  for (const s2 of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(s2 * 0.1, 0.78, 0);
+    addM(leg, new THREE.CapsuleGeometry(0.085, 0.55, 4, 8), pants, 0, -0.38, 0);
+    g.add(leg);
+    leg.userData.swing = s2;
+    limbs.push(leg);
+    if (!pole) {
+      const arm = new THREE.Group();
+      arm.position.set(s2 * 0.25, 1.28, 0);
+      addM(arm, new THREE.CapsuleGeometry(0.055, 0.42, 4, 6), shirt, 0, -0.26, 0);
+      g.add(arm);
+      arm.userData.swing = -s2;
+      limbs.push(arm);
+    } else {
+      // 挑扁擔：手扶在擔子上
+      addM(body, new THREE.CapsuleGeometry(0.055, 0.3, 4, 6), shirt, s2 * 0.24, 1.32, -0.05).rotation.x = -1.2;
+    }
+  }
+  g.userData.body = body;
+  g.userData.limbs = limbs;
+  return g;
+}
+
 /* ---------------- 原創角色 ---------------- */
 
 function baimiao() {
@@ -393,6 +439,13 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     straw: std(0xc9a764, 0.95),
     wood: std(0x6b4423, 0.85),
     iron: std(0x6b7280, 0.5),
+    shirtRed: std(0x9c3a2e, 0.8),
+    shirtGreen: std(0x4f7a4a, 0.8),
+    shirtWhite: std(0xece4d2, 0.8),
+    pantsBrown: std(0x7a5532, 0.8),
+    hair: std(0x2a1d14, 0.7),
+    basket: std(0xb08a4e, 0.95),
+    veg: std(0x6aa84f, 0.8),
   };
   type Anim = (t: number) => void;
   const anims: Anim[] = [];
@@ -586,6 +639,76 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(sp[0], -0.04, sp[1]);
       g.rotation.y = sp[2] + (rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
       statics.add(g);
+    }
+  });
+
+  // ── 河岸散步的村民（沿著欄杆外的草地來回走；有的挑扁擔） ──
+  const walkers: { g: THREE.Group; isl: FaunaOptions['rims'][number]; a0: number; a1: number; ph: number; sp: number }[] = [];
+  const RIM_WALK = 2.0;
+  const arcClear = (isl: FaunaOptions['rims'][number], a0: number, a1: number) => {
+    for (let k = 0; k <= 16; k++) {
+      const a = a0 + ((a1 - a0) * k) / 16;
+      const x = isl.cx + Math.cos(a) * (isl.rx + RIM_WALK);
+      const z = isl.cz + Math.sin(a) * (isl.rz + RIM_WALK);
+      if (opts.avoidPts.some(([px, pz]) => Math.hypot(px - x, pz - z) < 6)) return false;
+      if (nearCollider(x, z, opts.avoid, 0.6) || nearCollider(x, z, colliders, 0.6)) return false;
+    }
+    return true;
+  };
+  opts.rims.forEach((isl, ii) => {
+    let placed = 0;
+    const used: [number, number][] = [];
+    for (let tries = 0; tries < 60 && placed < 2; tries++) {
+      const a0 = rand() * Math.PI * 2;
+      const span = (10 + rand() * 12) / Math.max(isl.rx, isl.rz);
+      // 同一座島的兩位不走同一段
+      if (used.some(([u0, u1]) => {
+        const mid = (a0 + span / 2 - (u0 + u1) / 2 + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+        return Math.abs(mid) < (span + (u1 - u0)) / 2 + 0.15;
+      })) continue;
+      if (!arcClear(isl, a0, a0 + span)) continue;
+      used.push([a0, a0 + span]);
+      const g = walker(m, rand, (ii + placed) % 3 === 1);
+      g.name = 'rim-walker';
+      root.add(g);
+      walkers.push({ g, isl, a0, a1: a0 + span, ph: rand() * 10, sp: 0.85 + rand() * 0.3 });
+      placed++;
+    }
+  });
+  walkers.forEach((w) => {
+    const body = w.g.userData.body as THREE.Group;
+    const limbs = w.g.userData.limbs as THREE.Group[];
+    mergeByMaterial(body);
+    keepApart(body);
+    for (const l of limbs) keepApart(l);
+  });
+  anims.push((t) => {
+    const on = faunaEnv.weather === 'clear';
+    for (const w of walkers) {
+      w.g.visible = on;
+      if (!on) continue;
+      const rx = w.isl.rx + RIM_WALK;
+      const rz = w.isl.rz + RIM_WALK;
+      const len = (w.a1 - w.a0) * Math.max(rx, rz);
+      const dur = len / w.sp;
+      // 來回走：0→1→0，兩端稍停
+      const cyc = ((t + w.ph * 7) % (dur * 2 + 4)) - 1;
+      const forward = cyc < dur + 1;
+      const u = forward ? Math.min(1, Math.max(0, cyc / dur)) : Math.min(1, Math.max(0, 1 - (cyc - dur - 2) / dur));
+      const moving = forward ? cyc > 0 && cyc < dur : cyc > dur + 2 && cyc < dur * 2 + 2;
+      const a = w.a0 + (w.a1 - w.a0) * u;
+      const x = w.isl.cx + Math.cos(a) * rx;
+      const z = w.isl.cz + Math.sin(a) * rz;
+      // 切線方向（角度增加的方向），面向前進方向（本地 -Z 朝前）
+      const tx = -Math.sin(a) * rx;
+      const tz = Math.cos(a) * rz;
+      const dirSign = forward ? 1 : -1;
+      w.g.position.set(x, -0.04, z);
+      w.g.rotation.y = Math.atan2(-tx * dirSign, -tz * dirSign);
+      const sw = moving ? Math.sin(t * 6.5 + w.ph) * 0.5 : 0;
+      const limbs = w.g.userData.limbs as THREE.Group[];
+      for (const l of limbs) l.rotation.x = (l.userData.swing as number) * sw;
+      (w.g.userData.body as THREE.Object3D).position.y = moving ? Math.abs(Math.sin(t * 6.5 + w.ph)) * 0.04 : 0;
     }
   });
 

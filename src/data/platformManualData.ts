@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#230',
+    version: 'v4.1.16',
+    releaseDate: '2026.10.28',
+    releaseTime: '14:00',
+    author: 'System Architect',
+    summary: '3D 實境漫遊：河岸有散步、挑扁擔的村民；新增腳步聲（石板、草地、木樓板）',
+    changes: [
+      '每座島欄杆外的河岸草地上有村民來回散步，有的挑著扁擔竹籃；邊走邊擺手、到盡頭停一下再折返。會避開石拱橋、渡口、岸邊的樹與動物；下雨時回家。',
+      '新增腳步聲：走在石板、橋面是清脆的石板聲，河岸草地是沙沙聲，樓上與塔頂是木樓板聲；跑步時步伐較大、聲音稍大。和背景音樂共用同一個聲音開關。',
+    ],
+  },
+  {
     seqNumber: '#229',
     version: 'v4.1.15',
     releaseDate: '2026.10.28',

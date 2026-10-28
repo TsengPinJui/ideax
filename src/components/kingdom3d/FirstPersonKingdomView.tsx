@@ -1588,6 +1588,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 9. Animation & Physics Game Loop
     const clock = new THREE.Clock();
     // 可走範圍：島上＋欄杆外的草地外環（到水邊為止，不會下水），以及石拱橋
+    // 腳步聲用：島的可走橢圓（欄杆內是石板，欄杆外是草地）
+    const rawEllipses = getGlobalWalkableZones().filter((z): z is Extract<ReturnType<typeof getGlobalWalkableZones>[number], { type: 'ellipse' }> => z.type === 'ellipse');
+    const stepPos = { x: 0, z: 0 };
+    let stepAcc = 0;
     const globalWalkableZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.6, rz: z.rz + 5.6 } : z));
     let lodTick = 14;
 
@@ -1756,6 +1760,39 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           height: camera.position.y,
           indoor: st.level < 0 || (Boolean(st.towerId) && st.towerId !== PLATEAU_ID && st.level > 0),
         });
+      }
+      // 腳步聲：每走一步（約 0.8 m，跑步 1.1 m）響一下，依地面材質
+      {
+        const px = controls.position.x;
+        const pz = controls.position.z;
+        const moved = Math.hypot(px - stepPos.x, pz - stepPos.z);
+        if (moved > 3 || boatRideRef.current) {
+          stepPos.x = px;
+          stepPos.z = pz;
+        } else {
+          stepAcc += moved;
+          stepPos.x = px;
+          stepPos.z = pz;
+          const run = Boolean((controls as any).keys?.sprint);
+          if (stepAcc > (run ? 1.1 : 0.8)) {
+            stepAcc = 0;
+            const st = storyRef.current;
+            let surface: 'stone' | 'grass' | 'wood' = 'stone';
+            if (st.towerId === PLATEAU_ID) surface = st.level === 1 ? 'grass' : 'wood';
+            else if (st.towerId && st.level > 0) surface = 'wood';
+            else if (st.level === 0) {
+              const inCore = rawEllipses.some((e) => ((px - e.cx) / e.rx) ** 2 + ((pz - e.cz) / e.rz) ** 2 <= 1);
+              const onBridge = WORLD_BRIDGES.some((b) => {
+                const abx = b.x2 - b.x1;
+                const abz = b.z2 - b.z1;
+                const tt = Math.max(0, Math.min(1, ((px - b.x1) * abx + (pz - b.z1) * abz) / (abx * abx + abz * abz || 1)));
+                return Math.hypot(px - b.x1 - abx * tt, pz - b.z1 - abz * tt) < b.halfWidth;
+              });
+              if (!inCore && !onBridge) surface = 'grass';
+            }
+            kingdomAmbience.step(surface, run);
+          }
+        }
       }
       remoteView.update(delta);
 

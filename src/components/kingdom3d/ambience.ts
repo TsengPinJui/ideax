@@ -51,6 +51,7 @@ class KingdomAmbience {
   private nextCricket = 0;
   private nextFrog = 0;
   private timer: number | null = null;
+  private noise: AudioBuffer | null = null;
   private unlock: (() => void) | null = null;
 
   start() {
@@ -68,6 +69,7 @@ class KingdomAmbience {
     this.master.gain.value = this.muted ? 0 : 0.0001;
     this.master.connect(ctx.destination);
     const noise = noiseBuffer(ctx);
+    this.noise = noise;
     const loop = (filterType: BiquadFilterType, freq: number, q: number) => {
       const src = ctx.createBufferSource();
       src.buffer = noise;
@@ -123,6 +125,37 @@ class KingdomAmbience {
     this.ctx?.close().catch(() => {});
     this.ctx = null;
     this.master = this.water = this.wind = this.rain = null;
+  }
+
+  /** 腳步聲：石板清脆、草地沙沙、木板悶悶的 */
+  step(surface: 'stone' | 'grass' | 'wood', run: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.noise || this.muted || ctx.state !== 'running') return;
+    const t = ctx.currentTime + 0.005;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.playbackRate.value = 0.8 + Math.random() * 0.5;
+    const f = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    const vol = (run ? 1.3 : 1) * (surface === 'grass' ? 0.16 : surface === 'wood' ? 0.22 : 0.2);
+    if (surface === 'stone') {
+      f.type = 'bandpass';
+      f.frequency.value = 1500 + Math.random() * 500;
+      f.Q.value = 1.2;
+    } else if (surface === 'grass') {
+      f.type = 'highpass';
+      f.frequency.value = 2400 + Math.random() * 800;
+    } else {
+      f.type = 'bandpass';
+      f.frequency.value = 420 + Math.random() * 120;
+      f.Q.value = 2.5;
+    }
+    const dur = surface === 'grass' ? 0.12 : 0.07;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t, Math.random() * 2, dur + 0.02);
   }
 
   setMuted(m: boolean) {
