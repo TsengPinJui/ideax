@@ -95,6 +95,25 @@
           }
         }
       }
+    },
+    "kingdomBonds": {
+      ".read": true,
+      "$k": {
+        ".write": "$k.length <= 64",
+        ".validate": "!newData.exists() || newData.hasChildren(['to', 't'])",
+        "to": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "n": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

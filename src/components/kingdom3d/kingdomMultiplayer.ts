@@ -98,6 +98,10 @@ export class KingdomMultiplayer {
   get displayName() {
     return this.name;
   }
+  /** 這位玩家的身分（會員帳號或這台瀏覽器的訪客碼；羈絆用） */
+  get userKey() {
+    return this.activeUid;
+  }
   get serverNow() {
     return Date.now() + this.serverOffset;
   }
@@ -341,6 +345,8 @@ function nameTagTexture(name: string) {
 }
 
 interface Avatar {
+  id: string;
+  proxy: THREE.Mesh;
   group: THREE.Group;
   tag: THREE.Sprite;
   name: string;
@@ -360,6 +366,8 @@ export class RemotePlayersView {
   private headGeo = new THREE.SphereGeometry(0.17, 14, 12);
   private hatGeo = new THREE.CylinderGeometry(0.12, 0.2, 0.16, 12);
   private noseGeo = new THREE.SphereGeometry(0.04, 6, 6);
+  private proxyGeo = new THREE.BoxGeometry(0.9, 1.9, 0.9);
+  private proxyMat = new THREE.MeshBasicMaterial({ visible: false });
 
   constructor(scene: THREE.Scene) {
     this.root.name = 'remote_players';
@@ -398,6 +406,21 @@ export class RemotePlayersView {
     return this.avatars.size;
   }
 
+  /** 可以點的旅人（給射線用） */
+  pickables(): THREE.Object3D[] {
+    return [...this.avatars.values()].map((a) => a.proxy);
+  }
+
+  nameOf(id: string) {
+    return this.avatars.get(id)?.name || '';
+  }
+
+  /** 某位玩家（任一分頁）目前的位置；沒有在線上就是 null */
+  positionOfUser(userKey: string): THREE.Vector3 | null {
+    for (const a of this.avatars.values()) if (a.id.split('/')[0] === userKey) return a.group.position;
+    return null;
+  }
+
   private create(p: RemotePlayerState): Avatar {
     const g = new THREE.Group();
     const robe = this.robeMats[Math.abs(p.color) % this.robeMats.length];
@@ -417,8 +440,13 @@ export class RemotePlayersView {
     tag.position.y = 2.15;
     tag.renderOrder = 6;
     g.add(tag);
+    // 點旅人：看名字、邀請綁定羈絆
+    const proxy = new THREE.Mesh(this.proxyGeo, this.proxyMat);
+    proxy.position.y = 0.95;
+    proxy.userData.pick = { kind: 'player', id: p.id };
+    g.add(proxy);
     this.root.add(g);
-    return { group: g, tag, name: p.name, target: new THREE.Vector3(p.x, p.y, p.z), yaw: p.yaw, bob: Math.random() * 6 };
+    return { id: p.id, proxy, group: g, tag, name: p.name, target: new THREE.Vector3(p.x, p.y, p.z), yaw: p.yaw, bob: Math.random() * 6 };
   }
 
   update(dt: number) {

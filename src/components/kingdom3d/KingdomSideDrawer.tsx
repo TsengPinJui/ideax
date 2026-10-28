@@ -32,7 +32,9 @@ export type DrawerState =
   /** 創點源原創角色小卡 */
   | { kind: 'character'; id: CharacterId }
   /** 討論島論道廣場：議題碑上的討論（熱門／最新） */
-  | { kind: 'discList'; which: 'hot' | 'new' };
+  | { kind: 'discList'; which: 'hot' | 'new' }
+  /** 其他旅人：看名字、邀請綁定羈絆 */
+  | { kind: 'player'; id: string; name: string };
 
 const ALL_PROPS: StreetProp[] = Object.values(STREET_PROPS).flat();
 export const findStreetProp = (id: string) => ALL_PROPS.find((p) => p.id === id) || null;
@@ -312,7 +314,15 @@ export const KingdomSideDrawer: React.FC<{
   soso?: { state: SosoState; send: (t: string) => void; search: (brief: string) => void; reset: () => void };
   /** 展覽館、電玩城一樓的精選榜、熱度榜（和首頁同一份） */
   rankings?: Record<string, { featured: Question[]; hot: Question[] }>;
-}> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage, soso, rankings }) => {
+  /** 羈絆（雙向綁定） */
+  bond?: {
+    online: boolean;
+    partnerName: string | null;
+    relationTo: (userKey: string) => 'partner' | 'invited' | 'inviting-me' | 'none';
+    invite: (userKey: string) => void;
+    release: () => void;
+  };
+}> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage, soso, rankings, bond }) => {
   const [draft, setDraft] = useState('');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -820,6 +830,51 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     }
+  } else if (state?.kind === 'player') {
+    const userKey = state.id.split('/')[0];
+    const rel = bond?.relationTo(userKey) || 'none';
+    body = (
+      <>
+        <Header title={state.name} badge="旅人" sub="和你一起在五島漫遊的旅人" onClose={close} />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {!bond?.online ? (
+            <p className="kx-sub text-[13px]">多人連線中斷，暫時無法綁定羈絆。</p>
+          ) : rel === 'partner' ? (
+            <>
+              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>你們已是羈絆夥伴，兩人之間有一條發光的羈絆線。一起去遊船、登上聚雲塔、在各地一起遊覽，完成雙人任務吧！</p>
+              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[13.5px] cursor-pointer">
+                解除羈絆
+              </button>
+            </>
+          ) : rel === 'inviting-me' ? (
+            <>
+              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>{state.name} 邀請你綁定羈絆。</p>
+              {bond.partnerName && <p className="kx-sub text-[12px]">接受後會解除和 {bond.partnerName} 的羈絆。</p>}
+              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] cursor-pointer">
+                接受，綁定羈絆
+              </button>
+            </>
+          ) : rel === 'invited' ? (
+            <>
+              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>已送出羈絆邀請，等 {state.name} 接受。</p>
+              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[13.5px] cursor-pointer">
+                取消邀請
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="kx-sub text-[13px] leading-relaxed">
+                邀請對方綁定羈絆：對方接受後，兩人之間會出現一條發光的羈絆線，可以一起完成雙人任務（一起遊船、一起登上聚雲塔、在指定地點一起遊覽 5 分鐘）。同一時間只能和一位旅人綁定。
+              </p>
+              {bond.partnerName && <p className="kx-sub text-[12px]">送出邀請會先解除和 {bond.partnerName} 的羈絆。</p>}
+              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] cursor-pointer">
+                邀請綁定羈絆
+              </button>
+            </>
+          )}
+        </div>
+      </>
+    );
   } else if (state?.kind === 'discList') {
     const list = plazaTopics(questions, state.which).slice(0, 40);
     body = (
