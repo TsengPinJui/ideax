@@ -334,6 +334,23 @@ export function getBridgeSideColliders(): Collider[] {
   return list;
 }
 
+/**
+ * 西側田園（聚雲塔山腳）的登山渡口與登山口：
+ * 乘船到西岸田園的渡口上岸，沿田間石板路走到山腳的登山口，點登山口直上聚雲塔山台
+ */
+export const WEST_LANDING = {
+  /** 渡口上岸處（田園東岸） */
+  dockLand: [-121.6, 15.0] as [number, number],
+  /** 船靠岸的水面 */
+  dockWater: [-111.0, 15.0] as [number, number],
+  /** 山腳登山口 */
+  trail: [-143.0, -6.0] as [number, number],
+  /** 石板路半寬 */
+  halfWidth: 2.2,
+  /** 田園地面高度（田埂上） */
+  y: 0.5,
+};
+
 export function getGlobalWalkableZones(): WalkableZone[] {
   const bridgeCorridors: WalkableZone[] = WORLD_BRIDGES.map((b) => {
     const dx = b.x2 - b.x1;
@@ -360,6 +377,10 @@ export function getGlobalWalkableZones(): WalkableZone[] {
     { type: 'ellipse', cx: -68, cz: 48, rx: 33.0, rz: 30.0 }, // 創意島
     { type: 'ellipse', cx: 72, cz: 48, rx: 35.0, rz: 31.0 }, // 徵才島
     ...bridgeCorridors,
+    // 西側田園：渡口 → 石板路 → 山腳登山口
+    { type: 'corridor', x1: WEST_LANDING.dockLand[0], z1: WEST_LANDING.dockLand[1], x2: WEST_LANDING.trail[0], z2: WEST_LANDING.trail[1], halfWidth: WEST_LANDING.halfWidth },
+    { type: 'rect', minX: WEST_LANDING.dockLand[0] - 3.4, maxX: WEST_LANDING.dockLand[0] + 2.8, minZ: WEST_LANDING.dockLand[1] - 3.4, maxZ: WEST_LANDING.dockLand[1] + 3.4 },
+    { type: 'rect', minX: WEST_LANDING.trail[0] - 4, maxX: WEST_LANDING.trail[0] + 4, minZ: WEST_LANDING.trail[1] - 4.5, maxZ: WEST_LANDING.trail[1] + 4.5 },
   ];
 }
 

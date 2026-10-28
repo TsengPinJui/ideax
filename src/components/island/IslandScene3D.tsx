@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createMapDocksAndTrail } from './mapDocks';
 import { enterRoamAt } from '../kingdom3d/roamEntry';
+import { playTempleBell } from '../../utils/templeBell';
+import { nextBulbVerse } from './easterEggBook';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
@@ -728,6 +730,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
 
   const triggerEasterEggRef = useRef<(verse: string) => void>(() => {});
   triggerEasterEggRef.current = (verse: string) => {
+    // 「夜半鐘聲到客船」：響起寺廟鐘聲
+    if (verse.includes('夜半鐘聲')) playTempleBell();
     if (easterEggTimerRef.current !== null) {
       window.clearTimeout(easterEggTimerRef.current);
     }
@@ -10179,7 +10183,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           xiaoDengPaoActiveUntil = nowT + 4.5;
           xiaoDengPaoFacingYaw = smoothedSpherical.yawRad;
           playIdeaBulbChime();
-          triggerEasterEggRef.current('「找到了小燈泡！當燈泡亮起，就是又有好點子了！」');
+          triggerEasterEggRef.current(nextBulbVerse());
           return;
         }
         if (foundEasterEggKind === 'waterfall') {

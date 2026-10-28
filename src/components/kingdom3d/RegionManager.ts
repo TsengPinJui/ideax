@@ -146,6 +146,14 @@ export class RegionManager {
     const villagers = createVillagers();
     this.archipelagoBaseGroup.add(villagers);
     if (Array.isArray(villagers.userData.colliders)) this.baseColliders.push(...(villagers.userData.colliders as Collider[]));
+    // 西側田園（聚雲塔山腳）的登山渡口、石板路與登山口：不屬於任何一座島，一直都在
+    {
+      const west = createDocks('west');
+      if (west) {
+        this.archipelagoBaseGroup.add(west.group);
+        this.baseColliders.push(...west.colliders);
+      }
+    }
     // 田園動物、農夫、雁群與原創角色（白喵、多慧、007、大熊）
     const faunaOpts = {
       rims: ALL_REGION_IDS.flatMap((rid) => {

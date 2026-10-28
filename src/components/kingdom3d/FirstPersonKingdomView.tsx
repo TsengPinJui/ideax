@@ -27,6 +27,7 @@ import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, moduleTitle } from './buildingActions';
 import { KINGDOM_PANEL_EVENT, KingdomPanelDetail } from '../../utils/kingdomPanel';
+import { playTempleBell } from '../../utils/templeBell';
 import type { KingdomAction } from './buildingActions';
 import { trackFeature } from '../../services/featureUsage';
 import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from '../island/easterEggBook';
@@ -367,9 +368,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const verse = eggVerse(egg, { night: faunaEnv.tod === 'night', clear: faunaEnv.weather === 'clear', id });
     const r = addEasterEgg(verse);
     if (!r) return;
+    // 「夜半鐘聲到客船」：響起寺廟鐘聲（每次點到都會響）
+    if (r.verse.includes('夜半鐘聲')) playTempleBell();
     if (r.added) {
       setEggList(r.list);
-      playSoundEffect('bulb');
+      if (!r.verse.includes('夜半鐘聲')) playSoundEffect('bulb');
     }
     setEggToast({ verse: r.verse, slotIndex: r.slotIndex, added: r.added, key: Date.now() });
     if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
@@ -444,7 +447,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     } else if (t.kind === 'egg') {
       triggerEggRef.current(t.egg, t.id);
     } else if (t.kind === 'bulb') {
-      triggerEggRef.current('bulb');
+      // 大燈泡自己算一格彩蛋（散步的小燈泡是另一格）
+      triggerEggRef.current('bigBulb');
       sceneRef.current?.traverse((o) => {
         if (typeof o.userData?.celebrate === 'function') o.userData.celebrate(cameraRef.current?.position.x, cameraRef.current?.position.z);
       });

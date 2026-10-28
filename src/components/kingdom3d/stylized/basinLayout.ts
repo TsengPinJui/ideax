@@ -5,7 +5,7 @@
  * - 北／南中央水道的荷花
  * 陸地會自動讓開五座島與石拱橋，彼此之間留水道。
  */
-import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES, getGlobalWalkableZones } from '../regionConfigs';
+import { WEST_LANDING, REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES, getGlobalWalkableZones } from '../regionConfigs';
 
 export const BASIN_SCALE = 2.1;
 const S = BASIN_SCALE;
@@ -129,7 +129,7 @@ export const FARMLANDS: Landmass[] = (() => {
  * 乘船點（渡口）：在島的岸邊，角度是從島中心往外的方向（世界座標 atan2(z, x)，度）
  * 登山口：痛點島西岸，點了直通西側塔樓山台
  */
-export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: string }[] = [
+export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: string; fixed?: { land: [number, number]; water: [number, number] } }[] = [
   { id: 'dock-pain-ne', regionId: 'region-pain', deg: -43, name: '痛點島東北渡口' },
   { id: 'dock-pain-sw', regionId: 'region-pain', deg: 128, name: '痛點島西南渡口' },
   { id: 'dock-home-n', regionId: 'region-home', deg: -90, name: '主島北渡口' },
@@ -139,8 +139,11 @@ export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: 
   { id: 'dock-career-ne', regionId: 'region-career', deg: -22, name: '徵才島東北渡口' }, // 院牆東北角外會和牆疊在一起，挪到東牆外的空地
   { id: 'dock-career-sw', regionId: 'region-career', deg: 112, name: '徵才島西南渡口' }, // 院牆西南角外會和牆疊在一起，挪到南牆外的空地
   { id: 'dock-creative-se', regionId: 'region-creative', deg: 30, name: '創意島東南渡口' },
+  // 西側田園（聚雲塔山腳）的登山渡口：不在島上，用固定座標
+  { id: 'dock-west-trail', regionId: 'west', deg: 0, name: '聚雲塔登山渡口', fixed: { land: WEST_LANDING.dockLand, water: WEST_LANDING.dockWater } },
 ];
-export const TRAILHEAD = { regionId: 'region-pain', deg: 168, name: '聚雲塔登山口' };
+/** 登山口：在西側田園山腳（regionId 'west'＝不屬於任何島，一直都在場景裡） */
+export const TRAILHEAD = { regionId: 'west', deg: 0, name: '聚雲塔登山口' };
 
 /**
  * 島與外圍田園之間補上的陸地（田園、民居）：從島中心往外的方向（度）
@@ -177,7 +180,7 @@ export function islandEdge(regionId: string, deg: number, extra = 0): [number, n
 
 const FILLS: Landmass[] = (() => {
   const walk = getGlobalWalkableZones().filter((z) => z.type === 'ellipse') as { cx: number; cz: number; rx: number; rz: number }[];
-  const reserve = [...BOARDING_SPOTS, TRAILHEAD].map((d) => islandEdge(d.regionId, d.deg, 12));
+  const reserve = BOARDING_SPOTS.filter((d) => !d.fixed).map((d) => islandEdge(d.regionId, d.deg, 12));
   const out: Landmass[] = [];
   FILL_SPOTS.forEach((f, i) => {
     const r = REGION_CONFIGS[f.regionId as keyof typeof REGION_CONFIGS];
@@ -197,7 +200,8 @@ const FILLS: Landmass[] = (() => {
         const lz = Math.sin(t) * cand.rz * 1.08;
         const px = cand.cx + lx * c - lz * sn;
         const pz = cand.cz + lx * sn + lz * c;
-        if (walk.some((o) => insideEllipse(px, pz, { cx: o.cx, cz: o.cz, rx: o.rx + 8.5, rz: o.rz + 8.5 }))) hit = true;
+        // 和島之間留一條約 6 m 寬的水道（草地外環 5 m＋山崖 3.5 m＋水道 6 m，和外圍田園一致）
+        if (walk.some((o) => insideEllipse(px, pz, { cx: o.cx, cz: o.cz, rx: o.rx + 14.5, rz: o.rz + 14.5 }))) hit = true;
         if (WORLD_BRIDGES.some((b) => distToSeg(px, pz, b.x1, b.z1, b.x2, b.z2) < b.halfWidth + 6)) hit = true;
         if (reserve.some(([rx0, rz0]) => Math.hypot(px - rx0, pz - rz0) < 9)) hit = true;
       }

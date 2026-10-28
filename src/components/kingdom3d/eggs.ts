@@ -1,5 +1,5 @@
 /**
- * 實境漫遊的彩蛋：和 3D 地圖同一套詩句、同一本收集冊（35 格）
+ * 實境漫遊的彩蛋：和 3D 地圖同一套詩句、同一本收集冊（36 格）
  * 詩句要和 3D 地圖一字不差，收集冊才會認得是同一格
  */
 
@@ -23,6 +23,7 @@ export type EggId =
   | 'pagoda'
   | 'mist'
   | 'bulb'
+  | 'bigBulb'
   | 'soso'
   | 'baimiao'
   | 'duohui'
@@ -32,6 +33,8 @@ export type EggId =
 export const EGG_VERSES = {
   peach: '「忽逢桃花林，夾岸數百步，中無雜樹，芳草鮮美，落英繽紛。」',
   bulb: '「找到了小燈泡！當燈泡亮起，就是又有好點子了！」',
+  /** 主廣場的大燈泡（和小燈泡分開算一格） */
+  bigBulb: '「大燈泡亮起來了！滿城的好點子都被照亮了！」',
   fisher: '「見漁人，乃大驚，問所從來。」',
   threePools: '「夜深寒水月千片，塔影三雙秋一期。」',
   bridge: '「此處無斷橋，更有佳人哭斷腸...」',
@@ -107,6 +110,7 @@ export function eggVerse(egg: EggId, ctx: { night: boolean; clear: boolean; id?:
     case 'peach':
     case 'mist':
     case 'bulb':
+    case 'bigBulb':
     case 'soso':
     case 'baimiao':
     case 'duohui':

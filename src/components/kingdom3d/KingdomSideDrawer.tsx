@@ -1,6 +1,42 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { SosoState } from './useSosoJobs';
-import { X, ChevronRight, ChevronLeft, ArrowRight, Compass, Store, PenLine } from 'lucide-react';
+import {
+  X,
+  ChevronRight,
+  ChevronLeft,
+  ArrowRight,
+  Compass,
+  Store,
+  PenLine,
+  Landmark,
+  MessagesSquare,
+  Lightbulb,
+  Briefcase,
+  GraduationCap,
+  Gamepad2,
+  AppWindow,
+  Flame,
+  Map as MapIcon,
+  Layers,
+  Bot,
+  MessageCircle,
+  Trophy,
+  Search,
+  Sparkles,
+  BookOpen,
+  ClipboardList,
+  CheckCircle2,
+  Info,
+  User,
+  Eye,
+  Users,
+  Globe,
+  FileText,
+  ScrollText,
+  Coins,
+  Heart,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Question } from '../../types';
 import type { BuildingInteractable } from './types';
 import { isGameQuestion } from '../../utils/gameClassification';
@@ -125,7 +161,97 @@ const badgeOf = (q: Question) =>
     ? '軟體作品'
     : '提問';
 
-function Header({ title, badge, sub, onClose, onBack }: { title: string; badge?: string; sub?: string; onClose: () => void; onBack?: () => void }) {
+/** 按鈕圖示：依功能挑一個（讀起來一眼看懂這顆按鈕要做什麼） */
+const MODULE_ICON: Record<string, LucideIcon> = {
+  home: Compass,
+  explore: Compass,
+  pain_feed: Flame,
+  pain_points: Flame,
+  discussion_feed: MessagesSquare,
+  l0_discussion: MessagesSquare,
+  vibecoding_feed: AppWindow,
+  vibecoding: AppWindow,
+  ideas_feed: Lightbulb,
+  create_ideas: Lightbulb,
+  jobs: Briefcase,
+  job_explorer: Briefcase,
+  experts: GraduationCap,
+  solvers: GraduationCap,
+  create_pain_point: PenLine,
+  create_discussion: PenLine,
+  create_app: PenLine,
+  create_proposal: PenLine,
+  agents: Bot,
+  topup: Coins,
+  chat: MessageCircle,
+  star_season: Trophy,
+};
+function iconForAction(a: KingdomAction | undefined, label: string): LucideIcon {
+  if (a?.kind === 'module') return MODULE_ICON[a.module] || Globe;
+  if (a?.kind === 'region') return Compass;
+  if (a?.kind === 'map') return MapIcon;
+  if (a?.kind === 'painFloor') return Layers;
+  if (/遊戲|電玩/.test(label)) return Gamepad2;
+  if (/茶|討論|議/.test(label)) return MessagesSquare;
+  if (/坊|鋪|攤|店/.test(label)) return Store;
+  if (/書|閣|典籍/.test(label)) return BookOpen;
+  return ChevronRight;
+}
+
+/** 側欄裡的小節：金色圖示＋標題 */
+function Section({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h4 className="flex items-center gap-2 text-[15.5px] font-bold" style={{ color: '#f2cf7a' }}>
+        <Icon className="w-[18px] h-[18px]" strokeWidth={2.2} />
+        <span className="tracking-wide">{title}</span>
+        <span className="flex-1 h-px ml-1" style={{ background: 'linear-gradient(90deg, rgba(226,184,90,0.45), transparent)' }} />
+      </h4>
+      {children}
+    </section>
+  );
+}
+
+/** 分頁切換（樓層、展區、榜單…） */
+function Tabs<T extends string | number>({ items, value, onPick, cols }: { items: { key: T; label: string; icon?: LucideIcon }[]; value: T; onPick: (k: T) => void; cols?: number }) {
+  return (
+    <div className="grid gap-1.5 p-1 rounded-xl" style={{ gridTemplateColumns: `repeat(${cols || items.length}, minmax(0, 1fr))`, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(226,184,90,0.2)' }}>
+      {items.map((it) => {
+        const on = it.key === value;
+        const Icon = it.icon;
+        return (
+          <button
+            key={String(it.key)}
+            type="button"
+            onClick={() => onPick(it.key)}
+            className="rounded-lg px-1.5 py-2 text-[15px] cursor-pointer truncate flex items-center justify-center gap-1 transition-colors"
+            style={{
+              background: on ? 'linear-gradient(180deg, #c2402f, #8e2219)' : 'transparent',
+              border: `1px solid ${on ? 'rgba(242,198,106,0.85)' : 'transparent'}`,
+              color: on ? '#fff3d0' : '#e9d9b4',
+              fontWeight: on ? 700 : 400,
+            }}
+          >
+            {Icon && <Icon className="w-4 h-4 shrink-0" />}
+            <span className="truncate">{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 文章類型：圖示＋顏色 */
+function typeOf(q: Question): { label: string; icon: LucideIcon; color: string } {
+  if (q.postType === 'pain_point') return { label: '痛點', icon: Flame, color: '#f87171' };
+  if (q.postType === 'innovation_proposal') return { label: '提案', icon: Lightbulb, color: '#fbbf24' };
+  if (q.postType === 'chat_discussion') return { label: '討論', icon: MessagesSquare, color: '#6ee7b7' };
+  if (isGameQuestion(q)) return { label: '遊戲', icon: Gamepad2, color: '#c4b5fd' };
+  if (q.postType === 'vibecoding_app') return { label: '作品', icon: AppWindow, color: '#93c5fd' };
+  return { label: '提問', icon: MessageCircle, color: '#fcd34d' };
+}
+
+function Header({ title, badge, sub, onClose, onBack, icon: Icon }: { title: string; badge?: string; sub?: string; onClose: () => void; onBack?: () => void; icon?: LucideIcon }) {
   return (
     <div className="flex items-start gap-2 px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(226,184,90,0.3)' }}>
       {onBack && (
@@ -133,16 +259,21 @@ function Header({ title, badge, sub, onClose, onBack }: { title: string; badge?:
           <ChevronLeft className="w-4 h-4" />
         </button>
       )}
+      {Icon && (
+        <span className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style={{ background: 'radial-gradient(circle at 35% 30%, #c2402f, #7d1d16)', border: '1.5px solid #f2c66a', color: '#fff3d0', boxShadow: '0 3px 10px rgba(0,0,0,0.35)' }}>
+          <Icon className="w-[22px] h-[22px]" strokeWidth={2.1} />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="kx-title text-xl leading-tight">{title}</h3>
+          <h3 className="kx-title text-[23px] leading-tight">{title}</h3>
           {badge && (
             <span className="text-[13px] px-2 py-0.5 rounded" style={{ background: 'rgba(179,38,30,0.85)', color: '#fff0c8', border: '1px solid rgba(242,198,106,0.7)' }}>
               {badge}
             </span>
           )}
         </div>
-        {sub && <p className="kx-sub text-[14.5px] mt-1">{sub}</p>}
+        {sub && <p className="kx-sub text-[15px] mt-1 leading-relaxed">{sub}</p>}
       </div>
       <button type="button" onClick={onClose} className="kx-round w-8 h-8 shrink-0" title="關閉 (Esc)" aria-label="關閉">
         <X className="w-4 h-4" />
@@ -151,73 +282,119 @@ function Header({ title, badge, sub, onClose, onBack }: { title: string; badge?:
   );
 }
 
-function ActionList({ actions }: { actions: { label: string; hint?: string; primary?: boolean; run: () => void }[] }) {
+function ActionList({ actions }: { actions: { label: string; hint?: string; primary?: boolean; run: () => void; icon?: LucideIcon }[] }) {
   return (
-    <div className="space-y-1.5">
-      {actions.map((a, i) => (
-        <button
-          key={a.label}
-          type="button"
-          onClick={a.run}
-          className="w-full text-left rounded-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer transition-colors hover:bg-[rgba(226,184,90,0.16)]"
-          style={{
-            background: a.primary ? 'linear-gradient(90deg, rgba(179,38,30,0.55), rgba(179,38,30,0.25))' : 'rgba(0,0,0,0.22)',
-            border: `1px solid ${a.primary ? 'rgba(242,198,106,0.7)' : 'rgba(226,184,90,0.22)'}`,
-          }}
-        >
-          <span
-            className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[14px] tabular-nums"
-            style={{ background: 'rgba(0,0,0,0.35)', color: '#f2c94c', border: '1px solid rgba(226,184,90,0.4)' }}
-            aria-hidden="true"
+    <div className="space-y-2">
+      {actions.map((a, i) => {
+        const Icon = a.icon || ChevronRight;
+        return (
+          <button
+            key={a.label}
+            type="button"
+            onClick={a.run}
+            className="w-full text-left rounded-xl px-3 py-3 flex items-center gap-3 cursor-pointer transition-all hover:brightness-110 active:scale-[0.99]"
+            style={{
+              background: a.primary ? 'linear-gradient(180deg, #c2402f, #8e2219)' : 'rgba(0,0,0,0.26)',
+              border: `1.5px solid ${a.primary ? '#f2c66a' : 'rgba(226,184,90,0.28)'}`,
+              boxShadow: a.primary ? '0 4px 14px rgba(0,0,0,0.3)' : undefined,
+            }}
           >
-            {i < 9 ? i + 1 : '•'}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[16px]" style={{ color: '#f6e7c4' }}>
-              {a.label}
+            <span
+              className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center"
+              style={{ background: a.primary ? 'rgba(255,240,200,0.16)' : 'rgba(226,184,90,0.14)', color: a.primary ? '#fff3d0' : '#f2cf7a', border: `1px solid ${a.primary ? 'rgba(255,240,200,0.4)' : 'rgba(226,184,90,0.35)'}` }}
+              aria-hidden="true"
+            >
+              <Icon className="w-5 h-5" strokeWidth={2.1} />
             </span>
-            {a.hint && <span className="kx-sub block text-[14px] mt-0.5 truncate">{a.hint}</span>}
-          </span>
-          <ChevronRight className="w-4 h-4 shrink-0 text-amber-200/70" />
-        </button>
-      ))}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[17px] leading-snug" style={{ color: a.primary ? '#fff7e0' : '#f6e7c4', fontWeight: a.primary ? 700 : 500 }}>
+                {a.label}
+              </span>
+              {a.hint && <span className="block text-[14px] mt-0.5 leading-snug" style={{ color: a.primary ? 'rgba(255,240,210,0.85)' : 'rgba(246,231,196,0.72)' }}>{a.hint}</span>}
+            </span>
+            {i < 9 && (
+              <kbd className="hidden sm:flex w-6 h-6 rounded-md shrink-0 items-center justify-center text-[12.5px] tabular-nums" style={{ background: 'rgba(0,0,0,0.3)', color: '#f2c94c', border: '1px solid rgba(226,184,90,0.4)' }} title={`鍵盤數字 ${i + 1}`}>
+                {i + 1}
+              </kbd>
+            )}
+            <ChevronRight className="w-5 h-5 shrink-0" style={{ color: a.primary ? '#fff3d0' : 'rgba(242,207,122,0.7)' }} />
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 function QuestionRows({ list, onPick, empty }: { list: Question[]; onPick: (q: Question) => void; empty: string }) {
-  if (!list.length) return <p className="kx-sub text-[15.5px] text-center py-8">{empty}</p>;
+  if (!list.length)
+    return (
+      <div className="text-center py-10 space-y-2">
+        <Sparkles className="w-8 h-8 mx-auto" style={{ color: 'rgba(242,207,122,0.7)' }} />
+        <p className="kx-sub text-[16px]">{empty}</p>
+      </div>
+    );
   return (
-    <ul className="space-y-1.5">
-      {list.map((q) => (
-        <li key={q.id}>
-          <button
-            type="button"
-            onClick={() => onPick(q)}
-            className="w-full text-left rounded-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer transition-colors hover:bg-[rgba(226,184,90,0.12)]"
-            style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(226,184,90,0.18)' }}
-          >
-            {(q.cardDisplayImage || q.coverImage) && (
-              <img src={q.cardDisplayImage || q.coverImage} alt="" className="w-11 h-11 rounded-md object-cover shrink-0" loading="lazy" />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block text-[16px] truncate" style={{ color: '#f6e7c4' }}>
-                {q.title || '（未命名）'}
+    <ul className="space-y-2">
+      {list.map((q) => {
+        const t = typeOf(q);
+        const TI = t.icon;
+        const a = q as any;
+        const views = a.viewsCount ?? a.views ?? 0;
+        const replies = a.discussionsCount ?? (Array.isArray(a.discussions) ? a.discussions.length : 0);
+        const img = q.cardDisplayImage || q.coverImage;
+        return (
+          <li key={q.id}>
+            <button
+              type="button"
+              onClick={() => onPick(q)}
+              className="w-full text-left rounded-xl px-3 py-3 flex items-center gap-3 cursor-pointer transition-colors hover:bg-[rgba(226,184,90,0.14)]"
+              style={{ background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(226,184,90,0.22)' }}
+            >
+              {img ? (
+                <img src={img} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
+              ) : (
+                <span className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)', color: t.color, border: `1px solid ${t.color}55` }}>
+                  <TI className="w-6 h-6" />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 mb-0.5">
+                  <span className="inline-flex items-center gap-1 text-[12.5px] px-1.5 py-[1px] rounded" style={{ color: t.color, background: 'rgba(0,0,0,0.3)', border: `1px solid ${t.color}66` }}>
+                    <TI className="w-3 h-3" /> {t.label}
+                  </span>
+                  {q.category && <span className="kx-sub text-[13px] truncate">{q.subcategory || q.category}</span>}
+                </span>
+                <span className="block text-[16.5px] leading-snug line-clamp-2" style={{ color: '#f8ecd0' }}>
+                  {q.title || '（未命名）'}
+                </span>
+                <span className="kx-sub flex items-center gap-3 text-[13.5px] mt-1">
+                  {q.authorName && (
+                    <span className="inline-flex items-center gap-1 min-w-0 truncate">
+                      <User className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{q.authorName}</span>
+                    </span>
+                  )}
+                  {views > 0 && (
+                    <span className="inline-flex items-center gap-1 shrink-0">
+                      <Eye className="w-3.5 h-3.5" /> {views}
+                    </span>
+                  )}
+                  {replies > 0 && (
+                    <span className="inline-flex items-center gap-1 shrink-0">
+                      <MessageCircle className="w-3.5 h-3.5" /> {replies}
+                    </span>
+                  )}
+                  {q.bounty > 0 && (
+                    <span className="inline-flex items-center gap-1 shrink-0 tabular-nums" style={{ color: '#ffcf6a' }}>
+                      <Coins className="w-3.5 h-3.5" /> {q.bounty.toLocaleString()}
+                    </span>
+                  )}
+                </span>
               </span>
-              <span className="kx-sub block text-[14px] mt-0.5 truncate">
-                {q.category}
-                {q.authorName ? `・${q.authorName}` : ''}
-              </span>
-            </span>
-            {q.bounty > 0 && (
-              <span className="shrink-0 text-[14px] tabular-nums" style={{ color: '#ffcf6a' }}>
-                懸賞 {q.bounty.toLocaleString()}
-              </span>
-            )}
-            <ChevronRight className="w-4 h-4 shrink-0 text-amber-200/70" />
-          </button>
-        </li>
-      ))}
+              <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'rgba(242,207,122,0.7)' }} />
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -261,7 +438,7 @@ function ShopHotCarousel({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-[14.5px] font-bold flex items-center gap-1" style={{ color: '#fde68a' }}>
-          🔥 {shopName}・熱門討論輪播
+          <Flame className="w-4 h-4" /> {shopName}・熱門討論輪播
         </span>
         <div className="flex items-center gap-1.5">
           {slides.map((s, i) => (
@@ -294,10 +471,12 @@ function ShopHotCarousel({
         </div>
         <div className="mt-1.5 flex items-center justify-between gap-2 text-[13.5px]" style={{ color: '#e7d3a5' }}>
           <span className="truncate">
-            【{cur.subcategory || cur.category || '熱門'}】{cur.authorName || '創點源行家'}
+            【{cur.subcategory || cur.category || '熱門'}】{cur.authorName || ''}
           </span>
-          <span className="shrink-0" style={{ color: '#fbbf24' }}>
-            👁 {views} · 💬 {replies} ➔
+          <span className="shrink-0 inline-flex items-center gap-2" style={{ color: '#fbbf24' }}>
+            <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {views}</span>
+            <span className="inline-flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {replies}</span>
+            <ChevronRight className="w-4 h-4" />
           </span>
         </div>
       </button>
@@ -335,18 +514,19 @@ export const KingdomSideDrawer: React.FC<{
   const openQ = (q: Question) => onChange({ kind: 'question', question: q, back: state });
 
   // 目前面板上的按鈕（數字鍵 1～9 可直接選）
-  type Act = { label: string; hint?: string; primary?: boolean; run: () => void };
+  type Act = { label: string; hint?: string; primary?: boolean; run: () => void; icon?: LucideIcon };
   const actions = useMemo((): Act[] => {
     if (!state) return [];
     if (state.kind === 'building') {
       const b = state.building;
       return actionsForBuilding(b.id, b.targetModule, b.mockData?.primaryActionLabel).map((a: KingdomActionButton) => ({
         ...a,
+        icon: iconForAction(a.action, a.label),
         run: () => (a.action.kind === 'painFloor' ? onChange({ kind: 'painFloor', level: a.action.level }) : onAction(a.action)),
       }));
     }
     if (state.kind === 'feature') {
-      return FEATURE_INFO[state.id].actions.map((a) => ({ ...a, run: () => onAction(a.action) }));
+      return FEATURE_INFO[state.id].actions.map((a) => ({ ...a, icon: iconForAction(a.action, a.label), run: () => onAction(a.action) }));
     }
     if (state.kind === 'painFloor') {
       return PAIN_FLOORS.map((f, i) => ({ label: f.label, hint: f.sub, primary: i === state.level, run: () => onChange({ kind: 'painFloor', level: i }) }));
@@ -356,13 +536,13 @@ export const KingdomSideDrawer: React.FC<{
       if (p?.kind === 'gate' && p.regionId === 'region-creative') {
         return STREET_PROPS[p.regionId]
           .filter((s) => s.kind === 'stall')
-          .map((s) => ({ label: s.name, hint: s.sub, run: () => onChange({ kind: 'street', propId: s.id }) }));
+          .map((s) => ({ label: s.name, hint: s.sub, icon: Store, run: () => onChange({ kind: 'street', propId: s.id }) }));
       }
       if (p?.kind === 'gate' && p.regionId === 'region-discussion') {
         const isTea = p.id.includes('tea');
         return STREET_PROPS[p.regionId]
           .filter((s) => s.kind !== 'gate' && (isTea ? s.id.includes('tea') : s.id.includes('craft')))
-          .map((s) => ({ label: s.name, hint: s.sub, run: () => onChange({ kind: 'street', propId: s.id }) }));
+          .map((s) => ({ label: s.name, hint: s.sub, icon: s.kind === 'board' ? ClipboardList : isTea ? MessagesSquare : Store, run: () => onChange({ kind: 'street', propId: s.id }) }));
       }
     }
     return [];
@@ -393,26 +573,31 @@ export const KingdomSideDrawer: React.FC<{
     const b = state.building;
     body = (
       <>
-        <Header title={b.name.replace(/[（(].*$/, '')} badge={b.previewBadge} sub={b.subtitle} onClose={close} />
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          <ActionList actions={actions} />
-          <p className="kx-sub text-[15px] leading-relaxed">{b.description}</p>
-          {b.previewFeatures.length > 0 && (
-            <ul className="space-y-1">
-              {b.previewFeatures.map((f) => (
-                <li key={f} className="kx-sub text-[14.5px] flex gap-2">
-                  <span className="text-amber-300">・</span>
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <Header icon={Landmark} title={b.name.replace(/[（(].*$/, '')} badge={b.previewBadge} sub={b.subtitle} onClose={close} />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          <Section icon={Sparkles} title="可以做什麼">
+            <ActionList actions={actions} />
+          </Section>
           {b.mockData?.notice && (
-            <div className="rounded-lg px-3 py-2 text-[14.5px]" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.2)' }}>
-              <p className="flex items-center gap-1.5 kx-sub">
-                <Compass className="w-3.5 h-3.5 shrink-0" /> {b.mockData.notice}
-              </p>
+            <div className="rounded-xl px-3.5 py-3 flex gap-2.5" style={{ background: 'rgba(242,207,122,0.1)', border: '1px solid rgba(242,207,122,0.35)' }}>
+              <MessageCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#f2cf7a' }} />
+              <p className="text-[15.5px] leading-relaxed" style={{ color: '#f6e7c4' }}>{b.mockData.notice}</p>
             </div>
+          )}
+          <Section icon={Info} title="介紹">
+            <p className="text-[16px] leading-[1.75]" style={{ color: 'rgba(246,231,196,0.9)' }}>{b.description}</p>
+          </Section>
+          {b.previewFeatures.length > 0 && (
+            <Section icon={CheckCircle2} title="特色">
+              <ul className="space-y-2">
+                {b.previewFeatures.map((f) => (
+                  <li key={f} className="flex gap-2.5 text-[15.5px] leading-relaxed" style={{ color: 'rgba(246,231,196,0.9)' }}>
+                    <CheckCircle2 className="w-[18px] h-[18px] shrink-0 mt-[3px]" style={{ color: '#86efac' }} />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
           )}
         </div>
       </>
@@ -422,25 +607,9 @@ export const KingdomSideDrawer: React.FC<{
     const list = painForFloor(questions, state.level);
     body = (
       <>
-        <Header title={`創點樓・${floor.label}`} badge="懸賞牆" sub={`${floor.sub}・共 ${list.length} 則`} onClose={close} />
+        <Header icon={Flame} title={`創點樓・${floor.label}`} badge="懸賞牆" sub={`${floor.sub}・共 ${list.length} 則`} onClose={close} />
         <div className="px-4 pt-3">
-          <div className="grid grid-cols-3 gap-1.5">
-            {actions.map((a, i) => (
-              <button
-                key={a.label}
-                type="button"
-                onClick={a.run}
-                className="rounded-md px-1 py-1.5 text-[14px] cursor-pointer"
-                style={{
-                  background: a.primary ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
-                  border: `1px solid ${a.primary ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
-                  color: '#f6e7c4',
-                }}
-              >
-                {i + 1}・{PAIN_FLOORS[i]?.short || a.label.replace(/・.*/, '')}
-              </button>
-            ))}
-          </div>
+          <Tabs items={PAIN_FLOORS.map((f, i) => ({ key: i, label: `${i + 1}F・${f.short || f.label.replace(/・.*/, '')}`, icon: Layers }))} value={state.level} onPick={(i) => onChange({ kind: 'painFloor', level: i })} />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3">
           <QuestionRows list={list.slice(0, 60)} onPick={openQ} empty="這層還沒有痛點，歡迎刊登第一則！" />
@@ -458,7 +627,7 @@ export const KingdomSideDrawer: React.FC<{
     if (p?.kind === 'gate' && p.regionId === 'region-creative') {
       body = (
         <>
-          <Header title={`${p.name}市集`} badge="創意島" sub={p.sub} onClose={close} />
+          <Header icon={Store} title={`${p.name}市集`} badge="創意島" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             <p className="kx-sub text-[15px] leading-relaxed">創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
             <ActionList actions={actions} />
@@ -468,7 +637,7 @@ export const KingdomSideDrawer: React.FC<{
     } else if (p?.kind === 'gate' && p.regionId === 'region-discussion') {
       body = (
         <>
-          <Header title={p.name} badge="討論島・街區" sub={p.sub} onClose={close} />
+          <Header icon={MessagesSquare} title={p.name} badge="討論島・街區" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             <p className="kx-sub text-[15px]">{p.note}</p>
             <ActionList actions={actions} />
@@ -497,6 +666,7 @@ export const KingdomSideDrawer: React.FC<{
       body = (
         <>
           <Header
+            icon={isBoard ? ClipboardList : isDiscProp ? (isCraft ? Store : MessagesSquare) : Store}
             title={p.name}
             badge={isDiscProp ? (isBoard ? '街道佈告欄' : isCraft ? '百工坊・店鋪' : '茶藝街・茶館') : '創意集'}
             sub={`${p.sub || ''}・共 ${list.length} ${unit}`}
@@ -533,7 +703,7 @@ export const KingdomSideDrawer: React.FC<{
           </div>
           {isDiscProp && (
             <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-              <span className="kx-sub text-[14px]">街旁兩排佈告欄同步張貼・店門輪播熱門</span>
+              <span className="kx-sub text-[14px]">{isCraft ? '白牆佈告欄依分類張貼專業討論' : '茶街佈告欄與茶館同步張貼'}</span>
               <button
                 type="button"
                 onClick={() => onAction({ kind: 'module', module: 'create_discussion' })}
@@ -550,6 +720,7 @@ export const KingdomSideDrawer: React.FC<{
       body = (
         <>
           <Header
+            icon={Store}
             title={p.name}
             badge={badge}
             sub={p.partner ? p.sub : p.vacant ? '空鋪・歡迎掌櫃進駐' : p.sub}
@@ -591,26 +762,14 @@ export const KingdomSideDrawer: React.FC<{
     if (h && zone) {
       body = (
         <>
-          <Header title={zone.name} badge={h.title} sub={`${zone.sub}・共 ${list.length} ${isLib ? '冊' : '件'}`} onClose={close} />
+          <Header icon={isLib ? BookOpen : h.kind === 'arcade' ? Gamepad2 : Lightbulb} title={zone.name} badge={h.title} sub={`${zone.sub}・共 ${list.length} ${isLib ? '冊' : '件'}`} onClose={close} />
           <div className="px-4 pt-3">
-            <div className={`grid gap-1.5 ${zones.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-              {zones.map((z, i) => (
-                <button
-                  key={z.key}
-                  type="button"
-                  onClick={() => onChange({ kind: 'hallZone', buildingId: state.buildingId, zone: i })}
-                  className="rounded-md px-1 py-1.5 text-[14px] cursor-pointer truncate"
-                  style={{
-                    background: i === state.zone ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
-                    border: `1px solid ${i === state.zone ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
-                    color: '#f6e7c4',
-                  }}
-                >
-                  {h.mode === 'floors' ? `B${i + 1}・` : ''}
-                  {z.name.replace(/展場|展區|・.*/, '')}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              cols={zones.length > 3 ? 4 : zones.length}
+              items={zones.map((z, i) => ({ key: i, label: `${h.mode === 'floors' ? `B${i + 1}・` : ''}${z.name.replace(/展場|展區|・.*/, '')}` }))}
+              value={state.zone}
+              onPick={(i) => onChange({ kind: 'hallZone', buildingId: state.buildingId, zone: i })}
+            />
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3">
             <QuestionRows
@@ -643,29 +802,21 @@ export const KingdomSideDrawer: React.FC<{
     body = (
       <>
         <Header
+          icon={Trophy}
           title={state.which === 'featured' ? '精選榜' : '熱度榜'}
           badge={h ? `${h.title}・一樓大廳` : undefined}
           sub={h?.showcase === 'games' ? '遊戲 TOP 10（和首頁同一份榜單）' : '提案與軟體 TOP 10（和首頁同一份榜單）'}
           onClose={close}
         />
         <div className="px-4 pt-3">
-          <div className="grid grid-cols-2 gap-1.5">
-            {(['featured', 'hot'] as const).map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => onChange({ kind: 'hallRank', buildingId: state.buildingId, which: w })}
-                className="rounded-md px-1 py-1.5 text-[14.5px] cursor-pointer"
-                style={{
-                  background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
-                  border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
-                  color: '#f6e7c4',
-                }}
-              >
-                {w === 'featured' ? '精選榜' : '熱度榜'}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            items={[
+              { key: 'featured' as const, label: '精選榜', icon: Trophy },
+              { key: 'hot' as const, label: '熱度榜', icon: Flame },
+            ]}
+            value={state.which}
+            onPick={(w) => onChange({ kind: 'hallRank', buildingId: state.buildingId, which: w })}
+          />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3">
           <QuestionRows list={list} onPick={openQ} empty="榜單整理中。" />
@@ -681,7 +832,7 @@ export const KingdomSideDrawer: React.FC<{
     };
     body = (
       <>
-        <Header title="搜搜・問職缺" badge="求職廟" sub="用自己的話說想找的工作，結果寫在兩旁畫卷（只有你看得到）" onClose={close} />
+        <Header icon={Search} title="搜搜・問職缺" badge="求職廟" sub="用自己的話說想找的工作，結果寫在兩旁畫卷（只有你看得到）" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
           {st.msgs.map((m, i) => (
             <div key={i} className={`flex ${m.from === 'me' ? 'justify-end' : 'justify-start'}`}>
@@ -741,7 +892,7 @@ export const KingdomSideDrawer: React.FC<{
     const st = soso.state;
     body = (
       <>
-        <Header title="搜搜找到的職缺" badge="求職廟" sub={st.brief ? `條件：${st.brief}` : undefined} onClose={close} onBack={() => onChange({ kind: 'soso' })} />
+        <Header icon={Briefcase} title="搜搜找到的職缺" badge="求職廟" sub={st.brief ? `條件：${st.brief}` : undefined} onClose={close} onBack={() => onChange({ kind: 'soso' })} />
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {st.jobs.length === 0 ? (
             <p className="kx-sub text-[15.5px] text-center py-8">還沒有結果，先跟搜搜說說想找的工作。</p>
@@ -770,7 +921,7 @@ export const KingdomSideDrawer: React.FC<{
         </div>
         <div className="px-4 py-3 flex justify-end" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
           <button type="button" onClick={() => onAction({ kind: 'module', module: 'jobs' })} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer">
-            到匯職缺看更多（新分頁）
+            到匯職缺看更多
           </button>
         </div>
       </>
@@ -791,7 +942,7 @@ export const KingdomSideDrawer: React.FC<{
       ];
       body = (
         <>
-          <Header title={j.title} badge="職缺" onClose={close} onBack={() => onChange({ kind: 'jobs' })} />
+          <Header icon={Briefcase} title={j.title} badge="職缺" onClose={close} onBack={() => onChange({ kind: 'jobs' })} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             <dl className="grid grid-cols-[4.5em_1fr] gap-x-2 gap-y-1.5 text-[15px]">
               {rows
@@ -838,7 +989,7 @@ export const KingdomSideDrawer: React.FC<{
     const rel = bond?.relationTo(userKey) || 'none';
     body = (
       <>
-        <Header title={state.name} badge="旅人" sub="和你一起在五島漫遊的旅人" onClose={close} />
+        <Header icon={Users} title={state.name} badge="旅人" sub="和你一起在五島漫遊的旅人" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {!bond?.online ? (
             <p className="kx-sub text-[15px]">多人連線中斷，暫時無法綁定羈絆。</p>
@@ -882,30 +1033,21 @@ export const KingdomSideDrawer: React.FC<{
     const list = plazaTopics(questions, state.which).slice(0, 40);
     body = (
       <>
-        <Header title={state.which === 'hot' ? '熱門議題' : '最新議題'} badge="討論島・論道廣場" sub="藏書閣門前的議題碑，刻著站上的討論" onClose={close} />
+        <Header icon={ScrollText} title={state.which === 'hot' ? '熱門議題' : '最新議題'} badge="討論島・論道廣場" sub="藏書閣門前的議題碑，刻著站上的討論" onClose={close} />
         <div className="px-4 pt-3">
-          <div className="grid grid-cols-2 gap-1.5">
-            {(['hot', 'new'] as const).map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => onChange({ kind: 'discList', which: w })}
-                className="rounded-md px-1 py-1.5 text-[14.5px] cursor-pointer"
-                style={{
-                  background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
-                  border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
-                  color: '#f6e7c4',
-                }}
-              >
-                {w === 'hot' ? '熱門議題' : '最新議題'}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            items={[
+              { key: 'hot' as const, label: '熱門議題', icon: Flame },
+              { key: 'new' as const, label: '最新議題', icon: Sparkles },
+            ]}
+            value={state.which}
+            onPick={(w) => onChange({ kind: 'discList', which: w })}
+          />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           <QuestionRows list={list} onPick={openQ} empty="還沒有討論，歡迎發起第一則！" />
           <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_discussion' })} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] flex items-center justify-center gap-2 cursor-pointer">
-            <PenLine className="w-4 h-4" /> 發起討論（新分頁）
+            <PenLine className="w-4 h-4" /> 發起討論
           </button>
         </div>
       </>
@@ -927,7 +1069,7 @@ export const KingdomSideDrawer: React.FC<{
           >
             查看角色介紹 <ArrowRight className="w-5 h-5" />
           </button>
-          <p className="kx-sub text-[14px]">角色介紹會開在新分頁，3D 這一頁會留在原地。</p>
+          <p className="kx-sub text-[14px]">角色介紹會直接顯示在左側欄，3D 這一頁會留在原地。</p>
         </div>
       </>
     );
@@ -935,7 +1077,7 @@ export const KingdomSideDrawer: React.FC<{
     const f = FEATURE_INFO[state.id];
     body = (
       <>
-        <Header title={f.title} badge={f.badge} sub={f.sub} onClose={close} />
+        <Header icon={Sparkles} title={f.title} badge={f.badge} sub={f.sub} onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <ActionList actions={actions} />
           <p className="kx-sub text-[15px] leading-relaxed">{f.desc}</p>
@@ -945,7 +1087,7 @@ export const KingdomSideDrawer: React.FC<{
   } else if (state?.kind === 'desk') {
     body = (
       <>
-        <Header title="佈告桌" badge="創點樓・中庭" sub="在佈告桌寫下你的痛點，張貼到懸賞牆" onClose={close} />
+        <Header icon={PenLine} title="佈告桌" badge="創點樓・中庭" sub="在佈告桌寫下你的痛點，張貼到懸賞牆" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <p className="kx-sub text-[15.5px] leading-relaxed">
             寫下你遇到的麻煩、希望怎樣解決，也可以設定懸賞。刊登後會依分類貼到對應的地方：日常疑難貼在中庭佈告欄與一樓迴廊、專業問題貼在二樓迴廊、學術探討貼在三樓迴廊。
@@ -955,9 +1097,9 @@ export const KingdomSideDrawer: React.FC<{
             onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })}
             className="kx-btn-primary w-full px-4 py-3 text-[17px] flex items-center justify-center gap-2 cursor-pointer"
           >
-            <PenLine className="w-5 h-5" /> 開新分頁填寫痛點
+            <PenLine className="w-5 h-5" /> 填寫痛點
           </button>
-          <p className="kx-sub text-[14px]">填寫頁會開在新分頁，3D 這一頁會留在原地。</p>
+          <p className="kx-sub text-[14px]">填寫頁會直接顯示在左側欄，3D 這一頁會留在原地。</p>
           <div className="kx-divider" />
           <p className="kx-sub text-[14.5px]">先看看各樓層已經有哪些痛點：</p>
           <div className="grid grid-cols-2 gap-1.5">
@@ -1029,7 +1171,7 @@ export const KingdomSideDrawer: React.FC<{
     const img = q.cardDisplayImage || q.coverImage;
     body = (
       <>
-        <Header title={badgeOf(q)} onClose={close} onBack={state.back ? () => onChange(state.back) : undefined} />
+        <Header icon={FileText} title={badgeOf(q)} onClose={close} onBack={state.back ? () => onChange(state.back) : undefined} />
         <div className="flex-1 overflow-y-auto">
           {img && (
             <div className="relative w-full aspect-video overflow-hidden" style={{ background: '#140c07' }}>

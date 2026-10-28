@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WEST_LANDING } from './regionConfigs';
 import { Collider, WalkableZone, BridgeZone } from './types';
 
 export class PhysicsController {
@@ -153,6 +154,17 @@ export class PhysicsController {
           return baseGround + archH;
         }
       }
+    }
+    // 西側田園的石板路（田埂比水面高一點）
+    if (baseGround === 0) {
+      const W = WEST_LANDING;
+      const pad = 4.6;
+      const inRect = (cx: number, cz: number, hx: number, hz: number) => Math.abs(x - cx) <= hx && Math.abs(z - cz) <= hz;
+      const dx = W.trail[0] - W.dockLand[0];
+      const dz = W.trail[1] - W.dockLand[1];
+      const t = ((x - W.dockLand[0]) * dx + (z - W.dockLand[1]) * dz) / (dx * dx + dz * dz);
+      const onPath = t >= 0 && t <= 1 && Math.hypot(x - (W.dockLand[0] + t * dx), z - (W.dockLand[1] + t * dz)) <= W.halfWidth + 0.6;
+      if (onPath || inRect(W.dockLand[0], W.dockLand[1], 3.6, pad) || inRect(W.trail[0], W.trail[1], pad, pad)) return W.y;
     }
     return baseGround;
   }

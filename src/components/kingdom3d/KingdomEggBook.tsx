@@ -7,7 +7,7 @@ import './kingdomUi.css';
  * 實境漫遊的彩蛋收集冊（和 3D 地圖同一本）：
  * - 小地圖下方的小鍵（顯示已收集幾格）
  * - 觸發彩蛋時畫面上方的詩句卷軸（新收入時寫「收入第 N 格」）
- * - 收集冊彈窗：35 格，依發現順序
+ * - 收集冊彈窗：36 格，依發現順序
  */
 
 export const KingdomEggButton: React.FC<{ count: number; onOpen: () => void; flash?: boolean }> = ({ count, onOpen, flash }) => (
