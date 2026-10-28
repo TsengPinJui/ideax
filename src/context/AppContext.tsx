@@ -193,6 +193,7 @@ function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
 }
 import { getStoredTickets } from '../services/customerSupportService';
 import { claimFirstPostBonus } from '../services/signupBonusService';
+import { reportXp } from '../services/xpService';
 import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
@@ -5838,6 +5839,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, 800);
     }
 
+    // 經驗值：有效問題（伺服器會檢查內容與作者，發表後同步需要一點時間，會自動重試）
+    if (!isGuest) void reportXp('question', q.id);
     return q;
   };
 
@@ -6449,6 +6452,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
+    // 經驗值：有效回答（伺服器檢查不是自問自答、內容夠長，同一題只計一次）
+    if (!isGuest) void reportXp('answer', ans.id);
     return ans;
   };
 
@@ -6702,6 +6707,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const acceptAnswer = (answerId: string, rating: number = 5, review?: string) => {
     const targetAns = answers.find((a) => a.id === answerId);
     if (!targetAns) return;
+    // 經驗值：回答被採納（XP 給回答者；伺服器確認已採納、不是自問自答）
+    void reportXp('accepted', answerId, { retries: 6 });
 
     const targetQ = questions.find((q) => q.id === targetAns.questionId);
     const bounty = targetQ ? targetQ.bounty : 1000;

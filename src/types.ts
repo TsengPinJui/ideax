@@ -95,7 +95,9 @@ export type UserDashboardTab =
   | 'ai_assistant_settings'
   | 'ai_crm'
   | 'survey'
-  | 'settings';
+  | 'settings'
+  | 'level_tasks'
+  | 'admin_xp';
 
 export type QuestionSortOption = 
   | 'latest'              // 🆕 最新發布（依發布時間由新到舊）
@@ -597,6 +599,10 @@ export type AdminSite = 'site_a' | 'site_b'; // 'site_a': IdeaX 主站 | 'site_b
 
 export interface User {
   id: string;
+  /** 等級與累積經驗值（伺服器寫入，畫面顯示用；以 user_xp 為準） */
+  level?: number;
+  totalXp?: number;
+  xpUpdatedAt?: string;
   authUid?: string; // 對應的 Firebase 登入帳號 UID（資料庫權限以此判斷）
   aiCrmLastScanAt?: string; // 伺服器 AI-CRM 最後巡檢時間
   aiCrmLastScanMatches?: number; // 最後一次巡檢找到的案件數
