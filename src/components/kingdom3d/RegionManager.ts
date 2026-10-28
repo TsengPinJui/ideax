@@ -9,6 +9,9 @@ import { createNoticeBoard } from './stylized/noticeBoard';
 import { createDocks, createPlateauExtras, DOCKS, TRAIL } from './stylized/docks';
 import { createCareerGarden } from './stylized/careerGarden';
 import { createFauna } from './stylized/fauna';
+import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
+import { FARMLANDS, farmHouseLayout, chimneyTop } from './stylized/basinLayout';
+import { seeded } from './stylized/textures';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -151,6 +154,29 @@ export class RegionManager {
     });
     this.archipelagoBaseGroup.add(fauna.group);
     this.baseColliders.push(...fauna.colliders);
+    // 螢火蟲（夜）與蝴蝶（日）：河岸草地、水邊、徵才島綠塘
+    {
+      const fire: LifeSpot[] = [{ x: 85, z: 59, r: 12 }];
+      const bfly: LifeSpot[] = [{ x: 83, z: 56, r: 10 }, { x: 72, z: 50, r: 8 }];
+      ALL_REGION_IDS.forEach((rid, i) => {
+        const [cx, cz] = REGION_CONFIGS[rid].center;
+        const e = walk.find((z) => z.type === 'ellipse' && Math.abs(z.cx - cx) < 0.5 && Math.abs(z.cz - cz) < 0.5);
+        if (!e || e.type !== 'ellipse') return;
+        for (let k = 0; k < 4; k++) {
+          const a = (k / 4) * Math.PI * 2 + i * 0.7 + 0.4;
+          fire.push({ x: cx + Math.cos(a) * (e.rx + 4.2), z: cz + Math.sin(a) * (e.rz + 4.2), r: 6 });
+          const b = a + Math.PI / 4;
+          bfly.push({ x: cx + Math.cos(b) * (e.rx + 2.6), z: cz + Math.sin(b) * (e.rz + 2.6), r: 5 });
+        }
+      });
+      // 農舍煙囪（傍晚炊煙）
+      const chimneys = FARMLANDS.flatMap((l, li) =>
+        farmHouseLayout(l, seeded(Math.round(l.seed * 100)), li)
+          .filter((h) => h.chimney)
+          .map(chimneyTop)
+      );
+      this.archipelagoBaseGroup.add(createAmbientLife(fire, bfly, chimneys));
+    }
     this.archipelagoBaseGroup.add(trees.build());
     this.archipelagoBaseGroup.add(grass.build());
   }

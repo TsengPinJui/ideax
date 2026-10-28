@@ -47,3 +47,25 @@ export function nearestReachable(x: number, z: number): { x: number; z: number; 
   // 站在水邊，面向點的方向（看向水面／點到的地方）
   return { x: best.x, z: best.z, yaw: Math.atan2(-(x - best.x), -(z - best.z)) };
 }
+
+/** 0..1：離水邊多近（環境音的水波聲用）；在橋上、船上、島外都算在水邊 */
+export function waterProximity(x: number, z: number): number {
+  const zones = getGlobalWalkableZones();
+  let best = Infinity;
+  let any = false;
+  for (const zn of zones) {
+    if (zn.type !== 'ellipse') continue;
+    const rx = zn.rx + RIM_EXTRA;
+    const rz = zn.rz + RIM_EXTRA;
+    const r = Math.hypot((x - zn.cx) / rx, (z - zn.cz) / rz);
+    if (r < 1) {
+      any = true;
+      best = Math.min(best, (1 - r) * Math.min(rx, rz));
+    }
+  }
+  let p = any ? Math.max(0, Math.min(1, 1 - best / 10)) : 1;
+  // 徵才島園林的綠塘
+  const dp = Math.hypot(x - 85, z - 59);
+  if (dp < 12) p = Math.max(p, 0.8 * (1 - Math.max(0, dp - 6) / 6));
+  return p;
+}

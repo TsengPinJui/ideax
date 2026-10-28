@@ -26,7 +26,7 @@ import {
   farmlandTexture,
   seeded,
 } from './textures';
-import { MOUNTAIN_RING, FARMLANDS, LOTUS_PATCHES, BASIN_LANDMARKS, landOutline } from './basinLayout';
+import { MOUNTAIN_RING, FARMLANDS, LOTUS_PATCHES, BASIN_LANDMARKS, landOutline, farmHouseLayout } from './basinLayout';
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
@@ -691,19 +691,12 @@ export class StylizedWorld {
       g.add(field);
 
       const rand = seeded(Math.round(l.seed * 100));
-      // 農舍（白牆黑瓦）
-      const nHouse = 2 + Math.floor(rand() * 3);
-      for (let k = 0; k < nHouse; k++) {
-        const a = rand() * Math.PI * 2;
-        const rr = 0.35 + rand() * 0.4;
-        const x = l.cx + Math.cos(a) * l.rx * rr;
-        const z = l.cz + Math.sin(a) * l.rz * rr;
-        const yaw = Math.atan2(-x, -z) + (rand() - 0.5) * 0.6;
+      // 農舍（白牆黑瓦）；位置與田園動物、炊煙共用 farmHouseLayout
+      for (const fh of farmHouseLayout(l, rand, li)) {
+        const { x, z, yaw, w, d } = fh;
         const hg = new THREE.Group();
         hg.position.set(x, 0.5, z);
         hg.rotation.y = yaw;
-        const w = 4 + rand() * 2;
-        const d = 3 + rand() * 1.2;
         const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.6, d), mats.plaster);
         wall.position.y = 1.3;
         hg.add(wall);
@@ -713,6 +706,15 @@ export class StylizedWorld {
         const roof = buildRoofTier(w, d, { rise: 1.3, overhang: 0.7, curl: 0.35, theme: 'slate', lite: true });
         roof.position.y = 2.6;
         hg.add(roof);
+        if (fh.chimney) {
+          // 灶間煙囪（傍晚飄炊煙）
+          const ch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.9, 0.5), mats.plaster);
+          ch.position.set(w * 0.25, 2.6 + 0.8, -d * 0.12);
+          hg.add(ch);
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.7), mats.darkWood);
+          cap.position.set(w * 0.25, 2.6 + 1.78, -d * 0.12);
+          hg.add(cap);
+        }
         houses.add(hg);
         lan.addHanging(x + Math.sin(yaw) * (d / 2 + 0.4), 2.2, z + Math.cos(yaw) * (d / 2 + 0.4), 0.7);
       }
