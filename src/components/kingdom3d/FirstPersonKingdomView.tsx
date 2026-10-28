@@ -22,7 +22,7 @@ import { MobileControlsOverlay } from './MobileControlsOverlay';
 import { KingdomSideDrawer, DrawerState, findStreetProp, stallItems, hotStallItems } from './KingdomSideDrawer';
 import { drawShopCarouselTexture, drawStreetDiscussionBoardTexture, StallContent } from './stylized/streets';
 import { useSosoJobs, SosoJob, SosoState } from './useSosoJobs';
-import { drawJobScrollTexture } from './stylized/jobScroll';
+import { drawJobScrollTexture, JOBS_PER_SCROLL } from './stylized/jobScroll';
 import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, openInNewTab } from './buildingActions';
@@ -1118,7 +1118,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (!info) return;
       const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
       const old = mat.map;
-      mat.map = drawJobScrollTexture(info.side, jobs.slice(info.side * 5, info.side * 5 + 5), status, brief);
+      mat.map = drawJobScrollTexture(info.side, jobs.slice(info.side * JOBS_PER_SCROLL, (info.side + 1) * JOBS_PER_SCROLL), status, brief);
       mat.needsUpdate = true;
       old?.dispose();
     });

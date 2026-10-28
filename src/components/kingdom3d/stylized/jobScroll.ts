@@ -17,7 +17,10 @@ function clip(ctx: CanvasRenderingContext2D, text: string, maxW: number) {
   return t === text ? t : t.slice(0, -1) + '…';
 }
 
-/** side：0 左卷、1 右卷；jobs 是這一卷要列的職缺（最多 5 筆） */
+/** JOB_SCROLLS 卷、每卷 5 筆；side＝第幾卷（0 起算）；jobs 是這一卷要列的職缺（最多 5 筆） */
+export const JOB_SCROLLS = 6;
+export const JOBS_PER_SCROLL = 5;
+const NUM = '一二三四五六七八九十';
 export function drawJobScrollTexture(side: number, jobs: ScrollJob[], status: 'idle' | 'loading' | 'done', brief?: string) {
   const W = 600;
   const H = 860;
@@ -43,7 +46,7 @@ export function drawJobScrollTexture(side: number, jobs: ScrollJob[], status: 'i
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#f6d36b';
   ctx.font = `900 40px ${SERIF}`;
-  ctx.fillText(side === 0 ? '搜搜尋職・上卷' : '搜搜尋職・下卷', W / 2, 36);
+  ctx.fillText(`搜搜尋職・卷${NUM[side] || side + 1}`, W / 2, 36);
   ctx.fillStyle = '#3a2614';
   if (status !== 'done' || !jobs.length) {
     ctx.font = `700 40px ${KAI}`;
@@ -51,10 +54,14 @@ export function drawJobScrollTexture(side: number, jobs: ScrollJob[], status: 'i
       status === 'loading'
         ? ['搜搜正在', '騰雲駕霧', '翻找職缺…']
         : status === 'done'
-        ? ['這次沒有找到', '合適的職缺', '換個說法試試']
+        ? side === 0
+          ? ['這次沒有找到', '合適的職缺', '換個說法試試']
+          : ['這一卷', '暫時空著']
         : side === 0
         ? ['點一下搜搜', '用自己的話', '說想找的工作']
-        : ['找到的職缺', '會寫在', '這兩卷上'];
+        : side === 1
+        ? ['找到的職缺', '會依序寫在', '兩旁畫卷上']
+        : ['最多可列', `${JOB_SCROLLS * JOBS_PER_SCROLL} 筆職缺`];
     lines.forEach((ln, i) => ctx.fillText(ln, W / 2, H / 2 - 70 + i * 70));
   } else {
     if (brief && side === 0) {

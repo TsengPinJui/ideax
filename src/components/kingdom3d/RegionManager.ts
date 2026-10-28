@@ -10,6 +10,7 @@ import { createDocks, createPlateauExtras, DOCKS, TRAIL } from './stylized/docks
 import { createCareerGarden } from './stylized/careerGarden';
 import { createFauna } from './stylized/fauna';
 import { createDiscussionPlaza } from './stylized/discussionPlaza';
+import { createBearWorkshop, createCraftWall } from './stylized/craftStreet';
 import { createEggProps } from './stylized/eggProps';
 import { createTempleExtras } from './stylized/temple';
 import { createExhibitionFacade, createArcadeFacade, createPlazaMedallions } from './stylized/hallFacades';
@@ -245,7 +246,8 @@ export class RegionManager {
     const extraColliders: Collider[] = [];
     for (const b of manifest.buildings) {
       // 創點樓整棟就是圓形土樓（環形迴廊＋露天中庭），其他建築照原本的樓閣
-      const bld = b.exterior === 'tulou' ? createRingTower(b) : b.exterior === 'board' ? createNoticeBoard(b) : createStyledBuilding(b);
+      const bld =
+        b.exterior === 'tulou' ? createRingTower(b) : b.exterior === 'board' ? createNoticeBoard(b) : b.exterior === 'bearShop' ? createBearWorkshop(b) : createStyledBuilding(b);
       group.add(bld);
       // 求職廟：三川殿門廊、龍柱、燕尾脊、雙龍搶珠、天公爐、金爐
       if (b.exterior === 'temple') {
@@ -291,6 +293,10 @@ export class RegionManager {
       const plaza = createDiscussionPlaza();
       group.add(plaza.group);
       extraColliders.push(...plaza.colliders);
+      // 百工坊街西側白牆（月洞門通廣場；牆邊一排百工佈告欄）
+      const cw = createCraftWall();
+      group.add(cw.group);
+      extraColliders.push(...cw.colliders);
     }
 
     // 商店街、市集攤位、牌坊（街景；四周有碰撞）

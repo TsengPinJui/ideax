@@ -160,7 +160,7 @@ const CREATIVE_GATE: StreetProp = (() => {
 /**
  * 討論島（三個分明的區塊構成一個整體街區）：
  * 1. 西區・茶藝街（x = 48..63，南北向真正的一條街，南端牌樓入口 x=55.8, z=-28，兩側茶莊、茶攤與露天茶座夾道相對）
- * 2. 東區・百工坊（x = 81..96，依分類為「水電坊、室內裝修坊、法律智財坊、會計稅務坊、企業管理坊」，街道旁兩排佈告欄張貼各種討論，各店鋪看板輪播該類熱門討論）
+ * 2. 東區・百工坊街（x = 80..97：左側白牆一排百工佈告欄〔水電、室內裝修、法律智財、會計稅務、企業管理、百業熱議〕，右側大熊匠鋪）
  * 3. 北區・藏書閣（x = 72, z = -65，坐鎮北端，地下室為大型分類書架圖書館）
  */
 const DISC = (
@@ -193,8 +193,8 @@ const DISC = (
   note,
 });
 
-const CRAFT_NOTE = '百工坊依分類設有水電坊、室內裝修坊、法律智財坊、會計稅務坊、企業管理坊；店鋪門前走馬燈自動輪播該類熱門討論，街道旁兩排佈告欄張貼各種討論。';
-const CRAFT_BOARD_NOTE = '百工坊街道旁兩排佈告欄：正反兩面張貼各分類最新與熱議討論，點擊即可直接閱讀或發起新討論。';
+const CRAFT_NOTE = '百工坊街：左手邊白牆上一排百工佈告欄，依水電、室內裝修、法律智財、會計稅務、企業管理分類張貼討論；右手邊是大熊匠鋪，牆上月洞門通往論道廣場。';
+const CRAFT_BOARD_NOTE = '百工坊街左側白牆邊的佈告欄：張貼各分類最新與熱議討論，點擊即可直接閱讀或發起新討論。';
 const TEA_NOTE = '茶藝街兩側茶莊與茶座林立，每個主題為一間茶館、每則討論為一張茶桌，店門亦輪播熱門茶話。';
 const TEA_BOARD_NOTE = '茶藝街街道佈告欄：張貼日常交流、生活慢調、職場江湖與靈感悟道討論。';
 
@@ -211,21 +211,16 @@ const DISCUSSION_PROPS: StreetProp[] = [
   DISC('tea-board-0', 'board', '茶街討論欄・日常生活', '街道佈告欄・張貼日常與生活討論', 'tea', 52.8, -30.8, Math.PI / 2, 'tea_board', TEA_BOARD_NOTE, 2.7, 0.62),
   DISC('tea-board-1', 'board', '茶街討論欄・職場靈感', '街道佈告欄・張貼職場與靈感討論', 'tea', 58.8, -30.8, -Math.PI / 2, 'tea_work', TEA_BOARD_NOTE, 2.7, 0.62),
 
-  // ── 東區：百工坊（依分類設五間店鋪：水電坊、室內裝修坊、法律智財坊、會計稅務坊、企業管理坊）
-  DISC('craft-gate', 'gate', '百工坊', '水電・室內裝修・法律智財・會計稅務・企業管理', 'general', 88.2, -28.0, 0, 'craft_plumbing', CRAFT_NOTE),
-  DISC('craft-0', 'shop', '水電坊', '百工坊・水電工程與修繕', 'general', 81.8, -35.0, Math.PI / 2, 'craft_plumbing', CRAFT_NOTE),
-  DISC('craft-1', 'shop', '室內裝修坊', '百工坊・室內設計與裝修', 'crafts', 81.8, -43.5, Math.PI / 2, 'craft_interior', CRAFT_NOTE),
-  DISC('craft-2', 'shop', '法律智財坊', '百工坊・法律諮詢與智財', 'books', 81.8, -52.0, Math.PI / 2, 'craft_law', CRAFT_NOTE),
-  DISC('craft-3', 'shop', '會計稅務坊', '百工坊・會計帳務與稅務', 'ink', 94.5, -34.2, -Math.PI / 2, 'craft_tax', CRAFT_NOTE),
-  DISC('craft-4', 'shop', '企業管理坊', '百工坊・企業管理與經營', 'lanterns', 93.8, -54.2, -Math.PI / 2, 'craft_mgmt', CRAFT_NOTE),
+  // ── 東區：百工坊街（右手邊是大熊匠鋪〔建築 discussion-workshop〕，左手邊白牆上一排百工佈告欄，街心淨空）
+  DISC('craft-gate', 'gate', '百工坊', '百工佈告欄・大熊匠鋪', 'general', 88.2, -28.0, 0, 'craft_board', CRAFT_NOTE),
 
-  // ── 百工坊街道旁兩排佈告欄（張貼各種討論，夾道分列於街道東西兩側）
-  DISC('craft-board-0', 'board', '百工佈告欄・水電實務', '街道西排佈告欄・張貼水電討論', 'general', 85.1, -31.2, Math.PI / 2, 'craft_plumbing', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-1', 'board', '百工佈告欄・室內裝修', '街道西排佈告欄・張貼裝修討論', 'crafts', 85.1, -39.2, Math.PI / 2, 'craft_interior', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-2', 'board', '百工佈告欄・法律智財', '街道西排佈告欄・張貼法務討論', 'books', 85.1, -47.8, Math.PI / 2, 'craft_law', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-3', 'board', '百工佈告欄・會計稅務', '街道東排佈告欄・張貼財稅討論', 'ink', 91.3, -31.2, -Math.PI / 2, 'craft_tax', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-4', 'board', '百工佈告欄・企業管理', '街道東排佈告欄・張貼企管討論', 'lanterns', 91.3, -39.2, -Math.PI / 2, 'craft_mgmt', CRAFT_BOARD_NOTE, 2.75, 0.62),
-  DISC('craft-board-5', 'board', '百工佈告欄・百業熱議', '街道東排佈告欄・張貼綜合討論', 'general', 91.3, -49.2, -Math.PI / 2, 'craft_board', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  // ── 百工坊街左側白牆邊的佈告欄（原本立在鋪子之間會擋路，改成貼牆一排；面向街道）
+  DISC('craft-board-0', 'board', '百工佈告欄・水電實務', '白牆佈告欄・張貼水電討論', 'general', 81.05, -33.9, Math.PI / 2, 'craft_plumbing', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-1', 'board', '百工佈告欄・室內裝修', '白牆佈告欄・張貼裝修討論', 'crafts', 81.05, -37.1, Math.PI / 2, 'craft_interior', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-2', 'board', '百工佈告欄・法律智財', '白牆佈告欄・張貼法務討論', 'books', 81.05, -40.3, Math.PI / 2, 'craft_law', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-3', 'board', '百工佈告欄・會計稅務', '白牆佈告欄・張貼財稅討論', 'ink', 81.05, -43.5, Math.PI / 2, 'craft_tax', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-4', 'board', '百工佈告欄・企業管理', '白牆佈告欄・張貼企管討論', 'lanterns', 81.05, -46.7, Math.PI / 2, 'craft_mgmt', CRAFT_BOARD_NOTE, 2.75, 0.62),
+  DISC('craft-board-5', 'board', '百工佈告欄・百業熱議', '白牆佈告欄・張貼綜合討論', 'general', 81.05, -53.4, Math.PI / 2, 'craft_board', CRAFT_BOARD_NOTE, 2.75, 0.62),
 ];
 
 export const STREET_PROPS: Record<RegionId, StreetProp[]> = {

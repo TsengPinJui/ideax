@@ -4,12 +4,14 @@ import { FARMLANDS, farmHouseLayout, FarmHouse } from './basinLayout';
 import { seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { mergeByMaterial } from './architecture';
+import { BEAR_LOCAL } from './craftStreet';
+import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
 
 /**
  * 五島的生活感（照 /island）：
  * - 田園：水牛、綿羊、小豬、雞、白鷺鷥、戴斗笠鋤地的農夫
  * - 天空：白天好天氣時偶爾飛過的人字雁群
- * - 創點源原創角色：白喵（徵才島庭院閒晃打滾）、多慧（主島廣場招呼旅人）、007（躺在翰林院屋頂）、大熊（百工坊街心敲敲打打）
+ * - 創點源原創角色：白喵（徵才島庭院閒晃打滾）、多慧（主島廣場招呼旅人）、007（躺在翰林院屋頂）、大熊（百工坊街的大熊匠鋪裡敲敲打打）
  * 點原創角色會在左側打開角色小卡
  */
 
@@ -91,7 +93,7 @@ export const CHARACTERS: Record<CharacterId, { name: string; role: string; line:
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
   sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
-  bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街心' },
+  bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街的大熊匠鋪' },
 };
 
 const std = (color: number, rough = 0.7, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
@@ -933,21 +935,24 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       dish.rotation.y = t * 2;
     });
   }
-  // 大熊：百工坊街心工作台敲敲打打
+  // 大熊：百工坊街右手邊自己的「大熊匠鋪」工棚裡，在工作台前敲敲打打（面向街道）
   {
+    const wb = REGION_CONFIGS['region-discussion'].buildings.find((x) => x.id === 'discussion-workshop');
+    const [bwx, bwz] = wb ? localToWorldXZ(wb.position.x, wb.position.z, wb.facingYaw, BEAR_LOCAL.x, BEAR_LOCAL.z) : [92.3, -36.4];
+    const BEAR_WORLD = { x: bwx, z: bwz };
     const g = bear();
-    g.position.set(88.2, 0, -43.0);
-    g.rotation.y = Math.PI;
+    g.position.set(BEAR_WORLD.x, 0.1, BEAR_WORLD.z);
+    g.rotation.y = Math.PI / 2;
     root.add(g);
-    colliders.push({ id: 'char-bear', type: 'box', x: 88.2, z: -42.6, halfWidth: 0.8, halfDepth: 0.85 });
-    pick('bear', 1.8, 1.8, 88.2, -42.6);
+    colliders.push({ id: 'char-bear', type: 'box', x: BEAR_WORLD.x - 0.4, z: BEAR_WORLD.z, halfWidth: 0.85, halfDepth: 0.8 });
+    pick('bear', 1.9, 1.9, BEAR_WORLD.x - 0.4, BEAR_WORLD.z);
     const arm = g.userData.arm as THREE.Object3D;
     const gear = g.userData.gear as THREE.Object3D;
     mergeSelf(g, [arm, gear]);
     const bub = speechBubble(CHARACTERS.bear.name, CHARACTERS.bear.line);
     root.add(bub);
     anims.push((t) => {
-      bubbleTick(bub, 88.2, 1.95, -42.6);
+      bubbleTick(bub, BEAR_WORLD.x - 0.4, 2.05, BEAR_WORLD.z);
       arm.rotation.x = Math.max(0, Math.sin(t * 5)) * -1.0;
       gear.rotation.y = t * 0.8;
     });

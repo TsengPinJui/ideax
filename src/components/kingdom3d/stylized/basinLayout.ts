@@ -136,8 +136,8 @@ export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: 
   { id: 'dock-home-w', regionId: 'region-home', deg: 180, name: '主島西渡口' },
   { id: 'dock-disc-nw', regionId: 'region-discussion', deg: -139, name: '討論島西北渡口' },
   { id: 'dock-disc-s', regionId: 'region-discussion', deg: 82, name: '討論島南渡口' },
-  { id: 'dock-career-ne', regionId: 'region-career', deg: -40, name: '徵才島東北渡口' },
-  { id: 'dock-career-sw', regionId: 'region-career', deg: 133, name: '徵才島西南渡口' },
+  { id: 'dock-career-ne', regionId: 'region-career', deg: -22, name: '徵才島東北渡口' }, // 院牆東北角外會和牆疊在一起，挪到東牆外的空地
+  { id: 'dock-career-sw', regionId: 'region-career', deg: 112, name: '徵才島西南渡口' }, // 院牆西南角外會和牆疊在一起，挪到南牆外的空地
   { id: 'dock-creative-se', regionId: 'region-creative', deg: 30, name: '創意島東南渡口' },
 ];
 export const TRAILHEAD = { regionId: 'region-pain', deg: 168, name: '聚雲塔登山口' };

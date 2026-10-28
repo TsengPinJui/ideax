@@ -73,7 +73,7 @@ export function useSosoJobs(onResults: (jobs: SosoJob[], status: SosoState['stat
             {
               from: 'soso',
               text: jobs.length
-                ? `找到 ${jobs.length} 筆在招職缺，前 ${Math.min(10, jobs.length)} 筆寫在兩旁畫卷上了；全部可以在下方「看找到的職缺」查看。`
+                ? `找到 ${jobs.length} 筆在招職缺，前 ${Math.min(30, jobs.length)} 筆寫在兩旁六卷畫卷上了；全部可以在下方「看找到的職缺」查看。`
                 : res.ok
                 ? '這次沒有找到符合的職缺，換個說法或放寬條件再試試看。'
                 : '搜尋時出了點狀況，請稍後再試一次。',
