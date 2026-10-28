@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#240',
+    version: 'v4.3.6',
+    releaseDate: '2026.10.28',
+    releaseTime: '20:40',
+    author: 'System Architect',
+    summary: '3D 實境漫遊：小燈泡改在夜裡沒有燈光的地方出現（搭船經過暗處會跳上船）；大熊匠鋪中間通道、九曲橋、假山後小徑都走得過去了',
+    changes: [
+      '小燈泡不再固定在廣場散步：夜裡走到附近沒有燈籠、石燈的暗處，小燈泡就會冒出來發著光陪在身邊（會跟著你走）；搭船經過暗處時會跳上船坐在船頭；回到有燈的地方就揮揮手消失。台詞改成「覺得暗嗎？別怕，有小燈泡在！」。',
+      '大熊匠鋪兩座工棚中間的通道原本有一道看不見的牆，現在可以一路走到岸邊。',
+      '徵才島江南園林：九曲橋轉彎處不會再被欄杆卡住、橋頭也不會被塘邊擋住，整座橋走得過去；假山往北挪，和南側院牆之間留出一條可以走的小徑。',
+    ],
+  },
+  {
     seqNumber: '#239',
     version: 'v4.3.5',
     releaseDate: '2026.10.28',

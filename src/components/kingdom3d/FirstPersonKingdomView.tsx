@@ -1994,6 +1994,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       faunaEnv.camX = camera.position.x;
       faunaEnv.camY = camera.position.y;
       faunaEnv.camZ = camera.position.z;
+      faunaEnv.camYaw = controls.yaw;
+      faunaEnv.onBoat = Boolean(boatRideRef.current);
+      faunaEnv.indoor = story.level !== 0;
       for (const tk of tickers) tk(now);
       if (lodTick % 10 === 0) {
         const st = storyRef.current;
@@ -2186,6 +2189,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         },
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
+        // 不靠畫面幀數：直接用物理一步步走過去，回傳走到哪裡（檢查空氣牆用）
+        simWalk: (x: number, z: number, tx: number, tz: number) => {
+          let pos = new THREE.Vector3(x, 0, z);
+          const cols = regionManager.getAllColliders();
+          for (let i = 0; i < 600; i++) {
+            const dx = tx - pos.x;
+            const dz = tz - pos.z;
+            const d = Math.hypot(dx, dz);
+            if (d < 0.3) break;
+            const v = new THREE.Vector3((dx / d) * 4, 0, (dz / d) * 4);
+            pos = PhysicsController.movePlayer(pos, v, 1 / 30, cols, globalWalkableZones, WORLD_BRIDGES, 0);
+          }
+          return [+pos.x.toFixed(2), +pos.z.toFixed(2)];
+        },
         // 從高處往下打射線，回傳最上面那個表面的高度（擺放屋頂上的角色用）
         roofY: (x: number, z: number, up = false) => {
           const rc = up ? new THREE.Raycaster(new THREE.Vector3(x, 2.5, z), new THREE.Vector3(0, 1, 0)) : new THREE.Raycaster(new THREE.Vector3(x, 60, z), new THREE.Vector3(0, -1, 0));

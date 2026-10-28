@@ -18,7 +18,16 @@ import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
  */
 
 /** 由環境（時段、天氣）寫入：晴朗白天才有雁群；夜裡或下雨時農夫收工回家、雞進雞舍 */
-export const faunaEnv: { tod: string; weather: string; camX: number; camY: number; camZ: number } = { tod: 'dusk', weather: 'clear', camX: 0, camY: 1.6, camZ: 0 };
+export const faunaEnv: { tod: string; weather: string; camX: number; camY: number; camZ: number; camYaw: number; onBoat: boolean; indoor: boolean } = {
+  tod: 'dusk',
+  weather: 'clear',
+  camX: 0,
+  camY: 1.6,
+  camZ: 0,
+  camYaw: 0,
+  onBoat: false,
+  indoor: false,
+};
 
 const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","Noto Serif TC",serif';
 
@@ -95,7 +104,7 @@ export const CHARACTERS: Record<CharacterId, { name: string; role: string; line:
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
   sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
-  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「有新點子我就亮一下！跌倒了也會馬上爬起來～」', where: '主島・中央廣場大燈泡旁' },
+  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「覺得暗嗎？別怕，有小燈泡在！」', where: '夜裡沒有燈光的地方（搭船經過暗處時也會跳上船）' },
   bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街的大熊匠鋪' },
 };
 
@@ -767,41 +776,145 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       sp.hop = sp.pose ? 0 : Math.abs(Math.sin(t * 1.2)) * 0.02;
     });
   }
-  // 小燈泡：主島中央廣場繞著大燈泡散步，偶爾跳起來揮手、偶爾跌一跤再爬起來
+  // 小燈泡：夜裡走到沒有燈光的地方就會冒出來陪你（搭船經過暗處時跳上船），走回有燈的地方就揮揮手消失
   {
-    const sp = spriteOf('xiaodengpao', 'char-bulb');
+    const sp = new AgentSprite(SPRITES.xiaodengpao, { selfLit: true });
+    sp.group.name = 'char-bulb';
+    root.add(sp.group);
+    sprites.push(sp);
     const g = sp.group;
-    const proxy = makePickProxy(1.0, 1.6, 1.0, 0, 0, 0, { kind: 'character', id: 'xiaodengpao' });
+    g.visible = false;
+    // 自己會發光：照亮身邊一圈
+    const light = new THREE.PointLight(0xffd27a, 0, 9, 1.6);
+    light.position.y = 0.9;
+    g.add(light);
+    const proxy = makePickProxy(1.0, 1.6, 1.0, 0, -50, 0, { kind: 'character', id: 'xiaodengpao' });
     root.add(proxy);
     const bub = speechBubble(CHARACTERS.xiaodengpao.name, CHARACTERS.xiaodengpao.line);
     root.add(bub);
-    const R = 7.6;
-    const CYCLE = 34;
-    let ang = 0.6;
+    // 場景裡所有燈籠、石燈的位置（每隔幾秒重新收集；換島後燈也會變）
+    let lights: number[] = [];
+    let lastScan = -99;
+    const scan = () => {
+      let top: THREE.Object3D = root;
+      while (top.parent) top = top.parent;
+      const out: number[] = [];
+      const v = new THREE.Vector3();
+      top.updateMatrixWorld(false);
+      top.traverse((o) => {
+        if (o.name !== 'lanterns') return;
+        let vis = true;
+        for (let q: THREE.Object3D | null = o; q; q = q.parent) if (!q.visible) vis = false;
+        if (!vis) return;
+        for (const c of o.children) {
+          const pts = c as THREE.Points;
+          if (!(pts as any).isPoints) continue;
+          const pos = pts.geometry.attributes.position as THREE.BufferAttribute;
+          for (let k = 0; k < pos.count; k++) {
+            v.fromBufferAttribute(pos, k).applyMatrix4(pts.matrixWorld);
+            out.push(v.x, v.z);
+          }
+        }
+      });
+      lights = out;
+    };
+    const nearestLight = (x: number, z: number) => {
+      let best = Infinity;
+      for (let k = 0; k < lights.length; k += 2) {
+        const d = (lights[k] - x) ** 2 + (lights[k + 1] - z) ** 2;
+        if (d < best) best = d;
+      }
+      return Math.sqrt(best);
+    };
+    let dark = 0; // 在暗處待了幾秒
+    let lit = 0; // 回到亮處幾秒
+    let shown = 0; // 出現程度 0..1
     let lastT = 0;
+    let phase: 'hidden' | 'in' | 'stay' | 'out' = 'hidden';
+    let bx = 0;
+    let bz = 0;
     anims.push((t) => {
-      const dt = lastT ? Math.min(0.1, t - lastT) : 0;
+      const dt = lastT ? Math.min(0.5, t - lastT) : 0;
       lastT = t;
-      const c = t % CYCLE;
-      let walking = true;
-      sp.pose = null;
-      if (c >= 14 && c < 17.5) {
-        sp.pose = 'jump';
-        walking = false;
-      } else if (c >= 27 && c < 30) {
-        sp.pose = 'fall';
-        walking = false;
-      } else if (c >= 30 && c < 31.5) walking = false;
-      if (walking) ang += (dt * 0.9) / R;
-      const x = Math.cos(ang) * R;
-      const z = Math.sin(ang) * R;
-      g.position.set(x, 0, z);
-      sp.facing = Math.atan2(-Math.sin(ang), Math.cos(ang));
-      sp.hop = sp.pose === 'jump' ? Math.abs(Math.sin(t * 6)) * 0.5 : walking ? Math.abs(Math.sin(t * 7)) * 0.07 : 0;
-      sp.tilt = walking ? Math.sin(t * 7) * 0.06 : 0;
-      sp.squash = 0;
-      proxy.position.set(x, 0.8, z);
-      bubbleTick(bub, x, 2.2, z);
+      if (t - lastScan > 4) {
+        lastScan = t;
+        scan();
+      }
+      const cx = faunaEnv.camX;
+      const cz = faunaEnv.camZ;
+      const night = faunaEnv.tod === 'night';
+      const isDark = night && !faunaEnv.indoor && nearestLight(cx, cz) > (faunaEnv.onBoat ? 7 : 9);
+      if (isDark) {
+        dark += dt;
+        lit = 0;
+      } else {
+        lit += dt;
+        dark = 0;
+      }
+      if (phase === 'hidden' && dark > 1.6) {
+        phase = 'in';
+        // 從身邊冒出來
+        const fx = -Math.sin(faunaEnv.camYaw);
+        const fz = -Math.cos(faunaEnv.camYaw);
+        bx = cx + fx * 2.4 - fz * 0.9;
+        bz = cz + fz * 2.4 + fx * 0.9;
+      }
+      if ((phase === 'in' || phase === 'stay') && lit > 2.5) phase = 'out';
+      if (phase === 'out' && isDark) phase = 'stay';
+      if (phase === 'in') {
+        shown = Math.min(1, shown + dt * 1.6);
+        if (shown >= 1) phase = 'stay';
+      } else if (phase === 'out') {
+        shown = Math.max(0, shown - dt * 1.2);
+        if (shown <= 0) phase = 'hidden';
+      }
+      g.visible = shown > 0.01;
+      light.intensity = shown * 2.2;
+      if (typeof location !== 'undefined' && location.hostname === 'localhost') (window as any).__bulbDbg = { phase, dark, lit, shown, night, n: lights.length / 2, near: nearestLight(cx, cz), indoor: faunaEnv.indoor };
+      if (!g.visible) {
+        proxy.position.set(0, -50, 0);
+        bubbleTick(bub, 0, -50, 0);
+        return;
+      }
+      const fx = -Math.sin(faunaEnv.camYaw);
+      const fz = -Math.cos(faunaEnv.camYaw);
+      let y = 0;
+      if (faunaEnv.onBoat) {
+        // 坐在船頭（鏡頭前方偏右一點），跟著船走
+        bx = cx + fx * 1.5 - fz * 0.55;
+        bz = cz + fz * 1.5 + fx * 0.55;
+        y = faunaEnv.camY - 1.35;
+        sp.pose = null;
+        sp.facing = Math.atan2(cx - bx, cz - bz);
+        sp.hop = Math.abs(Math.sin(t * 2.4)) * 0.05;
+        sp.tilt = Math.sin(t * 1.3) * 0.05;
+      } else {
+        // 跟在身邊：保持 2～3 公尺，太遠就小跑步跟上
+        const tx = cx + fx * 2.2 - fz * 1.0;
+        const tz = cz + fz * 2.2 + fx * 1.0;
+        const dx = tx - bx;
+        const dz = tz - bz;
+        const dist = Math.hypot(dx, dz);
+        const walking = dist > 0.5;
+        if (dist > 12) {
+          bx = tx;
+          bz = tz;
+        } else if (walking) {
+          const step = Math.min(dist, dt * (dist > 3 ? 4.5 : 2.2));
+          bx += (dx / dist) * step;
+          bz += (dz / dist) * step;
+        }
+        y = Math.max(0, faunaEnv.camY - 1.6);
+        sp.pose = phase === 'in' ? 'jump' : phase === 'out' ? 'jump' : null;
+        // 走路時面向前進方向，停下來就看著你
+        sp.facing = walking ? Math.atan2(dx, dz) : Math.atan2(cx - bx, cz - bz);
+        sp.hop = sp.pose === 'jump' ? Math.abs(Math.sin(t * 6)) * 0.4 : walking ? Math.abs(Math.sin(t * 7)) * 0.07 : Math.sin(t * 2) * 0.02;
+        sp.tilt = walking ? Math.sin(t * 7) * 0.06 : 0;
+      }
+      g.position.set(bx, y, bz);
+      g.scale.setScalar(0.3 + shown * 0.7);
+      proxy.position.set(bx, y + 0.8, bz);
+      bubbleTick(bub, bx, y + 2.1, bz);
     });
   }
 

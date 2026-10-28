@@ -22,7 +22,8 @@ const BRIDGE: [number, number][] = [
 ];
 // 小亭靠東，讓出求職廟正前方的視野
 const PAVILION = { x: 91.2, z: 52.6 };
-const ROCKERY = { x: 78.6, z: 65.0 };
+// 假山離南牆留一條走得過去的小徑
+const ROCKERY = { x: 78.6, z: 63.6 };
 const WILLOWS: [number, number][] = [
   [92.3, 64.6],
   [75.6, 54.2],
@@ -109,6 +110,15 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     const mx = (x1 + x2) / 2;
     const mz = (z1 + z2) / 2;
     if (bridgeEnds.some(([bx, bz]) => Math.hypot(bx - mx, bz - mz) < 1.4)) continue;
+    // 橋身斜著跨過塘邊：和橋面重疊的那幾段塘邊也不擋
+    const onLeg = (ax: number, az: number, bx: number, bz: number) => {
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((mx - ax) * dx + (mz - az) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(mx - (ax + dx * t), mz - (az + dz * t)) < 1.15;
+    };
+    const L = BRIDGE.length;
+    if (onLeg(BRIDGE[0][0], BRIDGE[0][1], BRIDGE[1][0], BRIDGE[1][1]) || onLeg(BRIDGE[L - 2][0], BRIDGE[L - 2][1], BRIDGE[L - 1][0], BRIDGE[L - 1][1])) continue;
     colliders.push({ id: `garden-pond-${i}`, type: 'segment', x1, z1, x2, z2, halfThickness: 0.35 });
   }
   // 荷葉（綠塘荷葉）與荷花，集中在池的東半邊、避開九曲橋
@@ -171,6 +181,37 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
   }
 
   // ── 九曲石橋 ──
+  // 欄杆碰撞：兩側各一條沿橋身轉折的折線（轉角用斜接，轉彎處不會被前一段的欄杆擋住）
+  for (const side of [-1, 1]) {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < BRIDGE.length; i++) {
+      const perp = (a: [number, number], b: [number, number]): [number, number] => {
+        const dx = b[0] - a[0];
+        const dz = b[1] - a[1];
+        const l = Math.hypot(dx, dz) || 1;
+        return [dz / l, -dx / l];
+      };
+      const p0 = i > 0 ? perp(BRIDGE[i - 1], BRIDGE[i]) : null;
+      const p1 = i < BRIDGE.length - 1 ? perp(BRIDGE[i], BRIDGE[i + 1]) : null;
+      let nx: number;
+      let nz: number;
+      let k = 0.75;
+      if (p0 && p1) {
+        nx = p0[0] + p1[0];
+        nz = p0[1] + p1[1];
+        const l = Math.hypot(nx, nz) || 1;
+        nx /= l;
+        nz /= l;
+        k = 0.75 / Math.max(0.35, nx * p0[0] + nz * p0[1]);
+      } else {
+        [nx, nz] = (p0 || p1)!;
+      }
+      pts.push([BRIDGE[i][0] + nx * k * side, BRIDGE[i][1] + nz * k * side]);
+    }
+    for (let i = 0; i < pts.length - 1; i++) {
+      colliders.push({ id: `garden-bridge-${i}-${side}`, type: 'segment', x1: pts[i][0], z1: pts[i][1], x2: pts[i + 1][0], z2: pts[i + 1][1], halfThickness: 0.1 });
+    }
+  }
   const deckMat = stoneMat(0xc9c2b3);
   const railMat = stoneMat(0xb8b0a0);
   for (let i = 0; i < BRIDGE.length - 1; i++) {
@@ -183,7 +224,6 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       const ox = Math.cos(ang) * 0.75 * side;
       const oz = -Math.sin(ang) * 0.75 * side;
       add(new THREE.BoxGeometry(0.09, 0.08, len + 0.1), railMat, (x1 + x2) / 2 + ox, 0.68, (z1 + z2) / 2 + oz, ang);
-      colliders.push({ id: `garden-bridge-${i}-${side}`, type: 'segment', x1: x1 + ox, z1: z1 + oz, x2: x2 + ox, z2: z2 + oz, halfThickness: 0.12 });
       for (let q = 0; q <= 3; q++) {
         const t = q / 3;
         add(new THREE.BoxGeometry(0.11, 0.42, 0.11), railMat, x1 + (x2 - x1) * t + ox, 0.5, z1 + (z2 - z1) * t + oz);
@@ -234,7 +274,7 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       st.position.set(ROCKERY.x + dx, 0.4 + dy, ROCKERY.z + dz);
       stat.add(st);
     }
-    colliders.push({ id: 'garden-rockery', type: 'cylinder', x: ROCKERY.x, z: ROCKERY.z, radius: 2.0 });
+    colliders.push({ id: 'garden-rockery', type: 'cylinder', x: ROCKERY.x, z: ROCKERY.z, radius: 1.7 });
   }
 
   // ── 垂柳 ──

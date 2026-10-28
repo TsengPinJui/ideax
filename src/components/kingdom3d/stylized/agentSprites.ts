@@ -81,7 +81,11 @@ export class AgentSprite {
   squash = 0;
   tilt = 0;
 
-  constructor(private spec: SpriteSpec, opts: { shadow?: number } = {}) {
+  /** 自己會發光（小燈泡）：夜裡也不調暗 */
+  private selfLit = false;
+
+  constructor(private spec: SpriteSpec, opts: { shadow?: number; selfLit?: boolean } = {}) {
+    this.selfLit = Boolean(opts.selfLit);
     this.mat = new THREE.MeshBasicMaterial({ map: tex(spec.front), transparent: true, alphaTest: 0.32, side: THREE.DoubleSide, depthWrite: true });
     const geo = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
     this.mesh = new THREE.Mesh(geo, this.mat);
@@ -166,7 +170,7 @@ export class AgentSprite {
     this.mesh.scale.set(h * asp * (mirror ? -1 : 1) * (1 + this.squash * 0.6), h * sq, 1);
     this.mesh.position.y = this.hop;
     this.mesh.rotation.z = this.tilt;
-    this.mat.color.setHex(TINT[tod] ?? 0xffffff);
+    this.mat.color.setHex(this.selfLit ? 0xffffff : TINT[tod] ?? 0xffffff);
     this.shadow.scale.setScalar(1 - Math.min(0.5, this.hop * 0.4));
   }
 
