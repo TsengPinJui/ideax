@@ -825,23 +825,7 @@ export class StylizedWorld {
       g.add(roof);
       y += last ? 0 : 0.55;
     }
-    // 朱色廊道接上山台前庭，屋簷下以暖燈點亮入口。
-    const corridor = new THREE.Group();
-    corridor.position.set(6.0, top + 0.25, 0);
-    const path = new THREE.Mesh(scaledBox(8.0, 0.2, 3.0, 3, 0.2, 3), mats.stoneLight);
-    path.position.set(4.0, 0, 0);
-    corridor.add(path);
-    for (const z of [-1.15, 1.15]) {
-      for (const x of [0.8, 3.4, 6.0, 7.5]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.5, 8), mats.redLacquer);
-        post.position.set(x, 1.25, z);
-        corridor.add(post);
-      }
-    }
-    const corridorRoof = buildRoofTier(8.5, 3.6, { rise: 1.15, overhang: 0.65, curl: 0.38, theme: 'red' });
-    corridorRoof.position.set(4.2, 2.55, 0);
-    corridor.add(corridorRoof);
-    g.add(corridor);
+    // 聚雲塔入口下方保持開闊，不另設亭廊遮擋塔身與山景。
     const lan = new LanternBatch();
     for (let t = 0; t < 5; t++) {
       const s = (7.5 * (1 - t * 0.13)) / 2 + 1.3;

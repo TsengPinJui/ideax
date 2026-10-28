@@ -23,8 +23,8 @@ import { KingdomSideDrawer, DrawerState, findStreetProp, stallItems, hotStallIte
 import { drawShopCarouselTexture, drawStreetDiscussionBoardTexture, StallContent } from './stylized/streets';
 import { useSosoJobs, SosoJob, SosoState } from './useSosoJobs';
 import { drawJobScrollTexture, JOBS_PER_SCROLL } from './stylized/jobScroll';
-import { pickTargetOf, PickTarget } from './picking';
-import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
+import { makePickProxy, pickTargetOf, PickTarget } from './picking';
+import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, RemotePlayerState, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, moduleTitle } from './buildingActions';
 import { KINGDOM_PANEL_EVENT, KingdomPanelDetail } from '../../utils/kingdomPanel';
 import { playTempleBell } from '../../utils/templeBell';
@@ -79,6 +79,7 @@ import { drawSteleTexture, plazaTopics, drawWallBoardTexture, WallBoardWhich } f
 import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS, type Dock } from './stylized/docks';
 import { navigable, sampanBoat, pleasureBoat, boatMats, boatHasRoof } from './stylized/waterLife';
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
+import { LandRideService } from './landRides';
 import type { WalkableZone } from './types';
 import { BoatOverlay } from './BoatOverlay';
 import { nearestReachable, waterProximity } from './nearestSpot';
@@ -105,6 +106,21 @@ const detectFancyDefault = () => {
   const touch = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
   return !touch && window.innerWidth >= 900 && (navigator.hardwareConcurrency || 4) >= 4;
 };
+const LAND_RIDE_PAVED_YARD: WalkableZone[] = [
+  // 馬車停放區及三處馬匹的石板／磚地活動範圍。
+  { type: 'rect', minX: 75, maxX: 92, minZ: -57, maxZ: -32 },
+  { type: 'rect', minX: -97, maxX: -84, minZ: -55, maxZ: -41 }, // 痛點島西緣
+  { type: 'rect', minX: -97, maxX: -84, minZ: 41, maxZ: 55 }, // 創意島西緣
+  { type: 'rect', minX: 89, maxX: 103, minZ: 41, maxZ: 55 }, // 徵才島東緣
+  ...WORLD_BRIDGES.map((b) => ({ type: 'corridor' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfWidth: b.halfWidth - 0.25 })),
+];
+function canExitLandRide(ride: { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; x: number; y: number; z: number }) {
+  if (ride.kind === 'horseCart' || ride.kind === 'horse') return PhysicsController.isInsideWalkableZones(ride.x, ride.z, LAND_RIDE_PAVED_YARD);
+  const landZones = getGlobalWalkableZones();
+  if (ride.kind === 'egret' && ride.y > 3.1) return false;
+  if (PhysicsController.isInsideWalkableZones(ride.x, ride.z, landZones)) return true;
+  return ride.kind === 'buffalo' && DOCKS.some((dock) => Math.hypot(dock.landX - ride.x, dock.landZ - ride.z) <= 8);
+}
 import './kingdomUi.css';
 import {
   AlertCircle,
@@ -411,6 +427,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   });
   const [mpStatus, setMpStatus] = useState<MultiplayerStatus>(multiplayerConfigured ? 'connecting' : 'off');
   const [onlineOthers, setOnlineOthers] = useState(0);
+  const [remotePlayers, setRemotePlayers] = useState<RemotePlayerState[]>([]);
   const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
   const remoteViewRef = useRef<RemotePlayersView | null>(null);
   // ── 羈絆與任務清單 ──
@@ -502,9 +519,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [boatDock, setBoatDock] = useState<string | null>(null);
   const [boatTick, setBoatTick] = useState(0);
   const [riding, setRiding] = useState<null | { role: 'owner' | 'passenger'; owner?: string }>(null);
+  const [landRiding, setLandRiding] = useState<null | { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; seat: number }>(null);
+  const [landRideHint, setLandRideHint] = useState('');
   const boatingRef = useRef<BoatingService>(new BoatingService());
+  const landRidesRef = useRef<LandRideService>(new LandRideService());
   const queuedDockRef = useRef<string | null>(null);
   const boatRideRef = useRef<null | { role: 'owner' | 'passenger'; slot: number; x: number; z: number; yaw: number; speed: number; dockId: string }>(null);
+  const landRideRef = useRef<null | { group: THREE.Group; kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; seat: number; x: number; y: number; z: number; yaw: number; speed: number }>(null);
+  const mountLandRideRef = useRef<(t: Extract<PickTarget, { kind: 'mount' }>) => void>(() => {});
+  const leaveLandRideRef = useRef<() => void>(() => {});
   const boatQuestPositionRef = useRef<null | { slot: number; x: number; z: number }>(null);
   const boardBoatRef = useRef<((dockId: string, join?: BoatSlot | null) => Promise<void>) | null>(null);
   const leaveBoatRef = useRef<(() => void) | null>(null);
@@ -1050,9 +1073,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     showColliders: false,
     moveSpeedMultiplier: 1.0,
   });
+  const isFastWalkRef = useRef(false);
+  isFastWalkRef.current = (quality.moveSpeedMultiplier || 1.0) > 1.2;
   const [isDevStatsOpen, setIsDevStatsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isDesktopPointerLocked, setIsDesktopPointerLocked] = useState(false);
 
   // Performance metrics for dev panel
   const [devMetrics, setDevMetrics] = useState<DevPerformanceMetrics>({
@@ -1279,6 +1303,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       Math.min(window.devicePixelRatio || 1, fancyRef.current ? 2 : 1.5) * quality.resolutionScale
     );
     renderer.setSize(width, height);
+    renderer.domElement.style.touchAction = 'none';
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
@@ -1431,9 +1456,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         warmStarted = true;
         void warmUp();
       }
-      if (status === 'error') {
-        controls.unlockPointer();
-      }
     };
 
     // 可以點的東西（建築、攤位、懸賞牆）：每座島組好後重新收集
@@ -1441,6 +1463,82 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const tickers: ((t: number) => void)[] = [];
     const hallGroups = new Map<string, THREE.Object3D>();
     const lobbyPits: THREE.Object3D[] = [];
+    // 大熊匠鋪後方的一台雙人馬車；小型低多邊形馬匹與木製車身直接併入既有場景。
+    const makeHorseCart = (id: string, x: number, z: number, yaw: number) => {
+      const cart = new THREE.Group();
+      cart.name = id;
+      const wood = new THREE.MeshStandardMaterial({ color: 0x70452a, roughness: 0.82 });
+      const trim = new THREE.MeshStandardMaterial({ color: 0xc99850, roughness: 0.62, metalness: 0.12 });
+      const horse = new THREE.MeshStandardMaterial({ color: 0x55392b, roughness: 0.9 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x241d19, roughness: 0.9 });
+      const add = (geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rz = 0) => {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(px, py, pz);
+        mesh.rotation.z = rz;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        cart.add(mesh);
+        return mesh;
+      };
+      // 車廂、座板與扶手
+      add(new THREE.BoxGeometry(2.05, 0.72, 1.65), wood, 0, 0.9, 0);
+      add(new THREE.BoxGeometry(2.14, 0.12, 1.74), trim, 0, 1.28, 0);
+      add(new THREE.BoxGeometry(0.16, 0.52, 1.7), wood, -0.91, 1.58, 0);
+      add(new THREE.BoxGeometry(0.13, 0.36, 1.7), trim, -0.91, 1.98, 0);
+      // 車輪（兩側）與車軸
+      add(new THREE.CylinderGeometry(0.56, 0.56, 0.16, 12), dark, 0.1, 0.68, -1.02, Math.PI / 2);
+      add(new THREE.CylinderGeometry(0.56, 0.56, 0.16, 12), dark, 0.1, 0.68, 1.02, Math.PI / 2);
+      add(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8), trim, 0.1, 0.68, 0, Math.PI / 2);
+      // 一匹駕車馬
+      add(new THREE.CapsuleGeometry(0.38, 0.82, 4, 8), horse, 1.45, 1.05, 0, Math.PI / 2);
+      add(new THREE.SphereGeometry(0.28, 8, 6), horse, 2.0, 1.45, 0);
+      add(new THREE.ConeGeometry(0.12, 0.35, 5), dark, 1.94, 1.76, -0.16, -0.2);
+      add(new THREE.ConeGeometry(0.12, 0.35, 5), dark, 1.94, 1.76, 0.16, -0.2);
+      for (const wz of [-0.25, 0.25]) for (const wx of [1.18, 1.72]) add(new THREE.CylinderGeometry(0.07, 0.06, 0.55, 6), dark, wx, 0.38, wz);
+      cart.position.set(x, 0, z);
+      cart.rotation.y = yaw;
+      scene.add(cart);
+      const proxy = makePickProxy(4.8, 2.6, 3.3, x, z, yaw, { kind: 'mount', id, rideType: 'horseCart' }, 0);
+      proxy.name = `${id}-proxy`;
+      scene.add(proxy);
+      return cart;
+    };
+    makeHorseCart('ride-horse-cart-1', 83, -44.4, Math.PI / 2);
+    const makeRideableHorse = (id: string, x: number, z: number) => {
+      const horse = new THREE.Group();
+      horse.name = id;
+      const coat = new THREE.MeshStandardMaterial({ color: 0x805234, roughness: 0.88 });
+      const mane = new THREE.MeshStandardMaterial({ color: 0x30231b, roughness: 0.95 });
+      const saddle = new THREE.MeshStandardMaterial({ color: 0x9c3d27, roughness: 0.85 });
+      const part = (geometry: THREE.BufferGeometry, material: THREE.Material, px: number, py: number, pz: number, rx = 0, rz = 0) => {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(px, py, pz);
+        mesh.rotation.set(rx, 0, rz);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        horse.add(mesh);
+      };
+      part(new THREE.CapsuleGeometry(0.42, 0.98, 5, 8), coat, 0, 1.15, 0, 0, Math.PI / 2);
+      part(new THREE.SphereGeometry(0.29, 8, 6), coat, 0.63, 1.64, 0.02);
+      part(new THREE.ConeGeometry(0.12, 0.33, 5), mane, 0.58, 1.93, -0.17, 0, -0.18);
+      part(new THREE.ConeGeometry(0.12, 0.33, 5), mane, 0.58, 1.93, 0.18, 0, -0.18);
+      part(new THREE.CapsuleGeometry(0.12, 0.36, 3, 6), mane, 0.14, 1.69, 0, Math.PI / 2, -0.1);
+      part(new THREE.BoxGeometry(0.76, 0.12, 0.68), saddle, -0.04, 1.58, 0);
+      for (const [lx, lz] of [[-0.45, -0.25], [-0.45, 0.25], [0.42, -0.25], [0.42, 0.25]]) {
+        part(new THREE.CylinderGeometry(0.075, 0.06, 0.82, 6), coat, lx, 0.45, lz);
+        part(new THREE.CylinderGeometry(0.09, 0.09, 0.14, 6), mane, lx, 0.08, lz);
+      }
+      part(new THREE.CylinderGeometry(0.025, 0.045, 0.68, 5), mane, -0.76, 1.23, 0, 0, -0.75);
+      horse.position.set(x, 0, z);
+      horse.rotation.y = -Math.PI / 2;
+      scene.add(horse);
+      const proxy = makePickProxy(2.1, 2.2, 3.0, x, z, horse.rotation.y, { kind: 'mount', id, rideType: 'horse' }, 0);
+      proxy.name = `${id}-proxy`;
+      scene.add(proxy);
+    };
+    makeRideableHorse('ride-horse-pain-island', -90.5, -48);
+    makeRideableHorse('ride-horse-creative-island', -90.5, 48);
+    makeRideableHorse('ride-horse-career-island', 96, 48);
     const collectPickables = () => {
       pickables.length = 0;
       tickers.length = 0;
@@ -1456,6 +1554,66 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
       });
     };
+    mountLandRideRef.current = async (target) => {
+      if (boatRideRef.current || landRideRef.current || storyRef.current.level !== 0) return;
+      const group = scene.getObjectByName(target.id) as THREE.Group | null;
+      if (!group) return;
+      const capacity = target.rideType === 'horseCart' ? 2 : 1;
+      const seat = await landRidesRef.current.join(target.id, capacity);
+      if (seat === null) {
+        setLandRideHint(target.rideType === 'horseCart' ? '這台馬車已坐滿，試試另一台。' : '這隻已有人騎乘，請找附近另一隻。');
+        window.setTimeout(() => setLandRideHint(''), 2400);
+        return;
+      }
+      const ride = {
+        group,
+        kind: target.rideType,
+        seat,
+        x: group.position.x,
+        y: group.position.y,
+        z: group.position.z,
+        yaw: group.rotation.y,
+        speed: 0,
+      };
+      landRideRef.current = ride;
+      setLandRiding({ kind: ride.kind, seat: ride.seat });
+      if (ride.kind === 'buffalo' || ride.kind === 'egret') triggerEggRef.current(ride.kind);
+      setDrawer(null);
+      controls.yaw = ride.yaw;
+      controls.pitch = -0.08;
+      const eye = ride.kind === 'horseCart' ? 2.55 : ride.kind === 'egret' ? 2.5 : ride.kind === 'horse' ? 2.3 : 2.2;
+      controls.setSpawn(new THREE.Vector3(ride.x, ride.y + eye, ride.z), ride.yaw);
+      controls.updateCameraTransform(0);
+      playSoundEffect('portal');
+    };
+    leaveLandRideRef.current = () => {
+      const ride = landRideRef.current;
+      if (!ride) return;
+      if (!canExitLandRide(ride)) {
+        setLandRideHint(ride.kind === 'egret' ? '請先降落在可步行地面再下來。' : ride.kind === 'horseCart' ? '請把馬車停在鋪面範圍再下車。' : '請靠近渡口或岸邊後再下牛。');
+        window.setTimeout(() => setLandRideHint(''), 2400);
+        return;
+      }
+      landRideRef.current = null;
+      void landRidesRef.current.leave(ride.group.name);
+      setLandRiding(null);
+      let exitX = ride.x - Math.cos(ride.yaw) * 1.8;
+      let exitZ = ride.z + Math.sin(ride.yaw) * 1.8;
+      if (ride.kind === 'buffalo' && !PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones())) {
+        const dock = nearestDock(ride.x, ride.z);
+        exitX = dock.landX;
+        exitZ = dock.landZ;
+      }
+      if (ride.kind === 'egret') {
+        const safe = nearestReachable(ride.x, ride.z);
+        exitX = safe.x;
+        exitZ = safe.z;
+      }
+      controls.setSpawn(new THREE.Vector3(exitX, Math.max(0, ride.y), exitZ), ride.yaw);
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      playSoundEffect('portal');
+    };
     regionManager.onRegionReady = () => {
       refreshPainBoards();
       refreshHallBooths();
@@ -1467,10 +1625,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       collectPickables();
       worldRef.current?.applyEnvIntensity(scene);
     };
-    regionManager.onError = (err) => {
-      setErrorMessage(err);
-      controls.unlockPointer();
-    };
+    regionManager.onError = (err) => setErrorMessage(err);
 
     // Load Initial Region (which also preloads the remaining 4 islands in background)
     regionManager
@@ -1514,12 +1669,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         if (nearBuildingRef.current) {
           playSoundEffect('interact');
           openForBuilding(nearBuildingRef.current);
-          controls.unlockPointer();
         }
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
-    // Q 瞬移：鎖定視角時對準畫面中央；沒鎖定時對準滑鼠位置；最遠 28 公尺、只能落在走得到的地方
+    // Q 瞬移：對準滑鼠目前指向的位置；最遠 28 公尺、只能落在走得到的地方
     let lastPointer: { x: number; y: number } | null = null;
     const onPointerMoveBlink = (e: PointerEvent) => {
       const r = renderer.domElement.getBoundingClientRect();
@@ -1530,7 +1684,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     blinkRef.current = () => {
       const st = storyRef.current;
       if (boatRideRef.current || st.tween || st.level !== 0 || regionManager.status !== 'active') return;
-      const ndc = controls.isLocked || !lastPointer ? new THREE.Vector2(0, 0) : new THREE.Vector2(lastPointer.x, lastPointer.y);
+      const ndc = !lastPointer ? new THREE.Vector2(0, 0) : new THREE.Vector2(lastPointer.x, lastPointer.y);
       blinkRay.setFromCamera(ndc, camera);
       blinkRay.far = 28;
       const hits = blinkRay.intersectObjects(scene.children, true).filter((h) => {
@@ -1575,7 +1729,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       playSoundEffect('portal');
     };
 
-    // 點畫面上的東西 → 左側彈出細節（滑鼠點一下、沒拖曳；鎖定視角時以畫面中央為準）
+    // 點畫面上的東西 → 左側彈出細節（滑鼠點一下、沒拖曳）
     const raycaster = new THREE.Raycaster();
     raycaster.far = 70;
     const ndc = new THREE.Vector2();
@@ -1647,18 +1801,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const t = pickAt(clientX, clientY) || peachAt(clientX, clientY);
       if (!t) return false;
       playSoundEffect('interact');
-      openForTarget(t);
-      controls.unlockPointer();
+      if (t.kind === 'mount') mountLandRideRef.current(t);
+      else openForTarget(t);
       return true;
     };
     tapRef.current = (x, y) => tapAt(x, y);
     let downAt: { x: number; y: number; t: number } | null = null;
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
-      if (controls.isLocked) {
-        tapAt(null, null);
-        return;
-      }
       downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
     };
     const onUp = (e: MouseEvent) => {
@@ -1670,7 +1820,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     };
     let hoverTick = 0;
     const onHover = (e: MouseEvent) => {
-      if (controls.isLocked || e.buttons) return;
+      if (e.buttons) return;
       const now = performance.now();
       if (now - hoverTick < 120) return;
       hoverTick = now;
@@ -1687,6 +1837,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     mp.onStatus = (st) => setMpStatus(st);
     mp.onPlayers = (list) => {
       remoteView.setPlayers(list);
+      setRemotePlayers(list);
       setOnlineOthers(list.length);
     };
     mp.start();
@@ -1730,6 +1881,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         boating.start(mp.database, k, currentUserNameRef.current || mp.displayName, () => mp.serverNow);
       }
     }, 2000);
+    let landRideKey = '';
+    const landRideTimer = window.setInterval(() => {
+      const key = mp.presenceKey;
+      if (key && key !== landRideKey && !landRideRef.current) {
+        landRideKey = key;
+        landRidesRef.current.start(mp.database, key, currentUserNameRef.current || mp.displayName);
+      }
+    }, 2000);
     const bMats = boatMats();
     // 遊湖的船：五艘裡一艘是有屋頂的畫舫，其餘是沒屋頂的小舟（依船位編號決定）
     const makeBoat = () => {
@@ -1753,7 +1912,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const seatTmp = new THREE.Vector3();
     // 全島地圖點任一處：前往最近可以站的地方（在船上就先下船）
     goToPointRef.current = (x, z) => {
+      if (landRideRef.current) {
+        if (!canExitLandRide(landRideRef.current)) return;
+        leaveLandRideRef.current();
+      }
       if (boatRideRef.current) {
+        const ride = boatRideRef.current;
+        if (!DOCKS.some((dock) => Math.hypot(dock.waterX - ride.x, dock.waterZ - ride.z) <= 10)) return;
         boatRideRef.current = null;
         void boating.leave();
         myBoat.visible = false;
@@ -1829,6 +1994,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     leaveBoatRef.current = () => {
       const ride = boatRideRef.current;
       if (!ride) return;
+      if (!DOCKS.some((dock) => Math.hypot(dock.waterX - ride.x, dock.waterZ - ride.z) <= 10)) {
+        setLandRideHint('請先駛近渡口再下船。');
+        window.setTimeout(() => setLandRideHint(''), 2400);
+        return;
+      }
       boatRideRef.current = null;
       void boating.leave();
       myBoat.visible = false;
@@ -2095,11 +2265,92 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       rafIdRef.current = requestAnimationFrame(animate);
 
       const delta = Math.min(clock.getDelta(), 0.08);
-      setIsDesktopPointerLocked(controls.isLocked);
 
       const story = storyRef.current;
       updateBoats(delta);
-      if (boatRideRef.current && regionManager.status === 'active') {
+      for (const [id, shared] of Object.entries(landRidesRef.current.rides)) {
+        if (!Number.isFinite(shared.x) || !Number.isFinite(shared.z)) continue;
+        const occupied = Object.values(shared.riders || {}).some((rider) => Date.now() - (rider?.t || 0) < 45000);
+        if (!occupied) continue;
+        if (landRideRef.current?.group.name === id && landRideRef.current.seat === 0) continue;
+        const vehicle = scene.getObjectByName(id) as THREE.Group | null;
+        if (!vehicle) continue;
+        const smooth = Math.min(1, delta * 6);
+        vehicle.position.x += ((shared.x as number) - vehicle.position.x) * smooth;
+        vehicle.position.y += ((shared.y || 0) - vehicle.position.y) * smooth;
+        vehicle.position.z += ((shared.z as number) - vehicle.position.z) * smooth;
+        if (Number.isFinite(shared.yaw)) {
+          let d = (shared.yaw as number) - vehicle.rotation.y;
+          d = Math.atan2(Math.sin(d), Math.cos(d));
+          vehicle.rotation.y += d * smooth;
+        }
+        const proxy = scene.getObjectByName(`${id}-proxy`);
+        if (proxy) {
+          proxy.position.set(vehicle.position.x, vehicle.position.y + 1.3, vehicle.position.z);
+          proxy.rotation.y = vehicle.rotation.y;
+        }
+      }
+      if (landRideRef.current && regionManager.status === 'active') {
+        const ride = landRideRef.current;
+        const activeSeat = landRidesRef.current.mySeat(ride.group.name);
+        if (activeSeat !== null && activeSeat !== ride.seat) {
+          ride.seat = activeSeat;
+          setLandRiding({ kind: ride.kind, seat: ride.seat });
+        }
+        const shared = landRidesRef.current.rides[ride.group.name];
+        if (ride.seat > 0 && shared && Number.isFinite(shared.x) && Number.isFinite(shared.z)) {
+          ride.x += ((shared.x as number) - ride.x) * Math.min(1, delta * 7);
+          ride.y += ((shared.y || 0) - ride.y) * Math.min(1, delta * 7);
+          ride.z += ((shared.z as number) - ride.z) * Math.min(1, delta * 7);
+          const nextYaw = Number.isFinite(shared.yaw) ? (shared.yaw as number) : ride.yaw;
+          let yawDelta = nextYaw - ride.yaw;
+          yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
+          ride.yaw += yawDelta * Math.min(1, delta * 7);
+        }
+        const desired = controls.getDesiredVelocity();
+        const requested = Math.hypot(desired.x, desired.z);
+        const maxSpeed = ride.kind === 'buffalo' ? 2.0 : ride.kind === 'egret' ? 4.2 : ride.kind === 'horse' && isFastWalkRef.current ? 8.5 : 3.3;
+        const speed = ride.seat === 0 && requested > 0.05 ? (ride.kind === 'egret' || ride.kind === 'buffalo' || ride.kind === 'horseCart' ? maxSpeed : Math.min(maxSpeed, requested)) : 0;
+        if (ride.seat === 0 && requested > 0.05) ride.yaw = Math.atan2(desired.x, desired.z);
+        const nx = ride.x + (requested > 0.05 ? desired.x / requested * speed * delta : 0);
+        const nz = ride.z + (requested > 0.05 ? desired.z / requested * speed * delta : 0);
+        if (ride.seat === 0 && ride.kind === 'horseCart') {
+          // 馬車只在匠鋪後方的石板停車場與短巷活動，不跨上草坡、田地或水面。
+          if (PhysicsController.isInsideWalkableZones(nx, nz, LAND_RIDE_PAVED_YARD)) {
+            ride.x = nx;
+            ride.z = nz;
+          }
+        } else if (ride.seat === 0 && ride.kind === 'horse') {
+          if (PhysicsController.isInsideWalkableZones(nx, nz, LAND_RIDE_PAVED_YARD)) {
+            ride.x = nx;
+            ride.z = nz;
+            ride.y = 0.5;
+          }
+        } else if (ride.seat === 0) {
+          ride.x = THREE.MathUtils.clamp(nx, -155, 155);
+          ride.z = THREE.MathUtils.clamp(nz, -155, 155);
+          const onLand = PhysicsController.isInsideWalkableZones(ride.x, ride.z, globalWalkableZones);
+          const targetY = ride.kind === 'egret' ? (isFastWalkRef.current ? 8.5 : 2.5) : onLand ? 0.5 : -0.25;
+          ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 2.5), ride.kind === 'egret' ? 1.5 : -1, ride.kind === 'egret' ? 9 : 3);
+        }
+        ride.group.position.set(ride.x, ride.y, ride.z);
+        ride.group.rotation.y = ride.yaw;
+        landRidesRef.current.push(ride.group.name, ride.seat, ride.x, ride.y, ride.z, ride.yaw);
+        const proxy = scene.getObjectByName(`${ride.group.name}-proxy`);
+        if (proxy) {
+          proxy.position.set(ride.x, ride.y + 1.3, ride.z);
+          proxy.rotation.y = ride.yaw;
+        }
+        const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.25 : 0.32) : 0;
+        controls.position.set(ride.x - Math.sin(ride.yaw) * seatOffset, ride.y + (ride.kind === 'horseCart' ? 2.55 : ride.kind === 'egret' ? 2.5 : ride.kind === 'horse' ? 2.3 : 2.2), ride.z - Math.cos(ride.yaw) * seatOffset);
+        controls.yaw = ride.yaw;
+        controls.updateCameraTransform(delta);
+        const spatial = detectPlayerSpatialContext(ride.x, ride.z);
+        regionManager.syncActiveRegionByPosition(spatial.regionId);
+        setActiveRegionId(spatial.regionId);
+        nearBuildingRef.current = null;
+        setNearBuilding(null);
+      } else if (boatRideRef.current && regionManager.status === 'active') {
         // 乘船中：位置由船決定（上面 updateBoats 已經處理）
         const spatial = detectPlayerSpatialContext(controls.position.x, controls.position.z);
         regionManager.syncActiveRegionByPosition(spatial.regionId);
@@ -2689,6 +2940,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       weatherAlive = false;
       window.clearInterval(boatingTimer);
       boating.stop();
+      window.clearInterval(landRideTimer);
+      landRidesRef.current.stop();
       window.clearInterval(bondTimer);
       bonds.stop();
       remoteViewRef.current = null;
@@ -2811,7 +3064,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Trigger real RegionManager load failure (loading -> error)
   const handleSimulateError = () => {
     if (!regionManagerRef.current || !controlsRef.current) return;
-    controlsRef.current.unlockPointer();
     safePlayerPoseRef.current = {
       pos: controlsRef.current.position.clone(),
       yaw: controlsRef.current.yaw,
@@ -2980,7 +3232,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           if (nearBuilding) {
             playSoundEffect('interact');
             openForBuilding(nearBuilding);
-            controlsRef.current?.unlockPointer();
           }
         }}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -3009,11 +3260,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         bgmMuted={bgmMuted}
         onToggleBgm={toggleBgm}
         multiplayer={{ status: mpStatus, others: onlineOthers }}
-        isDesktopPointerLocked={isDesktopPointerLocked}
+        bondedPartner={(() => {
+          const partnerKey = bondsRef.current.state.partner?.key;
+          const partner = partnerKey
+            ? remotePlayers.find((player) => player.id.startsWith(`${partnerKey}/`))
+            : undefined;
+          return partner ? { name: bondsRef.current.state.partner?.name || partner.name, x: partner.x, z: partner.z } : null;
+        })()}
         isOnBoat={Boolean(riding)}
-        onDesktopRequestLock={() => {
-          controlsRef.current?.lockPointer();
-        }}
         isFancy={Boolean(quality.fancy)}
         onToggleFancy={() => {
           const next = !quality.fancy;
@@ -3031,12 +3285,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onGoToPoint={(x, z) => goToPointRef.current?.(x, z)}
         extraControls={
           <div className="flex flex-col items-end gap-1.5">
-            <KingdomEggButton count={eggList.length} onOpen={() => { setEggBookOpen(true); controlsRef.current?.unlockPointer?.(); }} flash={Boolean(eggToast?.added)} />
+            <KingdomEggButton count={eggList.length} onOpen={() => setEggBookOpen(true)} flash={Boolean(eggToast?.added)} />
             <KingdomQuestButton
               open={questOpen}
               onToggle={() => {
                 setQuestOpen((o) => !o);
-                controlsRef.current?.unlockPointer?.();
               }}
               alert={bondsRef.current.state.incoming.length > 0}
               doneCount={Object.keys(quests.done).length + (eggList.length >= 35 ? 1 : 0)}
@@ -3058,11 +3311,30 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         darkHint={darkHint}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {
+          if (landRideRef.current?.kind === 'buffalo' || landRideRef.current?.kind === 'horseCart') return;
           handleChangeQuality({
             moveSpeedMultiplier: isFastWalk ? 1.0 : 8.5 / 3.3,
           });
         }}
+        landRideMode={landRiding?.kind || null}
       />
+      {landRiding && (
+        <div data-ui-panel="true" className="kx-root absolute left-1/2 -translate-x-1/2 top-16 sm:top-5 z-30 pointer-events-auto">
+          <div className="kx-panel flex items-center gap-2 px-3 py-1.5 rounded-full text-[12.5px]">
+            <span>{landRiding.kind === 'buffalo' ? '騎牛・單人慢速' : landRiding.kind === 'horseCart' ? '驅車・雙人座・定速' : landRiding.kind === 'horse' ? (isFastWalk ? '策馬・快速' : '騎馬・慢速') : isFastWalk ? '駕鶴飛行中・高度上限 9m' : '駕鶴・固定速度'}</span>
+            {landRiding.kind === 'horseCart' && <span className="kx-sub">僅限人工鋪面</span>}
+            {landRiding.kind === 'egret' && <span className="kx-sub">{isFastWalk ? '降落' : '疾走鍵起飛'}</span>}
+            <button type="button" onClick={() => leaveLandRideRef.current()} className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer">
+              下來
+            </button>
+          </div>
+        </div>
+      )}
+      {landRideHint && (
+        <div data-ui-panel="true" className="kx-root absolute left-1/2 -translate-x-1/2 top-28 sm:top-16 z-40 pointer-events-none">
+          <div className="kx-panel px-4 py-2 rounded-full text-[13px]">{landRideHint}</div>
+        </div>
+      )}
       <KingdomEggToast toast={eggToast} />
       <KingdomQuestPanel
         open={questOpen}
@@ -3092,6 +3364,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         tick={boatTick}
         dockId={boatDock}
         riding={riding}
+        canLeaveBoat={Boolean(boatRideRef.current && DOCKS.some((dock) => Math.hypot(dock.waterX - boatRideRef.current!.x, dock.waterZ - boatRideRef.current!.z) <= 10))}
         service={boatingRef.current}
         onClose={() => setBoatDock(null)}
         onBoard={(dockId, join) => void boardBoatRef.current?.(dockId, join)}
@@ -3106,7 +3379,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onLeaveBoat={() => leaveBoatRef.current?.()}
       />
 
-      {!riding && !boatDock && nearDock && regionStatus === 'active' && floorLevel === 0 && (
+      {!riding && !landRiding && !boatDock && nearDock && regionStatus === 'active' && floorLevel === 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-28 z-30 flex justify-center px-4 sm:bottom-8">
           <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-amber-200/30 bg-[#21160f]/90 py-2 pl-4 pr-2 shadow-[0_8px_32px_rgba(0,0,0,.38)] backdrop-blur-md">
             <span className="kx-sub max-w-[42vw] truncate text-[12px] sm:text-[13px]">抵達{nearDock.name}</span>
@@ -3115,7 +3388,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               onClick={() => {
                 playSoundEffect('interact');
                 setBoatDock(nearDock.id);
-                controlsRef.current?.unlockPointer();
               }}
               className="kx-btn-primary flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold shadow-sm"
             >
@@ -3192,7 +3464,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               <div>
                 <p className="kx-title text-[14px] mb-1">電腦</p>
                 <p className="kx-sub">WASD／方向鍵移動，Shift 疾走</p>
-                <p className="kx-sub">點畫面鎖定滑鼠環顧，E 進入建築</p>
+                <p className="kx-sub">按住左鍵拖曳環顧，滾輪縮放，E 進入建築</p>
+                <p className="kx-sub">手機以單指轉動視角、雙指捏合縮放</p>
               </div>
               <div>
                 <p className="kx-title text-[14px] mb-1">手機、平板</p>

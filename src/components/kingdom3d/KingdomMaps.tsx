@@ -221,18 +221,36 @@ function PlayerArrow({ x, y, yawRad, size = 6 }: { x: number; y: number; yawRad:
   );
 }
 
+/** 羈絆夥伴在地圖上的位置標記 */
+function BondPartnerMarker({ x, y, name, size, showName = false }: { x: number; y: number; name: string; size: number; showName?: boolean }) {
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ pointerEvents: 'none' }}>
+      <circle r={size * 1.65} fill="rgba(236,72,153,0.24)" />
+      <circle r={size} fill="#db2777" stroke="#fff6dc" strokeWidth={size * 0.22} />
+      <text y={size * 0.37} textAnchor="middle" fontSize={size * 1.05} fill="#fff6dc" fontWeight={900}>♥</text>
+      {showName && (
+        <text y={size * 2.7} textAnchor="middle" fontSize={5} fill="#831843" fontWeight={900} className="kx-serif" stroke="rgba(255,248,230,0.95)" strokeWidth={1.4} style={{ paintOrder: 'stroke' }}>
+          {name}
+        </text>
+      )}
+    </g>
+  );
+}
+
 /** 右上角的圓形小地圖：以玩家為中心、面向方向朝上（像羅盤） */
 export function CompassMinimap({
   playerPos,
   yawRad,
   activeRegionId,
   size,
+  bondedPartner,
   onOpen,
 }: {
   playerPos: { x: number; z: number };
   yawRad: number;
   activeRegionId: RegionId;
   size: number;
+  bondedPartner?: { name: string; x: number; z: number } | null;
   onOpen: () => void;
 }) {
   const R = 46; // 半徑（世界公尺）
@@ -264,6 +282,7 @@ export function CompassMinimap({
           <circle r={R} fill="url(#kx-sea)" />
           <g transform={`rotate(${yawDeg}) translate(${-playerPos.x} ${-playerPos.z})`}>
             <WorldMapContent activeRegionId={activeRegionId} detail="mini" iconRot={-yawDeg} />
+            {bondedPartner && <BondPartnerMarker x={bondedPartner.x} y={bondedPartner.z} name={bondedPartner.name} size={3.8} />}
           </g>
         </g>
         {/* 外圈刻度與方位 */}
@@ -293,6 +312,7 @@ export function WorldMapModal({
   activeRegionId,
   playerPos,
   yawRad,
+  bondedPartner,
   onSelectRegion,
   onGoToPoint,
 }: {
@@ -301,6 +321,7 @@ export function WorldMapModal({
   activeRegionId: RegionId;
   playerPos: { x: number; z: number };
   yawRad: number;
+  bondedPartner?: { name: string; x: number; z: number } | null;
   onSelectRegion: (id: RegionId) => void;
   /** 點地圖任一處：前往最近可以去的地方（世界座標） */
   onGoToPoint?: (x: number, z: number) => void;
@@ -336,7 +357,7 @@ export function WorldMapModal({
               創點源・五島全圖
             </h3>
             <p className="text-[12.5px]" style={{ color: '#6b5236' }}>
-              點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你現在的位置與面向；藍色船章是乘船點，點它直接走到渡口
+              點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你的位置與面向；{bondedPartner ? '粉色心形是羈絆夥伴的位置；' : ''}藍色船章是乘船點
             </p>
           </div>
           <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
@@ -364,6 +385,7 @@ export function WorldMapModal({
             }}
           />
           <PlayerArrow x={playerPos.x} y={playerPos.z} yawRad={yawRad} size={4.5} />
+          {bondedPartner && <BondPartnerMarker x={bondedPartner.x} y={bondedPartner.z} name={bondedPartner.name} size={4.5} showName />}
           {/* 羅盤 */}
           <g transform="translate(195 175)" className="kx-serif">
             <circle r={15} fill="rgba(255,248,230,0.7)" stroke={INK} strokeWidth={0.8} />

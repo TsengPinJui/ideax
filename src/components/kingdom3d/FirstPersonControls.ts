@@ -34,7 +34,6 @@ export class FirstPersonControls {
   public static readonly WALK_SPEED = 3.3; // meters/sec
   public static readonly RUN_SPEED = 8.5; // meters/sec
   public static readonly SPRINT_MULTIPLIER = 8.5 / 3.3;
-  public static readonly MOUSE_SENSITIVITY = 0.0022;
 
   // Desktop keyboard & mouse
   private keys: ControlsInputState = {
@@ -45,12 +44,10 @@ export class FirstPersonControls {
     sprint: false,
   };
 
-  public isLocked: boolean = false;
   private isMouseDragging: boolean = false;
   private lastMouseX: number = 0;
   private lastMouseY: number = 0;
 
-  private pointerLockChangeHandler: () => void;
   private mouseDownHandler: (e: MouseEvent) => void;
   private mouseMoveHandler: (e: MouseEvent) => void;
   private mouseUpHandler: () => void;
@@ -97,13 +94,9 @@ export class FirstPersonControls {
     this.touchElement = domElement.parentElement || domElement;
     this.settings = settings;
 
-    // Desktop bindings (supports both PointerLock and Click-and-Drag look)
-    this.pointerLockChangeHandler = () => {
-      this.isLocked = document.pointerLockElement === this.domElement;
-    };
-
+    // Desktop look is controlled by dragging; the camera never captures the pointer.
     this.mouseDownHandler = (e: MouseEvent) => {
-      if (e.button === 0 && !this.isLocked) {
+      if (e.button === 0) {
         this.isMouseDragging = true;
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
@@ -112,11 +105,7 @@ export class FirstPersonControls {
 
     this.mouseMoveHandler = (e: MouseEvent) => {
       const sens = this.settings.sensitivity || 1.0;
-      if (this.isLocked) {
-        this.yaw -= e.movementX * FirstPersonControls.MOUSE_SENSITIVITY * sens;
-        this.pitch -= e.movementY * FirstPersonControls.MOUSE_SENSITIVITY * sens;
-        this.clampPitch();
-      } else if (this.isMouseDragging) {
+      if (this.isMouseDragging) {
         const dx = e.clientX - this.lastMouseX;
         const dy = e.clientY - this.lastMouseY;
         this.lastMouseX = e.clientX;
@@ -208,7 +197,6 @@ export class FirstPersonControls {
       }
     };
 
-    document.addEventListener('pointerlockchange', this.pointerLockChangeHandler);
     this.domElement.addEventListener('mousedown', this.mouseDownHandler);
     document.addEventListener('mousemove', this.mouseMoveHandler);
     window.addEventListener('mouseup', this.mouseUpHandler);
@@ -219,22 +207,6 @@ export class FirstPersonControls {
     this.touchElement.addEventListener('touchmove', this.touchMoveHandler, { passive: false, capture: true });
     this.touchElement.addEventListener('touchend', this.touchEndHandler, { capture: true });
     this.touchElement.addEventListener('touchcancel', this.touchEndHandler, { capture: true });
-  }
-
-  public lockPointer() {
-    try {
-      this.domElement.requestPointerLock();
-    } catch {
-      // Browser pointer lock policy
-    }
-  }
-
-  public unlockPointer() {
-    try {
-      if (document.exitPointerLock) {
-        document.exitPointerLock();
-      }
-    } catch {}
   }
 
   public setSpawn(pos: THREE.Vector3, yaw: number) {
@@ -336,7 +308,6 @@ export class FirstPersonControls {
   }
 
   public dispose() {
-    document.removeEventListener('pointerlockchange', this.pointerLockChangeHandler);
     this.domElement.removeEventListener('mousedown', this.mouseDownHandler);
     document.removeEventListener('mousemove', this.mouseMoveHandler);
     window.removeEventListener('mouseup', this.mouseUpHandler);
@@ -347,6 +318,5 @@ export class FirstPersonControls {
     this.touchElement.removeEventListener('touchmove', this.touchMoveHandler, true);
     this.touchElement.removeEventListener('touchend', this.touchEndHandler, true);
     this.touchElement.removeEventListener('touchcancel', this.touchEndHandler, true);
-    this.unlockPointer();
   }
 }

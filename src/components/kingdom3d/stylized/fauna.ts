@@ -404,10 +404,14 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     for (let i = 0; i < 5; i++) {
       const g = buffalo(m);
       const [x, z] = spotOn(i * 3);
+      g.name = `ride-buffalo-${i}`;
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       statics.add(g);
-      root.add(makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'egg', egg: 'buffalo', maxDist: 40 }, 0.5));
+      const proxy = makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' }, 0.5);
+      proxy.name = `${g.name}-proxy`;
+      g.userData.rideProxy = proxy;
+      root.add(proxy);
       const head = g.userData.head as THREE.Object3D;
       if (head instanceof THREE.Group) mergeByMaterial(head);
       keepApart(head);
@@ -448,10 +452,14 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     for (let i = 0; i < 8; i++) {
       const g = egret(m);
       const [x, z] = spotOn(i * 2 + 1);
+      g.name = `ride-egret-${i}`;
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       statics.add(g);
-      root.add(makePickProxy(0.9, 1.3, 0.9, x, z, 0, { kind: 'egg', egg: 'egret', maxDist: 45 }, 0.5));
+      const proxy = makePickProxy(1.2, 1.6, 1.2, x, z, 0, { kind: 'mount', id: g.name, rideType: 'egret' }, 0.5);
+      proxy.name = `${g.name}-proxy`;
+      g.userData.rideProxy = proxy;
+      root.add(proxy);
     }
     // 戴斗笠鋤地的農夫
     for (let i = 0; i < 6; i++) {
@@ -499,11 +507,14 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       const [x, z, tan] = sp;
       if (kind === 'buffalo') {
         const g = buffalo(m);
-        g.name = 'rim-buffalo';
+        g.name = `ride-rim-buffalo-${ii}`;
         g.position.set(x, -0.04, z);
         g.rotation.y = tan + (rand() - 0.5) * 0.6;
         statics.add(g);
-        root.add(makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'egg', egg: 'buffalo', maxDist: 40 }));
+        const proxy = makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
+        proxy.name = `${g.name}-proxy`;
+        g.userData.rideProxy = proxy;
+        root.add(proxy);
         colliders.push({ id: `fauna-buffalo-${ii}`, type: 'cylinder', x, z, radius: 0.9 });
         const head = g.userData.head as THREE.Object3D;
         if (head instanceof THREE.Group) mergeByMaterial(head);

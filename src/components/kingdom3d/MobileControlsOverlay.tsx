@@ -51,10 +51,9 @@ interface MobileControlsOverlayProps {
   onJoystickMove: (vecX: number, vecY: number) => void;
   onJoystickEnd: () => void;
   onTouchLookDelta: (dx: number, dy: number) => void;
-  isDesktopPointerLocked: boolean;
-  onDesktopRequestLock: () => void;
   isFastWalk: boolean;
   isOnBoat?: boolean;
+  landRideMode?: 'buffalo' | 'horseCart' | 'horse' | 'egret' | null;
   onToggleFastWalk: () => void;
   /** 小燈泡照明（按 F 或點按鍵呼喚，拿在手上照亮四周） */
   bulbOn?: boolean;
@@ -77,6 +76,7 @@ interface MobileControlsOverlayProps {
   bgmMuted?: boolean;
   onToggleBgm?: () => void;
   multiplayer?: { status: 'off' | 'guest' | 'connecting' | 'online' | 'error'; others: number };
+  bondedPartner?: { name: string; x: number; z: number } | null;
   /** 全島地圖：點任一處前往最近可以去的地方 */
   onGoToPoint?: (x: number, z: number) => void;
   /** 小地圖下方的時間與天氣（選時段、天氣或自動） */
@@ -156,10 +156,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onJoystickMove,
   onJoystickEnd,
   onTouchLookDelta,
-  isDesktopPointerLocked,
-  onDesktopRequestLock,
   isFastWalk,
   isOnBoat = false,
+  landRideMode = null,
   onToggleFastWalk,
   bulbOn,
   onToggleBulb,
@@ -179,6 +178,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   extraControls,
   onGoToPoint,
   multiplayer,
+  bondedPartner,
 }) => {
   // 視窗尺寸與直橫式偵測（確保手機直式、橫式按鍵都不跑出畫面）
   const [viewport, setViewport] = useState(() => ({
@@ -342,6 +342,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
 
   // 全畫面觸控轉頭與點選（解決直式無法轉頭，支援在畫面任意空白處滑動轉視角、與左下搖桿多點觸控同步操作）
   useEffect(() => {
+    let isPinching = false;
     const isInteractiveUiTarget = (el: EventTarget | null): boolean => {
       if (!(el instanceof Element)) return false;
       return Boolean(
@@ -352,6 +353,13 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
 
     const onWindowTouchStart = (e: TouchEvent) => {
+      if (e.touches.length >= 2) {
+        isPinching = true;
+        lookTouchIdRef.current = null;
+        lookTapRef.current = null;
+        return;
+      }
+      if (isPinching) return;
       if (lookTouchIdRef.current !== null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -365,6 +373,14 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
 
     const onWindowTouchMove = (e: TouchEvent) => {
+      if (e.touches.length >= 2) {
+        isPinching = true;
+        lookTouchIdRef.current = null;
+        lookTapRef.current = null;
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+      if (isPinching) return;
       if (lookTouchIdRef.current === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -383,6 +399,12 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
 
     const onWindowTouchEnd = (e: TouchEvent) => {
+      if (isPinching) {
+        if (e.touches.length < 2) isPinching = false;
+        lookTouchIdRef.current = null;
+        lookTapRef.current = null;
+        return;
+      }
       if (lookTouchIdRef.current === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -748,8 +770,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                 {bgmMuted ? <VolumeX className="w-4 h-4 text-amber-200" /> : <Volume2 className="w-4 h-4 text-amber-200" />} 古風背景樂：{bgmMuted ? '關' : '開'}
               </button>
             )}
-            <button type="button" className="kx-menu-item" onClick={onToggleFastWalk}>
-              <Footprints className="w-4 h-4 text-amber-200" /> {isOnBoat
+            <button type="button" className="kx-menu-item" onClick={onToggleFastWalk} disabled={landRideMode === 'buffalo' || landRideMode === 'horseCart'}>
+              <Footprints className="w-4 h-4 text-amber-200" /> {landRideMode === 'buffalo' ? '騎牛（固定慢速）' : landRideMode === 'horseCart' ? '驅車（定速）' : landRideMode === 'horse' ? (isFastWalk ? '策馬（快速）' : '騎馬（慢速）') : landRideMode === 'egret' ? (isFastWalk ? '駕鶴飛行中（按一下降落）' : '駕鶴（按一下起飛）') : isOnBoat
                 ? (isFastWalk ? '疾駛中（點一下恢復遊船速度）' : '遊船（點一下改疾駛）')
                 : (isFastWalk ? '疾走中（點一下恢復常速）' : '常速（點一下改疾走）')}
             </button>
@@ -786,6 +808,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             yawRad={yawRad}
             activeRegionId={activeRegionId}
             size={minimapSize}
+            bondedPartner={bondedPartner}
             onOpen={() => setMapOpen(true)}
           />
           {env && (
@@ -902,20 +925,21 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{bulbOn ? '收起' : '照明(F)'}</span>
             </button>
           )}
-          {/* 下排：步行時切換疾走，乘船時切換疾駛 */}
+          {/* 下排：步行疾走、遊船疾駛，或依目前騎乘工具顯示專屬操作 */}
           <button
             type="button"
             onClick={onToggleFastWalk}
-            data-on={isFastWalk || shiftHeld}
+            data-on={landRideMode === 'buffalo' || landRideMode === 'horseCart' ? true : landRideMode === 'egret' ? isFastWalk : isFastWalk || shiftHeld}
             className="kx-round w-20 h-20 sm:w-24 sm:h-24 flex-col gap-0.5 shadow-lg"
-            title={isOnBoat
+            title={landRideMode === 'buffalo' ? '騎牛（固定慢速）' : landRideMode === 'horseCart' ? '驅車（定速）' : landRideMode === 'horse' ? (isFastWalk ? '策馬（快速，點一下慢行）' : '騎馬（慢速，點一下策馬）') : landRideMode === 'egret' ? (isFastWalk ? '駕鶴中（點一下降落）' : '駕鶴（點一下起飛）') : isOnBoat
               ? (isFastWalk ? '疾駛中（點一下恢復遊船速度，或按住 Shift）' : '遊船（點一下疾駛，或按住 Shift）')
               : (isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）')}
-            aria-label={isOnBoat ? '遊船／疾駛' : '疾走'}
+            aria-label={landRideMode === 'buffalo' ? '騎牛' : landRideMode === 'horseCart' ? '驅車定速' : landRideMode === 'horse' ? '騎馬慢速／策馬快速' : landRideMode === 'egret' ? '駕鶴' : isOnBoat ? '遊船／疾駛' : '疾走'}
+            disabled={landRideMode === 'buffalo' || landRideMode === 'horseCart'}
           >
             <Footprints className="w-9 h-9 sm:w-11 sm:h-11" />
             <span className="text-[11px] sm:text-xs font-bold tracking-wider leading-none">
-              {isOnBoat
+              {landRideMode === 'buffalo' ? '騎牛' : landRideMode === 'horseCart' ? '驅車' : landRideMode === 'horse' ? (isFastWalk ? '策馬' : '騎馬') : landRideMode === 'egret' ? (isFastWalk ? '降落' : '駕鶴') : isOnBoat
                 ? (isFastWalk || shiftHeld ? '疾駛中' : '遊船')
                 : (isFastWalk || shiftHeld ? '疾走中' : '疾走')}
             </span>
@@ -938,13 +962,11 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       )}
 
       {/* 電腦版提示 */}
-      {!isDesktopPointerLocked && (
-        <div data-ui-panel="true" className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-auto">
-          <button type="button" onClick={onDesktopRequestLock} className="kx-panel px-4 py-1.5 text-[12.5px] cursor-pointer whitespace-nowrap">
-            點建築、攤位看介紹・點這裡鎖定視角・WASD 移動・E 互動・Q 瞬移・C 坐下・F 照明
-          </button>
+      <div data-ui-panel="true" className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-none">
+        <div className="kx-panel px-4 py-1.5 text-[12.5px] whitespace-nowrap">
+          拖曳畫面環顧・滾輪縮放・WASD 移動・E 互動・Q 瞬移・C 坐下・F 照明
         </div>
-      )}
+      </div>
 
       {/* 古風漆木描金風格：App 下載與安裝教學彈窗（當瀏覽器無法直接呼出原生安裝時跳出） */}
       {appGuideOpen && (
@@ -1108,6 +1130,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         activeRegionId={activeRegionId}
         playerPos={{ x: playerPos.x, z: playerPos.z }}
         yawRad={yawRad}
+        bondedPartner={bondedPartner}
         onSelectRegion={onSelectRegion}
         onGoToPoint={onGoToPoint}
       />

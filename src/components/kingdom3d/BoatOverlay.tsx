@@ -14,6 +14,7 @@ export const BoatOverlay: React.FC<{
   tick: number;
   dockId: string | null;
   riding: null | { role: 'owner' | 'passenger'; owner?: string };
+  canLeaveBoat?: boolean;
   service: BoatingService;
   onClose: () => void;
   onBoard: (dockId: string, join?: BoatSlot | null) => void;
@@ -22,7 +23,7 @@ export const BoatOverlay: React.FC<{
   onLater: (timedOut: boolean) => void;
   onLeaveQueue: () => void;
   onLeaveBoat: () => void;
-}> = ({ tick, dockId, riding, service, onClose, onBoard, onQueue, onAcceptOffer, onLater, onLeaveQueue, onLeaveBoat }) => {
+}> = ({ tick, dockId, riding, canLeaveBoat = true, service, onClose, onBoard, onQueue, onAcceptOffer, onLater, onLeaveQueue, onLeaveBoat }) => {
   void tick;
   const [offerLeft, setOfferLeft] = useState<number | null>(null);
   const offerTimer = useRef<number | null>(null);
@@ -150,8 +151,8 @@ export const BoatOverlay: React.FC<{
           <div className="kx-panel flex items-center gap-2 px-3 py-1.5 rounded-full text-[12.5px]">
             <Sailboat className="w-4 h-4 text-amber-300" />
             <span>{riding.role === 'owner' ? '遊湖中・WASD／搖桿划船' : `搭「${riding.owner || '船主'}」的船遊湖`}</span>
-            <button type="button" onClick={onLeaveBoat} className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer">
-              下船
+            <button type="button" onClick={onLeaveBoat} disabled={!canLeaveBoat} title={canLeaveBoat ? '在渡口下船' : '請先駛近渡口再下船'} className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              {canLeaveBoat ? '下船' : '駛近渡口'}
             </button>
           </div>
         </div>
