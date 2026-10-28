@@ -41,6 +41,20 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#229',
+    version: 'v4.1.15',
+    releaseDate: '2026.10.28',
+    releaseTime: '13:30',
+    author: 'System Architect',
+    summary: '3D 實境漫遊加強沉浸感：環境音（鳥鳴、蟲鳴蛙鳴、水波、風、雨）、角色走近會說話、螢火蟲、蝴蝶、農舍炊煙',
+    changes: [
+      '新增環境音（即時合成，不用下載）：白天與黃昏有鳥鳴；夜裡有蟲鳴，靠近水邊還有蛙鳴；水邊聽得到水波聲（越近越清楚）；登塔、上山風聲變大；下雨時有細雨聲。進到樓裡或地下展廳時環境音會變小，和背景音樂共用同一個聲音開關。',
+      '走近白喵、頂多慧、007、大熊時，頭上會浮出對話泡泡；頂多慧會轉頭看向走近的旅人。',
+      '夜晚天氣好時，河岸草地、水邊與徵才島綠塘有螢火蟲一閃一閃；白天與黃昏有蝴蝶在花草間飛。',
+      '島外田園的部分農舍加上灶間煙囪，白天淡淡、黃昏濃一點地飄出炊煙；田裡的動物也會避開農舍。',
+    ],
+  },
+  {
     seqNumber: '#228',
     version: 'v4.1.14',
     releaseDate: '2026.10.28',

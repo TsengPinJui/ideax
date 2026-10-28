@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Collider } from '../types';
-import { FARMLANDS } from './basinLayout';
+import { FARMLANDS, farmHouseLayout, FarmHouse } from './basinLayout';
 import { seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { mergeByMaterial } from './architecture';
@@ -14,7 +14,75 @@ import { mergeByMaterial } from './architecture';
  */
 
 /** 由環境（時段、天氣）寫入：晴朗白天才有雁群；夜裡或下雨時農夫收工回家、雞進雞舍 */
-export const faunaEnv: { tod: string; weather: string } = { tod: 'dusk', weather: 'clear' };
+export const faunaEnv: { tod: string; weather: string; camX: number; camY: number; camZ: number } = { tod: 'dusk', weather: 'clear', camX: 0, camY: 1.6, camZ: 0 };
+
+const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","Noto Serif TC",serif';
+
+/** 角色頭上的對話泡泡（走近才浮現） */
+function speechBubble(name: string, line: string) {
+  const c = document.createElement('canvas');
+  c.width = 640;
+  c.height = 200;
+  const g = c.getContext('2d')!;
+  const text = line.replace(/^「|」$/g, '');
+  // 斷成最多兩行
+  const per = Math.ceil(text.length / Math.ceil(text.length / 15));
+  const lines = [text.slice(0, per), text.slice(per)].filter(Boolean);
+  const rr = (x: number, y: number, w: number, h: number, r: number) => {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  };
+  const h = lines.length > 1 ? 160 : 112;
+  g.fillStyle = 'rgba(253,246,227,0.96)';
+  g.strokeStyle = '#8b5a2b';
+  g.lineWidth = 6;
+  rr(6, 6, 628, h, 26);
+  g.fill();
+  g.stroke();
+  // 小尾巴
+  g.beginPath();
+  g.moveTo(300, h + 4);
+  g.lineTo(320, h + 34);
+  g.lineTo(340, h + 4);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  g.moveTo(300, h + 6);
+  g.lineTo(320, h + 34);
+  g.lineTo(340, h + 6);
+  g.stroke();
+  g.fillStyle = '#b3261e';
+  g.font = `900 30px ${KAI}`;
+  g.textBaseline = 'top';
+  g.fillText(name, 28, 18);
+  g.fillStyle = '#3b2314';
+  g.font = `700 40px ${KAI}`;
+  lines.forEach((l, i) => g.fillText(l, 28, 56 + i * 48));
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
+  sp.scale.set(3.2, 1.0, 1);
+  sp.center.set(0.5, 0);
+  sp.visible = false;
+  sp.renderOrder = 10;
+  return sp;
+}
+
+/** 走近角色：泡泡淡入；離開淡出 */
+function bubbleTick(sp: THREE.Sprite, x: number, y: number, z: number, near = 6.5) {
+  const d = Math.hypot(faunaEnv.camX - x, faunaEnv.camZ - z, (faunaEnv.camY - y) * 0.6);
+  const target = d < near ? 1 : d > near + 3 ? 0 : 1 - (d - near) / 3;
+  const m = sp.material as THREE.SpriteMaterial;
+  m.opacity += (target - m.opacity) * 0.12;
+  sp.visible = m.opacity > 0.02;
+  sp.position.set(x, y, z);
+  return d;
+}
 
 export type CharacterId = 'baimiao' | 'duohui' | 'agent007' | 'bear';
 
@@ -341,19 +409,24 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   const near = (x: number, z: number) => Math.min(...ISLANDS.map(([a, b]) => Math.hypot(x - a, z - b)));
   // 先放在島與島之間、離岸近的田（從島邊看得到），遠的大片田也撒一些
   const lands = FARMLANDS.filter((l) => l.rx >= 10 && l.rz >= 6).sort((a, b) => near(a.cx, a.cz) - near(b.cx, b.cz));
+  // 農舍位置（和環境建模同一套亂數）：動物不站進屋裡
+  const housesOf = new Map<(typeof FARMLANDS)[number], FarmHouse[]>();
+  FARMLANDS.forEach((l, li) => housesOf.set(l, farmHouseLayout(l, seeded(Math.round(l.seed * 100)), li)));
   const spotOn = (li: number) => {
     const l = lands[(li * 7) % lands.length];
+    const hs = housesOf.get(l) || [];
     const c = Math.cos(l.rot);
     const s = Math.sin(l.rot);
     let best: [number, number] = [l.cx, l.cz];
     let bd = Infinity;
-    // 取三個候選點，用最靠近島的那一個
-    for (let k = 0; k < 3; k++) {
+    // 取幾個候選點，避開農舍，用最靠近島的那一個
+    for (let k = 0; k < 8; k++) {
       const a = rand() * Math.PI * 2;
       const r = 0.2 + rand() * 0.5;
       const lx = Math.cos(a) * l.rx * r;
       const lz = Math.sin(a) * l.rz * r;
       const p: [number, number] = [l.cx + lx * c - lz * s, l.cz + lx * s + lz * c];
+      if (hs.some((h) => Math.hypot(h.x - p[0], h.z - p[1]) < Math.max(h.w, h.d) / 2 + 1.8)) continue;
       const d = near(p[0], p[1]);
       if (d < bd) {
         bd = d;
@@ -529,6 +602,8 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     mergeByMaterial(body as THREE.Group);
     const proxy = makePickProxy(1.2, 1.3, 1.2, 0, 0, 0, { kind: 'character', id: 'baimiao' });
     root.add(proxy);
+    const bub = speechBubble(CHARACTERS.baimiao.name, CHARACTERS.baimiao.line);
+    root.add(bub);
     anims.push((t) => {
       const cyc = t % 40;
       const a = t * 0.14;
@@ -545,6 +620,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       }
       tail.rotation.z = Math.sin(t * 3) * 0.4;
       proxy.position.set(g.position.x, 0.65, g.position.z);
+      bubbleTick(bub, g.position.x, 1.35, g.position.z);
     });
   }
   // 多慧：主島中央廣場招呼旅人，偶爾拍拍翅膀
@@ -559,7 +635,16 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const wl = g.userData.wingL as THREE.Object3D;
     const wr = g.userData.wingR as THREE.Object3D;
     mergeSelf(g, [wl, wr]);
+    const bub = speechBubble(CHARACTERS.duohui.name, CHARACTERS.duohui.line);
+    root.add(bub);
+    const restYaw = g.rotation.y;
     anims.push((t) => {
+      const d = bubbleTick(bub, -10.05, 1.95, -11.0);
+      // 有人走近就轉過來看著他
+      const want = d < 8 ? Math.atan2(-(faunaEnv.camX + 10.05), -(faunaEnv.camZ + 11.0)) : restYaw;
+      let dy = want - g.rotation.y;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      g.rotation.y += dy * 0.06;
       const f = (t % 6) < 1.2 ? Math.sin(t * 14) * 0.6 : 0;
       wl.rotation.z = f;
       wr.rotation.z = -f;
@@ -578,7 +663,10 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     pick('agent007', 1.4, 1.9, 63.2, 47.0, 6.0);
     const dish = g.userData.dish as THREE.Object3D;
     mergeSelf(g, [dish]);
+    const bub = speechBubble(CHARACTERS.agent007.name, CHARACTERS.agent007.line);
+    root.add(bub);
     anims.push((t) => {
+      bubbleTick(bub, 63.2, 8.2, 47.4, 9);
       dish.rotation.y = t * 2;
     });
   }
@@ -593,7 +681,10 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const arm = g.userData.arm as THREE.Object3D;
     const gear = g.userData.gear as THREE.Object3D;
     mergeSelf(g, [arm, gear]);
+    const bub = speechBubble(CHARACTERS.bear.name, CHARACTERS.bear.line);
+    root.add(bub);
     anims.push((t) => {
+      bubbleTick(bub, 88.2, 1.95, -42.6);
       arm.rotation.x = Math.max(0, Math.sin(t * 5)) * -1.0;
       gear.rotation.y = t * 0.8;
     });

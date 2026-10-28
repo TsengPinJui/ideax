@@ -27,6 +27,8 @@ import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
 import { moduleUrl, openInNewTab } from './buildingActions';
 import type { KingdomAction } from './buildingActions';
+import { kingdomAmbience } from './ambience';
+import { faunaEnv } from './stylized/fauna';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
 import { DevStatsPanel } from './DevStatsPanel';
 import { painForFloor } from './PainFloorModal';
@@ -59,7 +61,7 @@ import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/water
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
 import type { WalkableZone } from './types';
 import { BoatOverlay } from './BoatOverlay';
-import { nearestReachable } from './nearestSpot';
+import { nearestReachable, waterProximity } from './nearestSpot';
 import { getFeaturedGames, getFeaturedProposalsAndSoftware, getHotRankedGames, getHotRankedProposalsAndSoftware } from '../../data/hotGamesData';
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
@@ -1041,13 +1043,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   useEffect(() => {
     ancientJiangnanBgm.start();
     ancientJiangnanBgm.setMuted(bgmMuted);
-    return () => ancientJiangnanBgm.stop();
+    // 環境音（鳥鳴、蟲鳴、水波、風、雨）跟背景音樂共用開關
+    kingdomAmbience.setMuted(bgmMuted);
+    kingdomAmbience.start();
+    return () => {
+      ancientJiangnanBgm.stop();
+      kingdomAmbience.stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const toggleBgm = useCallback(() => {
     setBgmMuted((m) => {
       const next = !m;
       ancientJiangnanBgm.setMuted(next);
+      kingdomAmbience.setMuted(next);
       if (!next) ancientJiangnanBgm.start();
       try {
         localStorage.setItem('ideax_kingdom_bgm_muted', next ? '1' : '0');
@@ -1734,7 +1743,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
       mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
       const now = performance.now() / 1000;
+      faunaEnv.camX = camera.position.x;
+      faunaEnv.camY = camera.position.y;
+      faunaEnv.camZ = camera.position.z;
       for (const tk of tickers) tk(now);
+      if (lodTick % 10 === 0) {
+        const st = storyRef.current;
+        kingdomAmbience.update({
+          tod: faunaEnv.tod as 'day' | 'dusk' | 'night',
+          weather: faunaEnv.weather as 'clear' | 'rain',
+          water: boatRideRef.current ? 1 : camera.position.y > 6 ? 0.2 : waterProximity(camera.position.x, camera.position.z),
+          height: camera.position.y,
+          indoor: st.level < 0 || (Boolean(st.towerId) && st.towerId !== PLATEAU_ID && st.level > 0),
+        });
+      }
       remoteView.update(delta);
 
       const dbgY = (window as any).__kingdomCamY;

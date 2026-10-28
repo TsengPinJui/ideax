@@ -261,3 +261,37 @@ export function landOutline(l: Landmass, n = 48): [number, number][] {
   }
   return pts;
 }
+
+/** 農舍（白牆黑瓦）的位置：環境建模與田園動物、炊煙共用同一套亂數，位置一致 */
+export interface FarmHouse {
+  x: number;
+  z: number;
+  yaw: number;
+  w: number;
+  d: number;
+  /** 這間有煙囪（傍晚飄炊煙） */
+  chimney: boolean;
+}
+export function farmHouseLayout(l: Landmass, rand: () => number, li: number): FarmHouse[] {
+  const out: FarmHouse[] = [];
+  const nHouse = 2 + Math.floor(rand() * 3);
+  for (let k = 0; k < nHouse; k++) {
+    const a = rand() * Math.PI * 2;
+    const rr = 0.35 + rand() * 0.4;
+    const x = l.cx + Math.cos(a) * l.rx * rr;
+    const z = l.cz + Math.sin(a) * l.rz * rr;
+    const yaw = Math.atan2(-x, -z) + (rand() - 0.5) * 0.6;
+    const w = 4 + rand() * 2;
+    const d = 3 + rand() * 1.2;
+    out.push({ x, z, yaw, w, d, chimney: k === 0 && li % 2 === 1 });
+  }
+  return out;
+}
+/** 煙囪頂的世界座標 */
+export function chimneyTop(h: FarmHouse): [number, number, number] {
+  const lx = h.w * 0.25;
+  const lz = -h.d * 0.12;
+  const c = Math.cos(h.yaw);
+  const s = Math.sin(h.yaw);
+  return [h.x + lx * c + lz * s, 0.5 + 2.6 + 1.75, h.z - lx * s + lz * c];
+}
