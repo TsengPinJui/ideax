@@ -84,11 +84,12 @@ function bubbleTick(sp: THREE.Sprite, x: number, y: number, z: number, near = 6.
   return d;
 }
 
-export type CharacterId = 'baimiao' | 'duohui' | 'agent007' | 'bear';
+export type CharacterId = 'baimiao' | 'duohui' | 'agent007' | 'bear' | 'sousou';
 
 export const CHARACTERS: Record<CharacterId, { name: string; role: string; line: string; where: string; img: string }> = {
-  baimiao: { img: '/agents/baimiao.webp', name: '白喵', role: '市場顧問 Agent', line: '「哈基米～讓我先打個滾再幫你媒合專家喵！」', where: '徵才島・月洞門庭院' },
+  baimiao: { img: '/agents/baimiao.webp', name: '白喵', role: '市場顧問 Agent', line: '「哈基米～讓我先打個滾再幫你媒合專家喵！」', where: '徵才島庭院・石拱橋一帶閒晃' },
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
+  sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
   bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街心' },
 };
@@ -348,6 +349,61 @@ function bear() {
   addM(arm, new THREE.BoxGeometry(0.18, 0.12, 0.12), iron, 0, 0.06, -0.7);
   g.userData.arm = arm;
   g.userData.gear = gear;
+  return g;
+}
+
+/** 搜搜：白猴少俠駕著筋斗雲（照 3D 地圖的造型；本地 +Z 朝前） */
+function sousou() {
+  const g = new THREE.Group();
+  const cloudW = std(0xffffff, 0.55, { emissive: new THREE.Color(0xe0f2fe), emissiveIntensity: 0.25 });
+  const swirl = std(0x3b82f6, 0.4, { emissive: new THREE.Color(0x2563eb), emissiveIntensity: 0.3 });
+  const navy = std(0x1e3a8a, 0.5);
+  const fur = std(0xf8fafc, 0.55);
+  const skin = std(0xfde2c8, 0.6);
+  const gold = std(0xfbbf24, 0.3, { emissive: new THREE.Color(0xd97706), emissiveIntensity: 0.25, metalness: 0.65 });
+  const cloud = new THREE.Group();
+  g.add(cloud);
+  for (const [cx, cy, cz, cr] of [
+    [0, 0, 0, 0.58],
+    [-0.46, -0.04, 0.12, 0.46],
+    [0.46, -0.04, 0.12, 0.46],
+    [0, -0.05, 0.42, 0.44],
+    [0, -0.04, -0.44, 0.48],
+    [-0.36, -0.06, -0.32, 0.4],
+    [0.36, -0.06, -0.32, 0.4],
+  ]) {
+    const p = addM(cloud, new THREE.SphereGeometry(cr, 12, 10), cloudW, cx, cy, cz);
+    p.scale.set(1.15, 0.72, 1.15);
+  }
+  for (const sx of [-0.56, 0.56]) addM(cloud, new THREE.TorusGeometry(0.18, 0.038, 8, 18, Math.PI * 1.45), swirl, sx, 0.02, 0.15).rotation.y = Math.PI / 2;
+  const trail: THREE.Mesh[] = [];
+  for (let i = 0; i < 4; i++) trail.push(addM(g, new THREE.SphereGeometry(0.36 - i * 0.055, 10, 8), cloudW, 0, -0.05, -0.82 - i * 0.48));
+  const b = new THREE.Group();
+  b.position.set(0, 0.26, 0.05);
+  g.add(b);
+  addM(b, new THREE.CylinderGeometry(0.22, 0.3, 0.62, 10), fur, 0, 0.38, 0);
+  addM(b, new THREE.BoxGeometry(0.28, 0.26, 0.32), navy, 0, 0.52, 0.08);
+  addM(b, new THREE.CylinderGeometry(0.27, 0.28, 0.12, 12), navy, 0, 0.3, 0);
+  addM(b, new THREE.TorusGeometry(0.08, 0.025, 8, 16), gold, 0, 0.3, 0.27);
+  for (const x of [-0.26, 0.26]) addM(b, new THREE.SphereGeometry(0.12, 10, 8), navy, x, 0.64, 0).scale.set(1.1, 0.85, 1);
+  addM(b, new THREE.CylinderGeometry(0.042, 0.042, 1.35, 8), gold, 0.04, 0.56, -0.24).rotation.z = -0.68;
+  addM(b, new THREE.SphereGeometry(0.34, 14, 12), fur, 0, 0.98, 0.04).scale.set(1.08, 0.98, 1);
+  addM(b, new THREE.SphereGeometry(0.26, 12, 10), skin, 0, 0.95, 0.22).scale.set(1.08, 0.9, 0.55);
+  for (const ex of [-0.11, 0.11]) addM(b, new THREE.SphereGeometry(0.065, 10, 8), swirl, ex, 0.98, 0.34);
+  for (const ex of [-0.36, 0.36]) addM(b, new THREE.SphereGeometry(0.11, 10, 8), skin, ex, 0.96, 0.02).scale.set(0.55, 1.15, 0.85);
+  const band = addM(b, new THREE.TorusGeometry(0.33, 0.048, 10, 24), swirl, 0, 1.12, 0.04);
+  band.rotation.x = Math.PI / 2 - 0.12;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const sp = addM(b, new THREE.ConeGeometry(0.08, 0.26, 6), i % 2 === 0 ? fur : swirl, Math.cos(a) * 0.14, 1.32, Math.sin(a) * 0.12 + 0.02);
+    sp.rotation.z = -Math.cos(a) * 0.28;
+    sp.rotation.x = Math.sin(a) * 0.28;
+  }
+  addM(b, new THREE.CylinderGeometry(0.06, 0.055, 0.38, 8), fur, -0.28, 0.48, 0.08).rotation.z = 0.45;
+  const ra = addM(b, new THREE.CylinderGeometry(0.06, 0.055, 0.42, 8), fur, 0.28, 0.72, 0.22);
+  ra.rotation.z = -0.95;
+  ra.rotation.x = -0.65;
+  g.userData.trail = trail;
   return g;
 }
 
@@ -726,6 +782,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   // 白喵：徵才島庭院前庭繞圈閒晃，偶爾停下來打滾
   {
     const g = baimiao();
+    g.name = 'char-cat';
     root.add(g);
     const body = g.userData.body as THREE.Object3D;
     const tail = g.userData.tail as THREE.Object3D;
@@ -735,23 +792,98 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     root.add(proxy);
     const bub = speechBubble(CHARACTERS.baimiao.name, CHARACTERS.baimiao.line);
     root.add(bub);
-    anims.push((t) => {
-      const cyc = t % 40;
-      const a = t * 0.14;
-      const x = 66 + Math.cos(a) * 5.5;
-      const z = 50.5 + Math.sin(a) * 3.2;
-      if (cyc < 32) {
-        g.position.set(x, 0, z);
-        g.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a) * 0.58);
-        body.rotation.z = 0;
-        body.position.y = Math.abs(Math.sin(t * 6)) * 0.04;
-      } else {
-        // 打滾
-        body.rotation.z = Math.sin((cyc - 32) * 1.2) * 1.4;
+    // 和 3D 地圖一樣：在島和橋之間閒晃——庭院繞幾圈 → 出西月洞門 → 走過石拱橋到主島橋頭睡一下 → 走回來；偶爾打滾
+    const PATH: [number, number][] = [
+      [66, 50.5],
+      [53.2, 49.6],
+      [52.6, 37.2],
+      [48, 35.5],
+      [46, 35],
+      [20, 15],
+    ];
+    const BRIDGE_A = 4; // PATH[4]→PATH[5] 是石拱橋
+    const segLen = PATH.slice(1).map((p, i) => Math.hypot(p[0] - PATH[i][0], p[1] - PATH[i][1]));
+    const total = segLen.reduce((a, b) => a + b, 0);
+    const SPEED = 1.15;
+    const WALK = total / SPEED;
+    const LOOP = 34; // 庭院閒晃
+    const NAP = 14; // 橋頭打盹
+    const CYCLE = LOOP + WALK + NAP + WALK;
+    const along = (d: number): [number, number, number, number] => {
+      let rest = Math.max(0, Math.min(total, d));
+      for (let i = 0; i < segLen.length; i++) {
+        if (rest <= segLen[i] || i === segLen.length - 1) {
+          const u = segLen[i] ? Math.min(1, rest / segLen[i]) : 0;
+          const [ax, az] = PATH[i];
+          const [bx, bz] = PATH[i + 1];
+          const x = ax + (bx - ax) * u;
+          const z = az + (bz - az) * u;
+          // 走在拱橋上：跟著橋面高度
+          const y = i === BRIDGE_A ? Math.sin(u * Math.PI) * 2.1 + 0.05 : 0;
+          return [x, y, z, Math.atan2(bx - ax, bz - az)];
+        }
+        rest -= segLen[i];
       }
-      tail.rotation.z = Math.sin(t * 3) * 0.4;
-      proxy.position.set(g.position.x, 0.65, g.position.z);
-      bubbleTick(bub, g.position.x, 1.35, g.position.z);
+      return [PATH[0][0], 0, PATH[0][1], 0];
+    };
+    anims.push((t) => {
+      const c = (t + 7) % CYCLE;
+      let roll = 0;
+      let nap = false;
+      let moving = true;
+      if (c < LOOP) {
+        // 庭院繞圈，最後幾秒打滾
+        const a = (c / LOOP) * Math.PI * 4;
+        g.position.set(66 + Math.cos(a) * 5.5 - 5.5, 0, 50.5 + Math.sin(a) * 3.2);
+        g.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a) * 0.58);
+        if (c > LOOP - 7) {
+          roll = Math.sin((c - (LOOP - 7)) * 1.2) * 1.4;
+          moving = false;
+        }
+      } else if (c < LOOP + WALK) {
+        const [x, y, z, h] = along((c - LOOP) * SPEED);
+        g.position.set(x, y, z);
+        // 模型臉朝 -Z：面向前進方向
+        g.rotation.y = h + Math.PI;
+      } else if (c < LOOP + WALK + NAP) {
+        const [x, y, z] = along(total);
+        g.position.set(x, y, z);
+        nap = true;
+        moving = false;
+      } else {
+        const [x, y, z, h] = along(total - (c - LOOP - WALK - NAP) * SPEED);
+        g.position.set(x, y, z);
+        g.rotation.y = h;
+      }
+      body.rotation.z = nap ? 1.35 : roll;
+      body.position.y = moving ? Math.abs(Math.sin(t * 6)) * 0.04 : 0;
+      tail.rotation.z = Math.sin(t * (nap ? 0.8 : 3)) * 0.4;
+      proxy.position.set(g.position.x, g.position.y + 0.65, g.position.z);
+      bubbleTick(bub, g.position.x, g.position.y + 1.35, g.position.z);
+    });
+  }
+  // 搜搜：駕著筋斗雲在五島上空騰雲駕霧（和 3D 地圖一樣；點了看角色小卡、觸發彩蛋）
+  {
+    const g = sousou();
+    g.name = 'char-sousou';
+    g.scale.setScalar(1.7);
+    root.add(g);
+    const trail = g.userData.trail as THREE.Mesh[];
+    trail.forEach(keepApart);
+    mergeByMaterial(g);
+    const proxy = makePickProxy(2.6, 2.6, 2.6, 0, 0, 0, { kind: 'character', id: 'sousou' });
+    g.add(proxy);
+    const bub = speechBubble(CHARACTERS.sousou.name, CHARACTERS.sousou.line);
+    root.add(bub);
+    const pos = (t: number): [number, number, number] => [Math.sin(t * 0.028) * 78, 15 + Math.sin(t * 0.11) * 2.2, Math.sin(t * 0.056) * 46];
+    anims.push((t) => {
+      const [x, y, z] = pos(t);
+      const [nx, , nz] = pos(t + 0.5);
+      g.position.set(x, y, z);
+      g.rotation.y = Math.atan2(nx - x, nz - z);
+      g.rotation.z = Math.sin(t * 0.7) * 0.08;
+      trail.forEach((p, i) => (p.position.y = -0.05 + Math.sin(t * 3 + i) * 0.06));
+      bubbleTick(bub, x, y + 2.6, z, 14);
     });
   }
   // 多慧：主島中央廣場招呼旅人，偶爾拍拍翅膀

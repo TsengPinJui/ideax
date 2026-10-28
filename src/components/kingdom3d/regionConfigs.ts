@@ -592,8 +592,8 @@ const discussionBuildings: BuildingInteractable[] = [
 const creativeBuildings: BuildingInteractable[] = [
   {
     id: 'creative-exhibition',
-    name: '展覽館',
-    subtitle: '創意島・作品、AI 工具與創新提案主題展館',
+    name: '薈萃樓',
+    subtitle: '創意島・展覽館（作品、AI 工具與創新提案主題展館）',
     // 貼著創意島西緣；地下是很大的主展場（從館內的樓層表或下樓入口進入）
     position: new THREE.Vector3(-88, 0, 48),
     facingYaw: Math.PI / 2,
@@ -618,8 +618,8 @@ const creativeBuildings: BuildingInteractable[] = [
     ],
     mockData: {
       stats: '地下三層展場：AI 工具、軟體應用、創新提案',
-      notice: '走進展覽館即可瀏覽三大展場與各個別個案攤位。',
-      primaryActionLabel: '進入展覽館',
+      notice: '走進薈萃樓（展覽館）即可瀏覽三大展場與各個別個案攤位。',
+      primaryActionLabel: '進入薈萃樓',
     },
   },
   {
@@ -918,8 +918,8 @@ export const REGION_CREATIVE: RegionManifest = {
   id: 'region-creative',
   name: '創意島',
   shortName: '創意島',
-  compassLabel: '展覽館・電玩城',
-  subtitle: '展覽館・電玩城',
+  compassLabel: '薈萃樓・電玩城',
+  subtitle: '薈萃樓（展覽館）・電玩城',
   center: [-68, 48],
   islandRadiusX: 33,
   islandRadiusZ: 30,

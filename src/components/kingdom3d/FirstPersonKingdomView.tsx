@@ -31,6 +31,9 @@ import { trackFeature } from '../../services/featureUsage';
 import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from '../island/easterEggBook';
 import { eggVerse, EggId } from './eggs';
 import { KingdomEggButton, KingdomEggToast, KingdomEggBookModal } from './KingdomEggBook';
+import { BondService } from './bonds';
+import { loadQuests, saveQuests, stepQuests, QuestProgress, DUO_QUESTS } from './quests';
+import { KingdomQuestButton, KingdomQuestPanel, BondInviteBanner } from './KingdomQuestPanel';
 import { kingdomAmbience } from './ambience';
 import { faunaEnv } from './stylized/fauna';
 import { ancientJiangnanBgm } from '../../utils/ancientBgm';
@@ -355,7 +358,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [eggList, setEggList] = useState<EasterEggRecord[]>(() => loadEasterEggBook());
   useEffect(() => onEasterEggBookChange(setEggList), []);
   const [eggBookOpen, setEggBookOpen] = useState(false);
-  const [eggToast, setEggToast] = useState<{ verse: string; slotIndex: number; added: boolean; key: number } | null>(null);
+  const [eggToast, setEggToast] = useState<{ verse: string; slotIndex: number; added: boolean; key: number; header?: string } | null>(null);
   const eggTimerRef = useRef<number | null>(null);
   const triggerEggRef = useRef<(egg: EggId, id?: string) => void>(() => {});
   triggerEggRef.current = (egg, id) => {
@@ -373,6 +376,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   useEffect(() => () => {
     if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
   }, []);
+  /** 雙人任務完成：畫面上方跳提示 */
+  const questDoneRef = useRef<(title: string, partner: string) => void>(() => {});
+  questDoneRef.current = (title, partner) => {
+    playSoundEffect('bulb');
+    setEggToast({ header: '✦ 雙人任務完成', verse: `${title}（和 ${partner}）`, slotIndex: 0, added: true, key: Date.now() });
+    if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
+    eggTimerRef.current = window.setTimeout(() => setEggToast(null), 5200);
+  };
   const drawerRef = useRef<DrawerState | null>(null);
   drawerRef.current = drawer;
   const [bgmMuted, setBgmMuted] = useState<boolean>(() => {
@@ -385,6 +396,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [mpStatus, setMpStatus] = useState<MultiplayerStatus>(multiplayerConfigured ? 'connecting' : 'off');
   const [onlineOthers, setOnlineOthers] = useState(0);
   const multiplayerRef = useRef<KingdomMultiplayer | null>(null);
+  const remoteViewRef = useRef<RemotePlayersView | null>(null);
+  // ── 羈絆與任務清單 ──
+  const bondsRef = useRef<BondService>(new BondService());
+  const [, setBondTick] = useState(0);
+  const [questOpen, setQuestOpen] = useState(false);
+  const [quests, setQuests] = useState<QuestProgress>(() => loadQuests());
+  const questsRef = useRef(quests);
+  questsRef.current = quests;
+  const [partnerOnline, setPartnerOnline] = useState(false);
   const openForBuilding = useCallback((b: BuildingInteractable) => {
     // 地下展場裡靠近攤位：按 E 直接看那個攤位
     if (b.id === 'hall-booth' && nearBoothRef.current) {
@@ -417,6 +437,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     } else if (t.kind === 'npc') {
       setDrawer({ kind: 'soso' });
       triggerEggRef.current('soso');
+    } else if (t.kind === 'player') {
+      setDrawer({ kind: 'player', id: t.id, name: remoteViewRef.current?.nameOf(t.id) || '旅人' });
     } else if (t.kind === 'egg') {
       triggerEggRef.current(t.egg, t.id);
     } else if (t.kind === 'bulb') {
@@ -445,7 +467,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       goTrailRef.current?.(t.dir);
     } else if (t.kind === 'character') {
       setDrawer({ kind: 'character', id: t.id });
-      triggerEggRef.current(t.id);
+      triggerEggRef.current(t.id === 'sousou' ? 'soso' : t.id);
     } else if (t.kind === 'discStele') {
       setDrawer({ kind: 'discList', which: t.which });
     } else if (t.kind === 'lobbyRank') {
@@ -1130,6 +1152,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // 暱稱有變時同步給其他玩家
   useEffect(() => {
     multiplayerRef.current?.setName(currentUser?.name || '');
+    bondsRef.current.setName(currentUser?.name || multiplayerRef.current?.displayName || '旅人');
   }, [currentUser?.name]);
 
   // Initialize Three.js Scene, Controls, RegionManager
@@ -1308,7 +1331,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (clientX === null || clientY === null) ndc.set(0, 0);
       else ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
       raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(pickables, false);
+      const players = remoteViewRef.current?.pickables() || [];
+      const hits = raycaster.intersectObjects(players.length ? [...pickables, ...players] : pickables, false);
       for (const h of hits) {
         const t = pickTargetOf(h.object);
         if (!t) continue;
@@ -1413,6 +1437,34 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setOnlineOthers(list.length);
     };
     mp.start();
+    remoteViewRef.current = remoteView;
+
+    // ── 羈絆：雙向綁定後兩人之間出現發光的羈絆線 ──
+    const bonds = bondsRef.current;
+    bonds.onChange = () => setBondTick((n) => (n + 1) % 1000000);
+    let bondKey = '';
+    const bondTimer = window.setInterval(() => {
+      const k = mp.userKey;
+      if (k && k !== bondKey && mp.database) {
+        bondKey = k;
+        bonds.start(mp.database, k, currentUserNameRef.current || mp.displayName);
+      }
+    }, 2000);
+    const bondLine = new THREE.Group();
+    bondLine.name = 'bond_line';
+    const bondCore = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe3a0, transparent: true, opacity: 0.95, depthWrite: false }));
+    const bondGlow = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.13, 0.13, 1, 10, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+    );
+    bondLine.add(bondCore, bondGlow);
+    bondLine.visible = false;
+    bondLine.renderOrder = 5;
+    scene.add(bondLine);
+    const bondA = new THREE.Vector3();
+    const bondB = new THREE.Vector3();
+    const bondUp = new THREE.Vector3(0, 1, 0);
+    let questAcc = 0;
 
     // ── 遊湖乘船：渡口上船、自由划船、下船回最近的渡口 ──
     const boating = boatingRef.current;
@@ -1892,6 +1944,54 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
       }
       remoteView.update(delta);
+      // 羈絆線＋雙人任務
+      {
+        const partner = bonds.state.partner;
+        const pp = partner ? remoteView.positionOfUser(partner.key) : null;
+        if (pp) {
+          bondB.set(pp.x, pp.y + 1.15, pp.z);
+          // 從自己身前（胸口往前一點）拉向夥伴，不會整條糊在鏡頭上
+          bondA.set(camera.position.x, camera.position.y - 0.75, camera.position.z);
+          {
+            const dx = bondB.x - bondA.x;
+            const dz = bondB.z - bondA.z;
+            const dl = Math.hypot(dx, dz) || 1;
+            const k = Math.min(1.1, dl * 0.4);
+            bondA.x += (dx / dl) * k;
+            bondA.z += (dz / dl) * k;
+          }
+          const len = bondA.distanceTo(bondB);
+          bondLine.visible = len > 0.3;
+          bondLine.position.copy(bondA).add(bondB).multiplyScalar(0.5);
+          bondLine.quaternion.setFromUnitVectors(bondUp, bondB.clone().sub(bondA).normalize());
+          bondLine.scale.set(1, len, 1);
+          (bondGlow.material as THREE.MeshBasicMaterial).opacity = 0.22 + Math.sin(performance.now() / 380) * 0.1;
+        } else bondLine.visible = false;
+        questAcc += delta;
+        if (questAcc >= 1) {
+          const dt = Math.min(questAcc, 2);
+          questAcc = 0;
+          const online = Boolean(pp);
+          setPartnerOnline((v) => (v === online ? v : online));
+          if (partner && pp && !document.hidden) {
+            const q = questsRef.current;
+            const st = storyRef.current;
+            const r = stepQuests(q, {
+              dt,
+              partnerName: partner.name,
+              me: { x: controls.position.x, y: controls.position.y, z: controls.position.z },
+              partner: { x: pp.x, y: pp.y, z: pp.z },
+              onBoat: Boolean(boatRideRef.current),
+              onTowerTop: st.towerId === PLATEAU_ID && st.level === 2,
+            });
+            if (r.changed) {
+              saveQuests(q);
+              setQuests({ done: { ...q.done }, tour: { ...q.tour } });
+            }
+            for (const c of r.completed) questDoneRef.current(c.title, partner.name);
+          }
+        }
+      }
 
       const dbgY = (window as any).__kingdomCamY;
       if (typeof dbgY === 'number') camera.position.y = dbgY;
@@ -1944,6 +2044,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.setSpawn(new THREE.Vector3(x, 0, z), yaw);
           controls.pitch = pitch;
           controls.updateCameraTransform(0);
+        },
+        // 測試用：放一位假旅人、假羈絆（只在本機）
+        fakePlayer: (x: number, z: number, name = '測試旅人') => {
+          remoteView.setPlayers([{ id: 'guest_test/s1', name, color: 2, x, y: 0, z, yaw: 0, t: Date.now() }]);
+        },
+        fakeBond: (on = true) => {
+          bonds.state = { ...bonds.state, online: true, partner: on ? { key: 'guest_test', name: '測試旅人' } : null };
+          setBondTick((n) => n + 1);
         },
         findNamed: (name: string) => {
           const out: number[][] = [];
@@ -2014,6 +2122,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       weatherAlive = false;
       window.clearInterval(boatingTimer);
       boating.stop();
+      window.clearInterval(bondTimer);
+      bonds.stop();
+      remoteViewRef.current = null;
       boatRideRef.current = null;
       if (resumeClearTimer) window.clearTimeout(resumeClearTimer);
       renderer.domElement.removeEventListener('mousedown', onDown);
@@ -2349,7 +2460,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? [REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, ''), floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)].filter(Boolean).join('・') : undefined}
         timeOfDay={timeOfDay}
         onGoToPoint={(x, z) => goToPointRef.current?.(x, z)}
-        extraControls={<KingdomEggButton count={eggList.length} onOpen={() => { setEggBookOpen(true); controlsRef.current?.unlockPointer?.(); }} flash={Boolean(eggToast?.added)} />}
+        extraControls={
+          <div className="flex flex-col items-end gap-1.5">
+            <KingdomEggButton count={eggList.length} onOpen={() => { setEggBookOpen(true); controlsRef.current?.unlockPointer?.(); }} flash={Boolean(eggToast?.added)} />
+            <KingdomQuestButton
+              open={questOpen}
+              onToggle={() => {
+                setQuestOpen((o) => !o);
+                controlsRef.current?.unlockPointer?.();
+              }}
+              alert={bondsRef.current.state.incoming.length > 0}
+              doneCount={Object.keys(quests.done).length + (eggList.length >= 35 ? 1 : 0)}
+            />
+          </div>
+        }
         env={{
           timeMode,
           weatherMode,
@@ -2366,6 +2490,27 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
       />
       <KingdomEggToast toast={eggToast} />
+      <KingdomQuestPanel
+        open={questOpen}
+        onClose={() => setQuestOpen(false)}
+        eggCount={eggList.length}
+        onOpenEggBook={() => setEggBookOpen(true)}
+        quests={quests}
+        bond={bondsRef.current.state}
+        onAccept={(k) => bondsRef.current.invite(k)}
+        onDecline={(k) => bondsRef.current.decline(k)}
+        onRelease={() => bondsRef.current.release()}
+        partnerOnline={partnerOnline}
+        multiplayerOnline={mpStatus === 'online' && bondsRef.current.state.online}
+      />
+      {!questOpen && bondsRef.current.state.incoming[0] && (
+        <BondInviteBanner
+          name={bondsRef.current.state.incoming[0].n}
+          replacing={bondsRef.current.state.partner?.name}
+          onAccept={() => bondsRef.current.invite(bondsRef.current.state.incoming[0].key)}
+          onDecline={() => bondsRef.current.decline(bondsRef.current.state.incoming[0].key)}
+        />
+      )}
       <KingdomEggBookModal open={eggBookOpen} onClose={() => setEggBookOpen(false)} list={eggList} />
 
       {/* 遊湖乘船：渡口面板、排隊、輪到時的通知、乘船中 */}
@@ -2402,6 +2547,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onChange={setDrawer}
         onAction={handleDrawerAction}
         soso={{ state: soso, send: sendSoso, search: searchSoso, reset: resetSoso }}
+        bond={{
+          online: mpStatus === 'online' && bondsRef.current.state.online,
+          partnerName: bondsRef.current.state.partner?.name || null,
+          relationTo: (k) => bondsRef.current.relationTo(k),
+          invite: (k) => bondsRef.current.invite(k),
+          release: () => bondsRef.current.release(),
+        }}
         rankings={rankings}
         onOpenQuestion={(q) => {
           rememberPose();

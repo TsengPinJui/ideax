@@ -105,7 +105,7 @@ export const HALL_ZONES: Record<HallKind, HallZone[]> = {
  * - mode 'aisles'（藏書閣）：地下一樓分成幾條分類走道
  */
 export const HALL_BUILDINGS: Record<string, { kind: HallKind; mode: 'floors' | 'aisles'; title: string; lobby: string; cx: number; cz: number; showcase?: 'proposals_software' | 'games' }> = {
-  'creative-exhibition': { kind: 'exhibit', mode: 'floors', title: '展覽館', lobby: '一樓大廳', cx: -68, cz: 48, showcase: 'proposals_software' },
+  'creative-exhibition': { kind: 'exhibit', mode: 'floors', title: '薈萃樓', lobby: '一樓大廳', cx: -68, cz: 48, showcase: 'proposals_software' },
   'creative-arcade': { kind: 'arcade', mode: 'floors', title: '電玩城', lobby: '一樓大廳', cx: -68, cz: 48, showcase: 'games' },
   'discussion-library': { kind: 'library', mode: 'aisles', title: '藏書閣・地下圖書館', lobby: '一樓大廳', cx: 72, cz: -48 },
 };

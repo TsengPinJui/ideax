@@ -28,7 +28,7 @@ export const KingdomEggButton: React.FC<{ count: number; onOpen: () => void; fla
   </button>
 );
 
-export const KingdomEggToast: React.FC<{ toast: { verse: string; slotIndex: number; added: boolean; key: number } | null }> = ({ toast }) => {
+export const KingdomEggToast: React.FC<{ toast: { verse: string; slotIndex: number; added: boolean; key: number; header?: string } | null }> = ({ toast }) => {
   if (!toast) return null;
   return (
     <div
@@ -38,7 +38,7 @@ export const KingdomEggToast: React.FC<{ toast: { verse: string; slotIndex: numb
     >
       <div className="kx-panel px-4 py-3 text-center" style={{ background: 'linear-gradient(180deg, rgba(253,246,227,0.97), rgba(240,226,190,0.97))', color: '#3b2314', borderColor: 'rgba(139,90,43,0.7)' }}>
         <div className="text-[11.5px] font-bold" style={{ color: toast.added ? '#b3261e' : '#7a5532' }}>
-          {toast.added ? `✦ 新彩蛋收入收集冊第 ${String(toast.slotIndex).padStart(2, '0')} 格` : `第 ${String(toast.slotIndex).padStart(2, '0')} 格・已收集`}
+          {toast.header ?? (toast.added ? `✦ 新彩蛋收入收集冊第 ${String(toast.slotIndex).padStart(2, '0')} 格` : `第 ${String(toast.slotIndex).padStart(2, '0')} 格・已收集`)}
         </div>
         <div className="kx-serif text-[15px] sm:text-[17px] font-bold leading-relaxed mt-1">{toast.verse}</div>
       </div>
