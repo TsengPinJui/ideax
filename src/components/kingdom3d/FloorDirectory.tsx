@@ -42,7 +42,7 @@ export const FloorDirectory: React.FC<{
       return !o;
     });
   return (
-    <div data-ui-panel="true" className="kx-root absolute right-2 sm:right-4 top-28 sm:top-36 z-20 pointer-events-auto w-40 sm:w-56">
+    <div data-ui-panel="true" className="kx-root absolute right-2 sm:right-4 top-[12.25rem] sm:top-[13.5rem] z-20 pointer-events-auto w-40 sm:w-56">
       <div className="kx-panel kx-corners overflow-hidden">
         <button type="button" onClick={toggle} className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 cursor-pointer" aria-expanded={open}>
           <Layers className="w-4 h-4 text-amber-300 shrink-0" />

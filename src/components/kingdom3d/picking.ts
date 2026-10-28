@@ -19,7 +19,7 @@ export type PickTarget =
   | { kind: 'lobbyRank'; buildingId: string; which: 'featured' | 'hot' }
   /** 渡口（乘船點）、塔樓登山口／下山石碑 */
   | { kind: 'dock'; id: string }
-  | { kind: 'trail'; dir: 'up' | 'down' };
+  | { kind: 'trail'; dir: 'up' | 'down' | 'top' | 'down-top' };
 
 let proxyMat: THREE.MeshBasicMaterial | null = null;
 

@@ -1619,8 +1619,10 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     const a = (i / n) * Math.PI * 2;
     const x = Math.cos(a) * (rx + railR);
     const z = Math.sin(a) * (rz + railR);
-    posts.push(blockedByBridge(x + cx, z + cz, 1.2) ? null : { x, z });
+    // 每隔一段留一個缺口（步道口）：可以走到欄杆外的草地、靠近水邊
+    posts.push(blockedByBridge(x + cx, z + cz, 1.2) || i % 7 === 3 ? null : { x, z });
   }
+  const edgeCols: Collider[] = [];
   const postGeo = new THREE.BoxGeometry(0.28, 0.9, 0.28);
   const capGeo = new THREE.SphereGeometry(0.15, 6, 4);
   posts.forEach((p, i) => {
@@ -1629,12 +1631,18 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     addMesh(parts, capGeo, mats.stoneLight, p.x, 0.98, p.z);
     const q = posts[(i + 1) % n];
     if (q) {
+      edgeCols.push({ id: `edge-${inp.seed}-${i}`, type: 'segment', x1: p.x + cx, z1: p.z + cz, x2: q.x + cx, z2: q.z + cz, halfThickness: 0.2 });
       const len = Math.hypot(q.x - p.x, q.z - p.z);
       const ang = -Math.atan2(q.z - p.z, q.x - p.x);
       addMesh(parts, scaledBox(len, 0.55, 0.16, len, 0.55, len), mats.balustrade, (p.x + q.x) / 2, 0.3, (p.z + q.z) / 2, ang);
       addMesh(parts, new THREE.BoxGeometry(len, 0.1, 0.22), mats.stoneLight, (p.x + q.x) / 2, 0.66, (p.z + q.z) / 2, ang);
     }
-    if (i % 6 === 0) lanterns.addPost(p.x + Math.cos((i / n) * Math.PI * 2) * 0.7, 0, p.z + Math.sin((i / n) * Math.PI * 2) * 0.7, 2.4);
+    if (i % 6 === 0) {
+      const lx = p.x + Math.cos((i / n) * Math.PI * 2) * 0.7;
+      const lz = p.z + Math.sin((i / n) * Math.PI * 2) * 0.7;
+      lanterns.addPost(lx, 0, lz, 2.4);
+      edgeCols.push({ id: `edgelamp-${inp.seed}-${i}`, type: 'cylinder', x: lx + cx, z: lz + cz, radius: 0.3 });
+    }
   });
 
   // 草地外環：櫻花、綠樹、松、花叢
@@ -1648,7 +1656,9 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     const x = Math.cos(a) * (rx + off);
     const z = Math.sin(a) * (rz + off);
     if (blockedByBridge(x + cx, z + cz, 3.5)) continue;
-    trees.add(kinds[Math.floor(rand() * kinds.length)], x + cx, -0.04, z + cz, 0.85 + rand() * 0.6);
+    const ts = 0.85 + rand() * 0.6;
+    trees.add(kinds[Math.floor(rand() * kinds.length)], x + cx, -0.04, z + cz, ts);
+    edgeCols.push({ id: `edgetree-${inp.seed}-${i}`, type: 'cylinder', x: x + cx, z: z + cz, radius: 0.32 * ts + 0.1 });
     if (rand() > 0.45) {
       const bx = Math.cos(a + 0.05) * (rx + 1.3);
       const bz = Math.sin(a + 0.05) * (rz + 1.3);
@@ -1824,6 +1834,8 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
       grass.add(x + cx, -0.04, z + cz, 0.7 + rand() * 0.7, rand() * Math.PI);
     }
   }
+  // 島緣欄杆（留步道口）、草地外環的燈柱與樹：給走到欄杆外草地的人用的碰撞
+  g.userData.colliders = edgeCols;
   // 岸邊浪花
   const foam = new THREE.Mesh(foamRingGeometry(rx + rim + 0.05, rz + rim + 0.05, 3.2), mats.foam);
   foam.position.y = -0.3;

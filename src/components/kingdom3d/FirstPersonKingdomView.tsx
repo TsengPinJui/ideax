@@ -63,7 +63,8 @@ import { getFeaturedGames, getFeaturedProposalsAndSoftware, getHotRankedGames, g
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
 import { useApp } from '../../context/AppContext';
-import { fetchCityWeather, getCityConfig, getStoredUserCityId } from '../../data/cityData';
+import { fetchCityWeather, getCityConfig, getStoredUserCityId, getCityLocalTimePhase } from '../../data/cityData';
+import type { TimeMode, WeatherMode } from './EnvControls';
 import type { Question } from '../../types';
 import type { Collider } from './types';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
@@ -110,8 +111,8 @@ type Tower = {
   stair: (level: number, x: number, z: number, from: THREE.Vector3) => { pts: THREE.Vector3[]; toLevel: number; hallEnter?: boolean } | null;
   /** 各層地板高度（沒有就是 level × 4.5 m） */
   floorY?: (level: number) => number;
-  /** 這座「樓」自己的可走範圍（例如山上的塔外空地） */
-  walk?: WalkableZone[];
+  /** 這座「樓」自己的可走範圍（例如山上的塔外空地、塔頂） */
+  walk?: (level: number) => WalkableZone[];
 };
 
 /** 西側塔樓山台（從痛點島登山口直上）：當成一座只有「樓上」的樓 */
@@ -138,15 +139,20 @@ function plateauTower(): Tower {
   return {
     b: PLATEAU_B,
     basements: 0,
-    cols: [[], PLATEAU_COLLIDERS],
-    floorY: (level) => (level > 0 ? TRAIL.topY : 0),
+    cols: [[], PLATEAU_COLLIDERS, []],
+    floorY: (level) => (level >= 2 ? TRAIL.topFloorY : level > 0 ? TRAIL.topY : 0),
     stair: () => null,
-    walk: [{ type: 'ellipse', cx: TRAIL.plateauX, cz: TRAIL.plateauZ, rx: TRAIL.plateauR, rz: TRAIL.plateauR }],
+    walk: (level) =>
+      level >= 2
+        ? [{ type: 'ellipse', cx: TRAIL.pagodaX, cz: TRAIL.pagodaZ, rx: 1.3, rz: 1.3 }]
+        : [{ type: 'ellipse', cx: TRAIL.plateauX, cz: TRAIL.plateauZ, rx: TRAIL.plateauR, rz: TRAIL.plateauR }],
   };
 }
 
-/** 船上座位（船的本地座標：船頭朝 -Z） */
-const BOAT_SEATS = { owner: new THREE.Vector3(0, 0, 1.75), passenger: new THREE.Vector3(0, 0, -0.4) };
+/** 船上兩個座位（船的本地座標：船頭朝 -Z；船尾有戴斗笠的船夫搖櫓）：前座掌舵、後座乘客，玩家是坐著的視角 */
+const BOAT_SEATS = { owner: new THREE.Vector3(0, 0, 0.55), passenger: new THREE.Vector3(0, 0, -0.75) };
+/** 坐在船裡：視線比站著低（約離水面 1.2 公尺） */
+const BOAT_SIT_Y = -0.42;
 
 function rectTower(b: BuildingInteractable, lay: StoryLayout): Tower {
   return {
@@ -210,6 +216,7 @@ function hallTower(b: BuildingInteractable): Tower {
 
 /** 樓層顯示名稱（左上角地點、靠近時的提示） */
 function floorLabel(b: BuildingInteractable, level: number) {
+  if (b.id === PLATEAU_ID) return level >= 2 ? '塔頂眺望' : '';
   if (b.exterior === 'tulou') return (PAIN_FLOORS[level] || PAIN_FLOORS[0]).label;
   const h = hallOf(b.id);
   if (h && h.mode === 'floors' && level < 0) {
@@ -409,7 +416,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     }
   }, []);
   const openForTargetRef = useRef<((t: PickTarget) => void) | null>(null);
-  const goTrailRef = useRef<((dir: 'up' | 'down') => void) | null>(null);
+  const goTrailRef = useRef<((dir: 'up' | 'down' | 'top' | 'down-top') => void) | null>(null);
   // 遊湖乘船
   const [boatDock, setBoatDock] = useState<string | null>(null);
   const [boatTick, setBoatTick] = useState(0);
@@ -795,6 +802,58 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const composerRef = useRef<EffectComposer | null>(null);
   const bloomRef = useRef<UnrealBloomPass | null>(null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('dusk');
+  // 時間與天氣：可以選，也可以交給「自動」（跟著所在城市的時間與即時天氣）
+  const readMode = <T extends string>(k: string, def: T, ok: string[]): T => {
+    try {
+      const v = localStorage.getItem(k);
+      return v && ok.includes(v) ? (v as T) : def;
+    } catch {
+      return def;
+    }
+  };
+  const [timeMode, setTimeModeState] = useState<TimeMode>(() => readMode<TimeMode>('ideax_kingdom_time_mode', 'auto', ['auto', 'day', 'dusk', 'night']));
+  const [weatherMode, setWeatherModeState] = useState<WeatherMode>(() => readMode<WeatherMode>('ideax_kingdom_weather_mode', 'auto', ['auto', 'clear', 'rain']));
+  const [autoWeather, setAutoWeather] = useState<'clear' | 'rain'>('clear');
+  const cityRef = useRef(getCityConfig(getStoredUserCityId()));
+  const phaseToTod = (ph: string): TimeOfDay => (ph === 'night' ? 'night' : ph === 'dusk' ? 'dusk' : 'day');
+  const [autoTod, setAutoTod] = useState<TimeOfDay>(() => phaseToTod(getCityLocalTimePhase(cityRef.current.timezone).phase));
+  const [weather, setWeather] = useState<'clear' | 'rain'>('clear');
+  const envRef = useRef({ timeMode, weatherMode, autoTod, autoWeather });
+  envRef.current = { timeMode, weatherMode, autoTod, autoWeather };
+  const applyEnv = useCallback(() => {
+    const w = worldRef.current;
+    if (!w) return;
+    const e = envRef.current;
+    const t = e.timeMode === 'auto' ? e.autoTod : e.timeMode;
+    const wt = e.weatherMode === 'auto' ? e.autoWeather : e.weatherMode;
+    if (w.timeOfDay !== t) w.setTimeOfDay(t);
+    if (w.weather !== wt) w.setWeather(wt);
+    setTimeOfDay(t);
+    setWeather(wt);
+  }, []);
+  useEffect(() => {
+    applyEnv();
+  }, [timeMode, weatherMode, autoTod, autoWeather, applyEnv]);
+  useEffect(() => {
+    const t = window.setInterval(() => setAutoTod(phaseToTod(getCityLocalTimePhase(cityRef.current.timezone).phase)), 5 * 60 * 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const setTimeMode = useCallback((m: TimeMode) => {
+    setTimeModeState(m);
+    try {
+      localStorage.setItem('ideax_kingdom_time_mode', m);
+    } catch {
+      // ignore
+    }
+  }, []);
+  const setWeatherMode = useCallback((m: WeatherMode) => {
+    setWeatherModeState(m);
+    try {
+      localStorage.setItem('ideax_kingdom_weather_mode', m);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Safe player pose for error recovery
   const safePlayerPoseRef = useRef<{ pos: THREE.Vector3; yaw: number } | null>(null);
@@ -1039,11 +1098,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const world = new StylizedWorld(scene, renderer);
     world.setShadows(fancyRef.current);
     worldRef.current = world;
+    applyEnv();
     // 天氣跟著所在城市的即時天氣（和 /island 一樣）：晴天才有漁船、遊船、水燈、天燈
     let weatherAlive = true;
     fetchCityWeather(getCityConfig(getStoredUserCityId()))
       .then((d) => {
-        if (weatherAlive) world.setWeather(d.weather);
+        if (weatherAlive) setAutoWeather(d.weather);
       })
       .catch(() => {});
     setTextureAnisotropy(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
@@ -1078,8 +1138,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         setFloorLevel(resume.level);
         setStoryTowerId(resume.towerId);
       }
-      world.setTimeOfDay(resume.timeOfDay);
-      setTimeOfDay(resume.timeOfDay);
       startRegionId = detectPlayerSpatialContext(resume.x, resume.z).regionId;
       setActiveRegionId(startRegionId);
       resumeClearTimer = window.setTimeout(clearKingdomResume, 1500);
@@ -1189,6 +1247,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         // 地下主展場：在裡面只認展場的攤位與樓梯；在外面不認展場裡的東西
         const st = storyRef.current;
         const inHall = st.level < 0 && Boolean(hallOf(st.towerId));
+        // 山台：只認山上的東西（塔、下山石碑、塔頂的下塔牌）
+        if (t.kind === 'trail' && (t.dir === 'down' || t.dir === 'top') && !(st.towerId === PLATEAU_ID && st.level === 1)) continue;
+        if (t.kind === 'trail' && t.dir === 'down-top' && !(st.towerId === PLATEAU_ID && st.level === 2)) continue;
+        if (st.towerId === PLATEAU_ID && t.kind !== 'trail') continue;
         const hallThing = t.kind === 'booth' || (t.kind === 'goFloor' && t.level === 0);
         if ((t.kind === 'lobbyScreen' || t.kind === 'lobbyRank' || (t.kind === 'goFloor' && t.level < 0)) && st.level !== 0) continue;
         if (inHall ? !hallThing || (t as { buildingId: string }).buildingId !== st.towerId : hallThing) continue;
@@ -1277,7 +1339,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const seatTmp = new THREE.Vector3();
     goTrailRef.current = (dir) => {
       playSoundEffect('portal');
-      if (dir === 'up') {
+      if (dir === 'top') {
+        // 塔頂眺望
+        storyRef.current = { towerId: PLATEAU_ID, level: 2, armed: false, tween: null };
+        setFloorLevel(2);
+        setStoryTowerId(PLATEAU_ID);
+        controls.setSpawn(new THREE.Vector3(TRAIL.pagodaX - 0.6, TRAIL.topFloorY, TRAIL.pagodaZ), Math.PI / 2);
+      } else if (dir === 'up' || dir === 'down-top') {
         storyRef.current = { towerId: PLATEAU_ID, level: 1, armed: false, tween: null };
         setFloorLevel(1);
         setStoryTowerId(PLATEAU_ID);
@@ -1416,7 +1484,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         ride.yaw += dy * k;
       }
       seatTmp.copy(ride.role === 'owner' ? BOAT_SEATS.owner : BOAT_SEATS.passenger).applyAxisAngle(new THREE.Vector3(0, 1, 0), ride.yaw);
-      controls.position.set(ride.x + seatTmp.x, 0.05, ride.z + seatTmp.z);
+      controls.position.set(ride.x + seatTmp.x, BOAT_SIT_Y, ride.z + seatTmp.z);
       controls.updateCameraTransform(delta);
     };
 
@@ -1488,7 +1556,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
     // 9. Animation & Physics Game Loop
     const clock = new THREE.Clock();
-    const globalWalkableZones = getGlobalWalkableZones();
+    // 可走範圍：島上＋欄杆外的草地外環（到水邊為止，不會下水），以及石拱橋
+    const globalWalkableZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.6, rz: z.rz + 5.6 } : z));
     let lodTick = 14;
 
     const animate = () => {
@@ -1533,7 +1602,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           desiredVelocity,
           delta,
           activeColliders,
-          tower?.walk || globalWalkableZones,
+          tower?.walk ? tower.walk(story.level) : globalWalkableZones,
           tower ? [] : WORLD_BRIDGES,
           tower ? (tower.floorY ? tower.floorY(story.level) : story.level * FLOOR_H) : 0
         );
@@ -1702,7 +1771,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         pickCenter: () => JSON.stringify(pickAt(null, null)),
         goFloor: (id: string, level: number, zone?: number) => goFloorRef.current?.(id, level, zone),
         openDock: (id: string) => setBoatDock(id),
-        trail: (dir: 'up' | 'down') => goTrailRef.current?.(dir),
+        trail: (dir: 'up' | 'down' | 'top' | 'down-top') => goTrailRef.current?.(dir),
         ride: () => JSON.stringify(boatRideRef.current),
         docks: () => JSON.stringify(DOCKS.map((d) => [d.id, Math.round(d.landX), Math.round(d.landZ), Math.round(d.waterX), Math.round(d.waterZ)])),
         findNaN: () => {
@@ -1963,7 +2032,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   }, [dirId, floorLevel, storyTowerId, questions]);
 
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] bg-stone-950 overflow-hidden select-none font-sans touch-none">
+    <div className="kx-kai fixed inset-0 w-full h-[100dvh] bg-stone-950 overflow-hidden select-none touch-none">
       {/* 3D Canvas Mount Point */}
       <div
         ref={mountRef}
@@ -2072,11 +2141,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
         placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? [REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, ''), floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)].filter(Boolean).join('・') : undefined}
         timeOfDay={timeOfDay}
-        onCycleTimeOfDay={() => {
-          const order: TimeOfDay[] = ['day', 'dusk', 'night'];
-          const next = order[(order.indexOf(timeOfDay) + 1) % order.length];
-          worldRef.current?.setTimeOfDay(next);
-          setTimeOfDay(next);
+        env={{
+          timeMode,
+          weatherMode,
+          weather,
+          onTimeMode: setTimeMode,
+          onWeatherMode: setWeatherMode,
+          autoHint: `「自動」跟著${cityRef.current.name}目前的時間與即時天氣。`,
         }}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {

@@ -103,7 +103,9 @@ export function createVillagers(): THREE.Group {
   root.add(statics);
   const rods: { pivot: THREE.Object3D; phase: number; tip: THREE.Vector3 }[] = [];
   const walk = getGlobalWalkableZones();
+  const cols: { id: string; type: 'cylinder'; x: number; z: number; radius: number }[] = [];
   const place = (pose: Pose, x: number, y: number, z: number, yaw: number, seed: number) => {
+    if (pose !== 'angler') cols.push({ id: `villager-${seed}`, type: 'cylinder', x, z, radius: pose === 'lying' ? 0.95 : 0.6 });
     const v = villager(pose, seed);
     v.position.set(x, y, z);
     v.rotation.y = yaw;
@@ -167,6 +169,8 @@ export function createVillagers(): THREE.Group {
     parent.add(r.pivot);
   });
   root.updateMatrixWorld(true);
+  // 走到欄杆外草地時不會穿過村民
+  root.userData.colliders = cols;
 
   const tip = new THREE.Vector3();
   root.userData.tick = (t: number) => {
