@@ -9,7 +9,8 @@ import {
   woodFloorTexture,
   facadeTexture,
   templeFacadeTexture,
-  arcadeFacadeTexture,
+  arcadeGlassTexture,
+  graniteWallTexture,
   roofTileTexture,
   ceilingTexture,
   signboardTexture,
@@ -627,6 +628,7 @@ export interface StyledBuildingInput {
 /** 展覽館、電玩城的外觀材質（照 /island） */
 let extMats: {
   cream: THREE.MeshStandardMaterial;
+  granite: THREE.MeshStandardMaterial;
   arcade: THREE.MeshStandardMaterial;
   arcadeTrim: THREE.MeshStandardMaterial;
   glass: THREE.MeshStandardMaterial;
@@ -640,8 +642,11 @@ function exteriorMats() {
   const std = (p: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.02, ...p });
   extMats = {
     cream: std({ color: 0xf3ead6, roughness: 0.9 }),
-    arcade: std({ map: arcadeFacadeTexture(false), emissiveMap: arcadeFacadeTexture(true), emissive: new THREE.Color(0xff6fae), emissiveIntensity: 0.75, roughness: 0.6 }),
-    arcadeTrim: std({ color: 0x241f33, roughness: 0.45, metalness: 0.35 }),
+    // 展覽館（照參考圖重建）：白色花崗岩
+    granite: std({ map: graniteWallTexture(), roughness: 0.55, emissive: new THREE.Color(0x2a2620), emissiveIntensity: 0.3 }),
+    // 電玩城（未來流線版）：深藍玻璃帷幕、銀色金屬柱
+    arcade: std({ map: arcadeGlassTexture(false), emissiveMap: arcadeGlassTexture(true), emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.9, roughness: 0.18, metalness: 0.35 }),
+    arcadeTrim: std({ color: 0xdfe4ec, roughness: 0.22, metalness: 0.85 }),
     glass: std({ color: 0x7cc0ee, emissive: 0x2a6a9a, emissiveIntensity: 0.35, roughness: 0.12, metalness: 0.3, transparent: true, opacity: 0.62, side: THREE.DoubleSide }),
     neonRed: std({ color: 0xff3b5c, emissive: 0xff2a4a, emissiveIntensity: 1.4, roughness: 0.3 }),
     neonBlue: std({ color: 0x3bb8ff, emissive: 0x2a9cff, emissiveIntensity: 1.4, roughness: 0.3 }),
@@ -760,9 +765,9 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const huizhou = ext === 'huizhou';
   // 廟宇（求職廟）：朱紅牆、金黃琉璃瓦，前面另外加三川殿門廊、龍柱、剪黏雙龍搶珠
   const temple = ext === 'temple';
-  const facade = ext === 'exhibition' || huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
+  const facade = ext === 'exhibition' ? exteriorMats().granite : huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
   // 柱子：展覽館與徽派深色木柱、電玩城深色金屬，其餘紅柱
-  const pillarMat = ext === 'exhibition' || huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
+  const pillarMat = ext === 'exhibition' ? exteriorMats().granite : huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
   const themes: RoofTheme[] = ['slate', 'teal', 'slate', 'red'];
   const theme: RoofTheme = b.exterior === 'huizhou' ? 'slate' : temple || tiers >= 4 ? 'gold' : themes[hv % themes.length];
   const plinthH = 0.45;
@@ -829,7 +834,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   wall(wingW, thick, w / 2 - wingW / 2, d / 2);
   // 門楣
   const lintelH = lay ? 0.6 : Math.max(0.6, h - doorH);
-  addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
+  addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), ext === 'arcade' ? em!.arcade : ext === 'exhibition' ? em!.granite : mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
   if (lay) {
     // 門楣上方到頂樓之間的正面牆
     const fh0 = doorH + lintelH;
@@ -926,7 +931,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   addMesh(body, new THREE.BoxGeometry(doorW + 0.7, 0.18, thick + 0.25), mats.gold, 0, doorH, d / 2);
 
   // 屋簷下的額枋（展覽館：奶油色簷口；電玩城：深色平台；徽派：深色木枋）
-  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'exhibition' ? em!.cream : ext === 'arcade' ? mats.roofs.slate : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
+  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'exhibition' ? em!.granite : ext === 'arcade' ? em!.arcadeTrim : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
   // 斗拱：額枋上方一排青綠彩繪的托架（中式樓閣才有）
   if (!em && !huizhou) {
     const blockGeo = new THREE.BoxGeometry(0.3, 0.22, 0.3);
@@ -954,7 +959,7 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
   }
   // 敞開的朱漆大門（門扇貼在前牆內側，不擋路）
-  for (const sx of [-1, 1]) {
+  for (const sx of ext === 'arcade' || ext === 'exhibition' ? [] : [-1, 1]) {
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(doorW / 2 - 0.05, doorH - 0.1, 0.08), mats.door);
     leaf.position.set(sx * (doorW / 2 + doorW / 4), (doorH - 0.1) / 2 + 0.05, d / 2 - thick / 2 - 0.06);
     if (sx > 0) leaf.rotation.y = Math.PI;
@@ -973,11 +978,11 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   // 屋頂：展覽館＝菱格藍玻璃採光穹頂；電玩城＝平頂＋屋頂大手把；其餘＝多重簷
   if (ext === 'exhibition') {
     const rimY = h + 0.1;
-    addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.cream, 0, rimY + 0.18, 0);
+    addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.granite, 0, rimY + 0.18, 0);
     // 玻璃大廳屋頂、兩側樓閣、門面布置由 hallFacades.ts 另外蓋（照參考圖）
   } else if (ext === 'arcade') {
     const rimY = h + 0.1;
-    addMesh(body, scaledBox(w + 0.8, 0.3, d + 0.8, 3, 0.3, 3), mats.roofs.slate, 0, rimY + 0.15, 0);
+    addMesh(body, scaledBox(w + 0.8, 0.3, d + 0.8, 3, 0.3, 3), em!.arcadeTrim, 0, rimY + 0.15, 0);
     // 屋頂玻璃穹頂、霓虹手把大旗、門簾、宮燈由 hallFacades.ts 另外蓋（照參考圖）
   }
   let y = h + 0.1;
