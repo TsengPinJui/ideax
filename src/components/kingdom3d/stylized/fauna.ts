@@ -4,7 +4,8 @@ import { FARMLANDS, farmHouseLayout, FarmHouse } from './basinLayout';
 import { seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { mergeByMaterial } from './architecture';
-import { buildBaimiao, buildDuohui, buildAgent007, buildBear, buildSousou, buildXiaodengpao } from './agents3d';
+import { AgentSprite, SPRITES } from './agentSprites';
+const wrapA = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 import { BEAR_LOCAL } from './craftStreet';
 import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
 
@@ -235,7 +236,7 @@ function walker(m: Record<string, THREE.Material>, rand: () => number, pole: boo
 
 /* ---------------- 原創角色 ---------------- */
 
-// 原創角色的造型在 agents3d.ts（照角色設定圖）
+// 原創角色的造型在 agentSprites.ts（角色設定圖看板人）
 
 /* ---------------- 天上的人字雁群 ---------------- */
 
@@ -606,23 +607,25 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     }
   });
 
-  // ── 原創角色 ──
+  // ── 原創角色：直接用角色設定圖做的看板人（agentSprites：依角度換正／斜／側／背面圖） ──
   const pick = (id: CharacterId, w: number, h: number, x: number, z: number, y0 = 0) => root.add(makePickProxy(w, h, w, x, z, 0, { kind: 'character', id }, y0));
+  const sprites: AgentSprite[] = [];
+  const spriteOf = (id: keyof typeof SPRITES, name: string) => {
+    const sp = new AgentSprite(SPRITES[id]);
+    sp.group.name = name;
+    root.add(sp.group);
+    sprites.push(sp);
+    return sp;
+  };
 
-  // 白喵：徵才島庭院前庭繞圈閒晃，偶爾停下來打滾
+  // 白喵：徵才島庭院前庭繞圈閒晃，偶爾停下來打滾；會走出西月洞門、過石拱橋到主島橋頭睡一下
   {
-    const g = buildBaimiao();
-    g.name = 'char-cat';
-    root.add(g);
-    const body = g.userData.body as THREE.Object3D;
-    const tail = g.userData.tail as THREE.Object3D;
-    keepApart(tail);
-    mergeByMaterial(body as THREE.Group);
-    const proxy = makePickProxy(1.2, 1.3, 1.2, 0, 0, 0, { kind: 'character', id: 'baimiao' });
+    const sp = spriteOf('baimiao', 'char-cat');
+    const g = sp.group;
+    const proxy = makePickProxy(1.1, 1.2, 1.1, 0, 0, 0, { kind: 'character', id: 'baimiao' });
     root.add(proxy);
     const bub = speechBubble(CHARACTERS.baimiao.name, CHARACTERS.baimiao.line);
     root.add(bub);
-    // 和 3D 地圖一樣：在島和橋之間閒晃——庭院繞幾圈 → 出西月洞門 → 走過石拱橋到主島橋頭睡一下 → 走回來；偶爾打滾
     const PATH: [number, number][] = [
       [66, 50.5],
       [53.2, 49.6],
@@ -648,7 +651,6 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
           const [bx, bz] = PATH[i + 1];
           const x = ax + (bx - ax) * u;
           const z = az + (bz - az) * u;
-          // 走在拱橋上：跟著橋面高度
           const y = i === BRIDGE_A ? Math.sin(u * Math.PI) * 2.1 + 0.05 : 0;
           return [x, y, z, Math.atan2(bx - ax, bz - az)];
         }
@@ -658,142 +660,118 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     };
     anims.push((t) => {
       const c = (t + 7) % CYCLE;
-      let roll = 0;
-      let nap = false;
       let moving = true;
+      sp.pose = null;
       if (c < LOOP) {
-        // 庭院繞圈，最後幾秒打滾
         const a = (c / LOOP) * Math.PI * 4;
         g.position.set(66 + Math.cos(a) * 5.5 - 5.5, 0, 50.5 + Math.sin(a) * 3.2);
-        g.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a) * 0.58);
+        // 前進方向＝繞圈切線
+        sp.facing = Math.atan2(-Math.sin(a) * 5.5, Math.cos(a) * 3.2);
         if (c > LOOP - 7) {
-          roll = Math.sin((c - (LOOP - 7)) * 1.2) * 1.4;
+          // 停下來蹦蹦跳跳打滾
+          sp.pose = 'jump';
           moving = false;
         }
       } else if (c < LOOP + WALK) {
         const [x, y, z, h] = along((c - LOOP) * SPEED);
         g.position.set(x, y, z);
-        // 模型臉朝 -Z：面向前進方向
-        g.rotation.y = h + Math.PI;
+        sp.facing = h;
+        if ((c - LOOP) % 9 < 3) sp.pose = 'run';
       } else if (c < LOOP + WALK + NAP) {
         const [x, y, z] = along(total);
         g.position.set(x, y, z);
-        nap = true;
+        sp.pose = 'sleep';
         moving = false;
       } else {
         const [x, y, z, h] = along(total - (c - LOOP - WALK - NAP) * SPEED);
         g.position.set(x, y, z);
-        g.rotation.y = h;
+        sp.facing = h + Math.PI;
       }
-      body.rotation.z = nap ? 1.35 : roll;
-      body.position.y = moving ? Math.abs(Math.sin(t * 6)) * 0.04 : 0;
-      tail.rotation.z = Math.sin(t * (nap ? 0.8 : 3)) * 0.4;
-      proxy.position.set(g.position.x, g.position.y + 0.65, g.position.z);
-      bubbleTick(bub, g.position.x, g.position.y + 1.35, g.position.z);
+      sp.hop = sp.pose === 'jump' ? Math.abs(Math.sin(t * 5)) * 0.35 : moving ? Math.abs(Math.sin(t * 7)) * 0.06 : 0;
+      sp.squash = sp.pose === 'sleep' ? Math.sin(t * 1.4) * 0.03 : moving ? Math.sin(t * 14) * 0.02 : 0;
+      sp.tilt = moving ? Math.sin(t * 7) * 0.05 : 0;
+      proxy.position.set(g.position.x, g.position.y + 0.6, g.position.z);
+      bubbleTick(bub, g.position.x, g.position.y + 1.3, g.position.z);
     });
   }
-  // 搜搜：駕著筋斗雲在五島上空騰雲駕霧（和 3D 地圖一樣；點了看角色小卡、觸發彩蛋）
+  // 搜搜：駕著筋斗雲在五島上空騰雲駕霧
   {
-    const g = buildSousou();
-    g.name = 'char-sousou';
-    g.scale.setScalar(1.7);
-    root.add(g);
-    const trail = g.userData.trail as THREE.Mesh[];
-    trail.forEach(keepApart);
-    mergeByMaterial(g);
-    const proxy = makePickProxy(2.6, 2.6, 2.6, 0, 0, 0, { kind: 'character', id: 'sousou' });
+    const sp = spriteOf('sousou', 'char-sousou');
+    const g = sp.group;
+    const proxy = makePickProxy(2.8, 2.8, 2.8, 0, 0, 0, { kind: 'character', id: 'sousou' });
     g.add(proxy);
     const bub = speechBubble(CHARACTERS.sousou.name, CHARACTERS.sousou.line);
     root.add(bub);
-    const pos = (t: number): [number, number, number] => [Math.sin(t * 0.028) * 78, 15 + Math.sin(t * 0.11) * 2.2, Math.sin(t * 0.056) * 46];
+    const pos = (t: number): [number, number, number] => [Math.sin(t * 0.028) * 78, 14 + Math.sin(t * 0.11) * 2.2, Math.sin(t * 0.056) * 46];
     anims.push((t) => {
       const [x, y, z] = pos(t);
       const [nx, , nz] = pos(t + 0.5);
       g.position.set(x, y, z);
-      g.rotation.y = Math.atan2(nx - x, nz - z);
-      g.rotation.z = Math.sin(t * 0.7) * 0.08;
-      trail.forEach((p, i) => (p.position.y = -0.05 + Math.sin(t * 3 + i) * 0.06));
-      bubbleTick(bub, x, y + 2.6, z, 14);
+      sp.facing = Math.atan2(nx - x, nz - z);
+      sp.tilt = Math.sin(t * 0.7) * 0.06;
+      sp.hop = Math.sin(t * 1.8) * 0.12;
+      bubbleTick(bub, x, y + 3.0, z, 14);
     });
   }
-  // 多慧：主島中央廣場招呼旅人，偶爾拍拍翅膀
+  // 頂多慧：主島中央廣場招呼旅人；有人走近就轉過來，偶爾揮揮翅膀
   {
-    const g = buildDuohui();
-    // 站在「探索看板」旁邊，面向中央廣場
-    g.position.set(-10.05, 0, -11.0);
-    g.rotation.y = Math.atan2(-10.05, -11.0);
-    root.add(g);
-    colliders.push({ id: 'char-duohui', type: 'cylinder', x: -10.05, z: -11.0, radius: 0.6 });
-    pick('duohui', 1.2, 1.9, -10.05, -11.0);
-    const wl = g.userData.wingL as THREE.Object3D;
-    const wr = g.userData.wingR as THREE.Object3D;
-    mergeSelf(g, [wl, wr]);
+    const X = -10.05;
+    const Z = -11.0;
+    const sp = spriteOf('duohui', 'char-duohui');
+    sp.group.position.set(X, 0, Z);
+    colliders.push({ id: 'char-duohui', type: 'cylinder', x: X, z: Z, radius: 0.6 });
+    pick('duohui', 1.2, 1.9, X, Z);
     const bub = speechBubble(CHARACTERS.duohui.name, CHARACTERS.duohui.line);
     root.add(bub);
-    const restYaw = g.rotation.y;
+    const restYaw = Math.atan2(-X, -Z);
+    sp.facing = restYaw;
     anims.push((t) => {
-      const d = bubbleTick(bub, -10.05, 1.95, -11.0);
-      // 有人走近就轉過來看著他
-      const want = d < 8 ? Math.atan2(-(faunaEnv.camX + 10.05), -(faunaEnv.camZ + 11.0)) : restYaw;
-      let dy = want - g.rotation.y;
-      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-      g.rotation.y += dy * 0.06;
-      const f = (t % 6) < 1.2 ? Math.sin(t * 14) * 0.6 : 0;
-      wl.rotation.z = f;
-      wr.rotation.z = -f;
-      g.position.y = Math.abs(Math.sin(t * 1.6)) * 0.03;
+      const d = bubbleTick(bub, X, 2.0, Z);
+      const want = d < 8 ? Math.atan2(faunaEnv.camX - X, faunaEnv.camZ - Z) : restYaw;
+      sp.facing += wrapA(want - sp.facing) * 0.06;
+      sp.pose = d < 8 && t % 6 < 1.6 ? 'wave' : null;
+      sp.hop = sp.pose ? Math.abs(Math.sin(t * 6)) * 0.08 : Math.abs(Math.sin(t * 1.6)) * 0.02;
     });
   }
-  // 007：躺在翰林院屋頂（前坡）吹風看平板
+  // 007：坐在翰林院一層屋簷上吹風看平板（面向庭院）
   {
-    const g = buildAgent007();
-    g.name = 'char-007';
-    // 翰林院一層屋簷（簷口約 z 47、高 6.6）：靠在屋瓦上、腳掛在簷外，面向庭院
-    g.position.set(63.2, 6.6, 47.1);
-    g.rotation.y = Math.PI;
-    g.scale.setScalar(1.15);
-    root.add(g);
+    const sp = spriteOf('agent007', 'char-007');
+    sp.group.position.set(63.2, 6.45, 47.0);
+    sp.facing = 0;
     pick('agent007', 1.4, 1.9, 63.2, 47.0, 6.0);
-    const dish = g.userData.dish as THREE.Object3D;
-    mergeSelf(g, [dish]);
     const bub = speechBubble(CHARACTERS.agent007.name, CHARACTERS.agent007.line);
     root.add(bub);
     anims.push((t) => {
-      bubbleTick(bub, 63.2, 8.2, 47.4, 9);
-      dish.rotation.y = t * 2;
+      bubbleTick(bub, 63.2, 8.3, 47.2, 9);
+      sp.pose = t % 10 < 4 ? 'hero' : null;
+      sp.hop = Math.sin(t * 1.3) * 0.04;
     });
   }
-  // 大熊：百工坊街右手邊自己的「大熊匠鋪」工棚裡，在工作台前敲敲打打（面向街道）
+  // 大熊：百工坊街右手邊自己的「大熊匠鋪」工棚裡，扛著木槌敲敲打打（面向街道）
   {
     const wb = REGION_CONFIGS['region-discussion'].buildings.find((x) => x.id === 'discussion-workshop');
     const [bwx, bwz] = wb ? localToWorldXZ(wb.position.x, wb.position.z, wb.facingYaw, BEAR_LOCAL.x, BEAR_LOCAL.z) : [92.3, -36.4];
-    const BEAR_WORLD = { x: bwx, z: bwz };
-    const g = buildBear();
-    g.position.set(BEAR_WORLD.x, 0.1, BEAR_WORLD.z);
-    g.rotation.y = Math.PI / 2;
-    root.add(g);
-    colliders.push({ id: 'char-bear', type: 'box', x: BEAR_WORLD.x - 0.4, z: BEAR_WORLD.z, halfWidth: 0.85, halfDepth: 0.8 });
-    pick('bear', 1.9, 1.9, BEAR_WORLD.x - 0.4, BEAR_WORLD.z);
-    const arm = g.userData.arm as THREE.Object3D;
-    const gear = g.userData.gear as THREE.Object3D;
-    mergeSelf(g, [arm, gear]);
+    const sp = spriteOf('bear', 'char-bear');
+    sp.group.position.set(bwx, 0.1, bwz);
+    sp.facing = -Math.PI / 2;
+    colliders.push({ id: 'char-bear', type: 'cylinder', x: bwx, z: bwz, radius: 0.7 });
+    pick('bear', 1.6, 2.2, bwx, bwz);
     const bub = speechBubble(CHARACTERS.bear.name, CHARACTERS.bear.line);
     root.add(bub);
     anims.push((t) => {
-      bubbleTick(bub, BEAR_WORLD.x - 0.4, 2.05, BEAR_WORLD.z);
-      arm.rotation.x = Math.max(0, Math.sin(t * 5)) * -1.0;
-      gear.rotation.y = t * 0.8;
+      bubbleTick(bub, bwx, 2.45, bwz);
+      const k = t % 5;
+      sp.pose = k < 2.2 ? 'hammer' : null;
+      // 敲槌：一下一下壓低再彈起
+      sp.squash = sp.pose ? Math.max(0, Math.sin(t * 6)) * 0.05 : 0;
+      sp.hop = sp.pose ? 0 : Math.abs(Math.sin(t * 1.2)) * 0.02;
     });
   }
-
-  // 小燈泡：主島中央廣場繞著大燈泡走，偶爾跳起來、偶爾跌一跤再爬起來
+  // 小燈泡：主島中央廣場繞著大燈泡散步，偶爾跳起來揮手、偶爾跌一跤再爬起來
   {
-    const g = buildXiaodengpao();
-    g.name = 'char-bulb';
-    g.scale.setScalar(1.25);
-    root.add(g);
-    const setPose = g.userData.setPose as (p: 'idle' | 'walk' | 'jump' | 'fallen', t: number) => void;
-    const proxy = makePickProxy(1.0, 1.8, 1.0, 0, 0, 0, { kind: 'character', id: 'xiaodengpao' });
+    const sp = spriteOf('xiaodengpao', 'char-bulb');
+    const g = sp.group;
+    const proxy = makePickProxy(1.0, 1.6, 1.0, 0, 0, 0, { kind: 'character', id: 'xiaodengpao' });
     root.add(proxy);
     const bub = speechBubble(CHARACTERS.xiaodengpao.name, CHARACTERS.xiaodengpao.line);
     root.add(bub);
@@ -805,23 +783,35 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       const dt = lastT ? Math.min(0.1, t - lastT) : 0;
       lastT = t;
       const c = t % CYCLE;
-      let pose: 'idle' | 'walk' | 'jump' | 'fallen' = 'walk';
-      if (c >= 14 && c < 17.5) pose = 'jump';
-      else if (c >= 27 && c < 30) pose = 'fallen';
-      else if (c >= 30 && c < 31.5) pose = 'idle';
-      if (pose === 'walk') ang += (dt * 0.9) / R;
+      let walking = true;
+      sp.pose = null;
+      if (c >= 14 && c < 17.5) {
+        sp.pose = 'jump';
+        walking = false;
+      } else if (c >= 27 && c < 30) {
+        sp.pose = 'fall';
+        walking = false;
+      } else if (c >= 30 && c < 31.5) walking = false;
+      if (walking) ang += (dt * 0.9) / R;
       const x = Math.cos(ang) * R;
       const z = Math.sin(ang) * R;
       g.position.set(x, 0, z);
-      // 臉朝 -Z：面向前進方向（逆時針繞圈的切線）
-      const tx = -Math.sin(ang);
-      const tz = Math.cos(ang);
-      g.rotation.y = Math.atan2(-tx, -tz);
-      setPose(pose, t);
-      proxy.position.set(x, 0.9, z);
-      bubbleTick(bub, x, 2.4, z);
+      sp.facing = Math.atan2(-Math.sin(ang), Math.cos(ang));
+      sp.hop = sp.pose === 'jump' ? Math.abs(Math.sin(t * 6)) * 0.5 : walking ? Math.abs(Math.sin(t * 7)) * 0.07 : 0;
+      sp.tilt = walking ? Math.sin(t * 7) * 0.06 : 0;
+      sp.squash = 0;
+      proxy.position.set(x, 0.8, z);
+      bubbleTick(bub, x, 2.2, z);
     });
   }
+
+  // 看板人每幀面向鏡頭、換視角圖（放在各角色動畫之後，位置才是最新的）
+  anims.push(() => {
+    AgentSprite.cam.x = faunaEnv.camX;
+    AgentSprite.cam.z = faunaEnv.camZ;
+    AgentSprite.cam.tod = faunaEnv.tod;
+    for (const sp of sprites) sp.update(faunaEnv.camX, faunaEnv.camZ, faunaEnv.tod);
+  });
 
   // ── 人字雁群（白天、天氣好時偶爾飛過；由外部決定顯示） ──
   const flock = birdFlock();
