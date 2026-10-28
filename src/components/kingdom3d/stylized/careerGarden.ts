@@ -445,7 +445,7 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
   ];
   for (const [x0, x1, z0, z1] of groves) {
     const area = (x1 - x0) * (z1 - z0);
-    const n = Math.round(area * 0.9);
+    const n = Math.round(area * 0.42);
     for (let k = 0; k < n; k++) {
       const x = x0 + rand() * (x1 - x0);
       const z = z0 + rand() * (z1 - z0);
@@ -462,6 +462,31 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     colliders.push({ id: `garden-bamboo-${x0}-${z0}`, type: 'box', x: (x0 + x1) / 2, z: (z0 + z1) / 2, halfWidth: (x1 - x0) / 2, halfDepth: (z1 - z0) / 2 });
   }
 
+  // ── 庭園地表：草地、裸露泥土與池畔石板分區，步道下沉於地表之上 ──
+  {
+    const grass = new THREE.MeshStandardMaterial({ color: 0x65764c, roughness: 1, flatShading: true });
+    const grassShade = new THREE.MeshStandardMaterial({ color: 0x536344, roughness: 1, flatShading: true });
+    const earth = new THREE.MeshStandardMaterial({ color: 0x72533d, roughness: 1, flatShading: true });
+    const patch = (x: number, z: number, rx: number, rz: number, mat: THREE.Material, rot = 0) => {
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), mat);
+      mesh.position.set(x, -0.08, z);
+      mesh.scale.set(rx, 1, rz);
+      mesh.rotation.y = rot;
+      mesh.receiveShadow = true;
+      root.add(mesh);
+    };
+    patch(84.5, 39.0, 5.8, 3.8, grass, 0.12);
+    patch(57.2, 42.0, 5.6, 3.6, grassShade, -0.18);
+    patch(88.6, 46.8, 4.7, 2.4, grass, 0.25);
+    patch(57.6, 54.2, 4.6, 2.4, grass, -0.2);
+    patch(86.8, 64.0, 5.2, 2.3, grassShade, 0.1);
+    patch(62.0, 66.0, 4.6, 1.7, grass, -0.1);
+    patch(78.4, 43.0, 2.7, 1.45, earth, 0.18);
+    patch(91.0, 42.8, 2.8, 1.5, earth, -0.25);
+    patch(54.8, 59.8, 2.6, 1.6, earth, 0.3);
+    patch(81.6, 67.0, 2.8, 1.35, earth, -0.1);
+  }
+
   // ── 青石步道（各月洞門 → 池邊；兩旁小地燈） ──
   const flagMat = stoneMat(0x6a7078);
   const groundLamp = new THREE.MeshStandardMaterial({ color: 0xfff4dc, emissive: 0xffd9a0, emissiveIntensity: 1.2, roughness: 0.5 });
@@ -475,7 +500,7 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       const ang = Math.atan2(x2 - x1, z2 - z1);
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) / n;
-        const fl = add(new THREE.BoxGeometry(1.0 + rand() * 0.2, 0.06, 0.62 + rand() * 0.15), flagMat, x1 + (x2 - x1) * t + (rand() - 0.5) * 0.12, 0.04, z1 + (z2 - z1) * t, ang + (rand() - 0.5) * 0.15);
+        const fl = add(new THREE.BoxGeometry(0.82 + rand() * 0.12, 0.08, 0.66 + rand() * 0.08), flagMat, x1 + (x2 - x1) * t + (rand() - 0.5) * 0.12, 0.04, z1 + (z2 - z1) * t, ang + (rand() - 0.5) * 0.12);
         fl.castShadow = false;
         acc += len / n;
         if (lamps && acc > 3.6) {
@@ -544,31 +569,23 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     [64.0, 65.6],
     [59.6, 64.6],
   ]);
-  // ── 園景：再多種一些樹（桃花、楓、松、綠樹）、灌木、花圃、景石 ──
+  // ── 園景：疏朗栽植，保留入口與池邊視線 ──
   {
     const tb = new TreeBatch();
     const trees: [TreeKind, number, number, number][] = [
       // 西北角（西月洞門進來的步道兩旁）
-      ['cherry', 51.2, 43.8, 1.0],
+      ['cherry', 51.2, 43.8, 0.9],
       ['maple', 54.0, 33.6, 0.95],
-      ['green', 51.0, 47.8, 1.0],
-      ['cherry', 55.6, 41.2, 0.85],
       // 翰林院與求職廟之間、北月洞門步道旁
-      ['maple', 75.9, 34.4, 0.9],
-      ['cherry', 75.8, 41.6, 0.85],
-      ['green', 70.6, 33.6, 0.9],
+      ['maple', 75.9, 34.4, 0.85],
+      ['green', 70.6, 33.6, 0.82],
       // 東側（東月洞門南邊）
       ['cherry', 93.6, 51.2, 1.0],
-      ['pine', 94.2, 55.6, 1.0],
-      ['maple', 93.0, 58.0, 0.85],
       // 東南角、南牆邊
       ['maple', 87.4, 66.2, 0.95],
-      ['cherry', 82.0, 66.3, 0.9],
-      ['green', 77.4, 66.4, 0.85],
       ['pine', 68.0, 66.8, 0.8],
       // 西側水岸（人才獵頭南北兩側）
       ['cherry', 60.4, 50.2, 0.8],
-      ['maple', 52.0, 62.0, 0.85],
     ];
     for (const [k, x, z, sc] of trees) {
       tb.add(k, x, 0, z, sc);
@@ -576,8 +593,7 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     }
     // 灌木（不擋路）
     const bushes: [number, number][] = [
-      [62.4, 49.4], [69.0, 49.2], [76.0, 49.6], [86.6, 50.4], [88.6, 61.6], [84.0, 63.8], [64.0, 63.6], [61.6, 61.2],
-      [58.6, 49.6], [53.2, 46.0], [50.0, 39.0], [70.0, 44.6], [91.6, 59.6], [94.8, 49.8], [74.4, 66.6], [79.6, 66.6],
+      [62.4, 49.4], [76.0, 49.6], [88.6, 61.6], [84.0, 63.8], [64.0, 63.6], [58.6, 49.6], [50.0, 39.0], [91.6, 59.6],
     ];
     for (const [x, z] of bushes) tb.add('bush', x, 0, z, 0.9 + rand() * 0.5);
     root.add(tb.build());

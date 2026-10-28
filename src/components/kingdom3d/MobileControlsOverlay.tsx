@@ -54,6 +54,7 @@ interface MobileControlsOverlayProps {
   isDesktopPointerLocked: boolean;
   onDesktopRequestLock: () => void;
   isFastWalk: boolean;
+  isOnBoat?: boolean;
   onToggleFastWalk: () => void;
   /** 小燈泡照明（按 F 或點按鍵呼喚，拿在手上照亮四周） */
   bulbOn?: boolean;
@@ -158,6 +159,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   isDesktopPointerLocked,
   onDesktopRequestLock,
   isFastWalk,
+  isOnBoat = false,
   onToggleFastWalk,
   bulbOn,
   onToggleBulb,
@@ -747,7 +749,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               </button>
             )}
             <button type="button" className="kx-menu-item" onClick={onToggleFastWalk}>
-              <Footprints className="w-4 h-4 text-amber-200" /> {isFastWalk ? '疾走中（點一下恢復常速）' : '常速（點一下改疾走）'}
+              <Footprints className="w-4 h-4 text-amber-200" /> {isOnBoat
+                ? (isFastWalk ? '疾駛中（點一下恢復遊船速度）' : '遊船（點一下改疾駛）')
+                : (isFastWalk ? '疾走中（點一下恢復常速）' : '常速（點一下改疾走）')}
             </button>
             {onToggleFancy && (
               <button type="button" className="kx-menu-item" onClick={onToggleFancy}>
@@ -898,18 +902,22 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{bulbOn ? '收起' : '照明(F)'}</span>
             </button>
           )}
-          {/* 下排：特大版疾走鍵 */}
+          {/* 下排：步行時切換疾走，乘船時切換疾駛 */}
           <button
             type="button"
             onClick={onToggleFastWalk}
             data-on={isFastWalk || shiftHeld}
             className="kx-round w-20 h-20 sm:w-24 sm:h-24 flex-col gap-0.5 shadow-lg"
-            title={isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）'}
-            aria-label="疾走"
+            title={isOnBoat
+              ? (isFastWalk ? '疾駛中（點一下恢復遊船速度，或按住 Shift）' : '遊船（點一下疾駛，或按住 Shift）')
+              : (isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）')}
+            aria-label={isOnBoat ? '遊船／疾駛' : '疾走'}
           >
             <Footprints className="w-9 h-9 sm:w-11 sm:h-11" />
             <span className="text-[11px] sm:text-xs font-bold tracking-wider leading-none">
-              {isFastWalk || shiftHeld ? '疾走中' : '疾走'}
+              {isOnBoat
+                ? (isFastWalk || shiftHeld ? '疾駛中' : '遊船')
+                : (isFastWalk || shiftHeld ? '疾走中' : '疾走')}
             </span>
           </button>
         </div>

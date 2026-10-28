@@ -67,6 +67,7 @@ import { atLibraryExit, LIB_HALL, LIB_STAIR, libStairHeights } from './stylized/
 import { GARDEN_ARCH_BRIDGE } from './stylized/careerGarden';
 import { reportXp } from '../../services/xpService';
 import { XP_ISLANDS, XP_VENUES } from '../../data/xpRules';
+import { BASIN_LANDMARKS } from './stylized/basinLayout';
 
 const LIBRARY_ID = 'discussion-library';
 // 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
@@ -439,6 +440,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     }
   }, []);
   const sosoJobsCountRef = useRef(0);
+  const caveWarpCooldownRef = useRef(0);
   const openForTarget = useCallback((t: PickTarget) => {
     if (t.kind === 'building') {
       const b = REGION_BUILDINGS.get(t.id);
@@ -503,6 +505,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const boatingRef = useRef<BoatingService>(new BoatingService());
   const queuedDockRef = useRef<string | null>(null);
   const boatRideRef = useRef<null | { role: 'owner' | 'passenger'; slot: number; x: number; z: number; yaw: number; speed: number; dockId: string }>(null);
+  const boatQuestPositionRef = useRef<null | { slot: number; x: number; z: number }>(null);
   const boardBoatRef = useRef<((dockId: string, join?: BoatSlot | null) => Promise<void>) | null>(null);
   const leaveBoatRef = useRef<(() => void) | null>(null);
   openForTargetRef.current = openForTarget;
@@ -1394,7 +1397,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         for (let k = 0; k < 4; k++) {
           camera.rotation.set(0, (k / 4) * Math.PI * 2, 0);
           camera.updateMatrixWorld();
-          renderer.render(scene, camera);
+          // 預熱正式使用的完整後製管線，避免首次進入時才編譯泛光與調色 shader。
+          composer.render(0);
           await new Promise((r) => setTimeout(r, 0));
         }
         camera.quaternion.copy(q);
@@ -1417,6 +1421,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         requestAnimationFrame(tick);
       });
       setWarmDone(true);
+      // 等載入遮罩退場後再錯開載入其餘島嶼，避免和初次操作搶同一批主執行緒時間。
+      regionManager.preloadRemainingRegions(startRegionId);
     };
     regionManager.onStatusChange = (status, progress) => {
       setRegionStatus(status);
@@ -1884,6 +1890,31 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           else rr.vx *= -0.2;
           if (navigable(ride.x, nz)) ride.z = nz;
           else rr.vz *= -0.2;
+        }
+        // 南山洞口與北山飛瀑是同一條水道的兩端；船頭駛入洞口時送到另一端。
+        const northCave = BASIN_LANDMARKS.northFalls;
+        const southCave = BASIN_LANDMARKS.southCave;
+        const now = performance.now();
+        if (now >= caveWarpCooldownRef.current) {
+          const entersNorth = Math.abs(ride.x - northCave.x) < 7 && ride.z > northCave.faceZ - 2 && ride.z < northCave.faceZ + 7 && rr.vz < -0.12;
+          const entersSouth = Math.abs(ride.x - southCave.x) < 7 && ride.z < southCave.faceZ + 2 && ride.z > southCave.faceZ - 7 && rr.vz > 0.12;
+          if (entersNorth) {
+            ride.x = southCave.x;
+            ride.z = southCave.faceZ - 11;
+            ride.yaw = 0;
+            rr.vx = 0;
+            rr.vz = 0;
+            caveWarpCooldownRef.current = now + 1800;
+            playSoundEffect('portal');
+          } else if (entersSouth) {
+            ride.x = northCave.x;
+            ride.z = northCave.faceZ + 11;
+            ride.yaw = Math.PI;
+            rr.vx = 0;
+            rr.vz = 0;
+            caveWarpCooldownRef.current = now + 1800;
+            playSoundEffect('portal');
+          }
         }
         ride.speed = Math.hypot(rr.vx, rr.vz);
         if (ride.speed > 0.3) {
@@ -2446,12 +2477,26 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           if (partner && pp && !document.hidden) {
             const q = questsRef.current;
             const st = storyRef.current;
+            const ride = boatRideRef.current;
+            const slot = ride && ride.slot >= 0 ? boating.slots.find((s) => s.index === ride.slot) : null;
+            const sameBoat = Boolean(
+              ride && slot && partner.key &&
+              [slot.o, slot.p].includes(boating.myKey) &&
+              [slot.o, slot.p].includes(partner.key)
+            );
+            const lastBoatPosition = boatQuestPositionRef.current;
+            const boatMoving = Boolean(
+              sameBoat && slot && lastBoatPosition?.slot === slot.index &&
+              Math.hypot(slot.x - lastBoatPosition.x, slot.z - lastBoatPosition.z) >= 0.4
+            );
+            boatQuestPositionRef.current = sameBoat && slot ? { slot: slot.index, x: slot.x, z: slot.z } : null;
             const r = stepQuests(q, {
               dt,
               partnerName: partner.name,
               me: { x: controls.position.x, y: controls.position.y, z: controls.position.z },
               partner: { x: pp.x, y: pp.y, z: pp.z },
               onBoat: Boolean(boatRideRef.current),
+              sameBoat: sameBoat && boatMoving,
               onTowerTop: st.towerId === PLATEAU_ID && st.level === 2,
               peachTogether: peachTogetherNow,
             });
@@ -2460,6 +2505,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               setQuests({ done: { ...q.done }, tour: { ...q.tour } });
             }
             for (const c of r.completed) questDoneRef.current(c.title, partner.name);
+          } else if (questsRef.current.tour.boat) {
+            // 夥伴離線、離開視野或頁面切到背景，就中斷本次連續遊湖計時。
+            questsRef.current.tour.boat = 0;
+            boatQuestPositionRef.current = null;
+            saveQuests(questsRef.current);
+            setQuests({ done: { ...questsRef.current.done }, tour: { ...questsRef.current.tour } });
           }
         }
       }
@@ -2959,6 +3010,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onToggleBgm={toggleBgm}
         multiplayer={{ status: mpStatus, others: onlineOthers }}
         isDesktopPointerLocked={isDesktopPointerLocked}
+        isOnBoat={Boolean(riding)}
         onDesktopRequestLock={() => {
           controlsRef.current?.lockPointer();
         }}

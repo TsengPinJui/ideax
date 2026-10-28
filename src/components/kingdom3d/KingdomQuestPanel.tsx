@@ -160,7 +160,7 @@ export const KingdomQuestPanel: React.FC<{
                     <span>{q.title}</span>
                   </div>
                   <div className="text-[11px] mt-0.5 opacity-75">{d ? `已和 ${d.with} 完成・${d.at}` : q.hint}</div>
-                  {q.place && !d && (
+                  {(q.place || q.id === 'boat') && !d && (
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.12)' }}>
                         <div className="h-full rounded-full" style={{ width: `${(sec / TOUR_SECONDS) * 100}%`, background: '#e2b85a' }} />

@@ -226,6 +226,19 @@ export const WORLD_BRIDGES: BridgeZone[] = [
     fromRegionId: 'region-home',
     toRegionId: 'region-career',
   },
+  // 主島南岸通往湖心亭，讓亭子與九曲橋可以步行抵達
+  {
+    id: 'bridge-home-lake-pavilion',
+    name: '主島 ↔ 湖心亭',
+    x1: 0,
+    z1: 27,
+    x2: 0,
+    z2: 72,
+    halfWidth: 2.6,
+    bridgeMaxHeight: 0.55,
+    fromRegionId: 'region-home',
+    toRegionId: 'region-home',
+  },
 ];
 
 /**
@@ -652,7 +665,7 @@ const creativeBuildings: BuildingInteractable[] = [
     name: '電玩城',
     subtitle: '創意島・每一層是一類遊戲展區，點攤位體驗作品',
     // 貼著創意島南緣
-    position: new THREE.Vector3(-64, 0, 66),
+    position: new THREE.Vector3(-59, 0, 66),
     facingYaw: Math.PI,
     width: 22.0,
     depth: 16.0,

@@ -21,6 +21,7 @@ export function isTypingTarget(t: EventTarget | null) {
 export class FirstPersonControls {
   public camera: THREE.PerspectiveCamera;
   public domElement: HTMLElement;
+  private touchElement: HTMLElement;
   public settings: QualitySettings;
 
   // Player state
@@ -55,6 +56,11 @@ export class FirstPersonControls {
   private mouseUpHandler: () => void;
   private keyDownHandler: (e: KeyboardEvent) => void;
   private keyUpHandler: (e: KeyboardEvent) => void;
+  private wheelHandler: (e: WheelEvent) => void;
+  private touchStartHandler: (e: TouchEvent) => void;
+  private touchMoveHandler: (e: TouchEvent) => void;
+  private touchEndHandler: () => void;
+  private pinchDistance = 0;
 
   // Mobile virtual joystick & look pad states
   public touchStick: TouchStickState = {
@@ -88,6 +94,7 @@ export class FirstPersonControls {
   ) {
     this.camera = camera;
     this.domElement = domElement;
+    this.touchElement = domElement.parentElement || domElement;
     this.settings = settings;
 
     // Desktop bindings (supports both PointerLock and Click-and-Drag look)
@@ -122,6 +129,31 @@ export class FirstPersonControls {
 
     this.mouseUpHandler = () => {
       this.isMouseDragging = false;
+    };
+
+    this.wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * Math.exp(-e.deltaY * 0.0012), 0.75, 2.4);
+      this.camera.updateProjectionMatrix();
+    };
+    this.touchStartHandler = (e: TouchEvent) => {
+      if (e.touches.length >= 2) {
+        this.pinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        e.preventDefault();
+      }
+    };
+    this.touchMoveHandler = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      const distance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (this.pinchDistance > 0 && distance > 0) {
+        this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (distance / this.pinchDistance), 0.75, 2.4);
+        this.camera.updateProjectionMatrix();
+      }
+      this.pinchDistance = distance;
+      e.preventDefault();
+    };
+    this.touchEndHandler = () => {
+      this.pinchDistance = 0;
     };
 
     this.keyDownHandler = (e: KeyboardEvent) => {
@@ -182,6 +214,11 @@ export class FirstPersonControls {
     window.addEventListener('mouseup', this.mouseUpHandler);
     window.addEventListener('keydown', this.keyDownHandler);
     window.addEventListener('keyup', this.keyUpHandler);
+    this.domElement.addEventListener('wheel', this.wheelHandler, { passive: false });
+    this.touchElement.addEventListener('touchstart', this.touchStartHandler, { passive: false, capture: true });
+    this.touchElement.addEventListener('touchmove', this.touchMoveHandler, { passive: false, capture: true });
+    this.touchElement.addEventListener('touchend', this.touchEndHandler, { capture: true });
+    this.touchElement.addEventListener('touchcancel', this.touchEndHandler, { capture: true });
   }
 
   public lockPointer() {
@@ -305,6 +342,11 @@ export class FirstPersonControls {
     window.removeEventListener('mouseup', this.mouseUpHandler);
     window.removeEventListener('keydown', this.keyDownHandler);
     window.removeEventListener('keyup', this.keyUpHandler);
+    this.domElement.removeEventListener('wheel', this.wheelHandler);
+    this.touchElement.removeEventListener('touchstart', this.touchStartHandler, true);
+    this.touchElement.removeEventListener('touchmove', this.touchMoveHandler, true);
+    this.touchElement.removeEventListener('touchend', this.touchEndHandler, true);
+    this.touchElement.removeEventListener('touchcancel', this.touchEndHandler, true);
     this.unlockPointer();
   }
 }

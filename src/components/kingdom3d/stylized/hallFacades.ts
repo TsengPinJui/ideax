@@ -409,10 +409,10 @@ export function createPlazaMedallions(): THREE.Group {
     return m;
   };
   // 薈萃廣場（展覽館正前方）：字朝展覽館大門外看過來的方向
-  const a = mk(medallionTex('薈萃廣場', 'IdeaX', null), -67, 44, 4.4);
+  const a = mk(medallionTex('薈萃廣場', 'IdeaX', null), -67, 39.5, 4.4);
   a.rotation.y = Math.PI / 2;
   // 電玩城前的手把地徽
-  const p = mk(medallionTex(null, '', 'pad'), -64, 51.4, 2.8);
+  const p = mk(medallionTex(null, '', 'pad'), -59, 51.4, 2.8);
   p.rotation.y = Math.PI;
   return g;
 }

@@ -1667,8 +1667,11 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     const a = (i / n) * Math.PI * 2;
     const x = Math.cos(a) * (rx + railR);
     const z = Math.sin(a) * (rz + railR);
+    // 創意島兩棟建物的背面拆掉一小段島岸欄杆，讓建物後方視野打開；其餘島岸維持原樣。
+    const creativeRearOpening = inp.id === 'region-creative' &&
+      ((x < -rx * 0.9 && Math.abs(z) < 13) || (z > rz * 0.88 && Math.abs(x) < 14));
     // 每隔一段留一個缺口（步道口）：可以走到欄杆外的草地、靠近水邊
-    posts.push(blockedByBridge(x + cx, z + cz, 1.2) || i % 7 === 3 ? null : { x, z });
+    posts.push(blockedByBridge(x + cx, z + cz, 1.2) || creativeRearOpening || i % 7 === 3 ? null : { x, z });
   }
   const edgeCols: Collider[] = [];
   const postGeo = new THREE.BoxGeometry(0.28, 0.9, 0.28);

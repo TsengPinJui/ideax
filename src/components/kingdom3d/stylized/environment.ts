@@ -444,7 +444,7 @@ export class StylizedWorld {
     this.buildMountainRing(trees);
     this.buildDistantPeaks(rand);
     this.buildFarmlands(trees);
-    this.buildLakePavilion(0, 64);
+    this.buildLakePavilion(BASIN_LANDMARKS.lakePavilion.x, BASIN_LANDMARKS.lakePavilion.z);
     for (const [x, z, r] of LOTUS_PATCHES) this.buildLotus(x, z, r, Math.round(r * 3));
     this.root.add(trees.build());
 
@@ -571,71 +571,68 @@ export class StylizedWorld {
     ledge.position.set(nf.x, 21.5, ledgeZ.z + 3.5);
     this.root.add(ledge);
     this.addConformingFall(g, north, 50, 24.6, 9, 1.0);
-    // 下層瀑布：上半段整片；下半段在中間分開、中間只剩薄薄一層水簾，看得見後面的水濂洞
+    // 下層瀑布：分開的水幕只保留在北山飛瀑；水濂洞主入口位於東山飛瀑。
     {
       const lb = north.base.clone().setZ(ledgeZ.z + 60);
       this.addConformingFall(g, { ...north, base: lb }, 21.6, 6.8, 13, 1.4, 0, 0);
       for (const sx of [-1, 1]) this.addConformingFall(g, { ...north, base: lb.clone().setX(lb.x + sx * 4.6) }, 7.0, -0.3, 4.6, 1.4, 0, 0.4);
       this.addConformingFall(g, { ...north, base: lb }, 7.0, -0.3, 4.6, 1.6, 99, 0);
     }
-    // 水濂洞：下層瀑布的水幕後面，山壁上一座石框洞口、洞口上方「水濂洞」匾，洞前一顆仙石（兩個彩蛋）
+
+    // 東山飛瀑與水濂洞：洞口朝向湖面，水幕兩側落下，中間留出遊船通道。
+    const ef = BASIN_LANDMARKS.eastFalls;
+    const eastFallAt = { base: new THREE.Vector3(ef.faceX - 60, 0, ef.z), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) };
     {
-      const lowerBase = north.base.clone().setZ(ledgeZ.z + 60);
-      const sp = this.surfaceAt(g, lowerBase, north.dir, 2.2);
+      for (const side of [-1, 1]) this.addConformingFall(g, { ...eastFallAt, base: eastFallAt.base.clone().setZ(ef.z + side * 6.5) }, 36, -0.3, 5.5, 1.0);
+      this.addConformingFall(g, eastFallAt, 36, -0.3, 1.0, 0.9, 99, 0);
+      const waterBase = new THREE.Vector3(ef.faceX - 48, 0, ef.z);
+      for (const side of [-1, 1]) this.addConformingFall(g, { base: waterBase.clone().setZ(ef.z + side * 6.5), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 18, -0.3, 3.4, 1.0);
+      this.addConformingFall(g, { base: waterBase, dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 10, -0.3, 1.0, 0.9, 99, 0);
       const cg = new THREE.Group();
       cg.name = 'shuilian_cave';
-      cg.position.set(nf.x, 0, sp.z + 0.35);
+      cg.position.set(ef.faceX + 0.25, -0.1, ef.z);
+      cg.rotation.y = -Math.PI / 2;
       this.root.add(cg);
+      const darkMat = new THREE.MeshBasicMaterial({ color: 0x05090c });
       const rockMat = mats.rock;
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(2.6, 28, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x060708 }));
-      hole.scale.y = 1.45;
-      hole.position.set(0, 0.2, 0);
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(2.9, 32, 0, Math.PI), darkMat);
+      hole.scale.y = 1.55;
+      hole.position.set(0, 0.15, 0.05);
       cg.add(hole);
-      const frame = new THREE.Mesh(new THREE.TorusGeometry(2.7, 0.42, 8, 24, Math.PI), rockMat);
-      frame.scale.set(1, 1.45, 0.8);
-      frame.position.set(0, 0.2, 0.05);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.48, 10, 28, Math.PI), rockMat);
+      frame.scale.set(1, 1.5, 0.8);
+      frame.position.set(0, 0.15, 0.08);
       cg.add(frame);
       for (const sx of [-1, 1]) {
         const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 1.0), rockMat);
-        jamb.position.set(sx * 2.7, 0.4, 0.05);
+        jamb.position.set(sx * 3.0, 0.45, 0.08);
         cg.add(jamb);
       }
-      // 洞裡隱約的石桌、鐘乳石（暗暗的）
-      const inner = new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 1 });
-      for (let k = 0; k < 6; k++) {
-        const st = new THREE.Mesh(new THREE.ConeGeometry(0.16 + (k % 3) * 0.06, 0.9 + (k % 2) * 0.6, 5), inner);
-        st.rotation.x = Math.PI;
-        st.position.set(-1.6 + k * 0.65, 3.2 - (k % 2) * 0.3, -0.05);
-        cg.add(st);
+      const tunnelMat = new THREE.MeshStandardMaterial({ color: 0x20272a, roughness: 1, side: THREE.DoubleSide });
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.5, 25), tunnelMat);
+      floor.position.set(0, -0.65, -13);
+      cg.add(floor);
+      for (const sx of [-4.0, 4.0]) {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(0.55, 5.2, 25), tunnelMat);
+        wall.position.set(sx, 2.0, -13);
+        cg.add(wall);
       }
-      // 匾：水濂洞
-      const tex = signboardTexture('水濂洞', '花果山福地・水簾洞洞天');
-      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.45, roughness: 0.6 }));
-      // 匾掛在水幕外面，遠遠就看得到
-      plaque.position.set(0, 7.6, 4.2);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.6, 25), tunnelMat);
+      roof.position.set(0, 5.0, -13);
+      cg.add(roof);
+      for (const z of [-5, -12, -19]) {
+        const lantern = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x70d7e8, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending }));
+        lantern.scale.set(2.8, 3.4, 1);
+        lantern.position.set(0, 2.1, z);
+        cg.add(lantern);
+      }
+      const tex = signboardTexture('水濂洞', '東山飛瀑・乘舟入洞');
+      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.15), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.5, roughness: 0.6 }));
+      plaque.position.set(0, 7.2, 3.6);
       plaque.userData.noMerge = true;
       cg.add(plaque);
-      // 仙石（洞口前，微微發光）
-      const stone = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 14), new THREE.MeshStandardMaterial({ color: 0xbdb6a6, roughness: 0.7, emissive: 0x6a5a30, emissiveIntensity: 0.35 }));
-      stone.scale.set(1, 1.25, 1);
-      stone.position.set(1.2, 0.75, 0.9);
-      cg.add(stone);
-      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffe3a0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
-      glow.scale.set(3, 3, 1);
-      glow.position.copy(stone.position);
-      cg.add(glow);
-      // 點擊範圍放在水幕前面（不然會被瀑布擋住）
-      const wx = nf.x;
-      const wz = sp.z + 0.35;
-      cg.add(makePickProxy(4.6, 4.6, 0.6, -0.6, 2.4, 0, { kind: 'egg', egg: 'shuilian', maxDist: 260 }, 0.1));
-      cg.add(makePickProxy(1.8, 2.0, 0.6, 1.2, 2.7, 0, { kind: 'egg', egg: 'stoneEgg', maxDist: 260 }, 0));
-      void wx;
-      void wz;
+      cg.add(makePickProxy(5.2, 5.2, 0.5, 0, 2.2, 0, { kind: 'egg', egg: 'shuilian', maxDist: 260 }, 0.1));
     }
-
-    // 東山飛瀑（山壁瀑布，朝向盆地）
-    const ef = BASIN_LANDMARKS.eastFalls;
-    this.addConformingFall(g, { base: new THREE.Vector3(ef.faceX - 60, 0, ef.z), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 36, -0.3, 8, 1.0);
 
     // 南山洞口：水道一路通進山腳的大溶洞
     const sc = BASIN_LANDMARKS.southCave;
@@ -1020,8 +1017,9 @@ export class StylizedWorld {
       g.add(col);
     }
     // 欄杆
-    for (const [x, z, rx] of [[0, -4.2, 0], [0, 4.2, 0], [-4.2, 0, 1], [4.2, 0, 1]] as [number, number, number][]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(rx ? 0.14 : 8.4, 0.7, rx ? 8.4 : 0.14), mats.redLacquer);
+    // 北側留出入口，與主島相連的步道可直接登亭。
+    for (const [x, z, rx] of [[-2.85, -4.2, 0], [2.85, -4.2, 0], [0, 4.2, 0], [-4.2, 0, 1], [4.2, 0, 1]] as [number, number, number][]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(rx ? 0.14 : 2.7, 0.7, rx ? 8.4 : 0.14), mats.redLacquer);
       rail.position.set(x, 1.05, z);
       g.add(rail);
     }

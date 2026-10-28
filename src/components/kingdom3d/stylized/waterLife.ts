@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getGlobalWalkableZones, WORLD_BRIDGES } from '../regionConfigs';
-import { FARMLANDS, LOTUS_PATCHES, MOUNTAIN_RING, THREE_POOLS } from './basinLayout';
+import { BASIN_LANDMARKS, FARMLANDS, LOTUS_PATCHES, MOUNTAIN_RING, THREE_POOLS } from './basinLayout';
 import { makePickProxy } from '../picking';
 import { REGION_CONFIGS } from '../regionConfigs';
 import { STREET_PROPS } from './streets';
@@ -51,7 +51,8 @@ export function isUnderRoof(x: number, y: number, z: number): boolean {
     }
   }
   // 湖心亭屋頂
-  if (Math.hypot(x, z - 64) <= 5.0 && y <= 7.2) return true;
+  const pavilion = BASIN_LANDMARKS.lakePavilion;
+  if (Math.hypot(x - pavilion.x, z - pavilion.z) <= 5.0 && y <= 7.2) return true;
   return false;
 }
 
@@ -105,7 +106,8 @@ export function landAt(x: number, z: number) {
   // 盆地外
   if ((x / 150) ** 2 + (z / 128) ** 2 > 1) return true;
   // 湖心亭、荷花
-  if (Math.hypot(x, z - 64) < 11) return true;
+  const pavilion = BASIN_LANDMARKS.lakePavilion;
+  if (Math.hypot(x - pavilion.x, z - pavilion.z) < 11) return true;
   for (const [lx, lz, r] of LOTUS_PATCHES) if (Math.hypot(x - lx, z - lz) < r + 2) return true;
   // 石拱橋
   for (const b of WORLD_BRIDGES) {
@@ -134,8 +136,19 @@ function underBridge(px: number, pz: number) {
 }
 
 export function navigable(x: number, z: number, margin = 1.4) {
+  const east = BASIN_LANDMARKS.eastFalls;
+  // 東山水濂洞的水道從湖面穿過山壁；南、北傳送洞口也保留一段可接近水域。
+  const caveChannel = (px: number, pz: number) => {
+    if (Math.abs(pz - east.z) < 5.2 && px > east.faceX - 12 && px < east.faceX + 28) return true;
+    const north = BASIN_LANDMARKS.northFalls;
+    const south = BASIN_LANDMARKS.southCave;
+    if (Math.abs(px - north.x) < 5.2 && pz > north.faceZ - 4 && pz < north.faceZ + 9) return true;
+    if (Math.abs(px - south.x) < 5.2 && pz > south.faceZ - 9 && pz < south.faceZ + 4) return true;
+    return false;
+  };
   const solid = (px: number, pz: number) => {
     if (underBridge(px, pz)) return false;
+    if (caveChannel(px, pz)) return false;
     for (const e of ISLANDS) {
       const dx = (px - e.cx) / (e.rx + 9);
       const dz = (pz - e.cz) / (e.rz + 9);
@@ -154,7 +167,8 @@ export function navigable(x: number, z: number, margin = 1.4) {
     }
     for (const p of MOUNTAIN_RING) if (Math.hypot(px - p.x, pz - p.z) < p.r * 1.0) return true;
     if ((px / 150) ** 2 + (pz / 128) ** 2 > 1) return true;
-    if (Math.hypot(px, pz - 64) < 7.5) return true;
+    const pavilion = BASIN_LANDMARKS.lakePavilion;
+    if (Math.hypot(px - pavilion.x, pz - pavilion.z) < 7.5) return true;
     for (const [tx, tz] of THREE_POOLS) if (Math.hypot(px - tx, pz - tz) < 1.6) return true;
     return false;
   };
@@ -337,7 +351,7 @@ export function sampanBoat(m: BoatMats) {
 }
 
 /** 五艘裡面有一艘是有屋頂的畫舫，其餘是沒屋頂的小舟 */
-export const boatHasRoof = (index: number) => index % 5 === 0;
+export const boatHasRoof = (index: number) => index % 5 === 4;
 
 /** 晚上：畫舫遊船（朱紅廊柱、黛瓦攢尖頂、四角宮燈） */
 export function pleasureBoat(m: BoatMats) {
@@ -453,7 +467,7 @@ export class WaterLife {
   constructor() {
     this.root.name = 'water_life';
     const m = boatMats();
-    const routes = findRoutes(6, this.rand);
+    const routes = findRoutes(5, this.rand);
     routes.forEach((r, i) => {
       const group = new THREE.Group();
       // 五艘裡一艘是有屋頂的畫舫，其餘是沒屋頂的小舟（白天、晚上都一樣）

@@ -297,6 +297,8 @@ export function createDiscussionPlaza(): { group: THREE.Group; colliders: Collid
     ].map(([r, y]) => new THREE.Vector2(r, y));
     const body = add(new THREE.LatheGeometry(prof, 24), bronze, x, 1.35, z);
     body.geometry.computeVertexNormals();
+    body.userData.noMerge = true;
+    body.userData.pick = { kind: 'egg', egg: 'ding', maxDist: 24 };
     // 腹部饕餮紋帶（綠鏽）
     add(new THREE.TorusGeometry(1.1, 0.06, 6, 28).rotateX(Math.PI / 2), patina, x, 1.35 + 0.72, z);
     add(new THREE.TorusGeometry(1.07, 0.05, 6, 28).rotateX(Math.PI / 2), patina, x, 1.35 + 0.42, z);

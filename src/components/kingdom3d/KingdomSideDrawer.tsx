@@ -506,6 +506,7 @@ export const KingdomSideDrawer: React.FC<{
   };
 }> = ({ state, questions, onChange, onAction, onOpenQuestion, renderQuestionPage, soso, rankings, bond }) => {
   const [draft, setDraft] = useState('');
+  const [careerLot, setCareerLot] = useState<{ grade: string; verse: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ block: 'end' });
@@ -629,7 +630,7 @@ export const KingdomSideDrawer: React.FC<{
         <>
           <Header icon={Store} title={`${p.name}市集`} badge="創意島" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            <p className="kx-sub text-[15px] leading-relaxed">創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
+            <p className="kx-sub text-[15px] leading-relaxed">薈萃廣場的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
             <ActionList actions={actions} />
           </div>
         </>
@@ -668,7 +669,7 @@ export const KingdomSideDrawer: React.FC<{
           <Header
             icon={isBoard ? ClipboardList : isDiscProp ? (isCraft ? Store : MessagesSquare) : Store}
             title={p.name}
-            badge={isDiscProp ? (isBoard ? '街道佈告欄' : isCraft ? '百工坊・店鋪' : '茶藝街・茶館') : '創意集'}
+            badge={isDiscProp ? (isBoard ? '街道佈告欄' : isCraft ? '百工坊・店鋪' : '茶藝街・茶館') : '薈萃廣場'}
             sub={`${p.sub || ''}・共 ${list.length} ${unit}`}
             onClose={close}
             onBack={() => {
@@ -716,7 +717,7 @@ export const KingdomSideDrawer: React.FC<{
         </>
       );
     } else if (p) {
-      const badge = p.regionId === 'region-discussion' ? '討論島' : p.regionId === 'region-creative' ? '創意集' : '貿易街';
+      const badge = p.regionId === 'region-discussion' ? '討論島' : p.regionId === 'region-creative' ? '薈萃廣場' : '貿易街';
       body = (
         <>
           <Header
@@ -851,7 +852,7 @@ export const KingdomSideDrawer: React.FC<{
           {(st.canSearch || st.jobs.length > 0) && (
             <div className="flex flex-wrap gap-1.5">
               {st.canSearch && st.brief && (
-                <button type="button" disabled={st.busy} onClick={() => soso.search(st.brief)} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer disabled:opacity-50">
+                <button type="button" disabled={st.busy} onClick={() => { setCareerLot(null); soso.search(st.brief); }} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer disabled:opacity-50">
                   就照這個條件找
                 </button>
               )}
@@ -890,10 +891,33 @@ export const KingdomSideDrawer: React.FC<{
     );
   } else if (state?.kind === 'jobs' && soso) {
     const st = soso.state;
+    const drawCareerLot = () => {
+      const lots = [
+        { grade: '上上籤', verse: '所求漸有回音，遇見合適機會時，記得把握也記得比較。' },
+        { grade: '上籤', verse: '前路漸明，先穩住方向；合適的職缺值得多看一眼。' },
+        { grade: '平籤', verse: '好工作不怕多方打聽，條件合適再投也不遲。' },
+      ];
+      setCareerLot(lots[Math.floor(Math.random() * lots.length)]);
+    };
     body = (
       <>
         <Header icon={Briefcase} title="搜搜找到的職缺" badge="求職廟" sub={st.brief ? `條件：${st.brief}` : undefined} onClose={close} onBack={() => onChange({ kind: 'soso' })} />
         <div className="flex-1 overflow-y-auto px-4 py-3">
+          {st.jobs.length > 0 && (
+            <div className="mb-3 rounded-xl px-3 py-3" style={{ background: 'rgba(179,38,30,0.16)', border: '1px solid rgba(226,184,90,0.35)' }}>
+              {careerLot ? (
+                <div className="text-center" role="status">
+                  <p className="text-[14px] font-bold" style={{ color: '#f2cf7a' }}>求職籤・{careerLot.grade}</p>
+                  <p className="mt-1 text-[14.5px] leading-relaxed" style={{ color: '#f6e7c4' }}>{careerLot.verse}</p>
+                  <p className="mt-1 text-[11.5px]" style={{ color: 'rgba(246,231,196,.62)' }}>籤意僅供祈願，以下仍是依條件搜尋的實際職缺</p>
+                </div>
+              ) : (
+                <button type="button" onClick={drawCareerLot} className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[14.5px] font-bold cursor-pointer" style={{ color: '#f6e7c4', background: 'rgba(179,38,30,.38)' }}>
+                  <Sparkles className="h-4 w-4" /> 抽一支求職籤
+                </button>
+              )}
+            </div>
+          )}
           {st.jobs.length === 0 ? (
             <p className="kx-sub text-[15.5px] text-center py-8">還沒有結果，先跟搜搜說說想找的工作。</p>
           ) : (

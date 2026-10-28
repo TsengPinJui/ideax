@@ -6,7 +6,7 @@ import { makePickProxy } from '../picking';
 import { awningTexture, shopInteriorTexture, signboardTexture, bannerTexture, ShopKind } from './textures';
 
 /**
- * 主島商店街與創意島「創意集」市集：兩層樓的街屋店面、條紋布棚攤位、牌坊與顧店的掌櫃。
+ * 主島商店街與創意島「薈萃廣場」市集：兩層樓的街屋店面、條紋布棚攤位、牌坊與顧店的掌櫃。
  * 店面只是街景（不能走進去），四周都有碰撞，玩家不會穿過去。
  */
 
@@ -52,7 +52,7 @@ export interface StreetProp {
   d: number;
 }
 
-/** 合作掌櫃（創意集攤位、貿易街店鋪進駐後填入） */
+/** 合作掌櫃（薈萃廣場攤位、貿易街店鋪進駐後填入） */
 export interface StallPartner {
   name: string;
   sub?: string;
@@ -71,7 +71,7 @@ export const STALL_PARTNERS: Record<string, StallPartner> = {};
 const TRADE_NOTE =
   '貿易街由一整排商鋪組成，預留給合作商進駐：未來可以用平台點數，在這裡直接兌換合作商的服務內容（尚未開放）。歡迎掌櫃進駐！';
 const MARKET_NOTE =
-  '創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！';
+  '薈萃廣場的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！';
 
 const withPartner = (p: StreetProp, note: string): StreetProp => {
   const partner = STALL_PARTNERS[p.id];
@@ -127,14 +127,14 @@ const HOME_SHOPS = ringProps(
   }))
 ).map((p) => withPartner(p, TRADE_NOTE));
 
-/** 創意島北側：創意集市集（五個攤位＋牌坊）——預留給合作夥伴（遊戲或提案）進駐 */
+/** 創意島北側：薈萃廣場市集（五個攤位＋牌坊）——預留給合作夥伴（遊戲或提案）進駐 */
 const CREATIVE_STALLS = ringProps('region-creative', 'stall', 3.6, 2.4, (rx, rz) => [rx * 0.76, rz * 0.76], [
   { deg: -124, name: '一號攤', sub: '歡迎掌櫃進駐', goods: 'sweets' },
   { deg: -107, name: '二號攤', sub: '歡迎掌櫃進駐', goods: 'ink' },
   { deg: -90, name: '三號攤', sub: '歡迎掌櫃進駐', goods: 'toys' },
   { deg: -73, name: '四號攤', sub: '歡迎掌櫃進駐', goods: 'crafts' },
   { deg: -56, name: '五號攤', sub: '歡迎掌櫃進駐', goods: 'lanterns' },
-]).map((p) => withPartner(p, MARKET_NOTE));
+]).map((p) => withPartner({ ...p, z: p.z - 4.5 }, MARKET_NOTE));
 
 /** 主島北面：貿易街牌坊（原本的貿易街單棟拿掉，改成一整排商鋪） */
 const TRADE_GATE: StreetProp = {
@@ -154,7 +154,7 @@ const TRADE_GATE: StreetProp = {
 
 const CREATIVE_GATE: StreetProp = (() => {
   const [cx, cz] = REGION_CONFIGS['region-creative'].center;
-  return { id: 'region-creative-gate', regionId: 'region-creative', kind: 'gate', name: '創意集', sub: '市集・攤販・活動', goods: 'general', x: cx, z: cz - 14.5, yaw: 0, w: 7.6, d: 1.2 };
+  return { id: 'region-creative-gate', regionId: 'region-creative', kind: 'gate', name: '薈萃廣場', sub: '市集・攤販・活動', goods: 'general', x: cx, z: cz - 19, yaw: 0, w: 7.6, d: 1.2 };
 })();
 
 /**

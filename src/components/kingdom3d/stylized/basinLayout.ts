@@ -224,8 +224,8 @@ export const LOTUS_PATCHES: [number, number, number][] = [
   [7.5, -42, 6],
   [-8.2, -35, 5],
   [8.2, -35, 5],
-  [-7.8, 42, 5],
-  [7.8, 42, 5],
+  [-7.8, 50, 5],
+  [7.8, 50, 5],
 ].map(([x, z, r]) => [x * S, z * S, r * S] as [number, number, number]);
 
 const peakByKind = (k: Peak['kind']) => MOUNTAIN_RING.find((p) => p.kind === k)!;
@@ -248,7 +248,7 @@ export const BASIN_LANDMARKS = {
     const p = MOUNTAIN_RING.find((q) => q.i === 1)!;
     return { x: p.x, z: p.z, r: p.r, faceX: p.x - p.r * 0.92, name: '東山飛瀑' };
   })(),
-  lakePavilion: { x: 0, z: 64, name: '湖心亭' },
+  lakePavilion: { x: 0, z: 72, name: '湖心亭' },
 };
 
 /** 不規則的陸地輪廓（世界座標的點列） */
@@ -302,7 +302,7 @@ export function chimneyTop(h: FarmHouse): [number, number, number] {
 
 /** 湖心亭北面的「三潭印月」三座小石塔（船會繞開） */
 export const THREE_POOLS: [number, number][] = [
-  [-6, 52.5],
-  [6, 52.5],
-  [0, 47.5],
+  [-6, 60.5],
+  [6, 60.5],
+  [0, 55.5],
 ];

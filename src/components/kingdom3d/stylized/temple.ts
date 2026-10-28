@@ -353,7 +353,7 @@ function createOctagonalTemple(b: BuildingInteractable): { group: THREE.Group; c
   };
   const stone = new THREE.MeshStandardMaterial({ color: 0xaaa493, roughness: 0.88 });
   const gold = new THREE.MeshStandardMaterial({ color: 0xd5a84f, roughness: 0.34, metalness: 0.55 });
-  const roofRed = new THREE.MeshStandardMaterial({ color: 0x7c2927, roughness: 0.7, metalness: 0.05 });
+  const roofRed = new THREE.MeshStandardMaterial({ color: 0x922f24, roughness: 0.7, metalness: 0.05 });
   const floorRadius = Math.min(b.width * 0.48, b.depth * 0.62);
 
   // 八角石台、木地坪與一圈細金線收邊。
@@ -375,6 +375,28 @@ function createOctagonalTemple(b: BuildingInteractable): { group: THREE.Group; c
     add(new THREE.CylinderGeometry(0.3, 0.25, 0.18, 8), gold, x, postY + postHeight - 0.02, z);
     const [wx, wz] = worldPoint(x, z);
     colliders.push({ id: `${b.id}-oct-post-${i}`, type: 'cylinder', x: wx, z: wz, radius: 0.42 });
+    // 面向入口的兩根主柱盤繞青龍、金線鱗脊與龍首，讓閩式廟亭的龍柱成為正面焦點。
+    if (Math.sin(a) > 0.5) {
+      const dragonMat = new THREE.MeshStandardMaterial({ color: i % 2 ? 0x26765f : 0x315c83, roughness: 0.38, metalness: 0.28 });
+      const goldLine = new THREE.MeshStandardMaterial({ color: 0xd6ac50, roughness: 0.35, metalness: 0.65 });
+      const pts: THREE.Vector3[] = [];
+      for (let k = 0; k <= 72; k++) {
+        const t = k / 72;
+        const angle = t * Math.PI * 6 + i;
+        pts.push(new THREE.Vector3(x + Math.cos(angle) * 0.34, postY + 0.38 + t * (postHeight - 0.9), z + Math.sin(angle) * 0.34));
+      }
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const dragon = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.105, 7, false), dragonMat);
+      dragon.castShadow = true;
+      pavilion.add(dragon);
+      const scales = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.026, 5, false), goldLine);
+      scales.position.y = 0.045;
+      pavilion.add(scales);
+      const headPoint = pts[pts.length - 1];
+      const head = add(new THREE.SphereGeometry(0.22, 12, 10), dragonMat, headPoint.x, headPoint.y + 0.08, headPoint.z);
+      head.scale.set(1.25, 0.92, 1.3);
+      for (const side of [-1, 1]) add(new THREE.ConeGeometry(0.055, 0.3, 7), goldLine, headPoint.x + side * 0.13, headPoint.y + 0.27, headPoint.z).rotation.z = side * -0.45;
+    }
   }
   const beamRing = add(new THREE.CylinderGeometry(postRadius * 1.04, postRadius * 1.04, 0.32, 8), mats.redLacquer, 0, postY + postHeight - 0.06, 0);
   beamRing.rotation.y = Math.PI / 8;
@@ -391,6 +413,19 @@ function createOctagonalTemple(b: BuildingInteractable): { group: THREE.Group; c
       const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
       const finial = add(new THREE.SphereGeometry(0.16, 8, 6), gold, Math.cos(a) * (radius + 0.08), y - height / 2 + 0.1, Math.sin(a) * (radius + 0.08));
       finial.scale.set(1.1, 0.75, 1.1);
+      if (radius > floorRadius) {
+        const eave = y - height / 2 + 0.1;
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(Math.cos(a) * radius * 0.88, eave, Math.sin(a) * radius * 0.88),
+          new THREE.Vector3(Math.cos(a) * radius, eave + 0.1, Math.sin(a) * radius),
+          new THREE.Vector3(Math.cos(a) * radius * 1.06, eave + 0.46, Math.sin(a) * radius * 1.06),
+          new THREE.Vector3(Math.cos(a) * radius * 1.1, eave + 0.82, Math.sin(a) * radius * 1.1),
+        ]);
+        const tail = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.11, 7, false), roofRed);
+        tail.castShadow = true;
+        pavilion.add(tail);
+        add(new THREE.SphereGeometry(0.13, 8, 6), gold, Math.cos(a) * radius * 1.1, eave + 0.82, Math.sin(a) * radius * 1.1);
+      }
     }
   };
   roofTier(floorRadius * 1.13, 5.9, 1.32, 1.65);
@@ -427,6 +462,54 @@ function createOctagonalTemple(b: BuildingInteractable): { group: THREE.Group; c
   corridorRoof.position.set(0, 3.35, corridorLength / 2);
   corridorRoof.traverse((o) => { o.userData.noMerge = true; });
   corridor.add(corridorRoof);
+
+  // 閩南廟宇入口石獅：一對蹲踞石獅立於廊道外側，讓出中央進出動線。
+  const lionStone = new THREE.MeshStandardMaterial({ color: 0xaaa79e, roughness: 0.9 });
+  const lionShade = new THREE.MeshStandardMaterial({ color: 0x777a77, roughness: 0.88 });
+  for (const side of [-1, 1]) {
+    const lion = new THREE.Group();
+    lion.position.set(side * 3.25, 0, floorRadius * 0.83 + corridorLength + 1.55);
+    lion.userData.noMerge = true;
+    corridor.add(lion);
+    add(new THREE.CylinderGeometry(0.9, 1.0, 0.34, 8), stone, 0, 0.17, 0, lion);
+    add(new THREE.BoxGeometry(1.0, 0.16, 0.92), gold, 0, 0.42, 0, lion);
+    const pose = new THREE.Group();
+    lion.add(pose);
+    const la = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number) => {
+      const mesh = add(geo, mat, x, y, z, pose);
+      mesh.userData.noMerge = true;
+      return mesh;
+    };
+    const body = la(new THREE.SphereGeometry(0.68, 12, 10), lionStone, 0, 0.92, 0);
+    body.userData.pick = { kind: 'egg', egg: 'stoneLion', maxDist: 24 };
+    body.userData.noMerge = true;
+    const mane = la(new THREE.SphereGeometry(0.59, 12, 10), lionShade, 0, 1.35, -0.04);
+    mane.userData.pick = { kind: 'egg', egg: 'stoneLion', maxDist: 24 };
+    mane.userData.noMerge = true;
+    la(new THREE.SphereGeometry(0.39, 12, 10), lionStone, 0, 1.42, -0.38);
+    la(new THREE.SphereGeometry(0.16, 10, 8), lionShade, 0, 1.27, -0.72);
+    for (const x of [-0.4, 0.4]) {
+      la(new THREE.SphereGeometry(0.22, 8, 7), lionStone, x, 1.75, -0.05);
+      la(new THREE.SphereGeometry(0.12, 8, 7), gold, x * 1.45, 1.18, -0.44);
+    }
+    for (const x of [-0.42, 0.42]) for (const z of [-0.32, 0.34]) {
+      la(new THREE.CylinderGeometry(0.17, 0.2, 0.48, 8), lionStone, x, 0.56, z);
+      la(new THREE.SphereGeometry(0.22, 8, 6), lionStone, x, 0.36, z - 0.08);
+    }
+    lion.userData.tick = (t: number) => {
+      const phase = (t + (side < 0 ? 0 : 10.5)) % 27;
+      let stretch = 0;
+      if (phase >= 17 && phase < 19.2) stretch = (phase - 17) / 2.2;
+      else if (phase >= 19.2 && phase < 20.7) stretch = 1;
+      else if (phase >= 20.7 && phase < 23.1) stretch = 1 - (phase - 20.7) / 2.4;
+      stretch = THREE.MathUtils.smoothstep(stretch, 0, 1);
+      pose.position.y = stretch * 0.32;
+      pose.rotation.x = stretch * 0.13;
+      pose.scale.y = 1 + stretch * 0.045;
+    };
+    const [wx, wz] = worldPoint(side * 3.25, floorRadius * 0.83 + corridorLength + 1.55);
+    colliders.push({ id: `${b.id}-stone-lion-${side}`, type: 'cylinder', x: wx, z: wz, radius: 0.95 });
+  }
 
   // 香爐安排在廊道前緣，留出進亭空間。
   const incense = new THREE.Group();

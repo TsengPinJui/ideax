@@ -20,7 +20,7 @@ export interface DuoQuest {
 export const TOUR_SECONDS = 300;
 
 export const DUO_QUESTS: DuoQuest[] = [
-  { id: 'boat', title: '一起遊船', hint: '和羈絆夥伴坐上同一艘船，或各划一艘靠在一起遊湖' },
+  { id: 'boat', title: '羈絆一起遊湖', hint: '和羈絆夥伴搭乘同一艘船，持續遊湖 5 分鐘' },
   { id: 'tower', title: '一起登上聚雲塔', hint: '兩人一起站上聚雲塔塔頂眺望' },
   { id: 'peach', title: '桃樹下同坐', hint: '和羈絆夥伴一起坐在同一棵桃樹下（按 C 坐下），桃花就會落下來' },
   { id: 'tour-home', title: '一起遊覽主島中央廣場', hint: '兩人一起在主島中央廣場待滿 5 分鐘', place: { x: 0, z: 0, r: 17 } },
@@ -75,6 +75,7 @@ export function stepQuests(
     me: { x: number; y: number; z: number };
     partner: { x: number; y: number; z: number } | null;
     onBoat: boolean;
+    sameBoat?: boolean;
     onTowerTop: boolean;
     /** 兩人一起坐在同一棵桃樹下 */
     peachTogether?: boolean;
@@ -95,8 +96,16 @@ export function stepQuests(
   for (const qq of DUO_QUESTS) {
     if (q.done[qq.id]) continue;
     if (qq.id === 'boat') {
-      // 同一艘船，或各自划船靠在一起（兩邊畫面各自判斷自己有沒有在船上）
-      if (ctx.onBoat && d < 8 && dy < 1.5) finish(qq);
+      // 必須與羈絆夥伴在同一艘實際船位上連續遊湖五分鐘；中途分開就重新計時。
+      if (ctx.sameBoat) {
+        const s = (q.tour[qq.id] || 0) + ctx.dt;
+        q.tour[qq.id] = Math.min(TOUR_SECONDS, s);
+        changed = true;
+        if (s >= TOUR_SECONDS) finish(qq);
+      } else if (q.tour[qq.id]) {
+        q.tour[qq.id] = 0;
+        changed = true;
+      }
     } else if (qq.id === 'peach') {
       if (ctx.peachTogether) finish(qq);
     } else if (qq.id === 'tower') {

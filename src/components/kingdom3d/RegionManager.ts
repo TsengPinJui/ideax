@@ -76,6 +76,7 @@ export class RegionManager {
   // Active region & loaded regions map
   public activeData: RegionLoadedData | null = null;
   public loadedRegions: Map<RegionId, RegionLoadedData> = new Map();
+  private preloadTasks = new Map<RegionId, Promise<void>>();
 
   // Callbacks
   public onStatusChange?: (status: RegionStatus, progress: number) => void;
@@ -342,8 +343,7 @@ export class RegionManager {
   }
 
   /**
-   * Load and activate a region, while asynchronously loading remaining islands
-   * so bridge walking across the entire 5-island map is seamless.
+   * Load and activate a region. Remaining islands are queued after the entry warm-up.
    */
   public async loadRegion(regionId: RegionId): Promise<RegionLoadedData> {
     const manifest = REGION_CONFIGS[regionId];
@@ -368,6 +368,11 @@ export class RegionManager {
       }
 
       let data = this.loadedRegions.get(regionId);
+      const pendingPreload = !data ? this.preloadTasks.get(regionId) : undefined;
+      if (pendingPreload) {
+        await pendingPreload;
+        data = this.loadedRegions.get(regionId);
+      }
       if (!data) {
         data = await this.assembleRegionGroup(manifest, (p) => {
           this.setStatus('loading', p);
@@ -387,13 +392,6 @@ export class RegionManager {
       this.activeData = data;
       this.setStatus('active', 100);
 
-      // Preload all other islands in the background so walking across any bridge is seamless
-      for (const otherId of ALL_REGION_IDS) {
-        if (otherId !== regionId && !this.loadedRegions.has(otherId)) {
-          this.preloadRegion(otherId).catch(() => {});
-        }
-      }
-
       return data;
     } catch (err: any) {
       this.failedTargetRegionId = regionId;
@@ -410,17 +408,42 @@ export class RegionManager {
    */
   public async preloadRegion(regionId: RegionId): Promise<void> {
     if (this.loadedRegions.has(regionId)) return;
+    const pending = this.preloadTasks.get(regionId);
+    if (pending) return pending;
     const manifest = REGION_CONFIGS[regionId];
     if (!manifest) return;
-
-    try {
+    const task = Promise.resolve().then(async () => {
       const data = await this.assembleRegionGroup(manifest, () => {});
       this.loadedRegions.set(regionId, data);
       this.scene.add(data.sceneGroup);
       this.onRegionReady?.();
+    });
+    this.preloadTasks.set(regionId, task);
+    try {
+      await task;
     } catch (e) {
       console.warn(`Preload skipped for ${regionId}:`, e);
+    } finally {
+      if (this.preloadTasks.get(regionId) === task) this.preloadTasks.delete(regionId);
     }
+  }
+
+  /** 暖機完成後才以低優先順序逐座預載，避免四個島同時搶主畫面資源。 */
+  public preloadRemainingRegions(activeRegionId: RegionId) {
+    const remaining = ALL_REGION_IDS.filter((id) => id !== activeRegionId);
+    let index = 0;
+    const queueNext = () => {
+      if (index >= remaining.length) return;
+      const loadNext = () => {
+        const id = remaining[index++];
+        if (!id) return;
+        void this.preloadRegion(id).finally(() => window.setTimeout(queueNext, 1200));
+      };
+      const win = window as Window & { requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number };
+      if (win.requestIdleCallback) win.requestIdleCallback(loadNext, { timeout: 2200 });
+      else window.setTimeout(loadNext, 500);
+    };
+    window.setTimeout(queueNext, 2200);
   }
 
   /**
