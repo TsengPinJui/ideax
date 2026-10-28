@@ -1147,3 +1147,118 @@ export function arcadeFacadeTexture(emissive = false) {
     return toTexture(c, { srgb: !emissive });
   });
 }
+
+/**
+ * 電玩城（未來流線版）的玻璃帷幕：一個重複單元寬 3.2 公尺、高＝整面牆
+ * 深藍玻璃、銀色直櫺、每層樓板一道白色燈帶，玻璃後透出暖光與藍色遊戲螢幕（emissive＝室內透光）
+ */
+export function arcadeGlassTexture(emissive = false) {
+  return cached(`arcade_glass_${emissive ? 'e' : 'c'}`, () => {
+    const W = 256;
+    const H = 1024;
+    const [c, g] = makeCanvas(W, H);
+    const floors = [0.05, 0.36, 0.67];
+    if (emissive) {
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, W, H);
+    } else {
+      const gr = g.createLinearGradient(0, 0, 0, H);
+      gr.addColorStop(0, '#1b2a44');
+      gr.addColorStop(1, '#2c3b58');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, W, H);
+    }
+    // 每層：暖色室內光＋幾面藍色螢幕＋天花環形燈
+    for (let k = 0; k < 3; k++) {
+      const y1 = H * (1 - floors[k]);
+      const y0 = H * (1 - (k < 2 ? floors[k + 1] : 0.97));
+      const gr = g.createLinearGradient(0, y0, 0, y1);
+      gr.addColorStop(0, emissive ? 'rgba(255,220,170,0.55)' : 'rgba(255,214,160,0.35)');
+      gr.addColorStop(0.5, emissive ? 'rgba(120,90,70,0.15)' : 'rgba(60,70,100,0.1)');
+      gr.addColorStop(1, emissive ? 'rgba(255,200,140,0.45)' : 'rgba(255,200,140,0.25)');
+      g.fillStyle = gr;
+      g.fillRect(0, y0, W, y1 - y0);
+      let s = k * 77 + 13;
+      const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+      for (let i = 0; i < 3; i++) {
+        const sw = 30 + rnd() * 40;
+        const sh = 22 + rnd() * 26;
+        const sx = 14 + rnd() * (W - sw - 28);
+        const sy = y1 - 40 - sh - rnd() * 60;
+        g.fillStyle = emissive ? '#5aa8ff' : '#7cc4ff';
+        g.fillRect(sx, sy, sw, sh);
+        g.fillStyle = emissive ? '#c58cff' : '#b08cff';
+        g.fillRect(sx + 4, sy + 4, sw * 0.4, sh - 8);
+      }
+      // 天花上的環形燈（從外面看是一道道白色弧線）
+      g.strokeStyle = emissive ? '#ffffff' : '#eef6ff';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.ellipse(W / 2, y0 + 26, 70, 9, 0, 0, Math.PI * 2);
+      g.stroke();
+    }
+    // 樓板白色燈帶
+    for (const f of floors) {
+      const y = H * (1 - f);
+      g.fillStyle = emissive ? '#e8f2ff' : '#dfe6ef';
+      g.fillRect(0, y - 10, W, 14);
+    }
+    // 銀色直櫺（每 1.6 公尺一根）
+    for (const x of [0, W / 2]) {
+      g.fillStyle = emissive ? '#000' : '#c9d1dc';
+      g.fillRect(x, 0, 6, H);
+      g.fillRect(x === 0 ? W - 6 : x, 0, x === 0 ? 6 : 0, H);
+    }
+    if (!emissive) {
+      // 玻璃反光
+      g.fillStyle = 'rgba(255,255,255,0.08)';
+      g.beginPath();
+      g.moveTo(40, 0);
+      g.lineTo(110, 0);
+      g.lineTo(30, H);
+      g.lineTo(-40, H);
+      g.fill();
+    }
+    return toTexture(c, { srgb: !emissive });
+  });
+}
+
+/** 展覽館（照參考圖重建）的清水模外牆：一個單元寬 3.2 公尺、高＝整面牆，模板分割線、對拉螺栓孔、淡淡的色差 */
+export function graniteWallTexture() {
+  return cached('concrete_wall', () => {
+    const W = 256;
+    const H = 1024;
+    const [c, g] = makeCanvas(W, H);
+    g.fillStyle = '#d6d3cd';
+    g.fillRect(0, 0, W, H);
+    let s = 4242;
+    const r = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    const rows = 8;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < 2; col++) {
+        const x0 = col * (W / 2);
+        const y0 = row * (H / rows);
+        const v = 206 + Math.round(r() * 16);
+        g.fillStyle = `rgb(${v},${v - 2},${v - 6})`;
+        g.fillRect(x0, y0, W / 2, H / rows);
+        for (let k = 0; k < 60; k++) {
+          g.fillStyle = `rgba(110,105,98,${r() * 0.18})`;
+          g.fillRect(x0 + r() * (W / 2), y0 + r() * (H / rows), 2 + r() * 6, 1 + r() * 2);
+        }
+        // 對拉螺栓孔（每塊模板 2×3）
+        g.fillStyle = 'rgba(80,76,70,0.75)';
+        for (const fx of [0.25, 0.75])
+          for (const fy of [0.2, 0.5, 0.8]) {
+            g.beginPath();
+            g.arc(x0 + (W / 2) * fx, y0 + (H / rows) * fy, 3, 0, Math.PI * 2);
+            g.fill();
+          }
+      }
+    }
+    g.fillStyle = 'rgba(120,114,106,0.6)';
+    for (let row = 0; row <= rows; row++) g.fillRect(0, row * (H / rows) - 1, W, 2);
+    g.fillRect(W / 2 - 1, 0, 2, H);
+    g.fillRect(0, 0, 2, H);
+    return toTexture(c);
+  });
+}
