@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#244',
+    version: 'v4.3.10',
+    releaseDate: '2026.10.29',
+    releaseTime: '09:50',
+    author: 'System Architect',
+    summary: '3D 實境漫遊：展覽館的大圓洞牆移到建築側面，正面加上洗牆燈與燈帶',
+    changes: [
+      '展覽館：大圓洞清水模牆改立在建築側面，從圓洞看得見側牆上的暖光玻璃展廊；正面右側換成斜頂清水模牆，「雅俗共賞」直幡掛在上面。',
+      '展覽館正面打光：牆腳一排洗牆燈往上打出暖光、懸挑招牌下緣與玻璃入口兩側的燈帶、入口前地面一片暖光；側面圓洞牆外側也有洗牆燈。',
+    ],
+  },
+  {
     seqNumber: '#243',
     version: 'v4.3.9',
     releaseDate: '2026.10.29',
