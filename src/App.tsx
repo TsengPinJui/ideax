@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { openInKingdomPanel } from './utils/kingdomPanel';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -178,6 +179,14 @@ function MainContent() {
     setQuestions,
   } = useApp();
 
+  // 在 3D 實境漫遊左側欄裡內嵌顯示網站（?panel=kingdom）：不顯示頁尾、底部導覽、吉祥物、開場畫面等浮動元件
+  const inKingdomPanel = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('panel') === 'kingdom' && window.self !== window.top;
+    } catch {
+      return false;
+    }
+  })();
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -2449,10 +2458,11 @@ function MainContent() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      <SplashScreen minDurationMs={1400} />
+      {!inKingdomPanel && <SplashScreen minDurationMs={1400} />}
 
       {/* Navigation (在創星季獨立網站與創點島全螢幕地圖時隱藏導覽列，保持沉浸體驗) */}
-      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
+      {/* 在實境漫遊左側欄內嵌時不顯示導覽列（側欄自己有標題列，避免又從裡面開一層 3D） */}
+      {!inKingdomPanel && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
         <Navbar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -2550,26 +2560,26 @@ function MainContent() {
                       JSON.stringify({ id: cq.id, title: cq.title, serial: cq.id, summary: cq.description })
                     );
                   } catch {}
-                  window.open('/challenge/submit', '_blank');
+                  openInKingdomPanel('/challenge/submit', '提交方案');
                 }}
                 onOpenSubmitAnswer={() => {
                   if (currentUser.id === 'user-guest') {
                     promptLogin('訪客模式請先登入帳號以提出方案');
                     return;
                   }
-                  window.open(`/question/${encodeURIComponent(q.id)}`, '_blank');
+                  openInKingdomPanel(`/question/${encodeURIComponent(q.id)}`, '提出方案');
                 }}
                 onSelectSolver={() => {
-                  window.open('/solvers', '_blank');
+                  openInKingdomPanel('/solvers', '找專家');
                 }}
                 onOpenChatWithUser={() => {
-                  window.open('/chat', '_blank');
+                  openInKingdomPanel('/chat', '私訊');
                 }}
                 onSelectCategory={() => {
-                  window.open('/explore', '_blank');
+                  openInKingdomPanel('/explore', '探索');
                 }}
                 onSearchTag={() => {
-                  window.open('/explore', '_blank');
+                  openInKingdomPanel('/explore', '探索');
                 }}
               />
             )}
@@ -4105,7 +4115,7 @@ function MainContent() {
 
       {/* 創點子頁面專屬：右上羅盤浮動懸停導覽入口（只在創點子頁面時出現） */}
       <FloatingOnboardingCompass
-        isVisible={!isOnboardingOpen && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp'}
+        isVisible={!inKingdomPanel && !isOnboardingOpen && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp'}
         onStartOnboarding={() => {
           setIsOnboardingFromAbout(true);
           setSelectedQuestion(null);
@@ -4116,7 +4126,7 @@ function MainContent() {
       />
 
       {/* Footer (創星季獨立站模式下不顯示舊站大頁尾) */}
-      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
+      {!inKingdomPanel && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
         <Footer
           onNavClick={(tab, section) => {
             if (section) {
@@ -4140,7 +4150,7 @@ function MainContent() {
       {['explore', 'solvers', 'job_explorer', 'star_season', 'leaderboard', 'my_projects'].includes(activeTab) && <BackToTopButton />}
 
       {/* 手機行動裝置專屬底部導覽列 (創星季獨立站模式下隱藏，保持獨立單頁體驗) */}
-      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
+      {!inKingdomPanel && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
         <MobileBottomNav
           activeTab={activeTab}
           userDashboardTab={userDashboardTab}
@@ -4247,13 +4257,13 @@ function MainContent() {
       )}
 
       {/* 發布內容後詢問是否開啟通知 */}
-      <NotificationOptInPrompt />
+      {!inKingdomPanel && <NotificationOptInPrompt />}
 
       {/* 有新版本時提醒更新（開很久沒重新整理的頁面或手機 APP；創點島全螢幕時不遮擋） */}
-      {activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && <NewVersionNotice />}
+      {!inKingdomPanel && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && <NewVersionNotice />}
 
       {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站與創點島全螢幕地圖不顯示） */}
-      {activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
+      {!inKingdomPanel && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp' && (
         <MascotHost hidden={false} />
       )}
 

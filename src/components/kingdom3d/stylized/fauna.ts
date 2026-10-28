@@ -4,6 +4,7 @@ import { FARMLANDS, farmHouseLayout, FarmHouse } from './basinLayout';
 import { seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { mergeByMaterial } from './architecture';
+import { buildBaimiao, buildDuohui, buildAgent007, buildBear, buildSousou, buildXiaodengpao } from './agents3d';
 import { BEAR_LOCAL } from './craftStreet';
 import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
 
@@ -86,13 +87,14 @@ function bubbleTick(sp: THREE.Sprite, x: number, y: number, z: number, near = 6.
   return d;
 }
 
-export type CharacterId = 'baimiao' | 'duohui' | 'agent007' | 'bear' | 'sousou';
+export type CharacterId = 'baimiao' | 'duohui' | 'agent007' | 'bear' | 'sousou' | 'xiaodengpao';
 
 export const CHARACTERS: Record<CharacterId, { name: string; role: string; line: string; where: string; img: string }> = {
   baimiao: { img: '/agents/baimiao.webp', name: '白喵', role: '市場顧問 Agent', line: '「哈基米～讓我先打個滾再幫你媒合專家喵！」', where: '徵才島庭院・石拱橋一帶閒晃' },
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
   sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
+  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「有新點子我就亮一下！跌倒了也會馬上爬起來～」', where: '主島・中央廣場大燈泡旁' },
   bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街的大熊匠鋪' },
 };
 
@@ -233,181 +235,7 @@ function walker(m: Record<string, THREE.Material>, rand: () => number, pole: boo
 
 /* ---------------- 原創角色 ---------------- */
 
-function baimiao() {
-  const g = new THREE.Group();
-  const white = std(0xffffff, 0.45);
-  const gold = std(0xfacc15, 0.38, { emissive: new THREE.Color(0xd97706), emissiveIntensity: 0.18 });
-  const pink = std(0xfda4af, 0.5);
-  const dark = std(0x3b2314, 0.4);
-  const body = new THREE.Group();
-  g.add(body);
-  addM(body, new THREE.SphereGeometry(0.32, 14, 12).scale(1, 0.92, 1.25), white, 0, 0.36, 0);
-  addM(body, new THREE.SphereGeometry(0.3, 14, 12), white, 0, 0.76, -0.26);
-  for (const s of [-1, 1]) {
-    addM(body, new THREE.ConeGeometry(0.1, 0.18, 6), gold, s * 0.17, 1.03, -0.26);
-    addM(body, new THREE.SphereGeometry(0.045, 8, 6), dark, s * 0.11, 0.8, -0.53);
-    addM(body, new THREE.SphereGeometry(0.04, 8, 6).scale(1.4, 0.7, 0.6), pink, s * 0.17, 0.7, -0.5);
-  }
-  addM(body, new THREE.TorusGeometry(0.2, 0.035, 6, 16).rotateX(Math.PI / 2), gold, 0, 0.55, -0.2);
-  addM(body, new THREE.SphereGeometry(0.06, 8, 6), gold, 0, 0.5, -0.4);
-  for (const [x, z] of [[-0.15, -0.22], [0.15, -0.22], [-0.15, 0.22], [0.15, 0.22]]) addM(body, new THREE.SphereGeometry(0.08, 8, 6), white, x, 0.08, z);
-  const tail = addM(body, new THREE.CylinderGeometry(0.05, 0.04, 0.45, 6), gold, 0, 0.55, 0.42);
-  tail.rotation.x = -0.7;
-  g.userData.body = body;
-  g.userData.tail = tail;
-  return g;
-}
-
-function duohui() {
-  const g = new THREE.Group();
-  const sage = std(0x6b9e58, 0.55);
-  const suit = std(0x1e4d2b, 0.5);
-  const cream = std(0xfefce8, 0.5);
-  const orange = std(0xf59e0b, 0.45);
-  const black = std(0x18181b, 0.35, { metalness: 0.45 });
-  const eye = std(0x15803d, 0.25);
-  addM(g, new THREE.SphereGeometry(0.42, 16, 14).scale(1, 1.1, 0.95), sage, 0, 0.62, 0);
-  addM(g, new THREE.SphereGeometry(0.36, 14, 12).scale(1, 1.05, 0.5), suit, 0, 0.55, -0.18);
-  addM(g, new THREE.SphereGeometry(0.2, 12, 10).scale(1, 1.3, 0.5), cream, 0, 0.68, -0.3);
-  addM(g, new THREE.BoxGeometry(0.06, 0.2, 0.03), std(0xb3261e, 0.5), 0, 0.62, -0.4);
-  for (const s of [-1, 1]) {
-    addM(g, new THREE.SphereGeometry(0.13, 12, 10), cream, s * 0.15, 1.05, -0.3);
-    addM(g, new THREE.SphereGeometry(0.075, 10, 8), eye, s * 0.15, 1.05, -0.4);
-    addM(g, new THREE.TorusGeometry(0.14, 0.015, 6, 16), std(0xd8a945, 0.3, { metalness: 0.6 }), s * 0.15, 1.05, -0.42);
-    addM(g, new THREE.ConeGeometry(0.08, 0.2, 5), sage, s * 0.28, 1.32, -0.05);
-    const wing = addM(g, new THREE.SphereGeometry(0.22, 10, 8).scale(0.35, 1, 0.8), sage, s * 0.42, 0.62, 0);
-    g.userData[s < 0 ? 'wingL' : 'wingR'] = wing;
-    addM(g, new THREE.CylinderGeometry(0.05, 0.06, 0.12, 6), orange, s * 0.13, 0.06, -0.05);
-  }
-  addM(g, new THREE.ConeGeometry(0.05, 0.14, 5).rotateX(-Math.PI / 2 - 0.4), orange, 0, 0.93, -0.45);
-  // 耳機
-  addM(g, new THREE.TorusGeometry(0.4, 0.025, 6, 20, Math.PI), black, 0, 1.08, -0.05).rotation.set(0, Math.PI / 2, 0);
-  addM(g, new THREE.CylinderGeometry(0.012, 0.012, 0.3, 4), black, 0.32, 0.92, -0.25).rotation.x = 1.0;
-  g.scale.setScalar(1.15);
-  return g;
-}
-
-function agent007() {
-  const g = new THREE.Group();
-  // 白色機身、紫色關節（照角色設定圖）
-  const metal = std(0xf1f0f7, 0.35, { metalness: 0.2 });
-  const purple = std(0x7c4dbd, 0.45);
-  const screen = std(0x111827, 0.2, { emissive: new THREE.Color(0x22d3ee), emissiveIntensity: 0.6 });
-  // 半躺：往後靠在屋瓦上，腳掛在屋簷外
-  const pivot = new THREE.Group();
-  pivot.rotation.x = 0.28;
-  g.add(pivot);
-  addM(pivot, new THREE.CapsuleGeometry(0.3, 0.5, 6, 12), metal, 0, 0.6, 0);
-  addM(pivot, new THREE.TorusGeometry(0.3, 0.07, 6, 16).rotateX(Math.PI / 2), purple, 0, 0.92, 0);
-  const head = new THREE.Group();
-  head.position.set(0, 1.25, 0);
-  head.rotation.z = -0.38;
-  pivot.add(head);
-  addM(head, new THREE.SphereGeometry(0.3, 14, 12).scale(1.1, 0.9, 1), metal, 0, 0, 0);
-  addM(head, new THREE.SphereGeometry(0.22, 12, 10).scale(1.2, 0.7, 0.6), screen, 0, 0.02, -0.18);
-  const dish = addM(head, new THREE.ConeGeometry(0.16, 0.08, 12, 1, true), metal, 0, 0.36, 0);
-  addM(head, new THREE.CylinderGeometry(0.015, 0.015, 0.14, 4), metal, 0, 0.28, 0);
-  for (const s of [-1, 1]) addM(pivot, new THREE.CylinderGeometry(0.07, 0.07, 0.6, 6), metal, s * 0.16, 0.05, 0);
-  // 發光平板
-  addM(pivot, new THREE.BoxGeometry(0.34, 0.24, 0.03), screen, 0.25, 1.0, -0.35).rotation.x = -0.4;
-  g.userData.dish = dish;
-  g.userData.legs = pivot;
-  return g;
-}
-
-function bear() {
-  const g = new THREE.Group();
-  const fur = std(0x8b5a2b, 0.75);
-  const light = std(0xd9b38c, 0.7);
-  const red = std(0xd32f2f, 0.4);
-  const wood = std(0x6b4423, 0.8);
-  const iron = std(0x6b7280, 0.4, { metalness: 0.5 });
-  const glow = std(0xfacc15, 0.3, { emissive: new THREE.Color(0xf59e0b), emissiveIntensity: 0.6 });
-  // 工作台
-  addM(g, new THREE.BoxGeometry(1.4, 0.08, 0.7), wood, 0, 0.8, -0.75);
-  for (const [x, z] of [[-0.6, -0.45], [0.6, -0.45], [-0.6, -1.05], [0.6, -1.05]]) addM(g, new THREE.BoxGeometry(0.08, 0.8, 0.08), wood, x, 0.4, z);
-  const gear = addM(g, new THREE.TorusGeometry(0.16, 0.05, 6, 12).rotateX(Math.PI / 2), glow, -0.2, 0.88, -0.75);
-  addM(g, new THREE.BoxGeometry(0.36, 0.2, 0.22), red, 0.45, 0.94, -0.8);
-  // 身體
-  addM(g, new THREE.SphereGeometry(0.42, 14, 12).scale(1, 1.15, 0.9), fur, 0, 0.62, 0);
-  addM(g, new THREE.SphereGeometry(0.26, 12, 10).scale(1, 1.2, 0.5), light, 0, 0.6, -0.26);
-  addM(g, new THREE.SphereGeometry(0.3, 14, 12), fur, 0, 1.22, 0);
-  addM(g, new THREE.SphereGeometry(0.13, 10, 8).scale(1, 0.8, 0.8), light, 0, 1.15, -0.26);
-  addM(g, new THREE.SphereGeometry(0.045, 8, 6), std(0x1f1f1f, 0.3), 0, 1.19, -0.36);
-  for (const s of [-1, 1]) {
-    addM(g, new THREE.SphereGeometry(0.1, 8, 6), fur, s * 0.24, 1.45, 0);
-    addM(g, new THREE.SphereGeometry(0.035, 8, 6), std(0x1f1f1f, 0.3), s * 0.1, 1.28, -0.27);
-    addM(g, new THREE.CylinderGeometry(0.1, 0.11, 0.35, 8), fur, s * 0.17, 0.15, 0);
-  }
-  // 紅色安全帽
-  addM(g, new THREE.SphereGeometry(0.31, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 1.3, 0);
-  addM(g, new THREE.CylinderGeometry(0.36, 0.36, 0.03, 16), red, 0, 1.3, -0.04);
-  // 揮木槌的手
-  const arm = new THREE.Group();
-  arm.position.set(0.36, 0.9, -0.1);
-  g.add(arm);
-  addM(arm, new THREE.CylinderGeometry(0.08, 0.08, 0.4, 6), fur, 0, -0.1, -0.15).rotation.x = 1.0;
-  addM(arm, new THREE.CylinderGeometry(0.025, 0.025, 0.5, 5), wood, 0, 0.05, -0.45).rotation.x = 1.4;
-  addM(arm, new THREE.BoxGeometry(0.18, 0.12, 0.12), iron, 0, 0.06, -0.7);
-  g.userData.arm = arm;
-  g.userData.gear = gear;
-  return g;
-}
-
-/** 搜搜：白猴少俠駕著筋斗雲（照 3D 地圖的造型；本地 +Z 朝前） */
-function sousou() {
-  const g = new THREE.Group();
-  const cloudW = std(0xffffff, 0.55, { emissive: new THREE.Color(0xe0f2fe), emissiveIntensity: 0.25 });
-  const swirl = std(0x3b82f6, 0.4, { emissive: new THREE.Color(0x2563eb), emissiveIntensity: 0.3 });
-  const navy = std(0x1e3a8a, 0.5);
-  const fur = std(0xf8fafc, 0.55);
-  const skin = std(0xfde2c8, 0.6);
-  const gold = std(0xfbbf24, 0.3, { emissive: new THREE.Color(0xd97706), emissiveIntensity: 0.25, metalness: 0.65 });
-  const cloud = new THREE.Group();
-  g.add(cloud);
-  for (const [cx, cy, cz, cr] of [
-    [0, 0, 0, 0.58],
-    [-0.46, -0.04, 0.12, 0.46],
-    [0.46, -0.04, 0.12, 0.46],
-    [0, -0.05, 0.42, 0.44],
-    [0, -0.04, -0.44, 0.48],
-    [-0.36, -0.06, -0.32, 0.4],
-    [0.36, -0.06, -0.32, 0.4],
-  ]) {
-    const p = addM(cloud, new THREE.SphereGeometry(cr, 12, 10), cloudW, cx, cy, cz);
-    p.scale.set(1.15, 0.72, 1.15);
-  }
-  for (const sx of [-0.56, 0.56]) addM(cloud, new THREE.TorusGeometry(0.18, 0.038, 8, 18, Math.PI * 1.45), swirl, sx, 0.02, 0.15).rotation.y = Math.PI / 2;
-  const trail: THREE.Mesh[] = [];
-  for (let i = 0; i < 4; i++) trail.push(addM(g, new THREE.SphereGeometry(0.36 - i * 0.055, 10, 8), cloudW, 0, -0.05, -0.82 - i * 0.48));
-  const b = new THREE.Group();
-  b.position.set(0, 0.26, 0.05);
-  g.add(b);
-  addM(b, new THREE.CylinderGeometry(0.22, 0.3, 0.62, 10), fur, 0, 0.38, 0);
-  addM(b, new THREE.BoxGeometry(0.28, 0.26, 0.32), navy, 0, 0.52, 0.08);
-  addM(b, new THREE.CylinderGeometry(0.27, 0.28, 0.12, 12), navy, 0, 0.3, 0);
-  addM(b, new THREE.TorusGeometry(0.08, 0.025, 8, 16), gold, 0, 0.3, 0.27);
-  for (const x of [-0.26, 0.26]) addM(b, new THREE.SphereGeometry(0.12, 10, 8), navy, x, 0.64, 0).scale.set(1.1, 0.85, 1);
-  addM(b, new THREE.CylinderGeometry(0.042, 0.042, 1.35, 8), gold, 0.04, 0.56, -0.24).rotation.z = -0.68;
-  addM(b, new THREE.SphereGeometry(0.34, 14, 12), fur, 0, 0.98, 0.04).scale.set(1.08, 0.98, 1);
-  addM(b, new THREE.SphereGeometry(0.26, 12, 10), skin, 0, 0.95, 0.22).scale.set(1.08, 0.9, 0.55);
-  for (const ex of [-0.11, 0.11]) addM(b, new THREE.SphereGeometry(0.065, 10, 8), swirl, ex, 0.98, 0.34);
-  for (const ex of [-0.36, 0.36]) addM(b, new THREE.SphereGeometry(0.11, 10, 8), skin, ex, 0.96, 0.02).scale.set(0.55, 1.15, 0.85);
-  const band = addM(b, new THREE.TorusGeometry(0.33, 0.048, 10, 24), swirl, 0, 1.12, 0.04);
-  band.rotation.x = Math.PI / 2 - 0.12;
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    const sp = addM(b, new THREE.ConeGeometry(0.08, 0.26, 6), i % 2 === 0 ? fur : swirl, Math.cos(a) * 0.14, 1.32, Math.sin(a) * 0.12 + 0.02);
-    sp.rotation.z = -Math.cos(a) * 0.28;
-    sp.rotation.x = Math.sin(a) * 0.28;
-  }
-  addM(b, new THREE.CylinderGeometry(0.06, 0.055, 0.38, 8), fur, -0.28, 0.48, 0.08).rotation.z = 0.45;
-  const ra = addM(b, new THREE.CylinderGeometry(0.06, 0.055, 0.42, 8), fur, 0.28, 0.72, 0.22);
-  ra.rotation.z = -0.95;
-  ra.rotation.x = -0.65;
-  g.userData.trail = trail;
-  return g;
-}
+// 原創角色的造型在 agents3d.ts（照角色設定圖）
 
 /* ---------------- 天上的人字雁群 ---------------- */
 
@@ -783,7 +611,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
 
   // 白喵：徵才島庭院前庭繞圈閒晃，偶爾停下來打滾
   {
-    const g = baimiao();
+    const g = buildBaimiao();
     g.name = 'char-cat';
     root.add(g);
     const body = g.userData.body as THREE.Object3D;
@@ -866,7 +694,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   }
   // 搜搜：駕著筋斗雲在五島上空騰雲駕霧（和 3D 地圖一樣；點了看角色小卡、觸發彩蛋）
   {
-    const g = sousou();
+    const g = buildSousou();
     g.name = 'char-sousou';
     g.scale.setScalar(1.7);
     root.add(g);
@@ -890,7 +718,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   }
   // 多慧：主島中央廣場招呼旅人，偶爾拍拍翅膀
   {
-    const g = duohui();
+    const g = buildDuohui();
     // 站在「探索看板」旁邊，面向中央廣場
     g.position.set(-10.05, 0, -11.0);
     g.rotation.y = Math.atan2(-10.05, -11.0);
@@ -918,7 +746,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   }
   // 007：躺在翰林院屋頂（前坡）吹風看平板
   {
-    const g = agent007();
+    const g = buildAgent007();
     g.name = 'char-007';
     // 翰林院一層屋簷（簷口約 z 47、高 6.6）：靠在屋瓦上、腳掛在簷外，面向庭院
     g.position.set(63.2, 6.6, 47.1);
@@ -940,7 +768,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     const wb = REGION_CONFIGS['region-discussion'].buildings.find((x) => x.id === 'discussion-workshop');
     const [bwx, bwz] = wb ? localToWorldXZ(wb.position.x, wb.position.z, wb.facingYaw, BEAR_LOCAL.x, BEAR_LOCAL.z) : [92.3, -36.4];
     const BEAR_WORLD = { x: bwx, z: bwz };
-    const g = bear();
+    const g = buildBear();
     g.position.set(BEAR_WORLD.x, 0.1, BEAR_WORLD.z);
     g.rotation.y = Math.PI / 2;
     root.add(g);
@@ -955,6 +783,43 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       bubbleTick(bub, BEAR_WORLD.x - 0.4, 2.05, BEAR_WORLD.z);
       arm.rotation.x = Math.max(0, Math.sin(t * 5)) * -1.0;
       gear.rotation.y = t * 0.8;
+    });
+  }
+
+  // 小燈泡：主島中央廣場繞著大燈泡走，偶爾跳起來、偶爾跌一跤再爬起來
+  {
+    const g = buildXiaodengpao();
+    g.name = 'char-bulb';
+    g.scale.setScalar(1.25);
+    root.add(g);
+    const setPose = g.userData.setPose as (p: 'idle' | 'walk' | 'jump' | 'fallen', t: number) => void;
+    const proxy = makePickProxy(1.0, 1.8, 1.0, 0, 0, 0, { kind: 'character', id: 'xiaodengpao' });
+    root.add(proxy);
+    const bub = speechBubble(CHARACTERS.xiaodengpao.name, CHARACTERS.xiaodengpao.line);
+    root.add(bub);
+    const R = 7.6;
+    const CYCLE = 34;
+    let ang = 0.6;
+    let lastT = 0;
+    anims.push((t) => {
+      const dt = lastT ? Math.min(0.1, t - lastT) : 0;
+      lastT = t;
+      const c = t % CYCLE;
+      let pose: 'idle' | 'walk' | 'jump' | 'fallen' = 'walk';
+      if (c >= 14 && c < 17.5) pose = 'jump';
+      else if (c >= 27 && c < 30) pose = 'fallen';
+      else if (c >= 30 && c < 31.5) pose = 'idle';
+      if (pose === 'walk') ang += (dt * 0.9) / R;
+      const x = Math.cos(ang) * R;
+      const z = Math.sin(ang) * R;
+      g.position.set(x, 0, z);
+      // 臉朝 -Z：面向前進方向（逆時針繞圈的切線）
+      const tx = -Math.sin(ang);
+      const tz = Math.cos(ang);
+      g.rotation.y = Math.atan2(-tx, -tz);
+      setPose(pose, t);
+      proxy.position.set(x, 0.9, z);
+      bubbleTick(bub, x, 2.4, z);
     });
   }
 

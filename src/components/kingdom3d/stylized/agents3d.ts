@@ -195,7 +195,9 @@ export function buildBaimiao() {
   const head = grp(body, 0, 0.84, -0.02);
   put(head, sph(0.34, 1.14, 0.96, 1), white);
   for (const s of [-1, 1]) put(head, sph(0.13, 1.2, 0.8, 0.9), white, s * 0.33, -0.12, -0.06, 0, 0, s * 0.3);
-  head.add(faceShell(0.345, catFaceTex(), -1, 1.9, 0.75, 1.25)).scale.set(1.14, 0.96, 1);
+  const catFace = faceShell(0.345, catFaceTex(), -1, 1.9, 0.75, 1.25);
+  catFace.scale.set(1.14, 0.96, 1);
+  head.add(catFace);
   // 耳朵：白色外耳＋粉內耳＋黃耳尖
   for (const s of [-1, 1]) {
     const ear = grp(head, s * 0.2, 0.27, 0.02);
@@ -292,7 +294,7 @@ export function buildDuohui() {
   put(g, new THREE.CylinderGeometry(0.3, 0.44, 0.62, 20, 1, true, -Math.PI * 0.55, Math.PI * 1.1), cape, 0, 0.5, 0.02, 0, 0, 0);
   // 西裝背心＋白襯衫＋領帶＋識別證
   put(g, sph(0.3, 1, 1.0, 0.55), vest, 0, 0.5, -0.15);
-  put(g, new THREE.ConeGeometry(0.12, 0.3, 3), shirt, 0, 0.64, -0.29, Math.PI, 0, 0);
+  put(g, new THREE.ConeGeometry(0.1, 0.22, 3), shirt, 0, 0.68, -0.31, Math.PI, Math.PI, 0).scale.set(1, 1, 0.35);
   put(g, new THREE.BoxGeometry(0.05, 0.18, 0.02), mat(0x14532d, 0.5), 0, 0.58, -0.32);
   put(g, new THREE.ConeGeometry(0.04, 0.06, 4), mat(0x14532d, 0.5), 0, 0.47, -0.32, Math.PI, Math.PI / 4, 0);
   for (const s of [-1, 1]) put(g, new THREE.CylinderGeometry(0.006, 0.006, 0.26, 4), black, s * 0.06, 0.6, -0.3, 0.1, 0, s * 0.35);
@@ -300,7 +302,9 @@ export function buildDuohui() {
   // 頭（大頭）＋耳羽
   const head = grp(g, 0, 1.0, 0);
   put(head, sph(0.38, 1.05, 0.95, 0.95), green);
-  head.add(faceShell(0.385, owlFaceTex(), -1, 1.75, 0.55, 1.55));
+  const owlFace = faceShell(0.385, owlFaceTex(), -1, 1.75, 0.55, 1.55);
+  owlFace.scale.set(1.05 * 1.01, 0.95 * 1.01, 0.95 * 1.04);
+  head.add(owlFace);
   for (const s of [-1, 1]) {
     const tuft = grp(head, s * 0.24, 0.3, 0.02);
     tuft.rotation.z = -s * 0.4;
@@ -313,7 +317,8 @@ export function buildDuohui() {
   for (const s of [-1, 1]) put(head, new THREE.TorusGeometry(0.12, 0.014, 8, 28), goldM, s * 0.135, 0.02, -0.355, 0, s * 0.18, 0);
   put(head, new THREE.CylinderGeometry(0.008, 0.008, 0.06, 4), goldM, 0, 0.05, -0.38, 0, 0, Math.PI / 2);
   // 黑色耳機＋發光燈泡耳罩＋麥克風
-  put(head, new THREE.TorusGeometry(0.4, 0.028, 8, 28, Math.PI), black, 0, 0.02, 0.02, 0, Math.PI / 2, 0);
+  // 頭帶從左耳經過頭頂到右耳（圓環在 XY 平面、取上半圈）
+  put(head, new THREE.TorusGeometry(0.4, 0.028, 8, 28, Math.PI), black, 0, 0.02, 0.04);
   for (const s of [-1, 1]) {
     put(head, new THREE.CylinderGeometry(0.11, 0.11, 0.08, 20), black, s * 0.39, -0.02, 0.02, 0, 0, Math.PI / 2);
     put(head, new THREE.CylinderGeometry(0.075, 0.075, 0.02, 20), glow, s * 0.435, -0.02, 0.02, 0, 0, Math.PI / 2);
@@ -464,9 +469,10 @@ export function buildAgent007() {
 
 function bearFaceTex() {
   const [c, g] = canvas(512, 512);
-  for (const s of [-1, 1]) eye(g, 256 + s * 84, 210, 30, 34, '#5a3418', { ring: '#1a0d05', pupil: 0.6 });
-  for (const s of [-1, 1]) brow(g, 256 + s * 84, 150, 70, -s * 8, '#3d2210', 16);
-  for (const s of [-1, 1]) blush(g, 256 + s * 140, 290, 36, 'rgba(240,110,90,0.45)');
+  // 眼睛放低一點，不被安全帽帽簷擋住
+  for (const s of [-1, 1]) eye(g, 256 + s * 80, 278, 28, 32, '#5a3418', { ring: '#1a0d05', white: true, pupil: 0.62 });
+  for (const s of [-1, 1]) brow(g, 256 + s * 80, 226, 60, -s * 8, '#3d2210', 14);
+  for (const s of [-1, 1]) blush(g, 256 + s * 140, 320, 36, 'rgba(240,110,90,0.45)');
   return tex(c);
 }
 function overallLogoTex() {
@@ -553,20 +559,22 @@ export function buildBear() {
   // 頭：棕色大頭、淺色嘴套、黑鼻、圓耳
   const head = grp(g, 0, 1.38, -0.02);
   put(head, sph(0.33, 1.08, 0.98, 1), fur);
-  head.add(faceShell(0.335, bearFaceTex(), -1, 1.6, 0.9, 1.2)).scale.set(1.08, 0.98, 1);
-  put(head, sph(0.15, 1.2, 0.85, 0.9), furLight, 0, -0.1, -0.27);
-  put(head, sph(0.055, 1.3, 0.9, 0.9), nose, 0, -0.05, -0.405);
-  const mouth = put(head, new THREE.TorusGeometry(0.06, 0.012, 6, 16, Math.PI), nose, 0, -0.14, -0.4, 0, 0, Math.PI);
+  const bearFace = faceShell(0.335, bearFaceTex(), -1, 1.6, 0.9, 1.2);
+  bearFace.scale.set(1.08, 0.98, 1);
+  head.add(bearFace);
+  put(head, sph(0.14, 1.15, 0.8, 0.9), furLight, 0, -0.16, -0.27);
+  put(head, sph(0.05, 1.3, 0.9, 0.9), nose, 0, -0.11, -0.4);
+  const mouth = put(head, new THREE.TorusGeometry(0.06, 0.012, 6, 16, Math.PI), nose, 0, -0.2, -0.38, 0, 0, Math.PI);
   void mouth;
   for (const s of [-1, 1]) {
     put(head, sph(0.1, 1, 1, 0.6), fur, s * 0.27, 0.2, 0);
     put(head, sph(0.055, 1, 1, 0.5), furLight, s * 0.27, 0.2, -0.04);
   }
   // 紅色工程安全帽（燈泡標誌）＋紅色耳機
-  put(head, new THREE.SphereGeometry(0.35, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 0.08, 0.01);
-  put(head, new THREE.CylinderGeometry(0.37, 0.37, 0.03, 28), red, 0, 0.08, -0.05);
-  put(head, new THREE.BoxGeometry(0.06, 0.06, 0.6), redDark, 0, 0.42, 0.0);
-  const hl = put(head, new THREE.CircleGeometry(0.09, 20), new THREE.MeshStandardMaterial({ map: hatLogoTex(), roughness: 0.5 }), 0, 0.24, -0.3, -0.75, Math.PI, 0);
+  put(head, new THREE.SphereGeometry(0.35, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 0.13, 0.01);
+  put(head, new THREE.CylinderGeometry(0.37, 0.37, 0.03, 28), red, 0, 0.13, -0.03);
+  put(head, new THREE.BoxGeometry(0.06, 0.06, 0.6), redDark, 0, 0.47, 0.0);
+  const hl = put(head, new THREE.CircleGeometry(0.09, 20), new THREE.MeshStandardMaterial({ map: hatLogoTex(), roughness: 0.5 }), 0, 0.29, -0.3, -0.75, Math.PI, 0);
   hl.userData.noMerge = true;
   for (const s of [-1, 1]) put(head, new THREE.CylinderGeometry(0.1, 0.1, 0.08, 18), red, s * 0.34, -0.02, 0.02, 0, 0, Math.PI / 2);
   // 揮木槌的右手（arm 群組；以肩膀為軸往下敲）
@@ -658,9 +666,11 @@ export function buildSousou() {
   // 頭：臉、猴耳、銀色刺刺頭髮（藍色挑染）、藍頭巾＋飄帶
   const head = grp(b, 0, 0.98, 0.04);
   put(head, sph(0.32, 1.06, 0.98, 1), silver);
-  put(head, sph(0.25, 1.1, 0.95, 0.6), skin, 0, -0.04, 0.16);
-  head.add(faceShell(0.26, monkeyFaceTex(), 1, 1.7, 0.7, 1.3)).scale.set(1.1, 0.95, 0.62);
-  (head.children[head.children.length - 1] as THREE.Mesh).position.set(0, -0.04, 0.17);
+  put(head, sph(0.25, 1.1, 0.95, 0.6), skin, 0, -0.04, 0.2);
+  const monkeyFace = faceShell(0.26, monkeyFaceTex(), 1, 1.7, 0.7, 1.3);
+  monkeyFace.scale.set(1.1, 0.95, 0.62);
+  monkeyFace.position.set(0, -0.04, 0.21);
+  head.add(monkeyFace);
   for (const s of [-1, 1]) {
     put(head, sph(0.1, 0.55, 1, 0.9), skin, s * 0.33, -0.02, 0.0);
     put(head, sph(0.06, 0.4, 0.8, 0.7), mat(0xf2a7a0, 0.6), s * 0.35, -0.02, 0.02);
@@ -764,9 +774,18 @@ export function buildXiaodengpao() {
   // 臉（貼在玻璃前面，臉朝 -Z）
   const happy = bulbFaceTex('happy');
   const dizzy = bulbFaceTex('dizzy');
-  const face = faceShell(0.376, happy, -1, 1.5, 0.75, 1.0);
-  face.position.y = 0.86;
-  face.scale.set(1, 1, 1);
+  // 臉貼在玻璃外面：用同一條燈泡曲線（略放大）做一片朝 -Z 的弧面
+  const faceProf = prof
+    .filter(([, y]) => y >= 0.55 && y <= 1.18)
+    .sort((p1, p2) => p1[1] - p2[1])
+    .map(([r, y]) => new THREE.Vector2(r * 1.02 + 0.004, y));
+  const faceGeo = new THREE.LatheGeometry(faceProf, 24, Math.PI - 0.85, 1.7);
+  const face = new THREE.Mesh(
+    faceGeo,
+    new THREE.MeshStandardMaterial({ map: happy, transparent: true, alphaTest: 0.04, roughness: 0.4, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })
+  );
+  face.renderOrder = 3;
+  face.userData.noMerge = true;
   inner.add(face);
   // 黑色螺紋燈頭
   put(inner, new THREE.CylinderGeometry(0.175, 0.17, 0.08, 24), mat(0xc9a227, 0.3, { metalness: 0.8 }), 0, 0.38, 0);

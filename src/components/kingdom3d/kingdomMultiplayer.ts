@@ -154,6 +154,8 @@ export class KingdomMultiplayer {
       if (!userObj || typeof userObj !== 'object') continue;
       for (const [childKey, v] of Object.entries(userObj)) {
         if (!v || (userKey === uid && childKey === this.sid)) continue;
+        // 羈絆邀請（bonds.ts 的備援紀錄）不是旅人
+        if (childKey.startsWith('bond~')) continue;
         if (typeof v.t !== 'number' || now - v.t > STALE_MS) continue;
         if (![v.x, v.z, v.r].every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) continue;
         list.push({

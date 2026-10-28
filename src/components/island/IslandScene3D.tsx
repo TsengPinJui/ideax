@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createMapDocksAndTrail } from './mapDocks';
+import { enterRoamAt } from '../kingdom3d/roamEntry';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
@@ -840,6 +842,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       1600,
     );
 
+    const isLocalDev = typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
     // 拖曳小人到地圖上：把螢幕上的點換成 3D 地圖座標（給「實境漫遊」換算位置）
     (window as any).__ideaxIslandPick = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect();
@@ -8389,6 +8392,11 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       });
     });
 
+    // 乘船點（各島渡口）與聚雲塔登山口＋山腳登船點：和實境漫遊同一套，點了直接換到實境漫遊的那個位置
+    const mapDocks = createMapDocksAndTrail(worldGroup, [waterMesh]);
+    worldGroup.add(mapDocks.group);
+    clickableIslands.push(...mapDocks.pickables);
+
     // Perimeter Clouds (推至遠山高空，不遮擋群島與北山飛瀑、西山塔樓)
     const cloudClusters: Array<{ group: THREE.Group; baseX: number; phase: number }> = [];
     const cloudCoords: Array<[number, number, number, number]> = [
@@ -10035,6 +10043,15 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         return true;
       });
       if (hits.length > 0) {
+        // 乘船點、登山口：直接換到實境漫遊的那個渡口／登山口
+        {
+          let o: THREE.Object3D | null = hits[0].object;
+          while (o && !o.userData?.roamTarget) o = o.parent;
+          if (o?.userData?.roamTarget) {
+            enterRoamAt(o.userData.roamTarget);
+            return;
+          }
+        }
         // 優先檢查是否點擊了柳樹（點擊才會有上方宣紙卷軸；第五棵化成陶淵明；找到陶淵明後繼續點擊第六棵樹化成屈原）
         for (const h of hits) {
           const { willowTree, sceneTree } = findWillowOrSceneTreeFromHit(h.object);
@@ -11184,9 +11201,11 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       selectionRing.position.z = THREE.MathUtils.lerp(selectionRing.position.z, iz, 0.12);
       const ringScale = 1 + Math.sin(t * 3) * 0.03;
       selectionRing.scale.set(ringScale, ringScale, 1);
+      mapDocks.tick(t);
 
       // 6. Camera Orbit + Pan calculation from `viewRef.current` (zoom 40% ~ 240%, radius 40 ~ 240)
-      const v = viewRef.current;
+      // 本機開發時可用 window.__islandViewOverride 指定視角（截圖檢查用；正式站不會讀）
+      const v = (isLocalDev && (window as any).__islandViewOverride) || viewRef.current;
       const clampedZoom = THREE.MathUtils.clamp(v.zoom, 0.4, 2.4);
       const targetRadius = THREE.MathUtils.clamp(78 / clampedZoom, 32.5, 240);
       const targetPitch = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(v.pitch, 18, 74));
