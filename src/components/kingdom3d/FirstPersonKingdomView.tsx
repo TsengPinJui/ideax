@@ -63,7 +63,7 @@ import {
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
-import { drawSteleTexture, plazaTopics } from './stylized/discussionPlaza';
+import { drawSteleTexture, plazaTopics, drawWallBoardTexture, WallBoardWhich } from './stylized/discussionPlaza';
 import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS } from './stylized/docks';
 import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/waterLife';
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
@@ -807,27 +807,61 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
       }
 
+      // 論道廣場兩側白牆的大型佈告欄：茶藝街／百工坊熱門討論輪播（每 8 秒換一則）
+      const wallWhich = o.userData?.plazaWallBoard as WallBoardWhich | undefined;
+      if (wallWhich) {
+        const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        const hot = hotStallItems(questionsRef.current, wallWhich === 'tea' ? 'tea_board' : 'craft_board')
+          .filter((q) => !(q as any).isSimulated && !(q as any).simulatedBatchId)
+          .slice(0, 6);
+        const items = hot.map((q) => {
+          const a = q as any;
+          return {
+            title: q.title,
+            author: q.authorName,
+            tag: q.subcategory || q.category,
+            views: a.viewsCount ?? a.views ?? 0,
+            likes: (a.likesCount ?? a.likes ?? 0) + (a.meTooCount || 0),
+            replies: a.discussionsCount ?? (Array.isArray(a.discussions) ? a.discussions.length : Array.isArray(a.comments) ? a.comments.length : 0),
+          };
+        });
+        const idx = items.length ? Math.floor(slideTick / 2) % items.length : 0;
+        const key = `wb_${idx}_${hot.map((q, i) => `${q.id}:${items[i].views}:${items[i].likes}:${items[i].replies}`).join('|')}`;
+        if (o.userData.drawnKey !== key) {
+          o.userData.drawnKey = key;
+          const old = mat.map;
+          const nextTex = drawWallBoardTexture(wallWhich, items, idx);
+          mat.map = nextTex;
+          mat.emissiveMap = nextTex;
+          mat.needsUpdate = true;
+          old?.dispose();
+        }
+      }
+
       const carouselInfo = o.userData?.shopCarousel as
         | { propId: string; shopName: string; categorySub: string; content: StallContent }
         | undefined;
       if (carouselInfo) {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as THREE.MeshStandardMaterial;
-        const hotList = hotStallItems(questionsRef.current, carouselInfo.content, 5);
+        const hotList = hotStallItems(questionsRef.current, carouselInfo.content).slice(0, 5);
         const total = Math.max(1, hotList.length);
         let hash = 0;
         for (let i = 0; i < carouselInfo.propId.length; i++) hash += carouselInfo.propId.charCodeAt(i);
         const slideIdx = (slideTick + hash) % total;
         const cur = hotList[slideIdx];
+        const ca = cur as any;
         const item = cur
           ? {
               title: cur.title,
-              author: cur.authorName,
-              likes: (cur.likes || 0) + (cur.meTooCount || 0),
-              comments: cur.comments?.length || 0,
+              authorName: cur.authorName,
+              subcategory: cur.subcategory,
+              category: cur.category,
+              views: ca.viewsCount ?? ca.views ?? 0,
+              replies: ca.discussionsCount ?? (Array.isArray(ca.discussions) ? ca.discussions.length : 0),
             }
-          : undefined;
-        const key = `sc_${carouselInfo.propId}_${slideIdx}_${cur?.id || 'empty'}_${item?.likes || 0}_${item?.comments || 0}`;
+          : null;
+        const key = `sc_${carouselInfo.propId}_${slideIdx}_${cur?.id || 'empty'}_${item?.views || 0}_${item?.replies || 0}`;
         if (o.userData.drawnKey !== key) {
           o.userData.drawnKey = key;
           const old = mat.map;

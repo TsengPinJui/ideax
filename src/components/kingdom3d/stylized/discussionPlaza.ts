@@ -10,6 +10,7 @@ import { isGameQuestion } from '../../../utils/gameClassification';
  * - 中央一座青銅三足鼎（香煙裊裊）
  * - 藏書閣門前兩旁兩座「議題碑」：左「熱門議題」、右「最新議題」，刻著站上真實的討論標題；點石碑看完整列表
  * - 廣場兩側四組石桌石凳（論道石桌），讓人坐下來聊
+ * - 廣場東西兩面白牆各立一座大型佈告欄：西牆「茶藝街・熱門茶話」、東牆「百工坊・熱門議題」，輪播兩類熱門討論
  */
 
 export const PLAZA = { x: 72, z: -48 };
@@ -18,11 +19,155 @@ export const STELES: { which: 'hot' | 'new'; x: number; z: number }[] = [
   { which: 'new', x: 76.6, z: -56.6 },
 ];
 const TABLES: [number, number][] = [
-  [65.9, -50.2],
-  [78.1, -50.2],
-  [66.4, -41.8],
-  [77.6, -41.8],
+  [67.0, -50.4],
+  [77.0, -50.4],
+  [67.0, -40.8],
+  [77.0, -40.8],
 ];
+
+/** 廣場兩側白牆上的大型佈告欄（貼在茶藝街、百工坊中間那間店鋪的背牆上，面向廣場） */
+export type WallBoardWhich = 'tea' | 'craft';
+export const WALL_BOARDS: { which: WallBoardWhich; x: number; z: number; yaw: number; propId: string }[] = [
+  { which: 'tea', x: 64.2, z: -43.5, yaw: Math.PI / 2, propId: 'region-discussion-tea-board-0' },
+  { which: 'craft', x: 79.8, z: -43.5, yaw: -Math.PI / 2, propId: 'region-discussion-craft-board-5' },
+];
+const WALL_BOARD_TEXT: Record<WallBoardWhich, { title: string; sub: string }> = {
+  tea: { title: '茶藝街・熱門茶話', sub: '日常・生活・職場・靈感' },
+  craft: { title: '百工坊・熱門議題', sub: '水電・裝修・法律・財稅・企管' },
+};
+
+export interface WallBoardItem {
+  title: string;
+  author?: string;
+  tag?: string;
+  views: number;
+  likes: number;
+  replies: number;
+}
+
+/** 大型佈告欄：上方大字輪播目前這則熱門討論，下方列出接下來的幾則 */
+export function drawWallBoardTexture(which: WallBoardWhich, items: WallBoardItem[], idx: number) {
+  const W = 1024;
+  const H = 680;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  // 宣紙底
+  g.fillStyle = '#efe2c2';
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(120,90,50,0.07)';
+  for (let i = 0; i < 90; i++) g.fillRect((i * 113) % W, (i * 71) % H, 90 + (i % 5) * 30, 2);
+  g.strokeStyle = '#6b3d1c';
+  g.lineWidth = 12;
+  g.strokeRect(6, 6, W - 12, H - 12);
+  // 朱紅標題列
+  const hd = g.createLinearGradient(0, 0, W, 0);
+  hd.addColorStop(0, '#8e2018');
+  hd.addColorStop(0.5, '#b2291f');
+  hd.addColorStop(1, '#8e2018');
+  g.fillStyle = hd;
+  g.fillRect(18, 18, W - 36, 96);
+  g.strokeStyle = '#e8c36a';
+  g.lineWidth = 3;
+  g.strokeRect(24, 24, W - 48, 84);
+  const T = WALL_BOARD_TEXT[which];
+  g.textBaseline = 'middle';
+  g.textAlign = 'left';
+  g.fillStyle = '#fff3d0';
+  g.font = `900 54px ${KAI}`;
+  g.fillText(T.title, 46, 68);
+  const n = Math.min(items.length, 6);
+  const cur = n ? idx % n : 0;
+  g.textAlign = 'right';
+  g.font = `700 26px ${KAI}`;
+  g.fillStyle = '#ffe2a0';
+  g.fillText(n ? `${Array.from({ length: n }, (_, i) => (i === cur ? '●' : '○')).join(' ')}  ${cur + 1}/${n}` : T.sub, W - 46, 68);
+
+  if (!n) {
+    g.textAlign = 'center';
+    g.fillStyle = '#4a2a10';
+    g.font = `900 46px ${KAI}`;
+    g.fillText('還沒有熱門討論', W / 2, 300);
+    g.font = `700 32px ${KAI}`;
+    g.fillStyle = '#6b4a2a';
+    g.fillText(`${T.sub}，點佈告欄發起第一則`, W / 2, 370, W - 120);
+  } else {
+    const it = items[cur];
+    // 名次章
+    g.fillStyle = '#b3261e';
+    g.beginPath();
+    g.arc(96, 196, 46, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#f2cf7a';
+    g.lineWidth = 3;
+    g.stroke();
+    g.textAlign = 'center';
+    g.fillStyle = '#fff3d0';
+    g.font = `900 30px ${KAI}`;
+    g.fillText(`第${'一二三四五六'[cur]}`, 96, 182);
+    g.fillText('熱議', 96, 214);
+    // 標題（最多三行）
+    g.textAlign = 'left';
+    g.fillStyle = '#2b1a0c';
+    g.font = `900 52px ${KAI}`;
+    const lines: string[] = [];
+    let line = '';
+    for (const ch of (it.title || '').trim()) {
+      if (g.measureText(line + ch).width > W - 220) {
+        lines.push(line);
+        line = ch;
+        if (lines.length === 3) break;
+      } else line += ch;
+    }
+    if (lines.length < 3 && line) lines.push(line);
+    else if (lines.length === 3) lines[2] = `${lines[2].slice(0, -1)}…`;
+    lines.forEach((ln, i) => g.fillText(ln, 170, 172 + i * 64));
+    // 資訊列
+    const my = 172 + Math.max(1, lines.length) * 64 + 14;
+    let x = 170;
+    if (it.tag) {
+      g.font = `800 26px ${KAI}`;
+      const tw = g.measureText(it.tag).width + 28;
+      g.fillStyle = 'rgba(179,38,30,0.12)';
+      g.fillRect(x, my - 20, tw, 40);
+      g.strokeStyle = '#b3261e';
+      g.lineWidth = 2;
+      g.strokeRect(x, my - 20, tw, 40);
+      g.fillStyle = '#8e2420';
+      g.fillText(it.tag, x + 14, my + 1);
+      x += tw + 18;
+    }
+    g.font = `700 28px ${KAI}`;
+    g.fillStyle = '#6b4a2a';
+    const meta = [it.author ? `發起：${it.author.slice(0, 10)}` : '', `👁 ${it.views}`, `❤ ${it.likes}`, `💬 ${it.replies}`].filter(Boolean).join('　');
+    g.fillText(meta, x, my + 1, W - x - 40);
+    // 接下來輪播
+    g.fillStyle = 'rgba(107,61,28,0.4)';
+    g.fillRect(40, 470, W - 80, 2);
+    g.fillStyle = '#8e2420';
+    g.font = `900 28px ${KAI}`;
+    g.fillText('接著看', 46, 506);
+    for (let k = 1; k <= Math.min(3, n - 1); k++) {
+      const j = (cur + k) % n;
+      const y = 506 + (k - 1) * 46;
+      g.fillStyle = '#b3261e';
+      g.font = `900 26px ${KAI}`;
+      g.fillText(`${'一二三四五六'[j]}`, 170, y);
+      g.fillStyle = '#3e2a14';
+      g.font = `700 28px ${KAI}`;
+      g.fillText((items[j].title || '').trim(), 210, y, W - 260);
+    }
+  }
+  g.textAlign = 'right';
+  g.fillStyle = 'rgba(107,61,28,0.75)';
+  g.font = `700 24px ${KAI}`;
+  g.fillText('點佈告欄看全部 ›', W - 40, H - 34);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
 
 const KAI = '"DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","LXGW WenKai TC","CWTeXKai","Noto Serif TC",serif';
 
@@ -189,6 +334,42 @@ export function createDiscussionPlaza(): { group: THREE.Group; colliders: Collid
     root.add(face);
     root.add(makePickProxy(2.6, 4.4, 1.2, x, z, 0, { kind: 'discStele', which: st.which }));
     colliders.push({ id: `disc-plaza-stele-${st.which}`, type: 'box', x, z, halfWidth: 1.5, halfDepth: 0.6 });
+  }
+
+  // ── 兩側白牆大型佈告欄（輪播兩類熱門討論） ──
+  for (const wb of WALL_BOARDS) {
+    const bw = 4.5;
+    const bh = bw * (680 / 1024);
+    const cy = 3.05;
+    const grp = new THREE.Group();
+    grp.position.set(wb.x, 0, wb.z);
+    grp.rotation.y = wb.yaw;
+    root.add(grp);
+    // 木框、上方小瓦簷、下方托木
+    add(new THREE.BoxGeometry(bw + 0.34, bh + 0.34, 0.14), sm.darkWood, 0, cy, 0.07, grp);
+    add(new THREE.BoxGeometry(bw + 0.5, 0.12, 0.36), sm.gold, 0, cy + bh / 2 + 0.2, 0.2, grp);
+    const eave = add(new THREE.BoxGeometry(bw + 1.0, 0.12, 0.9), sm.roofs.slate, 0, cy + bh / 2 + 0.42, 0.42, grp);
+    eave.rotation.x = 0.3;
+    add(new THREE.BoxGeometry(bw + 1.0, 0.14, 0.14), sm.ridges.slate, 0, cy + bh / 2 + 0.55, 0.06, grp);
+    add(new THREE.BoxGeometry(bw + 0.2, 0.1, 0.3), sm.darkWood, 0, cy - bh / 2 - 0.2, 0.15, grp);
+    for (const s of [-1, 1]) {
+      add(new THREE.BoxGeometry(0.14, 0.4, 0.3), sm.darkWood, s * (bw / 2 - 0.3), cy - bh / 2 - 0.42, 0.15, grp);
+      // 兩側紅燈籠
+      const lan = add(new THREE.SphereGeometry(0.3, 14, 10), sm.lanternBody, s * (bw / 2 + 0.55), cy + bh / 2 - 0.35, 0.45, grp);
+      lan.scale.y = 1.22;
+      add(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 4), sm.darkWood, s * (bw / 2 + 0.55), cy + bh / 2 + 0.05, 0.45, grp);
+    }
+    const tex = drawWallBoardTexture(wb.which, [], 0);
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(bw, bh),
+      new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.32, roughness: 0.7 })
+    );
+    face.position.set(0, cy, 0.15);
+    face.userData.noMerge = true;
+    face.userData.plazaWallBoard = wb.which;
+    face.userData.pick = { kind: 'street', id: wb.propId };
+    grp.add(face);
+    root.add(makePickProxy(bw + 0.4, bh + 0.9, 0.7, wb.x + Math.sin(wb.yaw) * 0.3, wb.z, wb.yaw, { kind: 'street', id: wb.propId }, cy - bh / 2 - 0.4));
   }
 
   // ── 論道石桌：圓桌＋四個鼓凳 ──

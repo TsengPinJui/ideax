@@ -114,7 +114,8 @@ export const hallOf = (buildingId: string | null | undefined) => (buildingId ? H
 export const isFloorsHall = (buildingId: string | null | undefined) => hallOf(buildingId)?.mode === 'floors';
 
 /** 一層一類的挑高展廳（地板很深，天花板仍在海面下） */
-export const DEEP_HALL = { Y: -8.6, H: 8.0, aisles: 3, booths: 8 };
+// 地下主展場：挑高 13 公尺（地板在地面下 13.6 公尺）
+export const DEEP_HALL = { Y: -13.6, H: 13.0, aisles: 3, booths: 8 };
 /** 每層攤位數：三條走道 × 兩側 × 8 */
 export const DEEP_SLOTS = DEEP_HALL.aisles * 2 * DEEP_HALL.booths;
 
@@ -971,9 +972,10 @@ function createDeepHall(b: BuildingInteractable): THREE.Group {
     // 走道上方的燈籠（高掛）
     for (let k = 0; k < 6; k++) {
       const l = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.66, 12), lanternMats[k % 2]);
-      l.position.set(ax, Y + H - 1.6, z0 + 0.5 + k * 5.2);
+      // 挑高很高：燈籠垂到離地約 7 公尺
+      l.position.set(ax, Y + 7.2, z0 + 0.5 + k * 5.2);
       stat.add(l);
-      box(stat, 0.03, 1.2, 0.03, trimMat, ax, Y + H - 0.7, z0 + 0.5 + k * 5.2);
+      box(stat, 0.03, H - 7.55, 0.03, trimMat, ax, Y + 7.55 + (H - 7.55) / 2, z0 + 0.5 + k * 5.2);
     }
   });
   // 走道之間（攤位背對背的縫）立朱紅大柱

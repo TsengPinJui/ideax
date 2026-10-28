@@ -9,6 +9,7 @@ import {
   woodFloorTexture,
   facadeTexture,
   templeFacadeTexture,
+  arcadeFacadeTexture,
   roofTileTexture,
   ceilingTexture,
   signboardTexture,
@@ -639,7 +640,7 @@ function exteriorMats() {
   const std = (p: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.02, ...p });
   extMats = {
     cream: std({ color: 0xf3ead6, roughness: 0.9 }),
-    arcade: std({ map: facadeTexture(false, 1), emissiveMap: facadeTexture(true, 1), emissive: new THREE.Color(0xff5fd6), emissiveIntensity: 0.55, color: 0x5a4a7a, roughness: 0.6 }),
+    arcade: std({ map: arcadeFacadeTexture(false), emissiveMap: arcadeFacadeTexture(true), emissive: new THREE.Color(0xff6fae), emissiveIntensity: 0.75, roughness: 0.6 }),
     arcadeTrim: std({ color: 0x241f33, roughness: 0.45, metalness: 0.35 }),
     glass: std({ color: 0x7cc0ee, emissive: 0x2a6a9a, emissiveIntensity: 0.35, roughness: 0.12, metalness: 0.3, transparent: true, opacity: 0.62, side: THREE.DoubleSide }),
     neonRed: std({ color: 0xff3b5c, emissive: 0xff2a4a, emissiveIntensity: 1.4, roughness: 0.3 }),
@@ -973,64 +974,11 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   if (ext === 'exhibition') {
     const rimY = h + 0.1;
     addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.cream, 0, rimY + 0.18, 0);
-    const domeH = Math.min(w, d) * 0.42;
-    const dome = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2 * Math.max(w, d) * 0.98, domeH, 4, 1, true), em!.glass);
-    dome.rotation.y = Math.PI / 4;
-    dome.scale.set(w >= d ? 1 : d / w, 1, w >= d ? d / w : 1);
-    dome.position.y = rimY + 0.36 + domeH / 2;
-    dome.userData.noMerge = true;
-    root.add(dome);
-    // 金色稜脊：頂點到四角＋中間兩道十字肋
-    {
-      const apex = new THREE.Vector3(0, rimY + 0.36 + domeH, 0);
-      const ends: THREE.Vector3[] = [];
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) ends.push(new THREE.Vector3((sx * w) / 2 * 0.98, rimY + 0.36, (sz * d) / 2 * 0.98));
-      ends.push(new THREE.Vector3(0, rimY + 0.36, (d / 2) * 0.98), new THREE.Vector3(0, rimY + 0.36, (-d / 2) * 0.98), new THREE.Vector3((w / 2) * 0.98, rimY + 0.36, 0), new THREE.Vector3((-w / 2) * 0.98, rimY + 0.36, 0));
-      for (const e of ends) {
-        const len = apex.distanceTo(e);
-        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, len, 6), mats.gold);
-        rib.position.copy(apex).add(e).multiplyScalar(0.5);
-        rib.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), e.clone().sub(apex).normalize());
-        body.add(rib);
-      }
-    }
-    addMesh(body, new THREE.SphereGeometry(0.35, 12, 10), mats.gold, 0, rimY + 0.36 + domeH + 0.1, 0);
-    // 繽紛直立展旗（紅、藍、粉、金）：靠在正面兩側牆角、貼著牆，不擋大門的視線
-    [-1, -1, 1, 1].forEach((side, i) => {
-      const fx = side * (w / 2 - 0.5 - (i % 2) * 1.1);
-      addMesh(body, new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mats.darkWood, fx, 1.7, d / 2 + 0.35);
-      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 1.6), em!.flags[i]);
-      flag.position.set(fx - side * 0.3, 2.45, d / 2 + 0.36);
-      flag.userData.noMerge = true;
-      root.add(flag);
-    });
+    // 玻璃大廳屋頂、兩側樓閣、門面布置由 hallFacades.ts 另外蓋（照參考圖）
   } else if (ext === 'arcade') {
     const rimY = h + 0.1;
     addMesh(body, scaledBox(w + 0.8, 0.3, d + 0.8, 3, 0.3, 3), mats.roofs.slate, 0, rimY + 0.15, 0);
-    // 屋頂的大遊戲手把
-    const pad = new THREE.Group();
-    const ps = Math.min(w, d) * 0.22;
-    pad.position.set(0, rimY + 0.3 + ps * 0.75, 0);
-    pad.rotation.x = 0.28;
-    pad.scale.setScalar(ps);
-    addMesh(pad, new THREE.BoxGeometry(2.2, 0.48, 1.32), em!.padWhite, 0, 0, 0);
-    for (const side of [-1, 1]) {
-      const grip = addMesh(pad, new THREE.CapsuleGeometry(0.5, 1.0, 6, 12), em!.padWhite, side * 1.15, -0.05, 0.38);
-      grip.rotation.set(Math.PI / 2, 0, -side * 0.32);
-    }
-    addMesh(pad, new THREE.BoxGeometry(0.58, 0.18, 0.2), em!.arcadeTrim, -0.78, 0.28, -0.05);
-    addMesh(pad, new THREE.BoxGeometry(0.2, 0.18, 0.58), em!.arcadeTrim, -0.78, 0.28, -0.05);
-    for (const sx of [-0.32, 0.32]) addMesh(pad, new THREE.CylinderGeometry(0.18, 0.12, 0.22, 10), em!.arcadeTrim, sx, 0.3, 0.28);
-    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), em!.neonRed, 0.75, 0.28, 0.15);
-    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), em!.neonBlue, 0.98, 0.28, -0.1);
-    addMesh(pad, new THREE.CylinderGeometry(0.14, 0.14, 0.18, 10), mats.gold, 0.55, 0.28, -0.15);
-    body.add(pad);
-    // 門前紅藍霓虹燈柱
-    for (const sx of [-1, 1]) {
-      addMesh(body, new THREE.BoxGeometry(0.4, h - 0.6, 0.4), sx < 0 ? em!.neonRed : em!.neonBlue, sx * (doorW / 2 + 0.55), (h - 0.6) / 2, d / 2 + 0.35);
-    }
-    // 霓虹燈條沿屋簷一圈
-    addMesh(body, new THREE.BoxGeometry(w + 0.9, 0.1, 0.1), em!.neonBlue, 0, rimY - 0.05, d / 2 + 0.47);
+    // 屋頂玻璃穹頂、霓虹手把大旗、門簾、宮燈由 hallFacades.ts 另外蓋（照參考圖）
   }
   let y = h + 0.1;
   for (let t = 0; t < (em ? 0 : tiers); t++) {
@@ -1161,7 +1109,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const sign = new THREE.Mesh(new THREE.BoxGeometry(signW, signH, 0.14), [mats.darkWood, mats.darkWood, mats.darkWood, mats.darkWood, signMat, mats.darkWood]);
   sign.position.set(0, doorH + signH / 2 + 0.06, d / 2 + thick / 2 + 0.1);
   sign.userData.noMerge = true;
-  root.add(sign);
+  // 展覽館、電玩城的匾額另外做（hallFacades）
+  if (!em) root.add(sign);
 
   // 室內：掛畫、內牆牌匾、中央發光寶珠台
   const inner = new THREE.Group();

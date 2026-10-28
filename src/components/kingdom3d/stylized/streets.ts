@@ -460,7 +460,7 @@ export function drawShopCarouselTexture(
     ctx.textAlign = 'left';
     ctx.font = `700 23px ${KAI_FONT}`;
     ctx.fillStyle = '#f3e2b8';
-    ctx.fillText(`掌燈人：${(item.authorName || '創點源行家').slice(0, 10)}`, 224, H - 40);
+    if (item.authorName) ctx.fillText(`掌燈人：${item.authorName.slice(0, 10)}`, 224, H - 40);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#fbbf24';

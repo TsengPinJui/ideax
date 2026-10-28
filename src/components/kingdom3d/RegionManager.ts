@@ -12,6 +12,7 @@ import { createFauna } from './stylized/fauna';
 import { createDiscussionPlaza } from './stylized/discussionPlaza';
 import { createEggProps } from './stylized/eggProps';
 import { createTempleExtras } from './stylized/temple';
+import { createExhibitionFacade, createArcadeFacade, createPlazaMedallions } from './stylized/hallFacades';
 import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
 import { FARMLANDS, farmHouseLayout, chimneyTop } from './stylized/basinLayout';
 import { seeded } from './stylized/textures';
@@ -252,6 +253,12 @@ export class RegionManager {
         group.add(tx.group);
         extraColliders.push(...tx.colliders);
       }
+      // 展覽館：金框玻璃大廳＋兩側飛簷樓閣；電玩城：木構框粉紅格窗＋霓虹手把布幔（照參考圖）
+      if (b.exterior === 'exhibition' || b.exterior === 'arcade') {
+        const fx = b.exterior === 'exhibition' ? createExhibitionFacade(b) : createArcadeFacade(b);
+        group.add(fx.group);
+        extraColliders.push(...fx.colliders);
+      }
       // 點畫面上的建築就能打開左側介紹（土樓自己帶點擊範圍）
       if (b.exterior !== 'tulou' && b.exterior !== 'board') group.add(makePickProxy(b.width + 0.6, b.height + 2.5, b.depth + 0.6, b.position.x, b.position.z, b.facingYaw, { kind: 'building', id: b.id }));
       if (Array.isArray(bld.userData.colliders)) extraColliders.push(...(bld.userData.colliders as Collider[]));
@@ -275,6 +282,9 @@ export class RegionManager {
       group.add(garden.group);
       extraColliders.push(...garden.colliders);
     }
+
+    // 創意島：薈萃廣場地徽
+    if (manifest.id === 'region-creative') group.add(createPlazaMedallions());
 
     // 討論島藏書閣前的論道廣場（青銅鼎、議題碑、論道石桌）
     if (manifest.id === 'region-discussion') {
