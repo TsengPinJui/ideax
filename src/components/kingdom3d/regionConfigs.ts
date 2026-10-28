@@ -522,13 +522,14 @@ const discussionBuildings: BuildingInteractable[] = [
   {
     id: 'discussion-library',
     name: '藏書閣',
-    subtitle: '討論島北區・古雅藏書閣，地下一樓為大型分類圖書館，陳列成排古籍書架',
+    subtitle: '討論島北區・白色圓形藏書樓閣，走進大門就進入滿牆發亮書架的「書海」書廳',
     position: new THREE.Vector3(72, 0, -65),
     facingYaw: 0,
-    width: 15.0,
-    depth: 11.0,
-    height: 7.6,
-    exterior: 'huizhou',
+    width: 14.0,
+    depth: 14.0,
+    height: 19.0,
+    // 白色圓形多層樓閣（拱廊書架＋飛簷＋玻璃穹頂），走進大門就傳送到內部書廳
+    exterior: 'libraryTower',
     doorWidth: 4.4,
     tiers: 2,
     colorHex: 0x0f766e,
@@ -544,7 +545,7 @@ const discussionBuildings: BuildingInteractable[] = [
     ],
     mockData: {
       stats: '地下圖書館：四大分類書庫・成排書架典藏',
-      notice: '知知：「歡迎蒞臨藏書閣！可由一樓大廳階梯進入地下圖書館，各分類書架皆可點選研讀。」',
+      notice: '知知：「歡迎蒞臨藏書閣！走進大門就到書海，四面拱門書牆分門別類，點書牆就能研讀。」',
       primaryActionLabel: '進入藏書閣',
     },
   },
@@ -931,7 +932,7 @@ export const REGION_DISCUSSION: RegionManifest = {
   walkableZones: getGlobalWalkableZones(),
   colliders: [
     // 大熊匠鋪是兩座開放式工棚（中間有路穿過去），碰撞由工棚模型自己提供，不套一般房子的四面牆＋中間桌
-    ...discussionBuildings.filter((b) => b.exterior !== 'bearShop').flatMap(generateBuildingWallColliders),
+    ...discussionBuildings.filter((b) => b.exterior !== 'bearShop' && b.exterior !== 'libraryTower').flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
   buildings: discussionBuildings,

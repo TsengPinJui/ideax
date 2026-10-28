@@ -62,6 +62,10 @@ import {
   drawFloorPlaqueTexture,
   DeepBoothSpot,
 } from './stylized/exhibitHall';
+import { LIB_TOWER, atLibraryDoor } from './stylized/libraryTower';
+import { atLibraryExit } from './stylized/libraryInterior';
+
+const LIBRARY_ID = 'discussion-library';
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
@@ -237,7 +241,7 @@ function floorLabel(b: BuildingInteractable, level: number) {
     const z = HALL_ZONES[h.kind][-level - 1];
     return `B${-level}・${z ? z.name : '展場'}`;
   }
-  if (h) return level < 0 ? (h.kind === 'library' ? '地下圖書館' : '地下主展場') : h.lobby;
+  if (h) return level < 0 ? (h.kind === 'library' ? '書海' : '地下主展場') : h.lobby;
   return '';
 }
 
@@ -499,6 +503,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const nearBoothRef = useRef<{ buildingId: string; index: number } | null>(null);
   const lobbyScreenCurrentRef = useRef<Map<string, Question>>(new Map());
   const goFloorRef = useRef<((buildingId: string, level: number, zone?: number) => void) | null>(null);
+  // 藏書閣大門／書廳出口的觸發（離開觸發點後才重新上膛，避免一傳送就又被傳回去）
+  const libDoorArmedRef = useRef(true);
+  const libExitArmedRef = useRef(false);
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
     towersRef.current.set(PLATEAU_ID, plateauTower());
@@ -1811,6 +1818,13 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           const [tx, tz] = toWorld(b, Math.sin(th + 0.3) * RING.RC, Math.cos(th + 0.3) * RING.RC);
           yaw = look(x, z, tx, tz);
         }
+      } else if (b.exterior === 'libraryTower') {
+        // 藏書閣外觀和內部分開：離開書廳就站回大門外的台階前，背對大門
+        [x, z] = toWorld(b, 0, LIB_TOWER.R0 + 3.4);
+        const [tx, tz] = toWorld(b, 0, LIB_TOWER.R0 + 12);
+        yaw = look(x, z, tx, tz);
+        level = 0;
+        libDoorArmedRef.current = false;
       } else {
         // 一樓大廳：站在下樓口前面，面向大門
         [x, z] = toWorld(b, 0, -b.depth * 0.25 + 1.9);
@@ -1904,6 +1918,29 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             }
           } else {
             story.armed = true;
+          }
+        }
+
+        // 藏書閣：走進大門就傳送到內部書廳；在書廳走到南邊發光拱門就回到門外
+        {
+          const libB = REGION_BUILDINGS.get(LIBRARY_ID);
+          if (libB && !boatRideRef.current) {
+            const p = controls.position;
+            if (story.level === 0 && !tower) {
+              const atDoor = atLibraryDoor(libB, p.x, p.z);
+              if (!atDoor) libDoorArmedRef.current = true;
+              else if (libDoorArmedRef.current) {
+                libDoorArmedRef.current = false;
+                goFloorRef.current?.(LIBRARY_ID, -1);
+              }
+            } else if (tower?.b.id === LIBRARY_ID && story.level < 0) {
+              const atExit = atLibraryExit(p.x, p.z);
+              if (!atExit) libExitArmedRef.current = true;
+              else if (libExitArmedRef.current) {
+                libExitArmedRef.current = false;
+                goFloorRef.current?.(LIBRARY_ID, 0);
+              }
+            }
           }
         }
 
@@ -2191,15 +2228,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         pickCenter: () => JSON.stringify(pickAt(null, null)),
         // 不靠畫面幀數：直接用物理一步步走過去，回傳走到哪裡（檢查空氣牆用）
         simWalk: (x: number, z: number, tx: number, tz: number) => {
-          let pos = new THREE.Vector3(x, 0, z);
-          const cols = regionManager.getAllColliders();
+          const st = storyRef.current;
+          const tw = st.level !== 0 && st.towerId ? towersRef.current.get(st.towerId) || null : null;
+          const fy = tw ? (tw.floorY ? tw.floorY(st.level) : st.level * FLOOR_H) : 0;
+          let pos = new THREE.Vector3(x, fy, z);
+          const cols = tw ? tw.cols[st.level + tw.basements] || [] : regionManager.getAllColliders();
           for (let i = 0; i < 600; i++) {
             const dx = tx - pos.x;
             const dz = tz - pos.z;
             const d = Math.hypot(dx, dz);
             if (d < 0.3) break;
             const v = new THREE.Vector3((dx / d) * 4, 0, (dz / d) * 4);
-            pos = PhysicsController.movePlayer(pos, v, 1 / 30, cols, globalWalkableZones, WORLD_BRIDGES, 0);
+            pos = PhysicsController.movePlayer(pos, v, 1 / 30, cols, tw?.walk ? tw.walk(st.level) : globalWalkableZones, tw ? [] : WORLD_BRIDGES, fy);
           }
           return [+pos.x.toFixed(2), +pos.z.toFixed(2)];
         },

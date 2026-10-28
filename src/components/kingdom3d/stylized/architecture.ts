@@ -617,7 +617,7 @@ export interface StyledBuildingInput {
   tiers?: number;
   floors?: number;
   basements?: number;
-  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop';
+  exterior?: 'exhibition' | 'arcade' | 'tulou' | 'huizhou' | 'board' | 'temple' | 'bearShop' | 'libraryTower';
   /** 招牌名稱下方的小字；沒有就用 previewBadge */
   signSub?: string;
   npc?: 'soso';

@@ -5,6 +5,7 @@ import { isGameQuestion, getEffectiveTertiaryCategory } from '../../../utils/gam
 import { makePickProxy } from '../picking';
 import { mergeByMaterial } from './architecture';
 import { FLOOR_H } from './multiStory';
+import { createLibraryInterior, libraryArrival, LIB_HALL } from './libraryInterior';
 
 /**
  * 展覽館、電玩城的「地下主展場」與藏書閣的「地下圖書館」：
@@ -107,7 +108,7 @@ export const HALL_ZONES: Record<HallKind, HallZone[]> = {
 export const HALL_BUILDINGS: Record<string, { kind: HallKind; mode: 'floors' | 'aisles'; title: string; lobby: string; cx: number; cz: number; showcase?: 'proposals_software' | 'games' }> = {
   'creative-exhibition': { kind: 'exhibit', mode: 'floors', title: '展覽館', lobby: '一樓大廳', cx: -68, cz: 48, showcase: 'proposals_software' },
   'creative-arcade': { kind: 'arcade', mode: 'floors', title: '電玩城', lobby: '一樓大廳', cx: -68, cz: 48, showcase: 'games' },
-  'discussion-library': { kind: 'library', mode: 'aisles', title: '藏書閣・地下圖書館', lobby: '一樓大廳', cx: 72, cz: -48 },
+  'discussion-library': { kind: 'library', mode: 'aisles', title: '藏書閣・書海', lobby: '大門', cx: 72, cz: -48 },
 };
 
 export const hallOf = (buildingId: string | null | undefined) => (buildingId ? HALL_BUILDINGS[buildingId] || null : null);
@@ -132,6 +133,7 @@ export function hallZoneOfLevel(buildingId: string, level: number) {
 /** 各樓層地板高度 */
 export function hallFloorY(buildingId: string, level: number) {
   if (level >= 0) return 0;
+  if (hallOf(buildingId)?.kind === 'library') return LIB_HALL.Y;
   return isFloorsHall(buildingId) ? DEEP_HALL.Y : HALL.Y;
 }
 
@@ -157,6 +159,7 @@ function aisleX(buildingId: string, zone: number) {
 /** 走到某個展區／書架走道的入口（或剛下樓的位置）：位置與面向（yaw 0 面向 -Z＝往深處） */
 export function hallArrival(buildingId: string, zone?: number) {
   const h = hallOf(buildingId);
+  if (h && h.kind === 'library') return libraryArrival();
   if (h && h.mode === 'floors') return { x: h.cx, y: DEEP_HALL.Y, z: h.cz + HALL.D / 2 - 4.6, yaw: 0 };
   const zi = zone !== undefined && zone >= 0 ? zone : h ? Math.floor((HALL_ZONES[h.kind].length - 1) / 2) : 0;
   const x = h ? aisleX(buildingId, zi) : HALL.cx;
@@ -363,7 +366,9 @@ export function createExhibitHall(b: BuildingInteractable): THREE.Group | null {
   const h = hallOf(b.id);
   if (!h) return null;
   if (h.mode === 'floors') return createDeepHall(b);
-  const isLib = h.kind === 'library';
+  // 藏書閣：照參考照片做的圓形書廳（滿牆發亮書架、拱形書牆、螺旋梯書塔），和外觀分開
+  if (h.kind === 'library') return createLibraryInterior(b);
+  const isLib = (h.kind as HallKind) === 'library';
   const zones = HALL_ZONES[h.kind];
   const root = new THREE.Group();
   root.name = `hall_${b.id}`;
