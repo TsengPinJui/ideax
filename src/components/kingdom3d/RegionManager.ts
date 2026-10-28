@@ -7,6 +7,7 @@ import { createExhibitHall, isFloorsHall } from './stylized/exhibitHall';
 import { lobbyPitPolygon } from './stylized/hallLobby';
 import { createNoticeBoard } from './stylized/noticeBoard';
 import { createDocks, createPlateauExtras } from './stylized/docks';
+import { createCareerGarden } from './stylized/careerGarden';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
   RegionId,
@@ -206,6 +207,12 @@ export class RegionManager {
       extraColliders.push(...docks.colliders);
     }
     if (manifest.id === 'region-pain') group.add(createPlateauExtras().group);
+    // 徵才島院牆內的江南園林（綠塘錦鯉、九曲橋、小亭、假山、垂柳、竹林、青石步道、堂前燕）
+    if (manifest.id === 'region-career') {
+      const garden = createCareerGarden();
+      group.add(garden.group);
+      extraColliders.push(...garden.colliders);
+    }
 
     // 商店街、市集攤位、牌坊（街景；四周有碰撞）
     const street = createStreetProps(manifest.id);
