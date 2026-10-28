@@ -409,6 +409,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       setBoatDock(t.id);
     } else if (t.kind === 'trail') {
       goTrailRef.current?.(t.dir);
+    } else if (t.kind === 'character') {
+      setDrawer({ kind: 'character', id: t.id });
     } else if (t.kind === 'lobbyRank') {
       setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: t.which });
     } else if (t.kind === 'lobbyScreen') {
@@ -1787,8 +1789,36 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controls.pitch = pitch;
           controls.updateCameraTransform(0);
         },
+        findNamed: (name: string) => {
+          const out: number[][] = [];
+          scene.traverse((o) => {
+            if (o.name === name) out.push([+o.position.x.toFixed(1), +o.position.z.toFixed(1)]);
+          });
+          return out;
+        },
+        project: (name: string) => {
+          const o = scene.getObjectByName(name);
+          if (!o) return null;
+          const v = new THREE.Vector3();
+          o.getWorldPosition(v);
+          const w = v.clone();
+          v.project(camera);
+          return { world: [w.x, w.y, w.z].map((n) => +n.toFixed(2)), screen: [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(3)], visible: o.visible, parentVisible: o.parent?.visible };
+        },
+        look: (yaw: number, pitch = 0) => {
+          controls.yaw = yaw;
+          controls.pitch = pitch;
+          controls.updateCameraTransform(0);
+        },
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
+        // 從高處往下打射線，回傳最上面那個表面的高度（擺放屋頂上的角色用）
+        roofY: (x: number, z: number, up = false) => {
+          const rc = up ? new THREE.Raycaster(new THREE.Vector3(x, 2.5, z), new THREE.Vector3(0, 1, 0)) : new THREE.Raycaster(new THREE.Vector3(x, 60, z), new THREE.Vector3(0, -1, 0));
+          rc.camera = camera;
+          const hits = rc.intersectObjects(scene.children, true).filter((h) => (h.object as THREE.Mesh).isMesh && h.object.visible && (h.object as THREE.Mesh).material && ((h.object as THREE.Mesh).material as THREE.Material).visible !== false && !/fauna/.test(h.object.parent?.name || ''));
+          return hits.slice(0, 4).map((h) => [h.point.y.toFixed(2), h.object.name || h.object.type]);
+        },
         goFloor: (id: string, level: number, zone?: number) => goFloorRef.current?.(id, level, zone),
         openDock: (id: string) => setBoatDock(id),
         trail: (dir: 'up' | 'down' | 'top' | 'down-top') => goTrailRef.current?.(dir),
