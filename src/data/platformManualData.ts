@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#227',
+    version: 'v4.1.13',
+    releaseDate: '2026.10.28',
+    releaseTime: '12:30',
+    author: 'System Architect',
+    summary: '3D 徵才島院牆內改成江南園林：綠塘荷葉與錦鯉、九曲石橋、飛簷小亭、太湖石假山、垂柳、沿牆竹林、青石步道、堂前燕',
+    changes: [
+      '徵才島粉牆黛瓦的院牆內改成江南園林：東南一方綠塘，滿池荷葉荷花、錦鯉在水下悠游，九曲石橋可以走過池面，北岸一座飛簷小亭（美人靠、石桌），塘邊有太湖石假山、兩株垂柳與石燈。',
+      '沿北牆與西牆種上竹林；南月洞門到九曲橋、九曲橋到小亭各有一條青石步道；翰林院、求職廟與人才獵頭門前有燕子來回穿梭（堂前燕）。池塘、假山、竹林、柳樹都有碰撞，不會走進水裡或穿模。',
+    ],
+  },
+  {
     seqNumber: '#226',
     version: 'v4.1.12',
     releaseDate: '2026.10.28',
