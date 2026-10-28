@@ -22,7 +22,7 @@ export type PickTarget =
   | { kind: 'dock'; id: string }
   | { kind: 'trail'; dir: 'up' | 'down' | 'top' | 'down-top' }
   // 創點源原創角色（白喵、多慧、007、大熊）
-  | { kind: 'character'; id: 'baimiao' | 'duohui' | 'agent007' | 'bear' | 'sousou' }
+  | { kind: 'character'; id: 'baimiao' | 'duohui' | 'agent007' | 'bear' | 'sousou' | 'xiaodengpao' }
   // 討論島論道廣場的議題碑
   | { kind: 'discStele'; which: 'hot' | 'new' }
   // 彩蛋（和 3D 地圖同一套詩句、同一本收集冊）；maxDist：太遠點不到；minY：要站得夠高（山台、塔頂）

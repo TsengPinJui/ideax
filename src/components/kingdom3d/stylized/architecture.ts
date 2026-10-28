@@ -1125,8 +1125,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     for (let side = 0; side < JOB_SCROLLS; side++) {
       const sx = side < per ? -1 : 1;
       const k = side % per;
-      // 面向牆時由左往右讀：左牆（朝 +x）從裡到外、右牆（朝 -x）從外到裡
-      const zz = sx < 0 ? -span / 2 + sw / 2 + k * (sw + gapZ) - 0.2 : span / 2 - sw / 2 - k * (sw + gapZ) - 0.2;
+      // 面向牆時由左往右讀（卷一在最左）：左牆（朝 +x）從門口往裡、右牆（朝 -x）從裡往門口
+      const zz = sx < 0 ? span / 2 - sw / 2 - k * (sw + gapZ) - 0.2 : -span / 2 + sw / 2 + k * (sw + gapZ) - 0.2;
       const scroll = new THREE.Mesh(new THREE.PlaneGeometry(sw, shh), new THREE.MeshStandardMaterial({ map: drawJobScrollTexture(side, [], 'idle'), roughness: 0.85 }));
       scroll.position.set(sx * (w / 2 - thick / 2 - 0.05), 2.4, zz);
       scroll.rotation.y = -sx * (Math.PI / 2);

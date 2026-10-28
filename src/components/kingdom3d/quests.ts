@@ -20,7 +20,7 @@ export interface DuoQuest {
 export const TOUR_SECONDS = 300;
 
 export const DUO_QUESTS: DuoQuest[] = [
-  { id: 'boat', title: '一起遊船', hint: '和羈絆夥伴坐上同一艘船遊湖' },
+  { id: 'boat', title: '一起遊船', hint: '和羈絆夥伴坐上同一艘船，或各划一艘靠在一起遊湖' },
   { id: 'tower', title: '一起登上聚雲塔', hint: '兩人一起站上聚雲塔塔頂眺望' },
   { id: 'tour-home', title: '一起遊覽主島中央廣場', hint: '兩人一起在主島中央廣場待滿 5 分鐘', place: { x: 0, z: 0, r: 17 } },
   { id: 'tour-plaza', title: '一起遊覽論道廣場', hint: '兩人一起在討論島藏書閣前的論道廣場待滿 5 分鐘', place: { x: 72, z: -47, r: 13 } },
@@ -92,7 +92,8 @@ export function stepQuests(
   for (const qq of DUO_QUESTS) {
     if (q.done[qq.id]) continue;
     if (qq.id === 'boat') {
-      if (ctx.onBoat && d < 3.2 && dy < 1.5) finish(qq);
+      // 同一艘船，或各自划船靠在一起（兩邊畫面各自判斷自己有沒有在船上）
+      if (ctx.onBoat && d < 8 && dy < 1.5) finish(qq);
     } else if (qq.id === 'tower') {
       if (ctx.onTowerTop && d < 5 && partner.y > TRAIL.topFloorY - 2) finish(qq);
     } else if (qq.place) {

@@ -12,10 +12,13 @@ import { isTypingTarget } from './FirstPersonControls';
 import { hallOf, hallZoneItems, HALL_ZONES } from './stylized/exhibitHall';
 import { CHARACTERS, CharacterId } from './stylized/fauna';
 import { plazaTopics } from './stylized/discussionPlaza';
+import { kingdomPanelUrl } from '../../utils/kingdomPanel';
 import './kingdomUi.css';
 
 /** 左側面板目前顯示的內容（照 /island：點畫面上的東西，細節在左側彈出） */
 export type DrawerState =
+  /** 網站的某一頁直接顯示在左側欄（找專家、求職、徵才、發布、瀏覽…） */
+  | { kind: 'site'; url: string; title: string; back?: DrawerState | null }
   | { kind: 'building'; building: BuildingInteractable }
   | { kind: 'painFloor'; level: number }
   | { kind: 'street'; propId: string }
@@ -973,6 +976,34 @@ export const KingdomSideDrawer: React.FC<{
         </div>
       </>
     );
+  } else if (state?.kind === 'site') {
+    const back = state.back ? () => onChange(state.back || null) : null;
+    body = (
+      <>
+        <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(226,184,90,0.3)' }}>
+          {back && (
+            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[13px] flex items-center gap-1 cursor-pointer shrink-0">
+              <ChevronLeft className="w-4 h-4" /> 返回
+            </button>
+          )}
+          <span className="kx-title text-[15px] truncate flex-1">{state.title}</span>
+          <button
+            type="button"
+            onClick={() => openInNewTab(state.url)}
+            className="kx-btn-ghost px-2.5 py-1.5 text-[12px] cursor-pointer shrink-0"
+            title="在新分頁開啟這一頁"
+          >
+            新分頁開啟
+          </button>
+          <button type="button" onClick={close} className="kx-round w-8 h-8 shrink-0" title="關閉 (Esc)" aria-label="關閉">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 bg-white">
+          <iframe key={state.url} src={kingdomPanelUrl(state.url)} title={state.title} className="w-full h-full border-0 block" allow="clipboard-write; fullscreen" />
+        </div>
+      </>
+    );
   } else if (state?.kind === 'question' && renderQuestionPage) {
     const back = () => onChange(state.back);
     body = (
@@ -1037,7 +1068,7 @@ export const KingdomSideDrawer: React.FC<{
 
   return (
     <aside
-      className={`kx-root absolute top-0 bottom-0 left-0 z-[45] ${state?.kind === 'question' && renderQuestionPage ? 'w-[720px] max-w-[100vw]' : 'w-[400px] max-w-[92vw]'} transition-[transform,width] duration-300 ease-out`}
+      className={`kx-root absolute top-0 bottom-0 left-0 z-[45] ${(state?.kind === 'question' && renderQuestionPage) || state?.kind === 'site' ? 'w-[720px] max-w-[100vw]' : 'w-[400px] max-w-[92vw]'} transition-[transform,width] duration-300 ease-out`}
       style={{ transform: body ? 'translateX(0)' : 'translateX(-105%)', pointerEvents: body ? 'auto' : 'none' }}
       aria-hidden={!body}
       onPointerDown={(e) => e.stopPropagation()}

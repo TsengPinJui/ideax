@@ -25,7 +25,8 @@ import { useSosoJobs, SosoJob, SosoState } from './useSosoJobs';
 import { drawJobScrollTexture, JOBS_PER_SCROLL } from './stylized/jobScroll';
 import { pickTargetOf, PickTarget } from './picking';
 import { KingdomMultiplayer, RemotePlayersView, MultiplayerStatus, multiplayerConfigured } from './kingdomMultiplayer';
-import { moduleUrl, openInNewTab } from './buildingActions';
+import { moduleUrl, moduleTitle } from './buildingActions';
+import { KINGDOM_PANEL_EVENT, KingdomPanelDetail } from '../../utils/kingdomPanel';
 import type { KingdomAction } from './buildingActions';
 import { trackFeature } from '../../services/featureUsage';
 import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from '../island/easterEggBook';
@@ -468,7 +469,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       goTrailRef.current?.(t.dir);
     } else if (t.kind === 'character') {
       setDrawer({ kind: 'character', id: t.id });
-      triggerEggRef.current(t.id === 'sousou' ? 'soso' : t.id);
+      triggerEggRef.current(t.id === 'sousou' ? 'soso' : t.id === 'xiaodengpao' ? 'bulb' : t.id);
     } else if (t.kind === 'discStele') {
       setDrawer({ kind: 'discList', which: t.which });
     } else if (t.kind === 'lobbyRank') {
@@ -1129,15 +1130,22 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   currentUserNameRef.current = currentUser?.name || '';
   const currentUserIdRef = useRef(currentUser?.id || '');
   currentUserIdRef.current = currentUser?.id || '';
+  // 其他地方（例如左側欄裡的貼文內頁）要用網站功能：一樣在左側欄直接顯示那一頁
+  useEffect(() => {
+    const onPanel = (e: Event) => {
+      const d = (e as CustomEvent<KingdomPanelDetail>).detail;
+      if (!d?.url) return;
+      setDrawer((prev) => ({ kind: 'site', url: d.url, title: d.title || '網站', back: prev && prev.kind !== 'site' ? prev : prev?.kind === 'site' ? prev.back : null }));
+    };
+    window.addEventListener(KINGDOM_PANEL_EVENT, onPanel);
+    return () => window.removeEventListener(KINGDOM_PANEL_EVENT, onPanel);
+  }, []);
   const handleDrawerAction = useCallback(
     (a: KingdomAction) => {
       if (a.kind === 'module') {
-        // 用新分頁開，3D 這一頁維持原狀；被擋下時才在本頁開（並記住位置）
-        if (!openInNewTab(moduleUrl(a.module))) {
-          rememberPose();
-          setDrawer(null);
-          onNavigateToModule?.(a.module);
-        }
+        // 網站功能（找專家、求職、徵才、發布、瀏覽…）直接顯示在左側欄；3D 這一頁維持原狀
+        const url = moduleUrl(a.module);
+        setDrawer((prev) => ({ kind: 'site', url, title: moduleTitle(a.module), back: prev && prev.kind !== 'site' ? prev : prev?.kind === 'site' ? prev.back : null }));
       } else if (a.kind === 'region') {
         setDrawer(null);
         handleSelectRegion(a.regionId);

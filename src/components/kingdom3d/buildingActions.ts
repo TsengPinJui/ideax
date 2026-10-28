@@ -106,6 +106,34 @@ const MODULE_URLS: Record<string, string> = {
   star_season: '/challenge',
 };
 
+const MODULE_TITLES: Record<string, string> = {
+  home: '探索',
+  explore: '探索',
+  pain_feed: '痛點專區',
+  pain_points: '痛點專區',
+  discussion_feed: '交流討論',
+  l0_discussion: '交流討論',
+  vibecoding_feed: '作品展區',
+  vibecoding: '作品展區',
+  ideas_feed: '創點子提案',
+  create_ideas: '創點子提案',
+  jobs: '求職・職缺',
+  job_explorer: '求職・職缺',
+  experts: '找專家',
+  solvers: '找專家',
+  create_pain_point: '刊登痛點',
+  create_discussion: '發起討論',
+  create_app: '發布作品',
+  create_proposal: '寫創新提案',
+  agents: 'Agent 夥伴',
+  topup: '儲值',
+  chat: '私訊',
+  star_season: '創星季',
+};
+export function moduleTitle(module: string) {
+  return MODULE_TITLES[module] || '網站';
+}
+
 export function moduleUrl(module: string) {
   return MODULE_URLS[module] || '/explore';
 }
