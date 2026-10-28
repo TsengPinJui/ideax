@@ -87,6 +87,8 @@ import {
   loadIslandIntroVideoUrl,
 } from '../../services/islandIntroVideoService';
 import './IslandWorldView.css';
+import { IslandPegman } from './IslandPegman';
+import { enterRoamAt, roamTargetForBuilding, roamTargetForIsland } from '../kingdom3d/roamEntry';
 
 interface IslandWorldViewProps {
   questions: Question[];
@@ -1228,6 +1230,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         </div>
 
         {/* 底部置中視角控制工具列（全圖示按鈕：縮放、重設視角、古風音樂開關、說明） */}
+        {/* 拖曳小人到地圖上任一處：進入實境漫遊的對應位置 */}
+        <IslandPegman />
+
         <div className="island-map-controls island-ui-interactive" aria-label="地圖操作">
           <div className="island-map-zoom-controls">
             <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖">
@@ -1460,6 +1465,15 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               )}
             </div>
 
+            <button
+              type="button"
+              onClick={() => enterRoamAt(roamTargetForBuilding(currentBuildingId) || roamTargetForIsland(selectedIslandId))}
+              className="island-atlas-roam-btn shrink-0"
+              title="在實境漫遊裡走到這裡（第一人稱，可多人同遊）"
+            >
+              <Footprints size={13} strokeWidth={2.2} />
+              實境漫遊
+            </button>
             <button
               type="button"
               onClick={() => setIsRightAtlasOpen(false)}

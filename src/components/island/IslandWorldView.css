@@ -2423,3 +2423,57 @@
 
 
 
+
+/* 拖曳小人（像街景小人）：拖到地圖上進入實境漫遊 */
+.island-pegman {
+  position: absolute;
+  right: 16px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(48, 27, 15, 0.9), rgba(24, 13, 8, 0.9));
+  border: 1px solid rgba(226, 184, 90, 0.6);
+  color: #f6e7c4;
+  font-size: 13px;
+  cursor: grab;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  user-select: none;
+}
+.island-pegman:active {
+  cursor: grabbing;
+}
+.island-pegman-ghost {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35));
+}
+.island-pegman-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 22px;
+  height: 7px;
+  margin-left: -11px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+}
+.island-atlas-roam-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b3261e, #8e1f17);
+  border: 1px solid rgba(242, 198, 106, 0.85);
+  color: #fff3d0;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}

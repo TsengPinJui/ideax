@@ -66,6 +66,8 @@ interface MobileControlsOverlayProps {
   bgmMuted?: boolean;
   onToggleBgm?: () => void;
   multiplayer?: { status: 'off' | 'guest' | 'connecting' | 'online' | 'error'; others: number };
+  /** 全島地圖：點任一處前往最近可以去的地方 */
+  onGoToPoint?: (x: number, z: number) => void;
   /** 小地圖下方的時間與天氣（選時段、天氣或自動） */
   env?: {
     timeMode: TimeMode;
@@ -155,6 +157,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   bgmMuted,
   onToggleBgm,
   env,
+  onGoToPoint,
   multiplayer,
 }) => {
   // 視窗尺寸與直橫式偵測（確保手機直式、橫式按鍵都不跑出畫面）
@@ -1037,6 +1040,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         playerPos={{ x: playerPos.x, z: playerPos.z }}
         yawRad={yawRad}
         onSelectRegion={onSelectRegion}
+        onGoToPoint={onGoToPoint}
       />
     </div>
   );

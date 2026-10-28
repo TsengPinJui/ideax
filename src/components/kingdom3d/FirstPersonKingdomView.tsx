@@ -59,6 +59,7 @@ import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/water
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
 import type { WalkableZone } from './types';
 import { BoatOverlay } from './BoatOverlay';
+import { nearestReachable } from './nearestSpot';
 import { getFeaturedGames, getFeaturedProposalsAndSoftware, getHotRankedGames, getHotRankedProposalsAndSoftware } from '../../data/hotGamesData';
 import { FloorDirectory, FloorEntry } from './FloorDirectory';
 import { drawPainBoardTexture, PAIN_FLOORS, PainBoardLayout } from './stylized/painBoard';
@@ -416,6 +417,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     }
   }, []);
   const openForTargetRef = useRef<((t: PickTarget) => void) | null>(null);
+  const goToPointRef = useRef<((x: number, z: number) => void) | null>(null);
   const goTrailRef = useRef<((dir: 'up' | 'down' | 'top' | 'down-top') => void) | null>(null);
   // 遊湖乘船
   const [boatDock, setBoatDock] = useState<string | null>(null);
@@ -1337,6 +1339,24 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     myBoat.visible = false;
     const remoteBoats = new Map<number, THREE.Group>();
     const seatTmp = new THREE.Vector3();
+    // 全島地圖點任一處：前往最近可以站的地方（在船上就先下船）
+    goToPointRef.current = (x, z) => {
+      if (boatRideRef.current) {
+        boatRideRef.current = null;
+        void boating.leave();
+        myBoat.visible = false;
+        setRiding(null);
+      }
+      const p = nearestReachable(x, z);
+      storyRef.current = { towerId: null, level: 0, armed: true, tween: null };
+      setFloorLevel(0);
+      setStoryTowerId(null);
+      controls.setSpawn(new THREE.Vector3(p.x, 0, p.z), p.yaw);
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      setDrawer(null);
+      playSoundEffect('portal');
+    };
     goTrailRef.current = (dir) => {
       playSoundEffect('portal');
       if (dir === 'top') {
@@ -2141,6 +2161,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
         placeOverride={floorLevel !== 0 && storyTowerId && REGION_BUILDINGS.get(storyTowerId) ? [REGION_BUILDINGS.get(storyTowerId)!.name.replace(/[（(].*$/, ''), floorLabel(REGION_BUILDINGS.get(storyTowerId)!, floorLevel)].filter(Boolean).join('・') : undefined}
         timeOfDay={timeOfDay}
+        onGoToPoint={(x, z) => goToPointRef.current?.(x, z)}
         env={{
           timeMode,
           weatherMode,
