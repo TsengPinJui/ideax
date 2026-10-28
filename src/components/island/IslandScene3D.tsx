@@ -1,7 +1,6 @@
 import { reportXp } from '../../services/xpService';
 import React, { useEffect, useRef, useState } from 'react';
 import { createMapDocksAndTrail } from './mapDocks';
-import { enterRoamAt } from '../kingdom3d/roamEntry';
 import { playTempleBell } from '../../utils/templeBell';
 import { nextBulbVerse } from './easterEggBook';
 import * as THREE from 'three';
@@ -140,8 +139,6 @@ export interface IslandViewTransform {
   zoom: number;
   pitch: number; // degrees: 26 ~ 74 (default 48)
   yaw: number;   // degrees: -180 ~ 180 (default 0)
-  panX: number;  // screen-like pan offset (-800 ~ 800)
-  panY: number;  // screen-like pan offset (-600 ~ 600)
 }
 
 import {
@@ -1056,6 +1053,24 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       roughness: 0.22,
       metalness: 0.14,
     });
+    // 淡淡的斜向水紋會沿水面移動，讓島嶼周圍的水看起來有流向，不搶主景。
+    waterMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uIslandWaterTime = { value: 0 };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vIslandWaterPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvIslandWaterPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vIslandWaterPos;\nuniform float uIslandWaterTime;')
+        .replace(
+          '#include <opaque_fragment>',
+          `float currentLine = sin(vIslandWaterPos.x * 0.34 + vIslandWaterPos.z * 0.21 + uIslandWaterTime * 0.42);\n` +
+          `float currentGlint = smoothstep(0.965, 0.998, currentLine) * 0.13;\n` +
+          `float waterGrain = sin(vIslandWaterPos.x * 0.12 - vIslandWaterPos.z * 0.17 - uIslandWaterTime * 0.18) * 0.018;\n` +
+          `diffuseColor.rgb += vec3(0.48, 0.82, 0.82) * currentGlint + vec3(waterGrain);\n#include <opaque_fragment>`,
+        );
+      waterMat.userData.flowShader = shader;
+    };
+    waterMat.customProgramCacheKey = () => 'ideax-island-water-current-v1';
     const waterMesh = new THREE.Mesh(waterGeo, waterMat);
     waterMesh.position.y = -0.6;
     waterMesh.receiveShadow = !isSoftwareGl;
@@ -1240,6 +1255,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       baseScaleY: number;
     }
     const waterfallFallingStreams: WaterfallFallingStreamItem[] = [];
+    const islandFallRipples: Array<{ mesh: THREE.Mesh; material: THREE.MeshBasicMaterial; phase: number }> = [];
     const sharedFallingStreamGeo = new THREE.CapsuleGeometry(0.14, 0.95, 4, 6);
     const fallingStreamMat = new THREE.MeshBasicMaterial({
       color: 0xf4feff,
@@ -1648,6 +1664,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
             foam.scale.set(1.4, 0.52, 1.3);
             cliffFall.add(foam);
           }
+          // 飛瀑落入海面後的細水環，與瀑布本體錯開相位，讓水流有前後層次。
+          for (let r = 0; r < 2; r++) {
+            const rippleMat = mats.waterFoam.clone();
+            rippleMat.opacity = 0.42 - r * 0.08;
+            const ripple = new THREE.Mesh(
+              new THREE.RingGeometry(0.72 + r * 0.22, 0.88 + r * 0.22, 28).rotateX(-Math.PI / 2),
+              rippleMat,
+            );
+            ripple.position.set((r ? 0.22 : -0.18), 0.055 + r * 0.008, 1.48 + r * 0.16);
+            ripple.scale.set(0.8, 0.8, 0.8);
+            cliffFall.add(ripple);
+            islandFallRipples.push({ mesh: ripple, material: rippleMat, phase: wAngle + r * 0.48 });
+          }
           group.add(cliffFall);
         });
       }
@@ -1700,6 +1729,16 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       trunk.rotation.z = 0.06;
       tree.add(trunk);
 
+      // 主枝從樹幹向外伸展，讓花冠不是直接浮在樹幹上。
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + 0.28;
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.085, 0.92, 6), mats.woodDark);
+        branch.position.set(Math.cos(angle) * 0.38, 1.46 + (i % 2) * 0.12, Math.sin(angle) * 0.38);
+        branch.rotation.z = -Math.cos(angle) * 0.66;
+        branch.rotation.x = Math.sin(angle) * 0.66;
+        tree.add(branch);
+      }
+
       const crownGroup = new THREE.Group();
       const blobs: Array<[number, number, number, number]> = [
         [0, 1.95, 0, 1.08],
@@ -1716,6 +1755,18 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         crown.scale.set(1.18, 0.86, 1.18);
         crownGroup.add(crown);
       });
+      // 細小花團填補大花冠之間的空隙，遠看仍保留柔和的低多邊形輪廓。
+      for (let i = 0; i < 9; i++) {
+        const angle = i * 2.399;
+        const r = 0.48 + (i % 3) * 0.19;
+        const petal = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.18 + (i % 2) * 0.035, 1),
+          i % 3 === 0 ? mats.sakuraLight : mats.sakuraPink,
+        );
+        petal.position.set(Math.cos(angle) * r, 1.78 + (i % 4) * 0.24, Math.sin(angle) * r);
+        petal.scale.set(1.12, 0.78, 1.05);
+        crownGroup.add(petal);
+      }
       tree.add(crownGroup);
 
       if (canSway) {
@@ -1850,6 +1901,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       sideBranch.position.set(0.42, 1.45, 0.1);
       sideBranch.rotation.z = -0.68;
       tree.add(sideBranch);
+
+      // 山松枝梢向外伸出，枝端帶小片針葉，補足樹冠層次與近看細節。
+      for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2 + 0.32;
+        const branchLen = 0.82 + (i % 2) * 0.16;
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, branchLen, 5), mats.woodDark);
+        branch.position.set(Math.cos(angle) * 0.38, 1.72 + (i % 3) * 0.27, Math.sin(angle) * 0.38);
+        branch.rotation.z = -Math.cos(angle) * 0.82;
+        branch.rotation.x = Math.sin(angle) * 0.82;
+        tree.add(branch);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.28 + (i % 2) * 0.05, 0.46, 6), i % 2 ? mats.pineLight : mats.pineGreen);
+        tip.position.set(Math.cos(angle) * (0.62 + (i % 2) * 0.1), 2.04 + (i % 3) * 0.26, Math.sin(angle) * (0.62 + (i % 2) * 0.1));
+        tip.rotation.z = -Math.cos(angle) * 0.55;
+        tip.rotation.x = Math.sin(angle) * 0.55;
+        tree.add(tip);
+      }
 
       // 層疊蒼翠松針層
       const pineLayers: Array<[number, number, number, number, number]> = [
@@ -4139,50 +4206,94 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     templeGroup.rotation.y = -Math.PI / 6;
     careerBase.group.add(templeGroup);
 
-    const templePlatform = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.78, 6.8), mats.stonePlaza);
-    templePlatform.position.y = 0.39;
+    const templePlatform = new THREE.Mesh(new THREE.CylinderGeometry(4.65, 5.0, 0.76, 8), mats.stonePlaza);
+    templePlatform.position.y = 0.38;
+    templePlatform.rotation.y = Math.PI / 8;
     templeGroup.add(templePlatform);
+    const platformInlay = new THREE.Mesh(new THREE.CylinderGeometry(3.98, 4.12, 0.05, 8), mats.goldTrim);
+    platformInlay.position.y = 0.79;
+    platformInlay.rotation.y = Math.PI / 8;
+    templeGroup.add(platformInlay);
+    const templeDeck = new THREE.Mesh(new THREE.CylinderGeometry(3.92, 3.92, 0.14, 8), mats.woodWarm);
+    templeDeck.position.y = 0.87;
+    templeDeck.rotation.y = Math.PI / 8;
+    templeGroup.add(templeDeck);
 
-    const templeHall = new THREE.Mesh(new THREE.BoxGeometry(6.8, 2.7, 5.2), mats.vermilion);
-    templeHall.position.y = 2.05;
-    templeGroup.add(templeHall);
-
-    // 求職廟一樓外環朱紅廊柱與金匾、門前香爐
-    for (let cx = -3.4; cx <= 3.4; cx += 1.7) {
-      [-2.7, 2.7].forEach((cz) => {
-        const col = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.14, 0.16, 2.65, 8),
-          mats.vermilion,
-        );
-        col.position.set(cx, 2.05, cz);
-        templeGroup.add(col);
-      });
+    // 開放式八角亭：朱柱承托雙層深朱屋簷，簷口與柱腳以金線收邊。
+    const templePosts: Array<[number, number]> = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      const x = Math.cos(angle) * 3.15;
+      const z = Math.sin(angle) * 3.15;
+      templePosts.push([x, z]);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.34, 0.24, 8), mats.goldTrim);
+      base.position.set(x, 1.04, z);
+      templeGroup.add(base);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 3.15, 8), mats.vermilion);
+      post.position.set(x, 2.7, z);
+      templeGroup.add(post);
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.24, 0.18, 8), mats.goldTrim);
+      capital.position.set(x, 4.31, z);
+      templeGroup.add(capital);
     }
+    const templeBeam = new THREE.Mesh(new THREE.CylinderGeometry(3.55, 3.55, 0.34, 8), mats.vermilion);
+    templeBeam.position.y = 4.32;
+    templeBeam.rotation.y = Math.PI / 8;
+    templeGroup.add(templeBeam);
+    const addTempleRoof = (radius: number, y: number, height: number, topRadius: number) => {
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, radius, height, 8, 1), mats.vermilion);
+      roof.position.y = y;
+      roof.rotation.y = Math.PI / 8;
+      templeGroup.add(roof);
+      const edge = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.985, 0.075, 6, 8), mats.goldTrim);
+      edge.rotation.x = Math.PI / 2;
+      edge.position.y = y - height / 2 + 0.04;
+      templeGroup.add(edge);
+      // 八個微翹簷角以金色短椽點出亭子的八角輪廓。
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mats.goldTrim);
+        tip.position.set(Math.cos(a) * (radius + 0.12), y - height / 2 + 0.16, Math.sin(a) * (radius + 0.12));
+        templeGroup.add(tip);
+      }
+    };
+    addTempleRoof(4.35, 4.72, 1.35, 1.95);
+    addTempleRoof(2.42, 5.95, 1.12, 0.55);
+    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.92, 8), mats.goldTrim);
+    finial.position.y = 7.02;
+    templeGroup.add(finial);
 
-    const templeDoors = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.85, 5.35), mats.windowGlow);
-    templeDoors.position.y = 1.75;
-    templeGroup.add(templeDoors);
-
-    const templePlaque = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 0.22), mats.goldTrim);
-    templePlaque.position.set(0, 3.05, 2.78);
+    const templePlaque = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.58, 0.16), mats.goldTrim);
+    templePlaque.position.set(0, 3.85, 3.22);
     templeGroup.add(templePlaque);
 
-    const templeRoof1 = createChineseRoof(8.8, 7.0, 1.7, mats.roofJade);
-    templeRoof1.position.y = 3.4;
-    templeGroup.add(templeRoof1);
+    // 朱色廊道由亭前伸向院門，兩側柱列與瓦簷形成清楚的迎賓動線。
+    const corridor = new THREE.Group();
+    corridor.position.set(0, 0, 3.6);
+    templeGroup.add(corridor);
+    const corridorDeck = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.16, 5.8), mats.stonePlaza);
+    corridorDeck.position.set(0, 0.66, 2.5);
+    corridor.add(corridorDeck);
+    for (const x of [-1.72, 1.72]) {
+      for (const z of [0.45, 2.35, 4.25]) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.3, 8), mats.vermilion);
+        col.position.set(x, 1.88, z);
+        corridor.add(col);
+      }
+    }
+    const corridorRoof = new THREE.Mesh(new THREE.CylinderGeometry(2.25, 2.62, 0.62, 8), mats.vermilion);
+    corridorRoof.position.set(0, 3.17, 2.35);
+    corridorRoof.scale.set(1, 1, 1.65);
+    corridorRoof.rotation.y = Math.PI / 8;
+    corridor.add(corridorRoof);
+    const corridorEave = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.1, 0.12), mats.goldTrim);
+    corridorEave.position.set(0, 2.88, 4.45);
+    corridor.add(corridorEave);
 
-    const templeUpper = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.5, 3.6), mats.vermilion);
-    templeUpper.position.y = 4.85;
-    templeGroup.add(templeUpper);
-
-    const templeRoof2 = createChineseRoof(6.8, 5.4, 1.65, mats.roofJade);
-    templeRoof2.position.y = 5.6;
-    templeGroup.add(templeRoof2);
-
-    for (let lx = -3.2; lx <= 3.2; lx += 1.6) {
-      const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), mats.lanternGlow);
-      l.position.set(lx, 3.15, 3.15);
-      l.scale.set(1, 1.3, 1);
+    for (const [lx, lz] of templePosts.slice(0, 4)) {
+      const l = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.lanternGlow);
+      l.position.set(lx * 0.78, 3.92, lz * 0.78);
+      l.scale.set(0.88, 1.28, 0.88);
       templeGroup.add(l);
     }
 
@@ -4850,7 +4961,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       const segments = 15;
       const segLen = len / segments;
       const bridgeWidth = 2.95;
-      const archRise = 2.45;
+      const archRise = 3.05;
 
       // 兩端青石橋台墩座（深入水面與島基，零縫隙銜接島岸石板路）
       [-0.47, 0.47].forEach((endT) => {
@@ -4987,10 +5098,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     };
 
     // 四座連結主島與外島的江南青石拱橋（含橋上垂釣客 NPC）
-    createArchedBridge(-22.5, -16.8, -8.8, -6.6, 0);
-    createArchedBridge(22.5, -16.8, 8.8, -6.6, 1);
-    createArchedBridge(-22.5, 16.8, -8.8, 6.6, 2);
-    createArchedBridge(22.5, 16.8, 8.8, 6.6, 3);
+    createArchedBridge(-12.2, -9.1, -20.3, -15.2, 0);
+    createArchedBridge(12.2, -9.1, 16.9, -12.3, 1);
+    createArchedBridge(-12.2, 9.1, -20.2, 15.0, 2);
+    createArchedBridge(12.2, 9.1, 17.4, 13.7, 3);
 
     // 點綴於江南青石拱橋畔與島嶼淺灣的碧水荷花池與蓮花河燈
     [
@@ -10054,15 +10165,6 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         return true;
       });
       if (hits.length > 0) {
-        // 乘船點、登山口：直接換到實境漫遊的那個渡口／登山口
-        {
-          let o: THREE.Object3D | null = hits[0].object;
-          while (o && !o.userData?.roamTarget) o = o.parent;
-          if (o?.userData?.roamTarget) {
-            enterRoamAt(o.userData.roamTarget);
-            return;
-          }
-        }
         // 優先檢查是否點擊了柳樹（點擊才會有上方宣紙卷軸；第五棵化成陶淵明；找到陶淵明後繼續點擊第六棵樹化成屈原）
         for (const h of hits) {
           const { willowTree, sceneTree } = findWillowOrSceneTreeFromHit(h.object);
@@ -10844,6 +10946,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       });
 
       // 4. 瀑布飛流直下動態：高速滾動水浪貼圖 + 3D 實體傾瀉水束由頂端衝入深潭 + 水霧漣漪
+      const islandWaterShader = waterMat.userData.flowShader as { uniforms?: Record<string, { value: number }> } | undefined;
+      if (islandWaterShader?.uniforms?.uIslandWaterTime) islandWaterShader.uniforms.uIslandWaterTime.value = t;
       waterfallFlowTex.offset.y = (t * 1.65) % 1;
       waterfallFoamSheetTex.offset.y = (t * 2.35) % 1;
 
@@ -10884,6 +10988,12 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         const sc = 1.0 + prog * (pr.maxScale - 1.0);
         pr.mesh.scale.set(sc, sc, 1);
         pr.mat.opacity = (1 - prog) * 0.58;
+      });
+      islandFallRipples.forEach((ripple) => {
+        const progress = (t * 0.34 + ripple.phase) % 1;
+        const scale = 0.72 + progress * 1.85;
+        ripple.mesh.scale.set(scale, scale, 1);
+        ripple.material.opacity = (1 - progress) * 0.4;
       });
       caveEasterEggSparkles.forEach((sp) => {
         const pulse = 0.85 + Math.sin(t * 3.2 + sp.phase) * 0.28;
@@ -11214,7 +11324,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       selectionRing.scale.set(ringScale, ringScale, 1);
       mapDocks.tick(t);
 
-      // 6. Camera Orbit + Pan calculation from `viewRef.current` (zoom 40% ~ 240%, radius 40 ~ 240)
+      // 6. Camera Orbit calculation around a fixed map center (zoom 40% ~ 240%, radius 40 ~ 240)
       // 本機開發時可用 window.__islandViewOverride 指定視角（截圖檢查用；正式站不會讀）
       const v = (isLocalDev && (window as any).__islandViewOverride) || viewRef.current;
       const clampedZoom = THREE.MathUtils.clamp(v.zoom, 0.4, 2.4);
@@ -11226,17 +11336,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       smoothedSpherical.pitchRad = THREE.MathUtils.lerp(smoothedSpherical.pitchRad, targetPitch, 0.14);
       smoothedSpherical.yawRad = THREE.MathUtils.lerp(smoothedSpherical.yawRad, targetYaw, 0.14);
 
-      const panFactor = 0.055 / Math.max(0.42, v.zoom);
-      const localRight = -v.panX * panFactor;
-      const localForward = -v.panY * panFactor;
-      const cosY = Math.cos(smoothedSpherical.yawRad);
-      const sinY = Math.sin(smoothedSpherical.yawRad);
-
-      const desiredTargetX = localRight * cosY + localForward * sinY;
-      const desiredTargetZ = -localRight * sinY + localForward * cosY + 1.5;
-
-      smoothedTarget.x = THREE.MathUtils.lerp(smoothedTarget.x, desiredTargetX, 0.16);
-      smoothedTarget.z = THREE.MathUtils.lerp(smoothedTarget.z, desiredTargetZ, 0.16);
+      smoothedTarget.x = 0;
+      smoothedTarget.z = 1.5;
 
       const horizDist = smoothedSpherical.radius * Math.cos(smoothedSpherical.pitchRad);
       const vertDist = smoothedSpherical.radius * Math.sin(smoothedSpherical.pitchRad);

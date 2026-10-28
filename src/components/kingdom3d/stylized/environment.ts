@@ -794,17 +794,31 @@ export class StylizedWorld {
     for (let t = 0; t < 5; t++) {
       const s = 7.5 * (1 - t * 0.13);
       const bh = t === 0 ? 3.6 : 2.6;
-      const body = new THREE.Mesh(scaledBox(s, bh, s, 3, bh * 1.4, 3), mats.facades[t % 3]);
-      body.position.y = y + bh / 2;
-      g.add(body);
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, bh, 8), mats.redLacquer);
-        col.position.set((sx * s) / 2, y + bh / 2, (sz * s) / 2);
+      const deck = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.67, s * 0.7, 0.26, 8), mats.stoneLight);
+      deck.position.y = y - 0.13;
+      deck.rotation.y = Math.PI / 8;
+      g.add(deck);
+      const floor = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.61, s * 0.61, 0.08, 8), mats.woodFloor);
+      floor.position.y = y - 0.04;
+      floor.rotation.y = Math.PI / 8;
+      g.add(floor);
+      const postRadius = s * 0.52;
+      for (let p = 0; p < 8; p++) {
+        const a = (p / 8) * Math.PI * 2 + Math.PI / 8;
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2 - t * 0.012, 0.24 - t * 0.012, bh - 0.35, 8), mats.redLacquer);
+        col.position.set(Math.cos(a) * postRadius, y + (bh + 0.25) / 2, Math.sin(a) * postRadius);
         g.add(col);
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.31 - t * 0.015, 0.31 - t * 0.015, 0.12, 8), mats.gold);
+        collar.position.set(Math.cos(a) * postRadius, y + 0.42, Math.sin(a) * postRadius);
+        g.add(collar);
       }
+      const beamRing = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.62, s * 0.62, 0.32, 8), mats.redLacquer);
+      beamRing.position.y = y + bh - 0.18;
+      beamRing.rotation.y = Math.PI / 8;
+      g.add(beamRing);
       y += bh;
       const last = t === 4;
-      const roof = buildRoofTier(s, s, { rise: last ? 3.2 : 1.3, overhang: 1.5, curl: 0.9, theme: t % 2 ? 'teal' : 'slate', ridge: last, finial: last });
+      const roof = buildRoofTier(s, s, { rise: last ? 3.2 : 1.3, overhang: 1.5, curl: 0.9, theme: 'red', ridge: last, finial: last });
       roof.position.y = y;
       // 最上面兩層屋簷：人在塔頂眺望時會暫時藏起來，風景不會被屋簷擋住
       if (t >= 3) {
@@ -814,11 +828,31 @@ export class StylizedWorld {
       g.add(roof);
       y += last ? 0 : 0.55;
     }
+    // 朱色廊道接上山台前庭，屋簷下以暖燈點亮入口。
+    const corridor = new THREE.Group();
+    corridor.position.set(6.0, top + 0.25, 0);
+    const path = new THREE.Mesh(scaledBox(8.0, 0.2, 3.0, 3, 0.2, 3), mats.stoneLight);
+    path.position.set(4.0, 0, 0);
+    corridor.add(path);
+    for (const z of [-1.15, 1.15]) {
+      for (const x of [0.8, 3.4, 6.0, 7.5]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.5, 8), mats.redLacquer);
+        post.position.set(x, 1.25, z);
+        corridor.add(post);
+      }
+    }
+    const corridorRoof = buildRoofTier(8.5, 3.6, { rise: 1.15, overhang: 0.65, curl: 0.38, theme: 'red' });
+    corridorRoof.position.set(4.2, 2.55, 0);
+    corridor.add(corridorRoof);
+    g.add(corridor);
     const lan = new LanternBatch();
     for (let t = 0; t < 5; t++) {
       const s = (7.5 * (1 - t * 0.13)) / 2 + 1.3;
       const yy = top + 1.2 + 3.6 + t * 3.15 - 0.2;
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) lan.addHanging(sx * s, yy, sz * s, 0.9);
+      for (let p = 0; p < 8; p += 2) {
+        const a = (p / 8) * Math.PI * 2 + Math.PI / 8;
+        lan.addHanging(Math.cos(a) * s, yy, Math.sin(a) * s, 0.72);
+      }
     }
     g.add(lan.build());
     const rand = seeded(5);

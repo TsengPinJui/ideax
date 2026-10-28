@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { BuildingInteractable, Collider } from '../types';
-import { getStyleMaterials, mergeByMaterial } from './architecture';
+import { getStyleMaterials, mergeByMaterial, buildRoofTier } from './architecture';
 
 /**
  * 求職廟的廟宇特色（讓它一眼就和其他樓閣不同）：
@@ -74,6 +74,8 @@ function slopeGeometry(halfX: number, zR: number, yR: number, zE: number, yE: nu
 }
 
 export function createTempleExtras(b: BuildingInteractable): { group: THREE.Group; colliders: Collider[] } {
+  return createOctagonalTemple(b);
+  // Legacy hall geometry is retained below as a fallback reference while the new pavilion is tuned.
   const mats = getStyleMaterials();
   const root = new THREE.Group();
   root.name = `temple_extras_${b.id}`;
@@ -323,6 +325,123 @@ export function createTempleExtras(b: BuildingInteractable): { group: THREE.Grou
     }
     if (fire) (fire.material as THREE.MeshBasicMaterial).color.setRGB(1, 0.45 + Math.sin(t * 13) * 0.08 + Math.sin(t * 7.3) * 0.06, 0.12);
   };
+  root.updateMatrixWorld(true);
+  return { group: root, colliders };
+}
+
+function createOctagonalTemple(b: BuildingInteractable): { group: THREE.Group; colliders: Collider[] } {
+  const mats = getStyleMaterials();
+  const root = new THREE.Group();
+  root.name = `temple_extras_${b.id}`;
+  root.position.copy(b.position);
+  root.rotation.y = b.facingYaw;
+  const pavilion = new THREE.Group();
+  root.add(pavilion);
+  const colliders: Collider[] = [];
+  const worldPoint = (x: number, z: number) => {
+    const c = Math.cos(b.facingYaw);
+    const s = Math.sin(b.facingYaw);
+    return [b.position.x + x * c + z * s, b.position.z - x * s + z * c] as const;
+  };
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = pavilion) => {
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
+  const stone = new THREE.MeshStandardMaterial({ color: 0xaaa493, roughness: 0.88 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd5a84f, roughness: 0.34, metalness: 0.55 });
+  const roofRed = new THREE.MeshStandardMaterial({ color: 0x7c2927, roughness: 0.7, metalness: 0.05 });
+  const floorRadius = Math.min(b.width * 0.48, b.depth * 0.62);
+
+  // 八角石台、木地坪與一圈細金線收邊。
+  add(new THREE.CylinderGeometry(floorRadius * 0.93, floorRadius, 0.64, 8), stone, 0, 0.32, 0).rotation.y = Math.PI / 8;
+  add(new THREE.CylinderGeometry(floorRadius * 0.84, floorRadius * 0.84, 0.1, 8), mats.woodFloor, 0, 0.69, 0).rotation.y = Math.PI / 8;
+  const sill = add(new THREE.CylinderGeometry(floorRadius * 0.97, floorRadius * 0.97, 0.08, 8), gold, 0, 0.65, 0);
+  sill.rotation.y = Math.PI / 8;
+
+  // 八根朱柱與金色柱礎，四面保持通透，讓廟亭本身一眼可辨。
+  const postRadius = floorRadius * 0.76;
+  const postY = 0.78;
+  const postHeight = 4.65;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const x = Math.cos(a) * postRadius;
+    const z = Math.sin(a) * postRadius;
+    add(new THREE.CylinderGeometry(0.28, 0.34, 0.22, 8), gold, x, postY + 0.11, z);
+    add(new THREE.CylinderGeometry(0.18, 0.22, postHeight, 10), mats.redLacquer, x, postY + postHeight / 2, z);
+    add(new THREE.CylinderGeometry(0.3, 0.25, 0.18, 8), gold, x, postY + postHeight - 0.02, z);
+    const [wx, wz] = worldPoint(x, z);
+    colliders.push({ id: `${b.id}-oct-post-${i}`, type: 'cylinder', x: wx, z: wz, radius: 0.42 });
+  }
+  const beamRing = add(new THREE.CylinderGeometry(postRadius * 1.04, postRadius * 1.04, 0.32, 8), mats.redLacquer, 0, postY + postHeight - 0.06, 0);
+  beamRing.rotation.y = Math.PI / 8;
+  const lintel = add(new THREE.CylinderGeometry(postRadius * 1.08, postRadius * 1.08, 0.08, 8), gold, 0, postY + postHeight - 0.26, 0);
+  lintel.rotation.y = Math.PI / 8;
+
+  // 朱色雙層八角攢尖頂，瓦沿以金色滴水線勾邊。
+  const roofTier = (radius: number, y: number, height: number, tipRadius: number) => {
+    const roof = add(new THREE.CylinderGeometry(tipRadius, radius, height, 8, 1), roofRed, 0, y, 0);
+    roof.rotation.y = Math.PI / 8;
+    const edge = add(new THREE.TorusGeometry(radius * 0.99, 0.09, 7, 8), gold, 0, y - height / 2 + 0.05, 0);
+    edge.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      const finial = add(new THREE.SphereGeometry(0.16, 8, 6), gold, Math.cos(a) * (radius + 0.08), y - height / 2 + 0.1, Math.sin(a) * (radius + 0.08));
+      finial.scale.set(1.1, 0.75, 1.1);
+    }
+  };
+  roofTier(floorRadius * 1.13, 5.9, 1.32, 1.65);
+  roofTier(floorRadius * 0.66, 7.05, 1.12, 0.34);
+  add(new THREE.ConeGeometry(0.3, 0.9, 8), gold, 0, 8.05, 0);
+
+  // 額匾與暖色宮燈。
+  const plaqueTex = plaqueTexture(b.name);
+  const plaque = add(new THREE.PlaneGeometry(3.2, 0.9), new THREE.MeshStandardMaterial({ map: plaqueTex, emissive: 0x6b2c17, emissiveMap: plaqueTex, emissiveIntensity: 0.22, roughness: 0.55 }), 0, 4.8, floorRadius * 0.78);
+  plaque.userData.noMerge = true;
+  for (const x of [-2.1, 2.1]) {
+    const lantern = add(new THREE.SphereGeometry(0.3, 10, 8), mats.lanternBody, x, 4.4, floorRadius * 0.66);
+    lantern.scale.set(0.8, 1.25, 0.8);
+    lantern.userData.noMerge = true;
+    add(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 8), gold, x, 4.8, floorRadius * 0.66);
+  }
+
+  // 延伸至前埕的有頂廊道，兩側朱柱與低矮欄板形成清楚的迎賓路線。
+  const corridor = new THREE.Group();
+  corridor.position.z = floorRadius * 0.83;
+  pavilion.add(corridor);
+  const corridorLength = Math.max(7.2, b.depth * 0.92);
+  add(new THREE.BoxGeometry(3.9, 0.2, corridorLength), stone, 0, 0.42, corridorLength / 2, corridor);
+  for (const x of [-1.7, 1.7]) {
+    for (let i = 0; i < 4; i++) {
+      const z = 0.45 + i * (corridorLength - 0.9) / 3;
+      add(new THREE.CylinderGeometry(0.13, 0.16, 2.72, 8), mats.redLacquer, x, 1.85, z, corridor);
+      add(new THREE.CylinderGeometry(0.2, 0.18, 0.12, 8), gold, x, 3.25, z, corridor);
+      const [wx, wz] = worldPoint(x, floorRadius * 0.83 + z);
+      colliders.push({ id: `${b.id}-gallery-${x}-${i}`, type: 'cylinder', x: wx, z: wz, radius: 0.3 });
+    }
+  }
+  const corridorRoof = buildRoofTier(4.4, corridorLength + 0.7, { rise: 1.2, overhang: 0.58, curl: 0.35, theme: 'red' });
+  corridorRoof.position.set(0, 3.35, corridorLength / 2);
+  corridorRoof.traverse((o) => { o.userData.noMerge = true; });
+  corridor.add(corridorRoof);
+
+  // 香爐安排在廊道前緣，留出進亭空間。
+  const incense = new THREE.Group();
+  incense.position.set(0, 0.7, corridorLength + 1.2);
+  corridor.add(incense);
+  add(new THREE.CylinderGeometry(0.52, 0.38, 0.7, 10), gold, 0, 0.35, 0, incense);
+  add(new THREE.TorusGeometry(0.48, 0.06, 6, 12).rotateX(Math.PI / 2), gold, 0, 0.72, 0, incense);
+  for (const x of [-0.38, 0, 0.38]) add(new THREE.CylinderGeometry(0.018, 0.018, 0.9, 5), mats.darkWood, x, 1.35, 0, incense);
+
+  // 開放式亭體的外圈低扶手只落在兩側，不封住正門與廊道。
+  for (const side of [-1, 1]) {
+    const rail = add(new THREE.BoxGeometry(0.14, 0.72, floorRadius * 0.74), mats.redLacquer, side * (floorRadius * 0.52), 1.28, -floorRadius * 0.18);
+    rail.rotation.y = side * Math.PI / 4;
+  }
+  mergeByMaterial(pavilion);
   root.updateMatrixWorld(true);
   return { group: root, colliders };
 }

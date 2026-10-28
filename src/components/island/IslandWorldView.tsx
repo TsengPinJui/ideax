@@ -90,7 +90,6 @@ import './IslandWorldView.css';
 import { IslandPegman } from './IslandPegman';
 import { trackFeature } from '../../services/featureUsage';
 import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from './easterEggBook';
-import { enterRoamAt, roamTargetForBuilding, roamTargetForIsland } from '../kingdom3d/roamEntry';
 
 interface IslandWorldViewProps {
   questions: Question[];
@@ -110,8 +109,8 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const canShowQuestionViews = (q: Question) =>
     isGameQuestion(q) ? isAdmin : isCardViewsVisible(publicMetricsConfig, isAdmin);
 
-  // 3D 俯視視角 (Pitch: 18° ~ 74°，預設 42°)、左右旋轉 (Yaw) 與平移位置 (panX, panY)
-  const [view, setView] = useState({ zoom: 1, pitch: 42, yaw: 0, panX: 0, panY: 0 });
+  // 3D 俯視視角、左右旋轉與縮放；地圖固定在視窗中央，不提供平移。
+  const [view, setView] = useState({ zoom: 1, pitch: 42, yaw: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
   // 當前城市地區設定：台北、台中、高雄、香港、吉隆坡、新加坡（地圖時間與天氣依照當地調整，並記錄供後台統計）
@@ -413,14 +412,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   const pointerPositions = useRef(new Map<number, { x: number; y: number }>());
   const dragStart = useRef<{
     pointerId: number;
-    pointerType: string;
-    button: number;
     x: number;
     y: number;
     pitch: number;
     yaw: number;
-    panX: number;
-    panY: number;
     moved: boolean;
     islandId: string | null;
     districtId: string | null;
@@ -653,8 +648,6 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       zoom: 1,
       pitch: 42,
       yaw: 0,
-      panX: 0,
-      panY: 0,
     });
   };
 
@@ -675,7 +668,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     return () => stage.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // 電腦版鍵盤 WASD 與上下左右方向鍵平滑移動地圖
+  // 鍵盤方向鍵微調角度，地圖本身固定不平移。
   useEffect(() => {
     const pressedKeys = new Set<string>();
     let rafId: number | null = null;
@@ -687,21 +680,17 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     };
 
     const stepLoop = () => {
-      let dx = 0;
-      let dy = 0;
-      const speed = 10;
+      let yawDelta = 0;
+      let pitchDelta = 0;
+      const speed = 1.8;
 
-      if (pressedKeys.has('w') || pressedKeys.has('arrowup')) dy += speed;
-      if (pressedKeys.has('s') || pressedKeys.has('arrowdown')) dy -= speed;
-      if (pressedKeys.has('a') || pressedKeys.has('arrowleft')) dx += speed;
-      if (pressedKeys.has('d') || pressedKeys.has('arrowright')) dx -= speed;
+      if (pressedKeys.has('arrowleft') || pressedKeys.has('a')) yawDelta += speed;
+      if (pressedKeys.has('arrowright') || pressedKeys.has('d')) yawDelta -= speed;
+      if (pressedKeys.has('arrowup') || pressedKeys.has('w')) pitchDelta += speed;
+      if (pressedKeys.has('arrowdown') || pressedKeys.has('s')) pitchDelta -= speed;
 
-      if (dx !== 0 || dy !== 0) {
-        setView((v) => ({
-          ...v,
-          panX: Math.max(-850, Math.min(850, v.panX + dx)),
-          panY: Math.max(-650, Math.min(650, v.panY + dy)),
-        }));
+      if (yawDelta !== 0 || pitchDelta !== 0) {
+        setView((v) => ({ ...v, yaw: v.yaw + yawDelta, pitch: Math.max(18, Math.min(74, v.pitch + pitchDelta)) }));
         rafId = requestAnimationFrame(stepLoop);
       } else {
         rafId = null;
@@ -749,7 +738,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     };
   }, []);
 
-  // 支援電腦版（左鍵平移、右鍵俯視角/旋轉）與手機版（單指一律拖曳+俯角、雙指轉向與縮放）
+  // 左鍵拖曳同時控制左右旋轉與俯視角；雙指可旋轉方向與縮放，不提供地圖平移。
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.button !== 0 && e.button !== 2) || (e.target as Element).closest('.island-ui-interactive')) return;
     if (showAtmosphereMenu) setShowAtmosphereMenu(false);
@@ -764,14 +753,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
 
       dragStart.current = {
         pointerId: e.pointerId,
-        pointerType: e.pointerType,
-        button: e.button,
         x: e.clientX,
         y: e.clientY,
         pitch: view.pitch,
         yaw: view.yaw,
-        panX: view.panX,
-        panY: view.panY,
         moved: false,
         islandId,
         districtId,
@@ -825,31 +810,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     }
     if (!start.moved) return;
 
-    const isTouch = start.pointerType === 'touch' || window.innerWidth < 768;
-
-    if (!isTouch) {
-      // 電腦版：右鍵拖曳調整俯視角與旋轉；左鍵按住平移地圖
-      if (start.button === 2) {
-        const nextYaw = (start.yaw + deltaX * 0.38) % 360;
-        const nextPitch = Math.max(18, Math.min(74, start.pitch + deltaY * 0.32));
-        setView((v) => ({ ...v, yaw: nextYaw, pitch: nextPitch }));
-      } else {
-        const nextPanX = Math.max(-850, Math.min(850, start.panX + deltaX));
-        const nextPanY = Math.max(-650, Math.min(650, start.panY + deltaY));
-        setView((v) => ({ ...v, panX: nextPanX, panY: nextPanY }));
-      }
-    } else {
-      // 手機版（單指一律拖曳+俯角）：左右上下拖曳地圖，同時上下滑動調整俯視角
-      const nextPanX = Math.max(-850, Math.min(850, start.panX + deltaX * 0.9));
-      const nextPanY = Math.max(-650, Math.min(650, start.panY + deltaY * 0.7));
-      const nextPitch = Math.max(18, Math.min(74, start.pitch + deltaY * 0.28));
-      setView((v) => ({
-        ...v,
-        panX: nextPanX,
-        panY: nextPanY,
-        pitch: nextPitch,
-      }));
-    }
+    const nextYaw = (start.yaw + deltaX * 0.38) % 360;
+    const nextPitch = Math.max(18, Math.min(74, start.pitch + deltaY * 0.32));
+    setView((v) => ({ ...v, yaw: nextYaw, pitch: nextPitch }));
   };
 
   const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>, allowClick: boolean) => {
@@ -871,14 +834,10 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       const [remId, remPos] = Array.from(pointerPositions.current.entries())[0];
       dragStart.current = {
         pointerId: remId,
-        pointerType: e.pointerType,
-        button: 0,
         x: remPos.x,
         y: remPos.y,
         pitch: view.pitch,
         yaw: view.yaw,
-        panX: view.panX,
-        panY: view.panY,
         moved: true,
         islandId: null,
         districtId: null,
@@ -919,23 +878,11 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
     }
   };
 
-  // 點擊島名（75% 及以下遠景時）：自動聚焦到 100% 並顯示該島建築物名稱
+  // 點擊島名（遠景時）：放大至 100% 並顯示該島建築物名稱，視角維持在地圖中心。
   const handleFocusIsland = (islandId: string) => {
-    const [wx, wz] = ISLAND_WORLD_CENTERS[islandId] || [0, 0];
-    const targetZoom = 1.0; // 100%
-    const panFactor = 0.055 / Math.max(0.42, targetZoom);
-    const yawRad = (-view.yaw * Math.PI) / 180;
-    const cosY = Math.cos(yawRad);
-    const sinY = Math.sin(yawRad);
-    const dz = wz - 1.5;
-    const localRight = wx * cosY - dz * sinY;
-    const localForward = wx * sinY + dz * cosY;
-
     setView((v) => ({
       ...v,
-      zoom: targetZoom,
-      panX: Math.max(-850, Math.min(850, -localRight / panFactor)),
-      panY: Math.max(-650, Math.min(650, -localForward / panFactor)),
+      zoom: 1.0,
     }));
     handleSelectIsland(islandId);
   };
@@ -1062,7 +1009,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       <div
         ref={mapStageRef}
         className={`island-3d-stage${isDragging ? ' is-dragging' : ''}`}
-        aria-label="IdeaX 創點源 3D 俯視地圖：電腦左鍵平移、右鍵調整俯視角與旋轉；手機單指移動並調整俯視角"
+        aria-label="IdeaX 創點源 3D 俯視地圖：左鍵拖曳調整俯視角與左右旋轉，滑鼠滾輪縮放；地圖固定不平移"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={(e) => handlePointerEnd(e, true)}
@@ -1083,19 +1030,17 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           >
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
-          <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
+          <div className="island-mode-switcher" role="group" aria-label="3D地圖與漫遊操作說明">
             <span className="island-mode-pill is-active" aria-current="page">
               3D地圖
             </span>
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
-              className="island-mode-pill is-switch"
-              title="切換至實境漫遊（第一人稱漫遊，可多人同遊）"
+            <span
+              className="island-mode-pill is-hint"
+              title="將右下角小人拖曳到地圖上，從指定位置進入實境漫遊"
             >
               <Footprints size={15} strokeWidth={2.2} />
-              <span>實境漫遊</span>
-            </button>
+              <span>拖曳小人漫遊</span>
+            </span>
           </div>
         </div>
 
@@ -1426,15 +1371,9 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => enterRoamAt(roamTargetForBuilding(currentBuildingId) || roamTargetForIsland(selectedIslandId))}
-              className="island-atlas-roam-btn shrink-0"
-              title="在實境漫遊裡走到這裡（第一人稱，可多人同遊）"
-            >
-              <Footprints size={13} strokeWidth={2.2} />
-              實境漫遊
-            </button>
+            <span className="island-atlas-roam-hint shrink-0" title="將右下角小人拖曳到地圖上，從選取位置進入漫遊">
+              拖曳右下角小人進入漫遊
+            </span>
             <button
               type="button"
               onClick={() => setIsRightAtlasOpen(false)}
@@ -3207,7 +3146,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             <p className="guide-main-subtitle">數十處隱藏彩蛋 可與物件們互動</p>
 
             <p className="guide-main-desc">
-              點選島嶼進入探索。電腦版按住左鍵可平移地圖、右鍵拖曳可旋轉並調整俯視角；手機版用單手指移動即可平移並調整俯視角。場景並會隨所在地時辰與天候（清晨・中午・傍晚・晚上及雨天）自動變換。
+              點選島嶼進入探索。電腦版按住左鍵拖曳可左右旋轉並調整俯視角，滾輪縮放；手機版單指拖曳調整視角、雙指轉向與縮放。地圖固定在畫面中央，不會被拖移。場景並會隨所在地時辰與天候（清晨・中午・傍晚・晚上及雨天）自動變換。
             </p>
 
             <div className="guide-mouse-grid">
@@ -3233,7 +3172,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   </svg>
                 </div>
                 <strong className="guide-mouse-title">左鍵按住</strong>
-                <span className="guide-mouse-sub">按住平移地圖</span>
+                <span className="guide-mouse-sub">左右旋轉、調整俯視角</span>
               </div>
 
               <div className="guide-mouse-card">
@@ -3258,7 +3197,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                   </svg>
                 </div>
                 <strong className="guide-mouse-title">右鍵拖曳</strong>
-                <span className="guide-mouse-sub">左右旋轉、調整俯視角</span>
+                <span className="guide-mouse-sub">同樣可調整視角</span>
               </div>
 
               <div className="guide-mouse-card">
@@ -3288,7 +3227,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             <div className="guide-touch-box">
               <h4 className="guide-touch-title">觸控操作</h4>
               <p className="guide-touch-desc">
-                單指拖曳可移動地圖並調整俯視角，雙指可旋轉方向與縮放視野，輕觸島嶼即可打開導覽。
+                單指拖曳可調整俯視角與左右旋轉，雙指可旋轉方向與縮放視野；輕觸島嶼即可打開導覽。
               </p>
             </div>
 
@@ -3441,6 +3380,12 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 </div>
               </div>
             )}
+            <div className="island-intro-video-actions">
+              <span>可隨時從地圖說明重新觀看</span>
+              <button type="button" onClick={handleCloseIntroVideo}>
+                不再顯示
+              </button>
+            </div>
           </div>
         </div>
       )}

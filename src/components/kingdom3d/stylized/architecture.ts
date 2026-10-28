@@ -519,6 +519,12 @@ function canopyGeometry(seed: number) {
     [0.1, 0.45, -0.55, 0.7],
     [-0.15, 0.3, 0.6, 0.72],
   ];
+  // 小型枝梢團簇打散外緣輪廓，從遠景仍保持柔和的手作樹冠形狀。
+  for (let i = 0; i < 7; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 0.58 + rand() * 0.32;
+    blobs.push([Math.cos(a) * r, (rand() - 0.45) * 0.8, Math.sin(a) * r, 0.34 + rand() * 0.13]);
+  }
   for (const [x, y, z, r] of blobs) {
     // 用球面法線（不用面法線），樹冠看起來才是圓潤的一團，而不是多角形
     const g = new THREE.IcosahedronGeometry(r, 1);
@@ -540,11 +546,48 @@ function canopyGeometry(seed: number) {
 }
 
 function pineGeometry() {
-  return mergeGeometries([
+  const layers: THREE.BufferGeometry[] = [
     new THREE.ConeGeometry(1.1, 1.4, 9).translate(0, -0.5, 0),
     new THREE.ConeGeometry(0.85, 1.2, 9).translate(0, 0.2, 0),
     new THREE.ConeGeometry(0.55, 1.0, 9).translate(0, 0.85, 0),
-  ])!;
+  ];
+  for (let tier = 0; tier < 3; tier++) {
+    const y = -0.38 + tier * 0.55;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + tier * 0.24;
+      const twig = new THREE.ConeGeometry(0.34 - tier * 0.045, 0.82 - tier * 0.08, 6);
+      twig.rotateZ(-Math.PI / 2 + 0.18);
+      twig.translate(Math.cos(a) * (0.58 - tier * 0.12), y, Math.sin(a) * (0.58 - tier * 0.12));
+      twig.rotateY(-a);
+      layers.push(twig);
+    }
+  }
+  return mergeGeometries(layers)!;
+}
+
+function treeTrunkGeometry() {
+  const trunk = new THREE.CylinderGeometry(0.13, 0.24, 1, 9, 5);
+  const p = trunk.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const angle = Math.atan2(z, x);
+    const ridge = 1 + 0.035 * Math.sin(angle * 6) + 0.018 * Math.sin(angle * 11);
+    p.setX(i, x * ridge);
+    p.setZ(i, z * ridge);
+  }
+  trunk.computeVertexNormals();
+  trunk.translate(0, 0.5, 0);
+  const parts = [trunk];
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const root = new THREE.CylinderGeometry(0.025, 0.12, 0.8, 5);
+    const direction = new THREE.Vector3(Math.cos(a) * 0.58, -0.82, Math.sin(a) * 0.58).normalize();
+    const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    root.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(Math.cos(a) * 0.16, 0.15, Math.sin(a) * 0.16), rotation, new THREE.Vector3(1, 1, 1)));
+    parts.push(root);
+  }
+  return mergeGeometries(parts)!;
 }
 
 export class TreeBatch {
@@ -566,7 +609,7 @@ export class TreeBatch {
     g.name = 'trees';
     const trunks = this.items.filter((t) => t.kind !== 'bush');
     if (trunks.length) {
-      const trunkGeo = new THREE.CylinderGeometry(0.13, 0.24, 1, 6).translate(0, 0.5, 0);
+      const trunkGeo = treeTrunkGeometry();
       const im = new THREE.InstancedMesh(trunkGeo, mats.trunk, trunks.length);
       trunks.forEach((t, i) => {
         const h = (t.kind === 'pine' ? 2.6 : 2.2) * t.s;
@@ -768,6 +811,19 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const tiers = b.tiers || 1;
   const hv = hashStr(b.id);
   const ext = b.exterior;
+  if (ext === 'temple') {
+    // 求職廟改為無牆八角亭；屋簷、廊道與柱列由 createTempleExtras 補齊。
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.49, Math.min(w, d) * 0.52, 0.44, 8), mats.stone);
+    platform.position.y = 0.22;
+    platform.rotation.y = Math.PI / 8;
+    platform.receiveShadow = true;
+    root.add(platform);
+    const timberDeck = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.44, Math.min(w, d) * 0.44, 0.08, 8), mats.woodFloor);
+    timberDeck.position.y = 0.48;
+    timberDeck.rotation.y = Math.PI / 8;
+    root.add(timberDeck);
+    return root;
+  }
   const modern = ext === 'stoneBox' || ext === 'lattice';
   const em = ext === 'exhibition' || ext === 'arcade' || modern ? exteriorMats() : null;
   // 徽派（討論島，照 /island）：白牆黛瓦、深色木柱、兩側馬頭牆

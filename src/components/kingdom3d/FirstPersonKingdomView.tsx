@@ -75,7 +75,7 @@ import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './s
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
 import { drawSteleTexture, plazaTopics, drawWallBoardTexture, WallBoardWhich } from './stylized/discussionPlaza';
-import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS } from './stylized/docks';
+import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS, type Dock } from './stylized/docks';
 import { navigable, sampanBoat, pleasureBoat, boatMats, boatHasRoof } from './stylized/waterLife';
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
 import type { WalkableZone } from './types';
@@ -109,6 +109,7 @@ import {
   AlertCircle,
   RefreshCw,
   ShieldCheck,
+  Sailboat,
   X,
 } from 'lucide-react';
 
@@ -1030,8 +1031,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
   // Proximity interactables
   const [nearBuilding, setNearBuilding] = useState<BuildingInteractable | null>(null);
+  const [nearDock, setNearDock] = useState<Dock | null>(null);
   const [nearPortal] = useState<Portal | null>(null);
   const nearBuildingRef = useRef<BuildingInteractable | null>(null);
+  const nearDockIdRef = useRef<string | null>(null);
 
   // Settings & Dev stats
   const [quality, setQuality] = useState<QualitySettings>({
@@ -2219,6 +2222,24 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         regionManager.syncActiveRegionByPosition(spatial.regionId);
         setActiveRegionId(spatial.regionId);
 
+        // 靠近岸上渡口時自動出現乘船入口；只在渡口切換時更新 React 狀態，避免每幀重繪。
+        let closestDock: Dock | null = null;
+        let closestDockDistance = 5.2;
+        if (!boatRideRef.current && story.level === 0 && !spatial.insideBuilding) {
+          for (const dock of DOCKS) {
+            const distance = Math.hypot(controls.position.x - dock.landX, controls.position.z - dock.landZ);
+            if (distance < closestDockDistance) {
+              closestDock = dock;
+              closestDockDistance = distance;
+            }
+          }
+        }
+        const nextDockId = closestDock?.id || null;
+        if (nearDockIdRef.current !== nextDockId) {
+          nearDockIdRef.current = nextDockId;
+          setNearDock(closestDock);
+        }
+
         // Building interaction detection: triggers when inside a main building or right at its front door
         let foundBuilding: BuildingInteractable | null = spatial.insideBuilding;
         if (!foundBuilding) {
@@ -3032,6 +3053,25 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         onLeaveQueue={() => void boatingRef.current.leaveQueue()}
         onLeaveBoat={() => leaveBoatRef.current?.()}
       />
+
+      {!riding && !boatDock && nearDock && regionStatus === 'active' && floorLevel === 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-28 z-30 flex justify-center px-4 sm:bottom-8">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-amber-200/30 bg-[#21160f]/90 py-2 pl-4 pr-2 shadow-[0_8px_32px_rgba(0,0,0,.38)] backdrop-blur-md">
+            <span className="kx-sub max-w-[42vw] truncate text-[12px] sm:text-[13px]">抵達{nearDock.name}</span>
+            <button
+              type="button"
+              onClick={() => {
+                playSoundEffect('interact');
+                setBoatDock(nearDock.id);
+                controlsRef.current?.unlockPointer();
+              }}
+              className="kx-btn-primary flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold shadow-sm"
+            >
+              <Sailboat className="h-4 w-4" /> 排隊乘船
+            </button>
+          </div>
+        </div>
+      )}
 
       {!riding && dirBuilding && floorEntries.length > 0 && regionStatus === 'active' && (
         <FloorDirectory
