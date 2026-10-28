@@ -137,12 +137,12 @@ function Header({ title, badge, sub, onClose, onBack }: { title: string; badge?:
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="kx-title text-xl leading-tight">{title}</h3>
           {badge && (
-            <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: 'rgba(179,38,30,0.85)', color: '#fff0c8', border: '1px solid rgba(242,198,106,0.7)' }}>
+            <span className="text-[13px] px-2 py-0.5 rounded" style={{ background: 'rgba(179,38,30,0.85)', color: '#fff0c8', border: '1px solid rgba(242,198,106,0.7)' }}>
               {badge}
             </span>
           )}
         </div>
-        {sub && <p className="kx-sub text-[12.5px] mt-1">{sub}</p>}
+        {sub && <p className="kx-sub text-[14.5px] mt-1">{sub}</p>}
       </div>
       <button type="button" onClick={onClose} className="kx-round w-8 h-8 shrink-0" title="關閉 (Esc)" aria-label="關閉">
         <X className="w-4 h-4" />
@@ -166,17 +166,17 @@ function ActionList({ actions }: { actions: { label: string; hint?: string; prim
           }}
         >
           <span
-            className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[12px] tabular-nums"
+            className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-[14px] tabular-nums"
             style={{ background: 'rgba(0,0,0,0.35)', color: '#f2c94c', border: '1px solid rgba(226,184,90,0.4)' }}
             aria-hidden="true"
           >
             {i < 9 ? i + 1 : '•'}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[14px]" style={{ color: '#f6e7c4' }}>
+            <span className="block text-[16px]" style={{ color: '#f6e7c4' }}>
               {a.label}
             </span>
-            {a.hint && <span className="kx-sub block text-[12px] mt-0.5 truncate">{a.hint}</span>}
+            {a.hint && <span className="kx-sub block text-[14px] mt-0.5 truncate">{a.hint}</span>}
           </span>
           <ChevronRight className="w-4 h-4 shrink-0 text-amber-200/70" />
         </button>
@@ -186,7 +186,7 @@ function ActionList({ actions }: { actions: { label: string; hint?: string; prim
 }
 
 function QuestionRows({ list, onPick, empty }: { list: Question[]; onPick: (q: Question) => void; empty: string }) {
-  if (!list.length) return <p className="kx-sub text-[13.5px] text-center py-8">{empty}</p>;
+  if (!list.length) return <p className="kx-sub text-[15.5px] text-center py-8">{empty}</p>;
   return (
     <ul className="space-y-1.5">
       {list.map((q) => (
@@ -201,16 +201,16 @@ function QuestionRows({ list, onPick, empty }: { list: Question[]; onPick: (q: Q
               <img src={q.cardDisplayImage || q.coverImage} alt="" className="w-11 h-11 rounded-md object-cover shrink-0" loading="lazy" />
             )}
             <span className="min-w-0 flex-1">
-              <span className="block text-[14px] truncate" style={{ color: '#f6e7c4' }}>
+              <span className="block text-[16px] truncate" style={{ color: '#f6e7c4' }}>
                 {q.title || '（未命名）'}
               </span>
-              <span className="kx-sub block text-[12px] mt-0.5 truncate">
+              <span className="kx-sub block text-[14px] mt-0.5 truncate">
                 {q.category}
                 {q.authorName ? `・${q.authorName}` : ''}
               </span>
             </span>
             {q.bounty > 0 && (
-              <span className="shrink-0 text-[12px] tabular-nums" style={{ color: '#ffcf6a' }}>
+              <span className="shrink-0 text-[14px] tabular-nums" style={{ color: '#ffcf6a' }}>
                 懸賞 {q.bounty.toLocaleString()}
               </span>
             )}
@@ -260,7 +260,7 @@ function ShopHotCarousel({
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12.5px] font-bold flex items-center gap-1" style={{ color: '#fde68a' }}>
+        <span className="text-[14.5px] font-bold flex items-center gap-1" style={{ color: '#fde68a' }}>
           🔥 {shopName}・熱門討論輪播
         </span>
         <div className="flex items-center gap-1.5">
@@ -277,7 +277,7 @@ function ShopHotCarousel({
               aria-label={`第 ${i + 1} 則熱門討論`}
             />
           ))}
-          <span className="text-[11px] tabular-nums ml-1" style={{ color: '#f6e7c4' }}>
+          <span className="text-[13px] tabular-nums ml-1" style={{ color: '#f6e7c4' }}>
             {idx + 1}/{slides.length}
           </span>
         </div>
@@ -289,10 +289,10 @@ function ShopHotCarousel({
         className="w-full text-left rounded-lg px-3 py-2.5 cursor-pointer transition-colors hover:bg-[rgba(242,201,76,0.14)]"
         style={{ background: 'rgba(0,0,0,0.32)', border: '1px solid rgba(242,201,76,0.35)' }}
       >
-        <div className="text-[14.5px] font-bold line-clamp-2 leading-snug" style={{ color: '#fff8dc' }}>
+        <div className="text-[16.5px] font-bold line-clamp-2 leading-snug" style={{ color: '#fff8dc' }}>
           {cur.title || '（未命名討論）'}
         </div>
-        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11.5px]" style={{ color: '#e7d3a5' }}>
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[13.5px]" style={{ color: '#e7d3a5' }}>
           <span className="truncate">
             【{cur.subcategory || cur.category || '熱門'}】{cur.authorName || '創點源行家'}
           </span>
@@ -396,11 +396,11 @@ export const KingdomSideDrawer: React.FC<{
         <Header title={b.name.replace(/[（(].*$/, '')} badge={b.previewBadge} sub={b.subtitle} onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <ActionList actions={actions} />
-          <p className="kx-sub text-[13px] leading-relaxed">{b.description}</p>
+          <p className="kx-sub text-[15px] leading-relaxed">{b.description}</p>
           {b.previewFeatures.length > 0 && (
             <ul className="space-y-1">
               {b.previewFeatures.map((f) => (
-                <li key={f} className="kx-sub text-[12.5px] flex gap-2">
+                <li key={f} className="kx-sub text-[14.5px] flex gap-2">
                   <span className="text-amber-300">・</span>
                   <span>{f}</span>
                 </li>
@@ -408,7 +408,7 @@ export const KingdomSideDrawer: React.FC<{
             </ul>
           )}
           {b.mockData?.notice && (
-            <div className="rounded-lg px-3 py-2 text-[12.5px]" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.2)' }}>
+            <div className="rounded-lg px-3 py-2 text-[14.5px]" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.2)' }}>
               <p className="flex items-center gap-1.5 kx-sub">
                 <Compass className="w-3.5 h-3.5 shrink-0" /> {b.mockData.notice}
               </p>
@@ -430,7 +430,7 @@ export const KingdomSideDrawer: React.FC<{
                 key={a.label}
                 type="button"
                 onClick={a.run}
-                className="rounded-md px-1 py-1.5 text-[12px] cursor-pointer"
+                className="rounded-md px-1 py-1.5 text-[14px] cursor-pointer"
                 style={{
                   background: a.primary ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
                   border: `1px solid ${a.primary ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
@@ -446,8 +446,8 @@ export const KingdomSideDrawer: React.FC<{
           <QuestionRows list={list.slice(0, 60)} onPick={openQ} empty="這層還沒有痛點，歡迎刊登第一則！" />
         </div>
         <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-          <span className="kx-sub text-[12px]">正反面佈告欄與迴廊皆可張貼</span>
-          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })} className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer shrink-0">
+          <span className="kx-sub text-[14px]">正反面佈告欄與迴廊皆可張貼</span>
+          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })} className="kx-btn-primary px-4 py-2 text-[15.5px] flex items-center gap-1.5 cursor-pointer shrink-0">
             <PenLine className="w-4 h-4" /> 張貼／刊登痛點
           </button>
         </div>
@@ -460,7 +460,7 @@ export const KingdomSideDrawer: React.FC<{
         <>
           <Header title={`${p.name}市集`} badge="創意島" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            <p className="kx-sub text-[13px] leading-relaxed">創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
+            <p className="kx-sub text-[15px] leading-relaxed">創意集的攤位預留給合作夥伴（遊戲或提案）進駐：會在這裡刊登，並享有更客製化的攤位場景，點擊遊玩或體驗會直接連到掌櫃的網站。歡迎掌櫃進駐！</p>
             <ActionList actions={actions} />
           </div>
         </>
@@ -470,14 +470,14 @@ export const KingdomSideDrawer: React.FC<{
         <>
           <Header title={p.name} badge="討論島・街區" sub={p.sub} onClose={close} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            <p className="kx-sub text-[13px]">{p.note}</p>
+            <p className="kx-sub text-[15px]">{p.note}</p>
             <ActionList actions={actions} />
           </div>
           <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
             <button
               type="button"
               onClick={() => onAction({ kind: 'module', module: 'create_discussion' })}
-              className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer"
+              className="kx-btn-primary px-4 py-2 text-[15.5px] flex items-center gap-1.5 cursor-pointer"
             >
               <PenLine className="w-4 h-4" /> 發起討論
             </button>
@@ -515,7 +515,7 @@ export const KingdomSideDrawer: React.FC<{
                   key={s.id}
                   type="button"
                   onClick={() => onChange({ kind: 'street', propId: s.id })}
-                  className="rounded-md px-2 py-1 text-[12px] cursor-pointer transition-colors"
+                  className="rounded-md px-2 py-1 text-[14px] cursor-pointer transition-colors"
                   style={{
                     background: s.id === p.id ? 'rgba(179,38,30,0.82)' : 'rgba(0,0,0,0.28)',
                     border: `1px solid ${s.id === p.id ? 'rgba(242,198,106,0.85)' : 'rgba(226,184,90,0.25)'}`,
@@ -533,11 +533,11 @@ export const KingdomSideDrawer: React.FC<{
           </div>
           {isDiscProp && (
             <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-              <span className="kx-sub text-[12px]">街旁兩排佈告欄同步張貼・店門輪播熱門</span>
+              <span className="kx-sub text-[14px]">街旁兩排佈告欄同步張貼・店門輪播熱門</span>
               <button
                 type="button"
                 onClick={() => onAction({ kind: 'module', module: 'create_discussion' })}
-                className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="kx-btn-primary px-4 py-2 text-[15.5px] flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <PenLine className="w-4 h-4" /> 發起討論
               </button>
@@ -564,7 +564,7 @@ export const KingdomSideDrawer: React.FC<{
             }
           />
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            <p className="kx-sub text-[13.5px] leading-relaxed flex gap-2">
+            <p className="kx-sub text-[15.5px] leading-relaxed flex gap-2">
               <Store className="w-4 h-4 shrink-0 mt-0.5 text-amber-300" />
               {p.note || '這裡目前是街景。'}
             </p>
@@ -572,7 +572,7 @@ export const KingdomSideDrawer: React.FC<{
               <button
                 type="button"
                 onClick={() => openInNewTab(p.partner!.url!)}
-                className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-1.5 cursor-pointer"
+                className="kx-btn-primary w-full px-4 py-2.5 text-[16px] flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {p.partner.kind === 'game' ? '前往遊玩' : p.partner.kind === 'service' ? '查看服務' : '前往體驗'}（新分頁）
                 <ArrowRight className="w-4 h-4" />
@@ -599,7 +599,7 @@ export const KingdomSideDrawer: React.FC<{
                   key={z.key}
                   type="button"
                   onClick={() => onChange({ kind: 'hallZone', buildingId: state.buildingId, zone: i })}
-                  className="rounded-md px-1 py-1.5 text-[12px] cursor-pointer truncate"
+                  className="rounded-md px-1 py-1.5 text-[14px] cursor-pointer truncate"
                   style={{
                     background: i === state.zone ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
                     border: `1px solid ${i === state.zone ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
@@ -628,7 +628,7 @@ export const KingdomSideDrawer: React.FC<{
                   module: isLib ? 'create_discussion' : zone.key === 'proposal' ? 'create_proposal' : 'create_app',
                 })
               }
-              className="kx-btn-primary px-4 py-2 text-[13.5px] flex items-center gap-1.5 cursor-pointer"
+              className="kx-btn-primary px-4 py-2 text-[15.5px] flex items-center gap-1.5 cursor-pointer"
             >
               <PenLine className="w-4 h-4" /> {isLib ? '發起討論' : zone.key === 'proposal' ? '發表創新提案' : '上架作品'}
             </button>
@@ -655,7 +655,7 @@ export const KingdomSideDrawer: React.FC<{
                 key={w}
                 type="button"
                 onClick={() => onChange({ kind: 'hallRank', buildingId: state.buildingId, which: w })}
-                className="rounded-md px-1 py-1.5 text-[12.5px] cursor-pointer"
+                className="rounded-md px-1 py-1.5 text-[14.5px] cursor-pointer"
                 style={{
                   background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
                   border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
@@ -686,30 +686,30 @@ export const KingdomSideDrawer: React.FC<{
           {st.msgs.map((m, i) => (
             <div key={i} className={`flex ${m.from === 'me' ? 'justify-end' : 'justify-start'}`}>
               <p
-                className="max-w-[85%] rounded-xl px-3 py-2 text-[13.5px] leading-relaxed whitespace-pre-line"
+                className="max-w-[85%] rounded-xl px-3 py-2 text-[15.5px] leading-relaxed whitespace-pre-line"
                 style={m.from === 'me' ? { background: 'rgba(179,38,30,0.75)', color: '#fff0c8' } : { background: 'rgba(0,0,0,0.3)', color: '#f6e7c4', border: '1px solid rgba(226,184,90,0.25)' }}
               >
                 {m.text}
               </p>
             </div>
           ))}
-          {st.busy && <p className="kx-sub text-[12.5px]">{st.status === 'loading' ? '搜搜騰雲駕霧找職缺中…' : '搜搜想一想…'}</p>}
+          {st.busy && <p className="kx-sub text-[14.5px]">{st.status === 'loading' ? '搜搜騰雲駕霧找職缺中…' : '搜搜想一想…'}</p>}
           <div ref={chatEndRef} />
         </div>
         <div className="px-4 py-3 space-y-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
           {(st.canSearch || st.jobs.length > 0) && (
             <div className="flex flex-wrap gap-1.5">
               {st.canSearch && st.brief && (
-                <button type="button" disabled={st.busy} onClick={() => soso.search(st.brief)} className="kx-btn-ghost px-3 py-1.5 text-[12.5px] cursor-pointer disabled:opacity-50">
+                <button type="button" disabled={st.busy} onClick={() => soso.search(st.brief)} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer disabled:opacity-50">
                   就照這個條件找
                 </button>
               )}
               {st.jobs.length > 0 && (
-                <button type="button" onClick={() => onChange({ kind: 'jobs' })} className="kx-btn-ghost px-3 py-1.5 text-[12.5px] cursor-pointer">
+                <button type="button" onClick={() => onChange({ kind: 'jobs' })} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer">
                   看找到的職缺（{st.jobs.length}）
                 </button>
               )}
-              <button type="button" disabled={st.busy} onClick={soso.reset} className="kx-btn-ghost px-3 py-1.5 text-[12.5px] cursor-pointer disabled:opacity-50">
+              <button type="button" disabled={st.busy} onClick={soso.reset} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer disabled:opacity-50">
                 重新開始
               </button>
             </div>
@@ -727,10 +727,10 @@ export const KingdomSideDrawer: React.FC<{
               rows={2}
               maxLength={600}
               placeholder="例如：台北的前端工程師，月薪五萬以上"
-              className="flex-1 resize-none rounded-lg px-3 py-2 text-[14px] outline-none"
+              className="flex-1 resize-none rounded-lg px-3 py-2 text-[16px] outline-none"
               style={{ background: 'rgba(0,0,0,0.35)', color: '#f6e7c4', border: '1px solid rgba(226,184,90,0.35)' }}
             />
-            <button type="button" onClick={submit} disabled={st.busy || !draft.trim()} className="kx-btn-primary px-4 text-[14px] cursor-pointer disabled:opacity-50 shrink-0">
+            <button type="button" onClick={submit} disabled={st.busy || !draft.trim()} className="kx-btn-primary px-4 text-[16px] cursor-pointer disabled:opacity-50 shrink-0">
               送出
             </button>
           </div>
@@ -744,7 +744,7 @@ export const KingdomSideDrawer: React.FC<{
         <Header title="搜搜找到的職缺" badge="求職廟" sub={st.brief ? `條件：${st.brief}` : undefined} onClose={close} onBack={() => onChange({ kind: 'soso' })} />
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {st.jobs.length === 0 ? (
-            <p className="kx-sub text-[13.5px] text-center py-8">還沒有結果，先跟搜搜說說想找的工作。</p>
+            <p className="kx-sub text-[15.5px] text-center py-8">還沒有結果，先跟搜搜說說想找的工作。</p>
           ) : (
             <ul className="space-y-1.5">
               {st.jobs.map((j, idx) => (
@@ -756,10 +756,10 @@ export const KingdomSideDrawer: React.FC<{
                     style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(226,184,90,0.18)' }}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] truncate" style={{ color: '#f6e7c4' }}>
+                      <span className="block text-[16px] truncate" style={{ color: '#f6e7c4' }}>
                         {j.title}
                       </span>
-                      <span className="kx-sub block text-[12px] mt-0.5 truncate">{[j.company, j.location, j.salaryText, j.sourcePlatform].filter(Boolean).join('・')}</span>
+                      <span className="kx-sub block text-[14px] mt-0.5 truncate">{[j.company, j.location, j.salaryText, j.sourcePlatform].filter(Boolean).join('・')}</span>
                     </span>
                     <ChevronRight className="w-4 h-4 shrink-0 text-amber-200/70" />
                   </button>
@@ -769,7 +769,7 @@ export const KingdomSideDrawer: React.FC<{
           )}
         </div>
         <div className="px-4 py-3 flex justify-end" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-          <button type="button" onClick={() => onAction({ kind: 'module', module: 'jobs' })} className="kx-btn-ghost px-3 py-1.5 text-[12.5px] cursor-pointer">
+          <button type="button" onClick={() => onAction({ kind: 'module', module: 'jobs' })} className="kx-btn-ghost px-3 py-1.5 text-[14.5px] cursor-pointer">
             到匯職缺看更多（新分頁）
           </button>
         </div>
@@ -793,7 +793,7 @@ export const KingdomSideDrawer: React.FC<{
         <>
           <Header title={j.title} badge="職缺" onClose={close} onBack={() => onChange({ kind: 'jobs' })} />
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            <dl className="grid grid-cols-[4.5em_1fr] gap-x-2 gap-y-1.5 text-[13px]">
+            <dl className="grid grid-cols-[4.5em_1fr] gap-x-2 gap-y-1.5 text-[15px]">
               {rows
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
@@ -805,16 +805,16 @@ export const KingdomSideDrawer: React.FC<{
             </dl>
             {j.description && (
               <div>
-                <p className="kx-title text-[14px] mb-1">工作內容</p>
-                <p className="text-[13.5px] leading-relaxed whitespace-pre-line" style={{ color: '#efe0bd' }}>
+                <p className="kx-title text-[16px] mb-1">工作內容</p>
+                <p className="text-[15.5px] leading-relaxed whitespace-pre-line" style={{ color: '#efe0bd' }}>
                   {j.description}
                 </p>
               </div>
             )}
             {j.benefits && (
               <div>
-                <p className="kx-title text-[14px] mb-1">福利</p>
-                <p className="text-[13.5px] leading-relaxed whitespace-pre-line" style={{ color: '#efe0bd' }}>
+                <p className="kx-title text-[16px] mb-1">福利</p>
+                <p className="text-[15.5px] leading-relaxed whitespace-pre-line" style={{ color: '#efe0bd' }}>
                   {j.benefits}
                 </p>
               </div>
@@ -822,11 +822,11 @@ export const KingdomSideDrawer: React.FC<{
           </div>
           <div className="px-4 py-3 space-y-2" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
             {j.url && (
-              <a href={j.url} target="_blank" rel="noopener noreferrer" className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-1.5">
+              <a href={j.url} target="_blank" rel="noopener noreferrer" className="kx-btn-primary w-full px-4 py-2.5 text-[16px] flex items-center justify-center gap-1.5">
                 {j.urlKind === 'search' ? '到來源網站搜尋這個職缺（新分頁）' : '前往原始職缺頁（新分頁）'} <ArrowRight className="w-4 h-4" />
               </a>
             )}
-            <button type="button" onClick={() => onChange({ kind: 'jobs' })} className="kx-btn-ghost w-full px-4 py-2 text-[13px] cursor-pointer">
+            <button type="button" onClick={() => onChange({ kind: 'jobs' })} className="kx-btn-ghost w-full px-4 py-2 text-[15px] cursor-pointer">
               回到全部結果
             </button>
           </div>
@@ -841,36 +841,36 @@ export const KingdomSideDrawer: React.FC<{
         <Header title={state.name} badge="旅人" sub="和你一起在五島漫遊的旅人" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {!bond?.online ? (
-            <p className="kx-sub text-[13px]">多人連線中斷，暫時無法綁定羈絆。</p>
+            <p className="kx-sub text-[15px]">多人連線中斷，暫時無法綁定羈絆。</p>
           ) : rel === 'partner' ? (
             <>
-              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>你們已是羈絆夥伴，兩人之間有一條發光的羈絆線。一起去遊船、登上聚雲塔、在各地一起遊覽，完成雙人任務吧！</p>
-              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[13.5px] cursor-pointer">
+              <p className="text-[16px]" style={{ color: '#f6e7c4' }}>你們已是羈絆夥伴，兩人之間有一條發光的羈絆線。一起去遊船、登上聚雲塔、在各地一起遊覽，完成雙人任務吧！</p>
+              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[15.5px] cursor-pointer">
                 解除羈絆
               </button>
             </>
           ) : rel === 'inviting-me' ? (
             <>
-              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>{state.name} 邀請你綁定羈絆。</p>
-              {bond.partnerName && <p className="kx-sub text-[12px]">接受後會解除和 {bond.partnerName} 的羈絆。</p>}
-              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] cursor-pointer">
+              <p className="text-[16px]" style={{ color: '#f6e7c4' }}>{state.name} 邀請你綁定羈絆。</p>
+              {bond.partnerName && <p className="kx-sub text-[14px]">接受後會解除和 {bond.partnerName} 的羈絆。</p>}
+              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] cursor-pointer">
                 接受，綁定羈絆
               </button>
             </>
           ) : rel === 'invited' ? (
             <>
-              <p className="text-[14px]" style={{ color: '#f6e7c4' }}>已送出羈絆邀請，等 {state.name} 接受。</p>
-              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[13.5px] cursor-pointer">
+              <p className="text-[16px]" style={{ color: '#f6e7c4' }}>已送出羈絆邀請，等 {state.name} 接受。</p>
+              <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[15.5px] cursor-pointer">
                 取消邀請
               </button>
             </>
           ) : (
             <>
-              <p className="kx-sub text-[13px] leading-relaxed">
+              <p className="kx-sub text-[15px] leading-relaxed">
                 邀請對方綁定羈絆：對方接受後，兩人之間會出現一條發光的羈絆線，可以一起完成雙人任務（一起遊船、一起登上聚雲塔、在指定地點一起遊覽 5 分鐘）。同一時間只能和一位旅人綁定。
               </p>
-              {bond.partnerName && <p className="kx-sub text-[12px]">送出邀請會先解除和 {bond.partnerName} 的羈絆。</p>}
-              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] cursor-pointer">
+              {bond.partnerName && <p className="kx-sub text-[14px]">送出邀請會先解除和 {bond.partnerName} 的羈絆。</p>}
+              <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] cursor-pointer">
                 邀請綁定羈絆
               </button>
             </>
@@ -890,7 +890,7 @@ export const KingdomSideDrawer: React.FC<{
                 key={w}
                 type="button"
                 onClick={() => onChange({ kind: 'discList', which: w })}
-                className="rounded-md px-1 py-1.5 text-[12.5px] cursor-pointer"
+                className="rounded-md px-1 py-1.5 text-[14.5px] cursor-pointer"
                 style={{
                   background: w === state.which ? 'rgba(179,38,30,0.75)' : 'rgba(0,0,0,0.25)',
                   border: `1px solid ${w === state.which ? 'rgba(242,198,106,0.8)' : 'rgba(226,184,90,0.25)'}`,
@@ -904,7 +904,7 @@ export const KingdomSideDrawer: React.FC<{
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           <QuestionRows list={list} onPick={openQ} empty="還沒有討論，歡迎發起第一則！" />
-          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_discussion' })} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-2 cursor-pointer">
+          <button type="button" onClick={() => onAction({ kind: 'module', module: 'create_discussion' })} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] flex items-center justify-center gap-2 cursor-pointer">
             <PenLine className="w-4 h-4" /> 發起討論（新分頁）
           </button>
         </div>
@@ -919,15 +919,15 @@ export const KingdomSideDrawer: React.FC<{
           <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.25)' }}>
             <img src={c.img} alt={c.name} className="w-full h-48 object-contain" loading="lazy" />
           </div>
-          <p className="text-[15px] leading-relaxed" style={{ color: '#f6e7c4' }}>{c.line}</p>
+          <p className="text-[17px] leading-relaxed" style={{ color: '#f6e7c4' }}>{c.line}</p>
           <button
             type="button"
             onClick={() => onAction({ kind: 'module', module: 'agents' })}
-            className="kx-btn-primary w-full px-4 py-3 text-[15px] flex items-center justify-center gap-2 cursor-pointer"
+            className="kx-btn-primary w-full px-4 py-3 text-[17px] flex items-center justify-center gap-2 cursor-pointer"
           >
             查看角色介紹 <ArrowRight className="w-5 h-5" />
           </button>
-          <p className="kx-sub text-[12px]">角色介紹會開在新分頁，3D 這一頁會留在原地。</p>
+          <p className="kx-sub text-[14px]">角色介紹會開在新分頁，3D 這一頁會留在原地。</p>
         </div>
       </>
     );
@@ -938,7 +938,7 @@ export const KingdomSideDrawer: React.FC<{
         <Header title={f.title} badge={f.badge} sub={f.sub} onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <ActionList actions={actions} />
-          <p className="kx-sub text-[13px] leading-relaxed">{f.desc}</p>
+          <p className="kx-sub text-[15px] leading-relaxed">{f.desc}</p>
         </div>
       </>
     );
@@ -947,26 +947,26 @@ export const KingdomSideDrawer: React.FC<{
       <>
         <Header title="佈告桌" badge="創點樓・中庭" sub="在佈告桌寫下你的痛點，張貼到懸賞牆" onClose={close} />
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          <p className="kx-sub text-[13.5px] leading-relaxed">
+          <p className="kx-sub text-[15.5px] leading-relaxed">
             寫下你遇到的麻煩、希望怎樣解決，也可以設定懸賞。刊登後會依分類貼到對應的地方：日常疑難貼在中庭佈告欄與一樓迴廊、專業問題貼在二樓迴廊、學術探討貼在三樓迴廊。
           </p>
           <button
             type="button"
             onClick={() => onAction({ kind: 'module', module: 'create_pain_point' })}
-            className="kx-btn-primary w-full px-4 py-3 text-[15px] flex items-center justify-center gap-2 cursor-pointer"
+            className="kx-btn-primary w-full px-4 py-3 text-[17px] flex items-center justify-center gap-2 cursor-pointer"
           >
             <PenLine className="w-5 h-5" /> 開新分頁填寫痛點
           </button>
-          <p className="kx-sub text-[12px]">填寫頁會開在新分頁，3D 這一頁會留在原地。</p>
+          <p className="kx-sub text-[14px]">填寫頁會開在新分頁，3D 這一頁會留在原地。</p>
           <div className="kx-divider" />
-          <p className="kx-sub text-[12.5px]">先看看各樓層已經有哪些痛點：</p>
+          <p className="kx-sub text-[14.5px]">先看看各樓層已經有哪些痛點：</p>
           <div className="grid grid-cols-2 gap-1.5">
             {PAIN_FLOORS.map((f, i) => (
               <button
                 key={f.label}
                 type="button"
                 onClick={() => onChange({ kind: 'painFloor', level: i })}
-                className="rounded-md px-2 py-2 text-[12.5px] cursor-pointer text-left"
+                className="rounded-md px-2 py-2 text-[14.5px] cursor-pointer text-left"
                 style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(226,184,90,0.25)', color: '#f6e7c4' }}
               >
                 {f.label}
@@ -982,15 +982,15 @@ export const KingdomSideDrawer: React.FC<{
       <>
         <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(226,184,90,0.3)' }}>
           {back && (
-            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[13px] flex items-center gap-1 cursor-pointer shrink-0">
+            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[15px] flex items-center gap-1 cursor-pointer shrink-0">
               <ChevronLeft className="w-4 h-4" /> 返回
             </button>
           )}
-          <span className="kx-title text-[15px] truncate flex-1">{state.title}</span>
+          <span className="kx-title text-[17px] truncate flex-1">{state.title}</span>
           <button
             type="button"
             onClick={() => openInNewTab(state.url)}
-            className="kx-btn-ghost px-2.5 py-1.5 text-[12px] cursor-pointer shrink-0"
+            className="kx-btn-ghost px-2.5 py-1.5 text-[14px] cursor-pointer shrink-0"
             title="在新分頁開啟這一頁"
           >
             新分頁開啟
@@ -1010,11 +1010,11 @@ export const KingdomSideDrawer: React.FC<{
       <>
         <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(226,184,90,0.3)' }}>
           {state.back && (
-            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[13px] flex items-center gap-1 cursor-pointer">
+            <button type="button" onClick={back} className="kx-btn-ghost px-3 py-1.5 text-[15px] flex items-center gap-1 cursor-pointer">
               <ChevronLeft className="w-4 h-4" /> 回到列表
             </button>
           )}
-          <span className="kx-sub text-[12.5px] truncate flex-1">{badgeOf(state.question)}</span>
+          <span className="kx-sub text-[14.5px] truncate flex-1">{badgeOf(state.question)}</span>
           <button type="button" onClick={close} className="kx-round w-8 h-8 shrink-0" title="關閉 (Esc)" aria-label="關閉">
             <X className="w-4 h-4" />
           </button>
@@ -1040,25 +1040,25 @@ export const KingdomSideDrawer: React.FC<{
           <div className="px-4 py-3 space-y-3">
             <div className="flex flex-wrap gap-1.5">
               {[q.category, q.subcategory, q.tertiaryCategory].filter(Boolean).map((t) => (
-                <span key={t as string} className="text-[11.5px] px-2 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.3)', color: '#fbe3a4', border: '1px solid rgba(226,184,90,0.3)' }}>
+                <span key={t as string} className="text-[13.5px] px-2 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.3)', color: '#fbe3a4', border: '1px solid rgba(226,184,90,0.3)' }}>
                   {t}
                 </span>
               ))}
             </div>
-            <h2 className="kx-title text-[19px] leading-snug">{q.title || '（未命名）'}</h2>
-            <p className="kx-sub text-[12.5px]">
+            <h2 className="kx-title text-[21px] leading-snug">{q.title || '（未命名）'}</h2>
+            <p className="kx-sub text-[14.5px]">
               {q.authorName || 'IdeaX 使用者'}
               {q.bounty > 0 ? `・懸賞 ${q.bounty.toLocaleString()}` : ''}
             </p>
             {q.description && (
-              <p className="text-[13.5px] leading-relaxed whitespace-pre-line line-clamp-[12]" style={{ color: '#efe0bd' }}>
+              <p className="text-[15.5px] leading-relaxed whitespace-pre-line line-clamp-[12]" style={{ color: '#efe0bd' }}>
                 {q.description}
               </p>
             )}
           </div>
         </div>
         <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(226,184,90,0.3)' }}>
-          <button type="button" onClick={() => onOpenQuestion(q)} className="kx-btn-primary w-full px-4 py-2.5 text-[14px] flex items-center justify-center gap-1.5 cursor-pointer">
+          <button type="button" onClick={() => onOpenQuestion(q)} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] flex items-center justify-center gap-1.5 cursor-pointer">
             在平台中開啟完整內容 <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -1068,7 +1068,7 @@ export const KingdomSideDrawer: React.FC<{
 
   return (
     <aside
-      className={`kx-root absolute top-0 bottom-0 left-0 z-[45] ${(state?.kind === 'question' && renderQuestionPage) || state?.kind === 'site' ? 'w-[720px] max-w-[100vw]' : 'w-[400px] max-w-[92vw]'} transition-[transform,width] duration-300 ease-out`}
+      className={`kx-root absolute top-0 bottom-0 left-0 z-[45] ${(state?.kind === 'question' && renderQuestionPage) || state?.kind === 'site' ? 'w-[720px] max-w-[100vw]' : 'w-[440px] max-w-[94vw]'} transition-[transform,width] duration-300 ease-out`}
       style={{ transform: body ? 'translateX(0)' : 'translateX(-105%)', pointerEvents: body ? 'auto' : 'none' }}
       aria-hidden={!body}
       onPointerDown={(e) => e.stopPropagation()}
