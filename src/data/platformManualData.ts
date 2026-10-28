@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#226',
+    version: 'v4.1.12',
+    releaseDate: '2026.10.28',
+    releaseTime: '12:00',
+    author: 'System Architect',
+    summary: '3D 地圖新增拖曳小人進入實境漫遊、右側島覽加「實境漫遊」鍵；實境漫遊的全島地圖點任一處就前往最近可去處',
+    changes: [
+      '3D 地圖右下新增「拖我去漫遊」小人（像街景小人）：按住拖到地圖上任何地方放開，就在實境漫遊的對應位置出現；拖到水上會到最近的水邊。',
+      '3D 地圖點地名或島嶼後，右側島覽面板上方新增「實境漫遊」鍵：直接走到那棟建築的門口（沒有對應建築時到那座島的入口）。',
+      '實境漫遊的全島地圖：點地圖任一處就前往最近可以去的地方（點到水上、田園或山上會到最近的水邊；在船上會先下船）。',
+    ],
+  },
+  {
     seqNumber: '#225',
     version: 'v4.1.11',
     releaseDate: '2026.10.28',

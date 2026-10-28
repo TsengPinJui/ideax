@@ -839,6 +839,19 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       1600,
     );
 
+    // 拖曳小人到地圖上：把螢幕上的點換成 3D 地圖座標（給「實境漫遊」換算位置）
+    (window as any).__ideaxIslandPick = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera(ndc, camera);
+      const hit = rc.intersectObjects(scene.children, true).find((h) => (h.object as THREE.Mesh).isMesh && h.object.visible);
+      if (hit) return { x: hit.point.x, z: hit.point.z };
+      const p = new THREE.Vector3();
+      if (rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p)) return { x: p.x, z: p.z };
+      return null;
+    };
+
     // Lighting Setup
     const hemiLight = new THREE.HemisphereLight(
       initialAtmos.hemiSky,
@@ -11307,6 +11320,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
       if (teardownScene) {
         teardownScene();
       }
+      delete (window as any).__ideaxIslandPick;
     };
   }, []);
 

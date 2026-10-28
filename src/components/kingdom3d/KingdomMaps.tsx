@@ -247,6 +247,7 @@ export function WorldMapModal({
   playerPos,
   yawRad,
   onSelectRegion,
+  onGoToPoint,
 }: {
   open: boolean;
   onClose: () => void;
@@ -254,8 +255,24 @@ export function WorldMapModal({
   playerPos: { x: number; z: number };
   yawRad: number;
   onSelectRegion: (id: RegionId) => void;
+  /** 點地圖任一處：前往最近可以去的地方（世界座標） */
+  onGoToPoint?: (x: number, z: number) => void;
 }) {
   if (!open) return null;
+  const pickPoint = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!onGoToPoint) return;
+    const svg = e.currentTarget;
+    const m = svg.getScreenCTM();
+    if (!m) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const p = pt.matrixTransform(m.inverse());
+    e.stopPropagation();
+    e.preventDefault();
+    onGoToPoint(p.x, p.y);
+    onClose();
+  };
   return (
     <div className="kx-root fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/55 backdrop-blur-sm pointer-events-auto" onClick={onClose}>
       <div className="kx-parchment relative w-full max-w-4xl rounded-2xl p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
@@ -265,14 +282,14 @@ export function WorldMapModal({
               創點源・五島全圖
             </h3>
             <p className="text-[12.5px]" style={{ color: '#6b5236' }}>
-              點一座島就能直接前往；紅色箭頭是你現在的位置與面向
+              點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你現在的位置與面向
             </p>
           </div>
           <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
             <X className="w-5 h-5" />
           </button>
         </div>
-        <svg viewBox="-215 -195 430 390" className="w-full h-auto block rounded-xl" style={{ maxHeight: '72vh' }}>
+        <svg viewBox="-215 -195 430 390" className="w-full h-auto block rounded-xl cursor-crosshair" style={{ maxHeight: '72vh' }} onClickCapture={onGoToPoint ? pickPoint : undefined}>
           <defs>
             <pattern id="kx-paddy" width="10" height="10" patternUnits="userSpaceOnUse">
               <rect width="10" height="10" fill="#9fbf6a" />
