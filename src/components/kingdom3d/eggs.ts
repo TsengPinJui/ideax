@@ -1,5 +1,5 @@
 /**
- * 實境漫遊的彩蛋：和 3D 地圖同一套詩句、同一本收集冊（36 格）
+ * 實境漫遊的彩蛋：和 3D 地圖同一套詩句、同一本收集冊（38 格；水濂洞的兩顆只在實境漫遊）
  * 詩句要和 3D 地圖一字不差，收集冊才會認得是同一格
  */
 
@@ -28,7 +28,9 @@ export type EggId =
   | 'baimiao'
   | 'duohui'
   | 'agent007'
-  | 'bear';
+  | 'bear'
+  | 'shuilian'
+  | 'stoneEgg';
 
 export const EGG_VERSES = {
   peach: '「忽逢桃花林，夾岸數百步，中無雜樹，芳草鮮美，落英繽紛。」',
@@ -62,6 +64,10 @@ export const EGG_VERSES = {
   duohui: '「找到了多慧！25小時全年無休，有任何問題都包在我身上！」',
   agent007: '「找到了007！躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」',
   bear: '「找到了大熊！敲敲打打修修補補，再難的技術都能幫你落地！」',
+  /** 北山飛瀑後面的水濂洞（西遊記第一回） */
+  shuilian: '「花果山福地，水簾洞洞天。」',
+  /** 水濂洞口的仙石 */
+  stoneEgg: '「靈根育孕源流出，心性修持大道生。」—— 這顆仙石裡，說不定正孕育著下一個好點子！',
   boatNight: '「夜半鐘聲到客船」',
   nightOutside: '「六橋金粉人初散，十里鶯花夢乍醒。斷續聽來何處好，碧煙明月冷泉亭。」',
   clearNight: '「月景尤不可言，花態柳情，山容水意，別是一種趣味。此樂留與山僧遊客受用，安可為俗士道哉！」',
@@ -116,6 +122,8 @@ export function eggVerse(egg: EggId, ctx: { night: boolean; clear: boolean; id?:
     case 'duohui':
     case 'agent007':
     case 'bear':
+    case 'shuilian':
+    case 'stoneEgg':
       return (V as any)[egg === 'peach' ? 'peach' : egg];
   }
 }

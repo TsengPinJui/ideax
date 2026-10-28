@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Collider } from '../types';
-import { getStyleMaterials, buildRoofTier, mergeByMaterial, LanternBatch, scaledBox } from './architecture';
+import { getStyleMaterials, buildRoofTier, mergeByMaterial, LanternBatch, scaledBox, TreeBatch, type TreeKind } from './architecture';
 import { seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { REGION_CONFIGS } from '../regionConfigs';
@@ -36,9 +36,11 @@ const POND = { x: 75, z: 57, rx: 13.5, rz: 6.5 };
 const CAUSE = { x: 72, z0: 48.6, z1: 65.0, hw: 1.15 };
 const PLAT = { x: 72, z: 57, hx: 2.3, hz: 2.3 };
 // 石拱橋：平台東側 → 小島
-const ISLE_A = { x: 80.8, z: 57.4, r: 2.2 };
+const ISLE_A = { x: 79.4, z: 57.3, r: 2.2 };
 const ISLE_B = { x: 66.2, z: 58.6, r: 1.6 };
-const ARCH_BRIDGE = { x0: PLAT.x + PLAT.hx, x1: ISLE_A.x - ISLE_A.r + 0.2, z: 57.2, hw: 0.95 };
+const ARCH_BRIDGE = { x0: PLAT.x + PLAT.hx - 0.1, x1: ISLE_A.x - ISLE_A.r + 0.3, z: 57.2, hw: 0.95, rise: 1.0 };
+/** 石拱橋的走路高度（給物理用：橋面中間拱起來） */
+export const GARDEN_ARCH_BRIDGE = { id: 'garden-arch', name: '石拱橋', x1: ARCH_BRIDGE.x0, z1: ARCH_BRIDGE.z, x2: ARCH_BRIDGE.x1, z2: ARCH_BRIDGE.z, halfWidth: ARCH_BRIDGE.hw - 0.25, bridgeMaxHeight: ARCH_BRIDGE.rise };
 // 汀步：小島東側 → 東岸
 const STONES = { x0: ISLE_A.x + ISLE_A.r - 0.2, x1: 89.8, z: 57.5, hw: 0.7 };
 const PAVILION = { x: 57.2, z: 64.4 };
@@ -127,7 +129,10 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
   for (let i = 0; i < outline.length; i++) {
     const [x1, z1] = outline[i];
     const [x2, z2] = outline[(i + 1) % outline.length];
-    if (onWalk((x1 + x2) / 2, (z1 + z2) / 2, 0.15)) continue;
+    // 塘邊這一段只要有任何一點碰到石堤或汀步的走道，就不擋（留出上岸的口）
+    let crosses = false;
+    for (let k = 0; k <= 6 && !crosses; k++) crosses = onWalk(x1 + ((x2 - x1) * k) / 6, z1 + ((z2 - z1) * k) / 6, 0.2);
+    if (crosses) continue;
     seg(`garden-pond-${i}`, x1, z1, x2, z2, 0.32);
   }
 
@@ -188,14 +193,14 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     const bx0 = ARCH_BRIDGE.x0;
     const bx1 = ARCH_BRIDGE.x1;
     const L = bx1 - bx0;
-    const N = 10;
+    const N = 14;
     const railMat = stoneMat(0xc8c0b0);
     for (let i = 0; i < N; i++) {
       const t0 = i / N;
       const t1 = (i + 1) / N;
       const tm = (t0 + t1) / 2;
-      const y = Math.sin(tm * Math.PI) * 0.38;
-      const pitch = Math.atan2((Math.sin(t1 * Math.PI) - Math.sin(t0 * Math.PI)) * 0.38, L / N);
+      const y = Math.sin(tm * Math.PI) * ARCH_BRIDGE.rise;
+      const pitch = Math.atan2((Math.sin(t1 * Math.PI) - Math.sin(t0 * Math.PI)) * ARCH_BRIDGE.rise, L / N);
       const dk = add(new THREE.BoxGeometry(L / N + 0.06, 0.18, ARCH_BRIDGE.hw * 2), deckMat, bx0 + tm * L, 0.1 + y, ARCH_BRIDGE.z);
       dk.rotation.z = pitch;
       for (const sz of [-1, 1]) {
@@ -204,8 +209,21 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
       }
     }
     // 拱圈
-    const arc = add(new THREE.TorusGeometry(L / 2 - 0.2, 0.16, 6, 20, Math.PI), deckMat, (bx0 + bx1) / 2, -0.55, ARCH_BRIDGE.z);
-    void arc;
+    // 橋下的半圓拱洞（兩側拱圈＋拱下的暗影）
+    const spandrel = new THREE.Shape();
+    spandrel.moveTo(-L / 2, 0.06);
+    spandrel.lineTo(L / 2, 0.06);
+    for (let k = 0; k <= 16; k++) {
+      const t = 1 - k / 16;
+      spandrel.lineTo(-L / 2 + t * L, 0.12 + Math.sin(t * Math.PI) * ARCH_BRIDGE.rise);
+    }
+    const hole = new THREE.Path();
+    hole.absellipse(0, 0.0, L / 2 - 0.45, ARCH_BRIDGE.rise - 0.05, 0, Math.PI, false);
+    spandrel.holes.push(hole);
+    for (const sz of [-1, 1]) {
+      const sp = add(new THREE.ShapeGeometry(spandrel, 4), deckMat, (bx0 + bx1) / 2, 0, ARCH_BRIDGE.z + sz * ARCH_BRIDGE.hw);
+      (sp.material as THREE.Material).side = THREE.DoubleSide;
+    }
     for (const sz of [-1, 1]) seg(`garden-arch-${sz}`, bx0, ARCH_BRIDGE.z + sz * ARCH_BRIDGE.hw, bx1, ARCH_BRIDGE.z + sz * ARCH_BRIDGE.hw, 0.12);
   }
 
@@ -421,8 +439,8 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
   const bambooMat = new THREE.MeshStandardMaterial({ color: 0x6f9a3a, roughness: 0.6 });
   const bambooLeaf = new THREE.MeshStandardMaterial({ color: 0x4f8a3a, roughness: 0.8, side: THREE.DoubleSide });
   const groves: [number, number, number, number][] = [
-    [49.4, 58.5, 29.0, 31.4],
-    [79.5, 94.6, 29.0, 31.4],
+    [49.4, 56.6, 29.0, 31.4],
+    [91.2, 94.6, 29.0, 31.4],
     [49.0, 51.6, 62.0, 66.6],
   ];
   for (const [x0, x1, z0, z1] of groves) {
@@ -491,17 +509,24 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     [80.0, 49.0],
     [73.6, 48.4],
   ]);
+  // 求職廟、翰林院門前接到池邊步道
   path([
-    [84.0, 46.2],
-    [84.0, 47.6],
-  ], false);
+    [84.0, 40.2],
+    [83.0, 44.6],
+    [80.0, 48.8],
+  ]);
+  path([
+    [63.0, 39.8],
+    [64.6, 44.0],
+    [66.6, 47.8],
+  ]);
   path([
     [89.6, 57.5],
     [90.4, 53.0],
     [89.4, 49.0],
   ]);
   path([
-    [58.9, 56.0],
+    [57.4, 56.0],
     [60.0, 52.0],
     [61.0, 49.0],
   ]);
@@ -519,6 +544,84 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     [64.0, 65.6],
     [59.6, 64.6],
   ]);
+  // ── 園景：再多種一些樹（桃花、楓、松、綠樹）、灌木、花圃、景石 ──
+  {
+    const tb = new TreeBatch();
+    const trees: [TreeKind, number, number, number][] = [
+      // 西北角（西月洞門進來的步道兩旁）
+      ['cherry', 51.2, 43.8, 1.0],
+      ['maple', 54.0, 33.6, 0.95],
+      ['green', 51.0, 47.8, 1.0],
+      ['cherry', 55.6, 41.2, 0.85],
+      // 翰林院與求職廟之間、北月洞門步道旁
+      ['maple', 75.9, 34.4, 0.9],
+      ['cherry', 75.8, 41.6, 0.85],
+      ['green', 70.6, 33.6, 0.9],
+      // 東側（東月洞門南邊）
+      ['cherry', 93.6, 51.2, 1.0],
+      ['pine', 94.2, 55.6, 1.0],
+      ['maple', 93.0, 58.0, 0.85],
+      // 東南角、南牆邊
+      ['maple', 87.4, 66.2, 0.95],
+      ['cherry', 82.0, 66.3, 0.9],
+      ['green', 77.4, 66.4, 0.85],
+      ['pine', 68.0, 66.8, 0.8],
+      // 西側水岸（人才獵頭南北兩側）
+      ['cherry', 60.4, 50.2, 0.8],
+      ['maple', 52.0, 62.0, 0.85],
+    ];
+    for (const [k, x, z, sc] of trees) {
+      tb.add(k, x, 0, z, sc);
+      colliders.push({ id: `garden-tree-${x}-${z}`, type: 'cylinder', x, z, radius: 0.4 });
+    }
+    // 灌木（不擋路）
+    const bushes: [number, number][] = [
+      [62.4, 49.4], [69.0, 49.2], [76.0, 49.6], [86.6, 50.4], [88.6, 61.6], [84.0, 63.8], [64.0, 63.6], [61.6, 61.2],
+      [58.6, 49.6], [53.2, 46.0], [50.0, 39.0], [70.0, 44.6], [91.6, 59.6], [94.8, 49.8], [74.4, 66.6], [79.6, 66.6],
+    ];
+    for (const [x, z] of bushes) tb.add('bush', x, 0, z, 0.9 + rand() * 0.5);
+    root.add(tb.build());
+
+    // 花圃：低矮石框裡開滿小花
+    const bedMat = stoneMat(0x9a958a);
+    const soil = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 1 });
+    const flowerCols = [0xf4a3c0, 0xffffff, 0xf6d36a, 0xe2556a, 0xb08cff];
+    const flowerMats = flowerCols.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, emissive: c, emissiveIntensity: 0.08 }));
+    const beds: [number, number, number, number][] = [
+      [54.6, 36.2, 2.6, 1.2],
+      [75.6, 44.4, 1.2, 2.4],
+      [91.8, 61.8, 0.0, 0.0],
+      [65.2, 66.2, 3.0, 1.0],
+      [84.8, 66.4, 3.2, 1.0],
+    ];
+    for (const [cx, cz, bw, bd] of beds) {
+      if (!bw) continue;
+      add(new THREE.BoxGeometry(bw + 0.3, 0.3, bd + 0.3), bedMat, cx, 0.15, cz);
+      add(new THREE.BoxGeometry(bw, 0.06, bd), soil, cx, 0.3, cz);
+      const n = Math.round(bw * bd * 7);
+      const fg = new THREE.SphereGeometry(0.09, 6, 4);
+      for (let k = 0; k < n; k++) {
+        const f = new THREE.Mesh(fg, flowerMats[k % flowerMats.length]);
+        f.position.set(cx + (rand() - 0.5) * bw * 0.9, 0.42 + rand() * 0.12, cz + (rand() - 0.5) * bd * 0.9);
+        stat.add(f);
+      }
+      colliders.push({ id: `garden-bed-${cx}-${cz}`, type: 'box', x: cx, z: cz, halfWidth: bw / 2 + 0.15, halfDepth: bd / 2 + 0.15 });
+    }
+    // 景石（三兩一組）
+    const rocks: [number, number][] = [
+      [58.4, 44.2], [76.4, 38.0], [88.0, 64.6], [62.6, 64.8], [90.8, 49.8],
+    ];
+    for (const [x, z] of rocks) {
+      for (let k = 0; k < 3; k++) {
+        const st = taihuStone(rand, 0.35 + rand() * 0.35, k % 2 ? rimMat : stoneMat(0x8d8a82));
+        st.position.set(x + (rand() - 0.5) * 1.2, 0.25, z + (rand() - 0.5) * 1.0);
+        st.scale.y = 0.7;
+        stat.add(st);
+      }
+      colliders.push({ id: `garden-rocks-${x}-${z}`, type: 'cylinder', x, z, radius: 0.8 });
+    }
+  }
+
   // ── 院牆上的藤蔓：從牆頭垂下來的爬牆虎（月洞門附近不長） ──
   {
     const c = document.createElement('canvas');
@@ -617,8 +720,8 @@ export function createCareerGarden(): { group: THREE.Group; colliders: Collider[
     return { g, wl, wr };
   };
   const nests: [number, number][] = [
-    [64, 47.6],
-    [84, 48.2],
+    [63, 41.2],
+    [84, 42.6],
   ];
   // 一處一隻就好（以前每處兩隻、共六隻，太多了）；只留翰林院、求職廟門前各一隻
   nests.slice(0, 2).forEach(([nx, nz], i) => {

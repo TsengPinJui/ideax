@@ -27,7 +27,7 @@ export const faunaEnv: {
   camYaw: number;
   onBoat: boolean;
   indoor: boolean;
-  /** 玩家按 C／【照明】呼喚小燈泡拿在手上 */
+  /** 玩家按 F／【照明】呼喚小燈泡拿在手上 */
   bulbOn: boolean;
   /** 夜裡在沒有燈光的地方待了幾秒（給「覺得暗？」提示用） */
   darkFor: number;
@@ -119,7 +119,7 @@ export const CHARACTERS: Record<CharacterId, { name: string; role: string; line:
   duohui: { img: '/agents/duohui.webp', name: '頂多慧', role: '官方客服 Agent', line: '「25 小時全年無休，有任何問題都包在我身上！」', where: '主島・中央廣場' },
   sousou: { img: '/agents/sousou.webp', name: '搜搜', role: '探索者 Agent', line: '「駕著筋斗雲，一眨眼就幫你尋遍天下機會！」', where: '五島上空・筋斗雲' },
   agent007: { img: '/agents/agent007.webp', name: '007', role: 'AI CRM Agent', line: '「躺在翰林院屋頂吹風，全島情報都在我的雷達裡！」', where: '徵才島・翰林院屋頂' },
-  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「覺得暗嗎？別怕，有小燈泡在！」', where: '按 C 或點【照明(C)】呼喚，拿在手上照亮四周' },
+  xiaodengpao: { img: '/agents/xiaodengpao.webp', name: '小燈泡', role: '調節器 Agent', line: '「覺得暗嗎？別怕，有小燈泡在！」', where: '按 F 或點【照明(F)】呼喚，拿在手上照亮四周' },
   bear: { img: '/agents/bear.webp', name: '大熊', role: '預備神兵', line: '「敲敲打打修修補補，再難的技術都能幫你落地！」', where: '討論島・百工坊街的大熊匠鋪' },
 };
 
@@ -763,13 +763,13 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
   // 007：坐在翰林院一層屋簷上吹風看平板（面向庭院）
   {
     const sp = spriteOf('agent007', 'char-007');
-    sp.group.position.set(66.6, 5.75, 46.4);
+    sp.group.position.set(65.6, 5.75, 39.1);
     sp.facing = 0;
-    pick('agent007', 1.4, 1.9, 66.6, 46.4, 5.3);
+    pick('agent007', 1.4, 1.9, 65.6, 39.1, 5.3);
     const bub = speechBubble(CHARACTERS.agent007.name, CHARACTERS.agent007.line);
     root.add(bub);
     anims.push((t) => {
-      bubbleTick(bub, 66.6, 7.6, 46.6, 9);
+      bubbleTick(bub, 65.6, 7.6, 39.3, 9);
       sp.pose = t % 10 < 4 ? 'hero' : null;
       sp.hop = Math.sin(t * 1.3) * 0.04;
     });
@@ -794,7 +794,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       sp.hop = sp.pose ? 0 : Math.abs(Math.sin(t * 1.2)) * 0.02;
     });
   }
-  // 小燈泡：按 C 或點【照明(C)】呼喚出來，拿在手上照亮四周（夜裡走到暗處會提示，不會自己冒出來）
+  // 小燈泡：按 F 或點【照明(F)】呼喚出來，拿在手上照亮四周（夜裡走到暗處會提示，不會自己冒出來）
   {
     const sp = new AgentSprite(SPRITES.xiaodengpao, { selfLit: true });
     sp.group.name = 'char-bulb';

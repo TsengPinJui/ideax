@@ -6,7 +6,7 @@
 
 export const EASTER_EGG_STORAGE_KEY = 'ideax_island_easter_egg_book_v1';
 export const EASTER_EGG_EVENT = 'ideax_easter_egg_book_changed';
-export const TOTAL_ISLAND_EASTER_EGGS = 36;
+export const TOTAL_ISLAND_EASTER_EGGS = 38;
 
 export interface EasterEggRecord {
   verse: string;

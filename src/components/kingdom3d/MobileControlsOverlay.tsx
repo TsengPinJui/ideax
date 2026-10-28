@@ -26,6 +26,7 @@ import {
   Download,
   Copy,
   Lightbulb,
+  Armchair,
 } from 'lucide-react';
 import { CompassMinimap, WorldMapModal } from './KingdomMaps';
 import {
@@ -54,10 +55,13 @@ interface MobileControlsOverlayProps {
   onDesktopRequestLock: () => void;
   isFastWalk: boolean;
   onToggleFastWalk: () => void;
-  /** 小燈泡照明（按 C 或點按鍵呼喚，拿在手上照亮四周） */
+  /** 小燈泡照明（按 F 或點按鍵呼喚，拿在手上照亮四周） */
   bulbOn?: boolean;
   onToggleBulb?: () => void;
-  /** 在暗處時顯示「覺得暗？點擊【照明(C)】…」提示 */
+  /** 坐下（C） */
+  sitting?: boolean;
+  onToggleSit?: () => void;
+  /** 在暗處時顯示「覺得暗？點擊【照明(F)】…」提示 */
   darkHint?: boolean;
   timeOfDay?: 'day' | 'dusk' | 'night';
   onCycleTimeOfDay?: () => void;
@@ -157,6 +161,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onToggleFastWalk,
   bulbOn,
   onToggleBulb,
+  sitting,
+  onToggleSit,
   darkHint,
   timeOfDay,
   onCycleTimeOfDay,
@@ -864,6 +870,20 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           data-ui-panel="true"
           className="relative pointer-events-auto flex flex-col items-end gap-2 sm:gap-2.5 shrink-0"
         >
+          {/* 坐下鍵（C）：坐著休息；和羈絆一起坐在桃樹下會落桃花 */}
+          {onToggleSit && (
+            <button
+              type="button"
+              onClick={onToggleSit}
+              data-on={Boolean(sitting)}
+              className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg"
+              title={sitting ? '站起來（C，或直接走動）' : '坐下（C）'}
+              aria-label="坐下"
+            >
+              <Armchair className="w-6 h-6 sm:w-7 sm:h-7" />
+              <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{sitting ? '站起' : '坐下(C)'}</span>
+            </button>
+          )}
           {/* 照明鍵：呼喚小燈泡拿在手上 */}
           {onToggleBulb && (
             <button
@@ -871,11 +891,11 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               onClick={onToggleBulb}
               data-on={Boolean(bulbOn)}
               className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg"
-              title={bulbOn ? '收起小燈泡（C）' : '照明：呼喚小燈泡（C）'}
+              title={bulbOn ? '收起小燈泡（F）' : '照明：呼喚小燈泡（F）'}
               aria-label="照明"
             >
               <Lightbulb className="w-6 h-6 sm:w-7 sm:h-7" />
-              <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{bulbOn ? '收起' : '照明(C)'}</span>
+              <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{bulbOn ? '收起' : '照明(F)'}</span>
             </button>
           )}
           {/* 下排：特大版疾走鍵 */}
@@ -895,14 +915,14 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         </div>
       </div>
 
-      {/* 暗處提示：點【照明(C)】呼喚小燈泡 */}
+      {/* 暗處提示：點【照明(F)】呼喚小燈泡 */}
       {darkHint && !bulbOn && onToggleBulb && (
         <div data-ui-panel="true" className="absolute left-1/2 -translate-x-1/2 top-24 sm:top-20 pointer-events-auto">
           <div className="kx-panel px-4 py-2 text-[13px] sm:text-[14px] whitespace-nowrap flex items-center gap-1.5">
             <Lightbulb className="w-4 h-4 text-amber-200 shrink-0" />
             覺得暗？點擊
             <button type="button" onClick={onToggleBulb} className="font-bold text-amber-200 underline underline-offset-2 cursor-pointer">
-              【照明(C)】
+              【照明(F)】
             </button>
             呼喚小燈泡助你前途光明！
           </div>
@@ -913,7 +933,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       {!isDesktopPointerLocked && (
         <div data-ui-panel="true" className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-auto">
           <button type="button" onClick={onDesktopRequestLock} className="kx-panel px-4 py-1.5 text-[12.5px] cursor-pointer whitespace-nowrap">
-            點建築、攤位看介紹・點這裡鎖定視角・WASD 移動・E 互動
+            點建築、攤位看介紹・點這裡鎖定視角・WASD 移動・E 互動・Q 瞬移・C 坐下・F 照明
           </button>
         </div>
       )}

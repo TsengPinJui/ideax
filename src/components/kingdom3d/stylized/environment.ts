@@ -25,7 +25,9 @@ import {
   petalTexture,
   farmlandTexture,
   seeded,
+  signboardTexture,
 } from './textures';
+import { makePickProxy } from '../picking';
 import { MOUNTAIN_RING, FARMLANDS, LOTUS_PATCHES, BASIN_LANDMARKS, landOutline, farmHouseLayout } from './basinLayout';
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
@@ -491,12 +493,15 @@ export class StylizedWorld {
   }
 
   /** 山的剖面：寬山腳、往上收窄、圓頂（可疊成連綿山牆） */
-  private mountainGeometry(r: number, h: number, seed: number, flatTop = 0) {
+  private mountainGeometry(r: number, h: number, seed: number, flatTop = 0, baseR = 0) {
     const rand = seeded(seed);
     const pts: THREE.Vector2[] = [];
+    const rTop = r * (1 - Math.pow(0.8, 1.15) * 0.82);
     for (let i = 0; i <= 12; i++) {
       const t = i / 12;
       let rr = r * (1 - Math.pow(t, 1.15) * 0.82);
+      // 指定山腳半徑：下半段收得比較陡（山腳不會伸到旁邊的田園、步道上），山頂平台大小不變
+      if (baseR > 0 && t < 0.8) rr = rTop + (baseR - rTop) * Math.pow(1 - t / 0.8, 1.2);
       if (t > 0.8) rr *= Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.8) / 0.2, 2))) * (1 - flatTop) + flatTop;
       pts.push(new THREE.Vector2(Math.max(0.05, rr), t * h));
     }
@@ -548,7 +553,7 @@ export class StylizedWorld {
     const plat = new THREE.Group();
     plat.position.set(wp.x, 0, wp.z);
     const plateauTop = 30;
-    plat.add(new THREE.Mesh(this.mountainGeometry(wp.r * 1.25, plateauTop + 2, 161, 0.72), this.mountainMat));
+    plat.add(new THREE.Mesh(this.mountainGeometry(wp.r * 1.25, plateauTop + 2, 161, 0.72, 28), this.mountainMat));
     plat.children[0].position.y = -2;
     const lawn = new THREE.Mesh(new THREE.CircleGeometry(wp.r * 1.25 * 0.33, 32).rotateX(-Math.PI / 2), mats.grass);
     lawn.position.y = plateauTop - 0.15;
@@ -566,7 +571,67 @@ export class StylizedWorld {
     ledge.position.set(nf.x, 21.5, ledgeZ.z + 3.5);
     this.root.add(ledge);
     this.addConformingFall(g, north, 50, 24.6, 9, 1.0);
-    this.addConformingFall(g, { ...north, base: north.base.clone().setZ(ledgeZ.z + 60) }, 21.6, -0.3, 13, 1.4);
+    // 下層瀑布：上半段整片；下半段在中間分開、中間只剩薄薄一層水簾，看得見後面的水濂洞
+    {
+      const lb = north.base.clone().setZ(ledgeZ.z + 60);
+      this.addConformingFall(g, { ...north, base: lb }, 21.6, 6.8, 13, 1.4, 0, 0);
+      for (const sx of [-1, 1]) this.addConformingFall(g, { ...north, base: lb.clone().setX(lb.x + sx * 4.6) }, 7.0, -0.3, 4.6, 1.4, 0, 0.4);
+      this.addConformingFall(g, { ...north, base: lb }, 7.0, -0.3, 4.6, 1.6, 99, 0);
+    }
+    // 水濂洞：下層瀑布的水幕後面，山壁上一座石框洞口、洞口上方「水濂洞」匾，洞前一顆仙石（兩個彩蛋）
+    {
+      const lowerBase = north.base.clone().setZ(ledgeZ.z + 60);
+      const sp = this.surfaceAt(g, lowerBase, north.dir, 2.2);
+      const cg = new THREE.Group();
+      cg.name = 'shuilian_cave';
+      cg.position.set(nf.x, 0, sp.z + 0.35);
+      this.root.add(cg);
+      const rockMat = mats.rock;
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(2.6, 28, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x060708 }));
+      hole.scale.y = 1.45;
+      hole.position.set(0, 0.2, 0);
+      cg.add(hole);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(2.7, 0.42, 8, 24, Math.PI), rockMat);
+      frame.scale.set(1, 1.45, 0.8);
+      frame.position.set(0, 0.2, 0.05);
+      cg.add(frame);
+      for (const sx of [-1, 1]) {
+        const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 1.0), rockMat);
+        jamb.position.set(sx * 2.7, 0.4, 0.05);
+        cg.add(jamb);
+      }
+      // 洞裡隱約的石桌、鐘乳石（暗暗的）
+      const inner = new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 1 });
+      for (let k = 0; k < 6; k++) {
+        const st = new THREE.Mesh(new THREE.ConeGeometry(0.16 + (k % 3) * 0.06, 0.9 + (k % 2) * 0.6, 5), inner);
+        st.rotation.x = Math.PI;
+        st.position.set(-1.6 + k * 0.65, 3.2 - (k % 2) * 0.3, -0.05);
+        cg.add(st);
+      }
+      // 匾：水濂洞
+      const tex = signboardTexture('水濂洞', '花果山福地・水簾洞洞天');
+      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.45, roughness: 0.6 }));
+      // 匾掛在水幕外面，遠遠就看得到
+      plaque.position.set(0, 7.6, 4.2);
+      plaque.userData.noMerge = true;
+      cg.add(plaque);
+      // 仙石（洞口前，微微發光）
+      const stone = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 14), new THREE.MeshStandardMaterial({ color: 0xbdb6a6, roughness: 0.7, emissive: 0x6a5a30, emissiveIntensity: 0.35 }));
+      stone.scale.set(1, 1.25, 1);
+      stone.position.set(1.2, 0.75, 0.9);
+      cg.add(stone);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffe3a0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
+      glow.scale.set(3, 3, 1);
+      glow.position.copy(stone.position);
+      cg.add(glow);
+      // 點擊範圍放在水幕前面（不然會被瀑布擋住）
+      const wx = nf.x;
+      const wz = sp.z + 0.35;
+      cg.add(makePickProxy(4.6, 4.6, 0.6, -0.6, 2.4, 0, { kind: 'egg', egg: 'shuilian', maxDist: 260 }, 0.1));
+      cg.add(makePickProxy(1.8, 2.0, 0.6, 1.2, 2.7, 0, { kind: 'egg', egg: 'stoneEgg', maxDist: 260 }, 0));
+      void wx;
+      void wz;
+    }
 
     // 東山飛瀑（山壁瀑布，朝向盆地）
     const ef = BASIN_LANDMARKS.eastFalls;
@@ -635,7 +700,9 @@ export class StylizedWorld {
     topY: number,
     bottomY: number,
     width: number,
-    gap: number
+    gap: number,
+    thinBelow = 0,
+    mistOpacity = 0.6
   ) {
     const n = 16;
     const pts: THREE.Vector3[] = [];
@@ -652,6 +719,7 @@ export class StylizedWorld {
     const pos: number[] = [];
     const uv: number[] = [];
     const idx: number[] = [];
+    const col: number[] = [];
     let len = 0;
     for (let i = 0; i <= n; i++) {
       if (i > 0) len += pts[i].distanceTo(pts[i - 1]);
@@ -659,6 +727,9 @@ export class StylizedWorld {
       for (const sx of [-1, 1]) {
         const p = pts[i].clone().addScaledVector(at.side, (sx * w) / 2);
         pos.push(p.x, p.y, p.z);
+        // 下段水幕變薄（看得見後面的水濂洞）
+        const al = thinBelow > 0 ? (p.y < thinBelow ? 0.14 : p.y < thinBelow + 2 ? 0.14 + ((p.y - thinBelow) / 2) * 0.86 : 1) : 1;
+        col.push(1, 1, 1, al);
         uv.push(((sx + 1) / 2) * (width / 6), -len / 10);
       }
       if (i < n) {
@@ -669,19 +740,20 @@ export class StylizedWorld {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
     geo.setIndex(idx);
     geo.computeVertexNormals();
     const tex = waterfallTexture().clone();
     tex.needsUpdate = true;
     this.ownedTextures.push(tex);
-    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff });
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffffff, vertexColors: true });
     this.waterfalls.push(mat);
     const fallMesh = new THREE.Mesh(geo, mat);
     // 彩蛋：飛瀑（垂涎三尺…）
     fallMesh.userData.pick = { kind: 'egg', egg: 'waterfall', maxDist: 220 };
     this.root.add(fallMesh);
     const bottom = pts[n];
-    const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }));
+    const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, opacity: mistOpacity, depthWrite: false }));
     mist.scale.set(width * 2.4, width * 1.3, 1);
     mist.position.copy(bottom).addScaledVector(at.dir, -1.5);
     mist.position.y = bottomY + 1.2;
@@ -776,7 +848,8 @@ export class StylizedWorld {
       const side = new THREE.ExtrudeGeometry(shape, { depth: 3, bevelEnabled: true, bevelSize: 1.2, bevelThickness: 0.5, bevelSegments: 2, curveSegments: 24 });
       side.rotateX(Math.PI / 2);
       const sideMesh = new THREE.Mesh(side, [mats.grass, mats.rock]);
-      sideMesh.position.y = 0;
+      // 陸地頂面比田地低一點（原本兩者同高 y=0.5，重疊會閃爍）
+      sideMesh.position.y = -0.14;
       g.add(sideMesh);
       // 田地（比陸地小一圈，留草地邊）
       const inner = landOutline({ ...l, rx: l.rx * 0.84, rz: l.rz * 0.84 });
@@ -840,7 +913,7 @@ export class StylizedWorld {
         const [x, z] = outline[Math.floor(rand() * outline.length)];
         const ix = l.cx + (x - l.cx) * 0.9;
         const iz = l.cz + (z - l.cz) * 0.9;
-        trees.add((['cherry', 'green', 'green', 'pine', 'maple'] as TreeKind[])[k % 5], ix, 0.5, iz, 1 + rand() * 0.6);
+        trees.add((['cherry', 'green', 'green', 'pine', 'maple'] as TreeKind[])[k % 5], ix, 0.36, iz, 1 + rand() * 0.6);
       }
       // 水車（朝向盆地中央的岸邊）
       if (li % 2 === 0) {

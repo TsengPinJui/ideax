@@ -64,14 +64,17 @@ import {
 } from './stylized/exhibitHall';
 import { LIB_TOWER, atLibraryDoor } from './stylized/libraryTower';
 import { atLibraryExit, LIB_HALL, LIB_STAIR, libStairHeights } from './stylized/libraryInterior';
+import { GARDEN_ARCH_BRIDGE } from './stylized/careerGarden';
 
 const LIBRARY_ID = 'discussion-library';
+// 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
+const MOVE_BRIDGES = [...WORLD_BRIDGES, GARDEN_ARCH_BRIDGE as unknown as (typeof WORLD_BRIDGES)[number]];
 import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
 import { drawSteleTexture, plazaTopics, drawWallBoardTexture, WallBoardWhich } from './stylized/discussionPlaza';
 import { DOCKS, findDock, nearestDock, TRAIL, PLATEAU_COLLIDERS } from './stylized/docks';
-import { navigable, fishingBoat, pleasureBoat, boatMats } from './stylized/waterLife';
+import { navigable, sampanBoat, pleasureBoat, boatMats, boatHasRoof } from './stylized/waterLife';
 import { BoatingService, MAX_BOATS, OFFER_SECONDS, BoatSlot } from './boating';
 import type { WalkableZone } from './types';
 import { BoatOverlay } from './BoatOverlay';
@@ -85,7 +88,7 @@ import type { TimeMode, WeatherMode } from './EnvControls';
 import type { Question } from '../../types';
 import type { Collider } from './types';
 import { StylizedWorld, TimeOfDay } from './stylized/environment';
-import { setTextureAnisotropy } from './stylized/textures';
+import { setTextureAnisotropy, petalTexture } from './stylized/textures';
 import { peekKingdomResume, saveKingdomResume, clearKingdomResume } from './kingdomResume';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -508,7 +511,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const libExitArmedRef = useRef(false);
   // 藏書閣螺旋梯：目前腳下離書廳地板多高
   const libStairHRef = useRef(0);
-  // 小燈泡照明：按 C 或點【照明(C)】呼喚，拿在手上照亮四周
+  // 小燈泡照明：按 F 或點【照明(F)】呼喚，拿在手上照亮四周
   const [bulbOn, setBulbOn] = useState(false);
   const bulbOnRef = useRef(false);
   const [darkHint, setDarkHint] = useState(false);
@@ -521,6 +524,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   }, []);
   const toggleBulbRef = useRef(toggleBulb);
   toggleBulbRef.current = toggleBulb;
+  // 坐下（C）：視線降低、原地坐著；一走動就站起來。和羈絆一起坐在桃樹下會落桃花（雙人任務）
+  const [sitting, setSitting] = useState(false);
+  const sitRef = useRef(false);
+  const toggleSit = useCallback(() => {
+    if (boatRideRef.current) return;
+    sitRef.current = !sitRef.current;
+    setSitting(sitRef.current);
+  }, []);
+  const toggleSitRef = useRef(toggleSit);
+  toggleSitRef.current = toggleSit;
+  // Q：對準目的地近距離瞬移（實作在場景建好之後）
+  const blinkRef = useRef<() => void>(() => {});
   const towersRef = useRef<Map<string, Tower>>(new Map());
   if (towersRef.current.size === 0) {
     towersRef.current.set(PLATEAU_ID, plateauTower());
@@ -1472,8 +1487,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 8. Keydown for E Interaction
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
-      if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         toggleBulbRef.current();
+        return;
+      }
+      if (e.code === 'KeyQ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        blinkRef.current();
+        return;
+      }
+      if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        toggleSitRef.current();
         return;
       }
       if (e.code === 'KeyE') {
@@ -1485,6 +1508,61 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
+    // Q 瞬移：鎖定視角時對準畫面中央；沒鎖定時對準滑鼠位置；最遠 28 公尺、只能落在走得到的地方
+    let lastPointer: { x: number; y: number } | null = null;
+    const onPointerMoveBlink = (e: PointerEvent) => {
+      const r = renderer.domElement.getBoundingClientRect();
+      lastPointer = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+    };
+    renderer.domElement.addEventListener('pointermove', onPointerMoveBlink);
+    const blinkRay = new THREE.Raycaster();
+    blinkRef.current = () => {
+      const st = storyRef.current;
+      if (boatRideRef.current || st.tween || st.level !== 0 || regionManager.status !== 'active') return;
+      const ndc = controls.isLocked || !lastPointer ? new THREE.Vector2(0, 0) : new THREE.Vector2(lastPointer.x, lastPointer.y);
+      blinkRay.setFromCamera(ndc, camera);
+      blinkRay.far = 28;
+      const hits = blinkRay.intersectObjects(scene.children, true).filter((h) => {
+        const o = h.object as THREE.Mesh;
+        if (!(o as any).isMesh || (o as any).isSprite) return false;
+        for (let q: THREE.Object3D | null = o; q; q = q.parent) if (!q.visible) return false;
+        const m = o.material as THREE.Material & { visible?: boolean; transparent?: boolean; opacity?: number };
+        if (Array.isArray(o.material)) return true;
+        return m.visible !== false && !(m.transparent && (m.opacity ?? 1) < 0.5);
+      });
+      const dir = blinkRay.ray.direction.clone();
+      let target: THREE.Vector3 | null = null;
+      if (hits.length) {
+        const h = hits[0];
+        const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
+        target = h.point.clone();
+        if (n.y < 0.6) target.addScaledVector(dir, -0.8);
+      } else if (dir.y < -0.02) {
+        // 沒打到東西：落在地面（y=0）上
+        const t = -camera.position.y / dir.y;
+        if (t > 0 && t < 28) target = camera.position.clone().addScaledVector(dir, t);
+      }
+      if (!target) return;
+      const cols = regionManager.getAllColliders();
+      const ok = (x: number, z: number) =>
+        PhysicsController.isInsideWalkableZones(x, z, globalWalkableZones) && !PhysicsController.checkCollision(new THREE.Vector3(x, 0, z), cols);
+      const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+      let x = target.x;
+      let z = target.z;
+      let tries = 0;
+      while (!ok(x, z) && tries < 10) {
+        x -= flat.x * 0.5;
+        z -= flat.z * 0.5;
+        tries++;
+      }
+      if (!ok(x, z)) return;
+      if (Math.hypot(x - controls.position.x, z - controls.position.z) < 0.8) return;
+      sitRef.current = false;
+      setSitting(false);
+      controls.position.set(x, PhysicsController.getGroundHeight(x, z, MOVE_BRIDGES, 0), z);
+      controls.updateCameraTransform(0);
+      playSoundEffect('portal');
+    };
 
     // 點畫面上的東西 → 左側彈出細節（滑鼠點一下、沒拖曳；鎖定視角時以畫面中央為準）
     const raycaster = new THREE.Raycaster();
@@ -1642,20 +1720,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
     }, 2000);
     const bMats = boatMats();
+    // 遊湖的船：五艘裡一艘是有屋頂的畫舫，其餘是沒屋頂的小舟（依船位編號決定）
     const makeBoat = () => {
       const g = new THREE.Group();
-      const day = fishingBoat(bMats);
-      const night = pleasureBoat(bMats);
-      g.add(day, night);
-      g.userData.day = day;
-      g.userData.night = night;
+      const open = sampanBoat(bMats);
+      const roofed = pleasureBoat(bMats);
+      g.add(open, roofed);
+      g.userData.open = open;
+      g.userData.roofed = roofed;
       scene.add(g);
       return g;
     };
-    const styleBoat = (g: THREE.Group) => {
-      const night = world.timeOfDay === 'night';
-      (g.userData.day as THREE.Object3D).visible = !night;
-      (g.userData.night as THREE.Object3D).visible = night;
+    const styleBoat = (g: THREE.Group, slot: number) => {
+      const roof = boatHasRoof(slot);
+      (g.userData.open as THREE.Object3D).visible = !roof;
+      (g.userData.roofed as THREE.Object3D).visible = roof;
     };
     const myBoat = makeBoat();
     myBoat.visible = false;
@@ -1763,7 +1842,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           g.rotation.y = sl.r;
           remoteBoats.set(sl.index, g);
         }
-        styleBoat(g);
+        styleBoat(g, sl.index);
         const k = Math.min(1, delta * 4);
         g.position.x += (sl.x - g.position.x) * k;
         g.position.z += (sl.z - g.position.z) * k;
@@ -1815,7 +1894,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
         boating.push(ride.x, ride.z, ride.yaw, nearDock && ride.speed < 0.3);
         myBoat.visible = true;
-        styleBoat(myBoat);
+        styleBoat(myBoat, ride.slot);
         myBoat.position.set(ride.x, -0.3 + Math.sin(performance.now() / 700) * 0.04, ride.z);
         myBoat.rotation.y = ride.yaw;
         myBoat.rotation.z = Math.sin(performance.now() / 900) * 0.02;
@@ -1920,6 +1999,55 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     let stepAcc = 0;
     const globalWalkableZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.6, rz: z.rz + 5.6 } : z));
     let lodTick = 14;
+    // 桃樹（粉紅花樹）的位置：桃樹下同坐用（第一次用到時才收集）
+    let peachPts: number[] | null = null;
+    const collectPeach = () => {
+      const out: number[] = [];
+      const m4 = new THREE.Matrix4();
+      const v = new THREE.Vector3();
+      scene.updateMatrixWorld(false);
+      scene.traverse((o) => {
+        const kinds = o.userData?.treeKinds as string[] | undefined;
+        const im = o as THREE.InstancedMesh;
+        if (!kinds || !(im as any).isInstancedMesh) return;
+        for (let i = 0; i < Math.min(kinds.length, im.count); i++) {
+          if (kinds[i] !== 'cherry') continue;
+          im.getMatrixAt(i, m4);
+          v.setFromMatrixPosition(m4).applyMatrix4(im.matrixWorld);
+          out.push(v.x, v.y, v.z);
+        }
+      });
+      return out;
+    };
+    const nearestPeach = (x: number, z: number) => {
+      if (!peachPts) peachPts = collectPeach();
+      let best = -1;
+      let bd = 4.6;
+      for (let k = 0; k < peachPts.length; k += 3) {
+        const d = Math.hypot(peachPts[k] - x, peachPts[k + 2] - z);
+        if (d < bd) {
+          bd = d;
+          best = k;
+        }
+      }
+      return best;
+    };
+    let peachTogetherNow = false;
+    // 落桃花：兩人一起坐在桃樹下時，花瓣從樹冠飄下來
+    const PETALS = 90;
+    const petalGeo = new THREE.BufferGeometry();
+    const petalPos = new Float32Array(PETALS * 3);
+    petalGeo.setAttribute('position', new THREE.BufferAttribute(petalPos, 3));
+    const petalSeed = Array.from({ length: PETALS }, () => [Math.random(), Math.random(), Math.random()]);
+    const petals = new THREE.Points(
+      petalGeo,
+      new THREE.PointsMaterial({ map: petalTexture(), color: 0xffc4d8, size: 0.32, transparent: true, depthWrite: false, alphaTest: 0.05 })
+    );
+    petals.frustumCulled = false;
+    petals.visible = false;
+    scene.add(petals);
+    let petalT = 0;
+    let petalTree = -1;
     const pagodaRoofs: THREE.Object3D[] = [];
     let pagodaRoofHidden = false;
 
@@ -1969,9 +2097,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           delta,
           activeColliders,
           tower?.walk ? tower.walk(story.level) : globalWalkableZones,
-          tower ? [] : WORLD_BRIDGES,
+          tower ? [] : MOVE_BRIDGES,
           tower ? (tower.floorY ? tower.floorY(story.level) : story.level * FLOOR_H) : 0
         );
+
+        // 坐下：原地不動、視線往下；一走動就站起來
+        {
+          if (sitRef.current && Math.hypot(desiredVelocity.x, desiredVelocity.z) > 0.2) {
+            sitRef.current = false;
+            setSitting(false);
+          }
+          if (sitRef.current) {
+            newPos.x = prevX;
+            newPos.z = prevZ;
+          }
+          const want = sitRef.current ? -0.75 : 0;
+          controls.eyeOffset += (want - controls.eyeOffset) * Math.min(1, delta * 6);
+        }
 
         // 藏書閣書海：中央螺旋梯走得上去（依所在角度找最接近目前高度的那段踏板）
         if (tower?.b.id === LIBRARY_ID && story.level < 0) {
@@ -2142,7 +2284,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         for (const p of lobbyPits) p.visible = !inDeep;
       }
 
-      mp.update(controls.position.x, controls.position.y, controls.position.z, controls.yaw);
+      // 坐下時送出的高度低一點，夥伴那邊看得出來你坐著
+      mp.update(controls.position.x, controls.position.y - (sitRef.current ? 0.7 : 0), controls.position.z, controls.yaw);
       const now = performance.now() / 1000;
       faunaEnv.camX = camera.position.x;
       faunaEnv.camY = camera.position.y;
@@ -2224,6 +2367,37 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           bondLine.scale.set(1, len, 1);
           (bondGlow.material as THREE.MeshBasicMaterial).opacity = 0.22 + Math.sin(performance.now() / 380) * 0.1;
         } else bondLine.visible = false;
+        // 桃樹下同坐：自己坐著、夥伴也坐著（送來的高度比較低），兩人在同一棵桃樹下
+        {
+          const me = controls.position;
+          const tree = sitRef.current ? nearestPeach(me.x, me.z) : -1;
+          const together =
+            tree >= 0 && !!pp && peachPts !== null && Math.hypot(peachPts[tree] - pp.x, peachPts[tree + 2] - pp.z) < 4.6 && pp.y < me.y - 0.4;
+          peachTogetherNow = together;
+          if (together) {
+            petalTree = tree;
+            petalT = 12;
+          }
+          if (petalT > 0 && peachPts && petalTree >= 0) {
+            petalT -= delta;
+            petals.visible = true;
+            const tx = peachPts[petalTree];
+            const ty = peachPts[petalTree + 1];
+            const tz = peachPts[petalTree + 2];
+            const now = performance.now() / 1000;
+            for (let i = 0; i < PETALS; i++) {
+              const [a, b, c] = petalSeed[i];
+              const fall = ((now * (0.25 + b * 0.25) + a) % 1);
+              const ang = a * Math.PI * 2 + now * (0.3 + c * 0.4);
+              const rr = 0.6 + b * 2.6 + fall * 0.8;
+              petalPos[i * 3] = tx + Math.cos(ang) * rr + Math.sin(now * 1.3 + i) * 0.25;
+              petalPos[i * 3 + 1] = ty + 0.5 - fall * 3.35;
+              petalPos[i * 3 + 2] = tz + Math.sin(ang) * rr;
+            }
+            (petalGeo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+            (petals.material as THREE.PointsMaterial).opacity = Math.min(1, petalT / 2);
+          } else petals.visible = false;
+        }
         questAcc += delta;
         if (questAcc >= 1) {
           const dt = Math.min(questAcc, 2);
@@ -2240,6 +2414,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               partner: { x: pp.x, y: pp.y, z: pp.z },
               onBoat: Boolean(boatRideRef.current),
               onTowerTop: st.towerId === PLATEAU_ID && st.level === 2,
+              peachTogether: peachTogetherNow,
             });
             if (r.changed) {
               saveQuests(q);
@@ -2348,6 +2523,19 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         },
         getPos: () => ({ x: controls.position.x, y: controls.position.y, z: controls.position.z, yaw: controls.yaw, level: storyRef.current.level, stairH: libStairHRef.current, tw: storyRef.current.towerId }),
         pickCenter: () => JSON.stringify(pickAt(null, null)),
+        // 測試用：列出某點附近的碰撞
+        collidersNear: (x: number, z: number, r = 1.5) =>
+          regionManager
+            .getAllColliders()
+            .filter((c) => {
+              if (c.type === 'cylinder') return Math.hypot(c.x - x, c.z - z) < r + c.radius;
+              if (c.type === 'box') return Math.abs(c.x - x) < r + c.halfWidth && Math.abs(c.z - z) < r + c.halfDepth;
+              const dx = c.x2 - c.x1;
+              const dz = c.z2 - c.z1;
+              const t = Math.max(0, Math.min(1, ((x - c.x1) * dx + (z - c.z1) * dz) / (dx * dx + dz * dz || 1)));
+              return Math.hypot(x - (c.x1 + dx * t), z - (c.z1 + dz * t)) < r + c.halfThickness;
+            })
+            .map((c) => c.id),
         // 不靠畫面幀數：直接用物理一步步走過去，回傳走到哪裡（檢查空氣牆用）
         simWalk: (x: number, z: number, tx: number, tz: number) => {
           const st = storyRef.current;
@@ -2425,6 +2613,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       remoteView.dispose();
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleGlobalKeyDown);
+      renderer.domElement.removeEventListener('pointermove', onPointerMoveBlink);
 
       controls.dispose();
       regionManager.disposeAll();
@@ -2773,6 +2962,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }}
         bulbOn={bulbOn}
         onToggleBulb={toggleBulb}
+        sitting={sitting}
+        onToggleSit={toggleSit}
         darkHint={darkHint}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {
