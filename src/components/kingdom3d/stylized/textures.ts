@@ -1086,3 +1086,64 @@ export function templeFacadeTexture(emissive = false) {
     return toTexture(c, { srgb: !emissive });
   });
 }
+
+/** 電玩城牆面：深色木構框、粉紅透光的大格窗、下方深色石裙堵（emissive＝格窗透光） */
+export function arcadeFacadeTexture(emissive = false) {
+  return cached(`arcade_facade_${emissive ? 'e' : 'c'}`, () => {
+    const W = 256;
+    const H = 512;
+    const [c, ctx] = makeCanvas(W, H);
+    const winTop = 60;
+    const winBot = 360;
+    const x0 = 26;
+    const x1 = W - 26;
+    if (emissive) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ff6fae';
+      ctx.fillRect(x0, winTop, x1 - x0, winBot - winTop);
+    } else {
+      ctx.fillStyle = '#2a1814';
+      ctx.fillRect(0, 0, W, H);
+      // 木紋
+      for (let i = 0; i < 40; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${0.08 + (i % 3) * 0.04})`;
+        ctx.fillRect(0, (i * 37) % H, W, 2);
+      }
+      ctx.fillStyle = '#f7a8c8';
+      ctx.fillRect(x0, winTop, x1 - x0, winBot - winTop);
+      const g = ctx.createLinearGradient(0, winTop, 0, winBot);
+      g.addColorStop(0, 'rgba(255,255,255,0.25)');
+      g.addColorStop(1, 'rgba(160,40,90,0.25)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x0, winTop, x1 - x0, winBot - winTop);
+      // 金色上緣線
+      ctx.fillStyle = '#c9963a';
+      ctx.fillRect(0, 18, W, 5);
+      // 石裙堵
+      ctx.fillStyle = '#2f2a2a';
+      ctx.fillRect(0, winBot + 26, W, H - winBot - 26);
+      ctx.strokeStyle = 'rgba(201,150,58,0.5)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(30, winBot + 46, W - 60, H - winBot - 72);
+    }
+    // 格柵（細格）
+    ctx.strokeStyle = '#1c0f0c';
+    ctx.lineWidth = 6;
+    for (let x = x0; x <= x1; x += 26) {
+      ctx.beginPath();
+      ctx.moveTo(x, winTop);
+      ctx.lineTo(x, winBot);
+      ctx.stroke();
+    }
+    for (let y = winTop; y <= winBot; y += 26) {
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 12;
+    ctx.strokeRect(x0, winTop, x1 - x0, winBot - winTop);
+    return toTexture(c, { srgb: !emissive });
+  });
+}
