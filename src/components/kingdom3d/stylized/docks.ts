@@ -135,8 +135,8 @@ export function createDocks(regionId: string): { group: THREE.Group; colliders: 
     dg.add(s1);
     // 繫船柱與船槳
     add(dg, new THREE.CylinderGeometry(0.14, 0.16, 0.8, 10), sm.darkWood, 0.8, 0.6, len + 0.2);
-    const oar = add(dg, new THREE.BoxGeometry(0.08, 0.05, 2.2), sm.darkWood, -0.7, 0.35, 0.6);
-    oar.rotation.y = 0.3;
+    // 船槳靠在棧橋欄杆邊（不橫在走道上）
+    add(dg, new THREE.BoxGeometry(0.08, 0.05, 2.2), sm.darkWood, -0.95, 0.33, 2.6);
     dg.updateMatrixWorld(true);
     for (const [sx, sz] of [[-1.3, 1.0], [1.3, 1.0]] as [number, number][]) {
       const v = new THREE.Vector3(sx, 2.2, sz).applyMatrix4(dg.matrixWorld);

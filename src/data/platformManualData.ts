@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#238',
+    version: 'v4.3.4',
+    releaseDate: '2026.10.28',
+    releaseTime: '19:50',
+    author: 'System Architect',
+    summary: '3D 實境漫遊：乘船點與登山口不再被島緣石欄杆封住；左側欄文字放大',
+    changes: [
+      '各島乘船點（渡口棧橋）與聚雲塔登山口前的島緣石欄杆留出開口，從岸上可以直接走上棧橋；原本橫在小亭地板上的船槳改靠在棧橋欄杆邊。',
+      '左側欄（建築介紹、店鋪、佈告欄、角色小卡、職缺等）文字整體放大，側欄稍微加寬。',
+    ],
+  },
+  {
     seqNumber: '#237',
     version: 'v4.3.3',
     releaseDate: '2026.10.28',

@@ -15,7 +15,7 @@ import { createEggProps } from './stylized/eggProps';
 import { createTempleExtras } from './stylized/temple';
 import { createExhibitionFacade, createArcadeFacade, createPlazaMedallions } from './stylized/hallFacades';
 import { createAmbientLife, LifeSpot } from './stylized/ambientLife';
-import { FARMLANDS, farmHouseLayout, chimneyTop } from './stylized/basinLayout';
+import { FARMLANDS, farmHouseLayout, chimneyTop, TRAILHEAD } from './stylized/basinLayout';
 import { seeded } from './stylized/textures';
 import { getStoryLayout, groundStairwell } from './stylized/multiStory';
 import {
@@ -109,7 +109,14 @@ export class RegionManager {
           walkRx: ell && ell.type === 'ellipse' ? ell.rx : manifest.islandRadiusX - 0.5,
           walkRz: ell && ell.type === 'ellipse' ? ell.rz : manifest.islandRadiusZ - 0.5,
           plazaRadius: manifest.plazaRadius,
-          bridges: WORLD_BRIDGES,
+          // 石拱橋橋頭、渡口棧橋、登山口：島緣石欄杆在這些地方留出開口（樹也不種在路上）
+          bridges: [
+            ...WORLD_BRIDGES,
+            ...DOCKS.filter((d) => d.regionId === id).map((d) => ({ x1: d.landX, z1: d.landZ, x2: d.waterX, z2: d.waterZ, halfWidth: 1.4 })),
+            ...(TRAILHEAD.regionId === id
+              ? [{ x1: TRAIL.x, z1: TRAIL.z, x2: TRAIL.x - Math.sin(TRAIL.yaw) * 9, z2: TRAIL.z - Math.cos(TRAIL.yaw) * 9, halfWidth: 1.7 }]
+              : []),
+          ],
           avoid: [
             ...manifest.buildings.map((b) => ({ x: b.position.x, z: b.position.z, r: b.exterior === 'tulou' ? TULOU_RADIUS + 2.5 : Math.max(b.width, b.depth) / 2 + 1 })),
             ...streetAvoidAreas(id),
