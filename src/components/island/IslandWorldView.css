@@ -13,6 +13,11 @@
   transition: background 0.8s ease;
 }
 
+/* 中文字體一律標楷（含彈出面板與按鈕） */
+.island-world-fullscreen-container *:not(svg):not(path) {
+  font-family: var(--island-calligraphy-font);
+}
+
 /* 依 +8 時區與晴雨變換外圍海天背景色 */
 .island-world-fullscreen-container.phase-morning {
   background: radial-gradient(circle at 50% 40%, #dce6e5 0%, #9ab4b5 60%, #78989a 100%);

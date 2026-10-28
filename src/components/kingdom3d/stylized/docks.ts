@@ -3,7 +3,7 @@ import type { Collider } from '../types';
 import { BOARDING_SPOTS, TRAILHEAD, islandEdge, BASIN_LANDMARKS } from './basinLayout';
 import { REGION_CONFIGS } from '../regionConfigs';
 import { getStyleMaterials, LanternBatch, buildRoofTier, scaledBox } from './architecture';
-import { signboardTexture } from './textures';
+import { signboardTexture, seeded } from './textures';
 import { makePickProxy } from '../picking';
 import { openWater } from './waterLife';
 
@@ -79,6 +79,8 @@ export const TRAIL = (() => {
     plateauR: 11.2,
     pagodaX: wp.x + 2,
     pagodaZ: wp.z,
+    /** 塔頂（第五層）樓板高度：從這裡眺望五島 */
+    topFloorY: 30 + 1.2 + 3.6 + 0.55 + (2.6 + 0.55) * 3,
   };
 })();
 
@@ -191,14 +193,41 @@ export function createPlateauExtras(): { group: THREE.Group; colliders: Collider
   s1.rotation.y = Math.PI / 2 - 0.5;
   g.add(s1);
   g.add(makePickProxy(1.8, 2.8, 1.8, x, z, 0, { kind: 'trail', dir: 'down' }, TRAIL.topY));
+  // 點塔：上到塔頂眺望（目前塔樓的功能只有這個）
+  g.add(makePickProxy(11.4, 16, 11.4, TRAIL.pagodaX, TRAIL.pagodaZ, 0, { kind: 'trail', dir: 'top' }, TRAIL.topY));
+  // 塔頂：「下塔」小牌（點了回到塔外空地）
+  {
+    const sg = sign('下塔', '回到塔外空地', 1.0);
+    sg.position.set(TRAIL.pagodaX + 1.55, TRAIL.topFloorY + 1.5, TRAIL.pagodaZ);
+    sg.rotation.y = -Math.PI / 2;
+    g.add(sg);
+    g.add(makePickProxy(0.5, 1.2, 1.2, TRAIL.pagodaX + 1.55, TRAIL.pagodaZ, 0, { kind: 'trail', dir: 'down-top' }, TRAIL.topFloorY + 0.9));
+    // 塔頂樓板
+    const fl = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.08, 8), sm.woodFloor);
+    fl.position.set(TRAIL.pagodaX, TRAIL.topFloorY + 0.04, TRAIL.pagodaZ);
+    g.add(fl);
+  }
   void REGION_CONFIGS;
   void DEG;
   return { group: g, colliders: PLATEAU_COLLIDERS };
 }
 
 const PLATEAU_STELE: [number, number] = [TRAIL.plateauX + 6.5, TRAIL.plateauZ + 7.6];
+/** 山台上的樹（和山台建模用同一組亂數） */
+const PLATEAU_TREES: Collider[] = (() => {
+  const rand = seeded(5);
+  const out: Collider[] = [];
+  for (let i = 0; i < 16; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 8 + rand() * 4;
+    const sc = 1 + rand() * 0.5;
+    out.push({ id: `plateau-tree-${i}`, type: 'cylinder', x: TRAIL.pagodaX + Math.cos(a) * r, z: TRAIL.pagodaZ + Math.sin(a) * r, radius: 0.35 * sc + 0.1 });
+  }
+  return out;
+})();
 /** 山台上的碰撞：塔基、下山石碑 */
 export const PLATEAU_COLLIDERS: Collider[] = [
   { id: 'plateau-pagoda', type: 'box', x: TRAIL.pagodaX, z: TRAIL.pagodaZ, halfWidth: 5.9, halfDepth: 5.9 },
   { id: 'plateau-stele', type: 'cylinder', x: PLATEAU_STELE[0], z: PLATEAU_STELE[1], radius: 0.75 },
+  ...PLATEAU_TREES,
 ];

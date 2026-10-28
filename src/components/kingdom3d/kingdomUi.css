@@ -153,3 +153,9 @@
 .kx-btn-ghost:hover {
   background: rgba(226, 184, 90, 0.12);
 }
+
+/* 3D 實境漫遊：中文字體一律標楷（含左側內頁、彈出面板） */
+.kx-kai,
+.kx-kai *:not(svg):not(path) {
+  font-family: 'DFKai-SB', 'BiauKai', '標楷體', 'Kaiti TC', 'STKaiti', 'KaiTi', 'LXGW WenKai TC', 'CWTeXKai', 'Noto Serif TC', serif;
+}

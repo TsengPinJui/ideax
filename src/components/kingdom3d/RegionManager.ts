@@ -44,6 +44,8 @@ export interface RegionLoadedData {
 }
 
 export class RegionManager {
+  /** 五座島的島緣欄杆（留步道口）、草地外環的樹與燈柱 */
+  private baseColliders: Collider[] = [];
   public scene: THREE.Scene;
   public activeRegionId: RegionId = 'region-home';
   public failedTargetRegionId: RegionId | null = null;
@@ -118,12 +120,15 @@ export class RegionManager {
         grass
       );
       this.archipelagoBaseGroup.add(island);
+      if (Array.isArray(island.userData.colliders)) this.baseColliders.push(...(island.userData.colliders as Collider[]));
     });
     for (const bridge of WORLD_BRIDGES) {
       this.archipelagoBaseGroup.add(createStyledBridge(bridge));
     }
     // 河邊草地的村民與橋上釣客
-    this.archipelagoBaseGroup.add(createVillagers());
+    const villagers = createVillagers();
+    this.archipelagoBaseGroup.add(villagers);
+    if (Array.isArray(villagers.userData.colliders)) this.baseColliders.push(...(villagers.userData.colliders as Collider[]));
     this.archipelagoBaseGroup.add(trees.build());
     this.archipelagoBaseGroup.add(grass.build());
   }
@@ -328,7 +333,7 @@ export class RegionManager {
    * Return all active colliders across all loaded islands + all 6 bridges
    */
   public getAllColliders(): Collider[] {
-    const all: Collider[] = [...getBridgeSideColliders()];
+    const all: Collider[] = [...getBridgeSideColliders(), ...this.baseColliders];
     for (const [, data] of this.loadedRegions) {
       for (const c of data.colliders) {
         if (!c.id.includes('-rail-')) {

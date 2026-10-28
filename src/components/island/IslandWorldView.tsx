@@ -1193,48 +1193,34 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               </div>
 
               <div className="atmos-grid-section">
-                <span className="atmos-section-label">晴朗 / 晨霧四景</span>
-                <div className="atmos-scene-grid">
-                  {(['morning', 'noon', 'dusk', 'night'] as TimeOfDayPhase[]).map((ph) => {
-                    const isCurrent = activeTimePhase === ph && activeWeather === 'clear';
-                    return (
-                      <button
-                        key={`clear-${ph}`}
-                        type="button"
-                        onClick={() => {
-                          setTimeMode(ph);
-                          setWeatherMode('clear');
-                        }}
-                        className={`atmos-scene-btn ${isCurrent ? 'active' : ''}`}
-                      >
-                        <span className="font-black">{TIME_OF_DAY_CONFIGS[ph].clearLabel}</span>
-                        <small>{TIME_OF_DAY_CONFIGS[ph].timeRange}</small>
-                      </button>
-                    );
-                  })}
+                <span className="atmos-section-label">時段</span>
+                <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+                  <button type="button" onClick={() => setTimeMode('auto')} className={`atmos-scene-btn ${timeMode === 'auto' ? 'active' : ''}`}>
+                    <span className="font-black">自動</span>
+                    <small>依所在地</small>
+                  </button>
+                  {(['morning', 'noon', 'dusk', 'night'] as TimeOfDayPhase[]).map((ph) => (
+                    <button key={`t-${ph}`} type="button" onClick={() => setTimeMode(ph)} className={`atmos-scene-btn ${timeMode === ph ? 'active' : ''}`}>
+                      <span className="font-black">{TIME_OF_DAY_CONFIGS[ph].clearLabel.slice(0, 2)}</span>
+                      <small>{TIME_OF_DAY_CONFIGS[ph].timeRange}</small>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div className="atmos-grid-section mt-2">
-                <span className="atmos-section-label">煙雨四景（加上雨天）</span>
-                <div className="atmos-scene-grid">
-                  {(['morning', 'noon', 'dusk', 'night'] as TimeOfDayPhase[]).map((ph) => {
-                    const isCurrent = activeTimePhase === ph && activeWeather === 'rain';
-                    return (
-                      <button
-                        key={`rain-${ph}`}
-                        type="button"
-                        onClick={() => {
-                          setTimeMode(ph);
-                          setWeatherMode('rain');
-                        }}
-                        className={`atmos-scene-btn is-rain ${isCurrent ? 'active' : ''}`}
-                      >
-                        <span className="font-black">{TIME_OF_DAY_CONFIGS[ph].rainLabel}</span>
-                        <small>動態落雨 · 漣漪</small>
-                      </button>
-                    );
-                  })}
+                <span className="atmos-section-label">天氣</span>
+                <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                  {([
+                    ['auto', '自動', '依所在地'],
+                    ['clear', '晴天', '水燈・天燈'],
+                    ['rain', '雨天', '動態落雨'],
+                  ] as [WeatherMode, string, string][]).map(([w, label, sub]) => (
+                    <button key={`w-${w}`} type="button" onClick={() => setWeatherMode(w)} className={`atmos-scene-btn ${w === 'rain' ? 'is-rain' : ''} ${weatherMode === w ? 'active' : ''}`}>
+                      <span className="font-black">{label}</span>
+                      <small>{sub}</small>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

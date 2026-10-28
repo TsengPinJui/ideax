@@ -32,6 +32,7 @@ import {
   downloadAppLauncherFile,
 } from '../../services/pwaInstaller';
 import './kingdomUi.css';
+import { EnvControls, TimeMode, WeatherMode } from './EnvControls';
 
 interface MobileControlsOverlayProps {
   activeRegionId: RegionId;
@@ -65,6 +66,15 @@ interface MobileControlsOverlayProps {
   bgmMuted?: boolean;
   onToggleBgm?: () => void;
   multiplayer?: { status: 'off' | 'guest' | 'connecting' | 'online' | 'error'; others: number };
+  /** 小地圖下方的時間與天氣（選時段、天氣或自動） */
+  env?: {
+    timeMode: TimeMode;
+    weatherMode: WeatherMode;
+    weather: 'clear' | 'rain';
+    onTimeMode: (m: TimeMode) => void;
+    onWeatherMode: (m: WeatherMode) => void;
+    autoHint?: string;
+  };
 }
 
 function getBuildingFeatureLabel(b: BuildingInteractable): string {
@@ -144,6 +154,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   openMapSignal,
   bgmMuted,
   onToggleBgm,
+  env,
   multiplayer,
 }) => {
   // 視窗尺寸與直橫式偵測（確保手機直式、橫式按鍵都不跑出畫面）
@@ -744,7 +755,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         <button type="button" onClick={onExit} className="kx-round w-8 h-8 sm:w-9 sm:h-9 shrink-0" title="離開 3D，回到網站" aria-label="離開">
           <X className="w-4 h-4" />
         </button>
-        <div className="flex flex-col items-center gap-1 shrink-0">
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
           <CompassMinimap
             playerPos={{ x: playerPos.x, z: playerPos.z }}
             yawRad={yawRad}
@@ -752,6 +763,19 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             size={minimapSize}
             onOpen={() => setMapOpen(true)}
           />
+          {env && (
+            <EnvControls
+              timeMode={env.timeMode}
+              weatherMode={env.weatherMode}
+              tod={timeOfDay || 'dusk'}
+              weather={env.weather}
+              onTimeMode={env.onTimeMode}
+              onWeatherMode={env.onWeatherMode}
+              bgmMuted={bgmMuted}
+              onToggleBgm={onToggleBgm}
+              autoHint={env.autoHint}
+            />
+          )}
         </div>
       </div>
 
@@ -824,33 +848,6 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           data-ui-panel="true"
           className="relative pointer-events-auto flex flex-col items-end gap-2 sm:gap-2.5 shrink-0"
         >
-          {/* 上排：時段與古風背景樂 */}
-          <div className="flex items-center gap-2">
-            {onCycleTimeOfDay && (
-              <button
-                type="button"
-                onClick={onCycleTimeOfDay}
-                className="kx-round w-10 h-10 sm:w-11 sm:h-11"
-                title={`時段：${todLabel}（點一下切換）`}
-                aria-label={`時段：${todLabel}`}
-              >
-                {todIcon}
-              </button>
-            )}
-            {onToggleBgm && (
-              <button
-                type="button"
-                onClick={onToggleBgm}
-                data-on={!bgmMuted}
-                className="kx-round w-10 h-10 sm:w-11 sm:h-11"
-                title={bgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
-                aria-label={bgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
-              >
-                {bgmMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-              </button>
-            )}
-          </div>
-
           {/* 下排：特大版跑步／疾走鍵 */}
           <button
             type="button"
