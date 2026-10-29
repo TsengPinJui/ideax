@@ -1577,6 +1577,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               galleryImages: seedQ.galleryImages,
               demoUrl: seedQ.demoUrl || rawQ.demoUrl,
               vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+              authorId: seedQ.authorId || rawQ.authorId,
+              authorName: seedQ.authorName || rawQ.authorName,
+              authorTitle: seedQ.authorTitle !== undefined ? seedQ.authorTitle : rawQ.authorTitle,
               authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
               referencedPainPoint: seedQ.referencedPainPoint,
               ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
@@ -2958,7 +2961,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     appName: seedQ.appName || q.appName,
                     title: seedQ.title,
                     description: seedQ.description,
+                    authorId: seedQ.authorId || q.authorId,
                     authorName: seedQ.authorName,
+                    authorTitle: seedQ.authorTitle !== undefined ? seedQ.authorTitle : q.authorTitle,
                     tipsHistory: seedQ.tipsHistory || q.tipsHistory,
                     category: seedQ.category,
                     subcategory: seedQ.subcategory,
@@ -3319,6 +3324,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       galleryImages: seedQ.galleryImages,
                       demoUrl: seedQ.demoUrl || rawQ.demoUrl,
                       vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                      authorId: seedQ.authorId || rawQ.authorId,
+                      authorName: seedQ.authorName || rawQ.authorName,
+                      authorTitle: seedQ.authorTitle !== undefined ? seedQ.authorTitle : rawQ.authorTitle,
                       authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
                       referencedPainPoint: seedQ.referencedPainPoint,
                       ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
@@ -3364,7 +3372,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'q-vp-idea-stallmatch',
             'q-vp-vibe-stallmatch',
           ]);
-          const isUserPastPainMigrated = localStorage.getItem(`${STORAGE_KEY_PREFIX}user_past_pain_v1`) === 'true';
+          const isUserPastPainMigrated = localStorage.getItem(`${STORAGE_KEY_PREFIX}user_past_pain_v2`) === 'true';
           const seedSourceForBoot = isPurgedBoot ? USER_PAST_ALL_POSTS : ALL_VIRTUAL_PROPOSALS_SEED;
           const missingVirtualForCloud = seedSourceForBoot.filter(
             (vq) =>
@@ -3386,7 +3394,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}user_past_pain_v1`, 'true');
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}user_past_pain_v2`, 'true');
             } catch {}
           }
           const mergedById = new Map<string, Question>();

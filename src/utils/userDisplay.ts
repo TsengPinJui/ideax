@@ -725,6 +725,9 @@ export function resolveUserDisplayName(
   fallbackName?: string,
   usersList?: User[]
 ): string {
+  if (fallbackName === '平台精選' || userId === 'u-platform-curated') {
+    return '平台精選';
+  }
   if (fallbackName === PLATFORM_CURATED_NAME || userId === 'platform') {
     return PLATFORM_CURATED_NAME;
   }
@@ -832,10 +835,12 @@ export function getUserNameColorClass(
   const effectiveId = userId || targetUser?.id || '';
   const idCategory = resolveIdCategory(targetUser || { id: effectiveId });
 
-  // 0. 平台嚴選 -> 琥珀金 (text-amber-700 font-bold)
+  // 0. 平台嚴選 / 平台精選 -> 琥珀金 (text-amber-700 font-bold)
   if (
+    effectiveId === 'u-platform-curated' ||
     targetUser?.name === '平台嚴選' ||
-    (targetUser?.name && targetUser.name.includes('平台嚴選'))
+    targetUser?.name === '平台精選' ||
+    (targetUser?.name && (targetUser.name.includes('平台嚴選') || targetUser.name.includes('平台精選')))
   ) {
     return 'text-amber-700 font-bold';
   }
@@ -947,6 +952,9 @@ export function resolveUserAvatar(
   fallbackAvatar?: string,
   usersList?: User[]
 ): string {
+  if (userId === 'u-platform-curated') {
+    return '/logo-bulb.png';
+  }
   if (userId === 'platform' || fallbackAvatar === PLATFORM_CURATED_AVATAR) {
     return PLATFORM_CURATED_AVATAR;
   }
