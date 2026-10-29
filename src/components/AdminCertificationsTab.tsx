@@ -5,6 +5,8 @@ import { useApp } from '../context/AppContext';
 import { User } from '../types';
 import { getUserPrivateData } from '../services/firestoreSync';
 import { matchUserSearch } from '../utils/userDisplay';
+import { isRealRegisteredUser, isTestAccountUserId } from '../data/mockData';
+import { isSimulatedUser } from '../data/virtualProposalsSeed';
 import {
   BadgeCheck,
   ShieldCheck,
@@ -103,18 +105,31 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
     }
   }, [targetUserId, availableUsers]);
 
+  const realUsers = React.useMemo(
+    () =>
+      availableUsers.filter(
+        (u) =>
+          u &&
+          u.id !== 'user-guest' &&
+          isRealRegisteredUser(u) &&
+          !isSimulatedUser(u) &&
+          !isTestAccountUserId(u.id)
+      ),
+    [availableUsers]
+  );
+
   // 統計數據
-  const pendingCount = availableUsers.filter(
+  const pendingCount = realUsers.filter(
     (u) => u.realNameAuthStatus === 'pending' || u.expertApplicationStatus === 'pending'
   ).length;
-  const kycVerifiedCount = availableUsers.filter((u) => u.realNameAuthStatus === 'verified').length;
-  const expertVerifiedCount = availableUsers.filter((u) => u.verifiedExpert).length;
-  const unverifiedCount = availableUsers.filter(
+  const kycVerifiedCount = realUsers.filter((u) => u.realNameAuthStatus === 'verified').length;
+  const expertVerifiedCount = realUsers.filter((u) => u.verifiedExpert).length;
+  const unverifiedCount = realUsers.filter(
     (u) => u.realNameAuthStatus !== 'verified' && !u.verifiedExpert
   ).length;
 
   // 篩選用戶清單
-  const filteredUsers = availableUsers.filter((u) => {
+  const filteredUsers = realUsers.filter((u) => {
     // 排除訪客
     if (u.id === 'user-guest') return false;
 

@@ -10008,8 +10008,18 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     }
     const nightSkyLanterns: NightSkyLanternItem[] = [];
     const skyLanternOrigins: Array<[number, number]> = [
-      [-18, -14],
-      [20, 16],
+      [-62, -45], // 西北痛點島空域
+      [-32, -68], // 北部水域
+      [12, -58],  // 東北討論島上空
+      [56, -36],  // 東部水域
+      [68, 14],   // 東南百工街區上空
+      [42, 58],   // 南部求職島上空
+      [-12, 62],  // 南部拱橋水域
+      [-58, 38],  // 西南水域
+      [-22, -18], // 湖心亭西北空域
+      [24, -12],  // 湖心亭東北空域
+      [-15, 24],  // 創點島西南空域
+      [28, 26],   // 創點島東南空域
     ];
     const skyLanternCount = skyLanternOrigins.length;
     for (let i = 0; i < skyLanternCount; i++) {
@@ -11258,7 +11268,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         sp.scale.setScalar(0.5 + impactIntensity * 0.9);
       });
 
-      // 4.4 夜晚水上水燈靜置（不一直漂動）& 晚上好天氣時祈福天燈冉冉升空（精簡為 2 盞）
+      // 4.4 夜晚水上水燈靜置（不一直漂動）& 晚上好天氣時祈福天燈在開闊高空冉冉升空
       nightWaterLanternGroup.visible = isNightPhase;
       if (isNightPhase) {
         waterLanternCoreMat.emissiveIntensity = 1.95;
@@ -11270,7 +11280,7 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         skyLanternBodyMat.emissiveIntensity = 2.0 + Math.sin(t * 4.2) * 0.3;
         nightSkyLanterns.forEach((sl, idx) => {
           const cycle = (t * sl.speed + sl.phase) % 1;
-          const curY = 5.5 + cycle * 30.0;
+          const curY = 9.5 + cycle * 45.0;
           const swayX = Math.sin(t * 0.65 + idx * 1.3) * sl.swayAmp;
           const swayZ = Math.cos(t * 0.55 + idx * 1.7) * sl.swayAmp;
           sl.group.position.set(sl.originX + swayX, curY, sl.originZ + swayZ);

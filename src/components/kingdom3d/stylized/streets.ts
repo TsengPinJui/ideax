@@ -992,34 +992,7 @@ function buildTeaStreetAtmosphere(root: THREE.Group, lanterns: LanternBatch) {
     }
   });
 
-  // 上空漂浮的祈福天燈群（呼應參考圖四茶藝街夜空漫天升起的天燈）
-  const skyGroup = new THREE.Group();
-  skyGroup.name = 'tea_street_sky_lanterns';
-  skyGroup.userData.noMerge = true;
-  root.add(skyGroup);
-  const skyMat = new THREE.MeshStandardMaterial({
-    color: 0xffe49e,
-    emissive: new THREE.Color(0xff9d2e),
-    emissiveIntensity: 1.35,
-    roughness: 0.35,
-  });
-  const skyItems: { mesh: THREE.Mesh; baseY: number; phase: number }[] = [];
-  for (let i = 0; i < 24; i++) {
-    const sx = streetX + (((i * 37) % 100) / 100 - 0.5) * 14.5;
-    const sz = -29.0 - ((i * 53) % 32);
-    const sy = 8.2 + ((i * 29) % 11) * 0.95;
-    const scale = 0.75 + (i % 4) * 0.14;
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * scale, 0.15 * scale, 0.48 * scale, 10), skyMat);
-    m.position.set(sx, sy, sz);
-    m.userData.noMerge = true;
-    skyGroup.add(m);
-    skyItems.push({ mesh: m, baseY: sy, phase: i * 0.85 });
-  }
-  skyGroup.userData.tick = (t: number) => {
-    for (const it of skyItems) {
-      it.mesh.position.y = it.baseY + Math.sin(t * 0.9 + it.phase) * 0.28;
-    }
-  };
+  // 茶藝街上方維持清朗開闊天際，天燈由全島天際系統 (waterLife) 在高空廣闊漂浮，不再聚集於單一街道區塊
   void lanterns;
 }
 

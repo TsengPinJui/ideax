@@ -63,26 +63,197 @@ const INITIAL_REGISTRATIONS: CompetitionRegistrationRecord[] = [];
 // 初始示範提案審核資料清空歸零（由真實提案建立）
 const INITIAL_PROPOSALS: StarSeasonProposal[] = [];
 
+// 已確認真實參賽隊伍與隊長名單（靠臉解決、超級痛點、創星漫遊者）
+const CONFIRMED_REAL_TEAM_NAMES = new Set(['靠臉解決', '超級痛點', '創星漫遊者']);
+const CONFIRMED_REAL_PARTICIPANT_UIDS = new Set([
+  '0VcD0rRXRHbfNjmDVVBgk7Iil2F2', // 小美余 (靠臉解決)
+  'bqUlZCdy1aeg6wGHOvhGdgOrkOd2', // ching (超級痛點)
+  '2e9KwdV4uvT1DdcLvnVR9tBO4dD3', // 陳天奉 (創星漫遊者)
+]);
+
+export function isFakeOrVirtualRegistration(r: any): boolean {
+  if (!r || typeof r !== 'object') return true;
+  const id = String(r.id || '').trim();
+  const userId = String(r.userId || '').trim();
+  const teamName = String(r.teamName || '').trim();
+  const leaderName = String(r.leaderName || '').trim();
+  const schoolName = String(r.schoolName || '').trim();
+  const leaderEmail = String(r.leaderEmail || '').trim().toLowerCase();
+
+  if (CONFIRMED_REAL_TEAM_NAMES.has(teamName) || CONFIRMED_REAL_PARTICIPANT_UIDS.has(userId)) {
+    return false;
+  }
+
+  if (!teamName || !leaderName) return true;
+
+  return (
+    id.startsWith('test-') ||
+    id.startsWith('demo-') ||
+    id.startsWith('mock-') ||
+    id.startsWith('reg-demo-') ||
+    id.startsWith('reg-test-') ||
+    userId.startsWith('test-') ||
+    userId.startsWith('demo-') ||
+    userId.startsWith('mock-') ||
+    userId.startsWith('u-vp-') ||
+    userId.startsWith('u-vc-') ||
+    userId.startsWith('u-agent-') ||
+    userId.startsWith('user-') ||
+    userId.startsWith('exp-') ||
+    userId === 'user-guest' ||
+    userId === 'a000000001' ||
+    userId === 'c100000001' ||
+    userId === 'c200000002' ||
+    teamName.includes('測試') ||
+    teamName.includes('示範') ||
+    teamName.includes('虛擬') ||
+    teamName.includes('假團隊') ||
+    teamName.toLowerCase().includes('demo') ||
+    teamName.toLowerCase().includes('test') ||
+    leaderName.includes('測試') ||
+    leaderName.includes('示範') ||
+    leaderName.includes('虛擬') ||
+    schoolName.includes('測試') ||
+    schoolName.includes('示範') ||
+    leaderEmail.endsWith('@ideax.demo') ||
+    leaderEmail.endsWith('@example.com') ||
+    Boolean((r as any).isSimulated)
+  );
+}
+
+export function isFakeOrVirtualProposal(p: any): boolean {
+  if (!p || typeof p !== 'object') return true;
+  const id = String(p.id || '').trim();
+  const authorId = String(p.authorId || p.userId || '').trim();
+  const authorName = String(p.authorName || p.leaderName || '').trim();
+  const teamName = String(p.teamName || '').trim();
+  const title = String(p.title || p.projectTitle || '').trim();
+
+  if (
+    CONFIRMED_REAL_TEAM_NAMES.has(teamName) ||
+    CONFIRMED_REAL_PARTICIPANT_UIDS.has(authorId) ||
+    authorName === '小美余' ||
+    authorName === '陳天奉' ||
+    authorName === 'ching' ||
+    id === 'star-prop-1792853867316-1ymcj'
+  ) {
+    return false;
+  }
+
+  if (!title) return true;
+
+  return (
+    p.isCompetitionJoined === false ||
+    id.startsWith('q-idea-user-') ||
+    id.startsWith('q-pain-user-') ||
+    id.startsWith('vibe-app-') ||
+    id.startsWith('game-hot-') ||
+    id.startsWith('prop-star-') ||
+    /^q-\d+$/.test(id) ||
+    id.startsWith('demo-') ||
+    id.startsWith('test-') ||
+    id.startsWith('mock-') ||
+    id.startsWith('q-demo-') ||
+    id.startsWith('q-mock-') ||
+    id.startsWith('q-test-') ||
+    id.startsWith('q-vp-') ||
+    id.startsWith('q-179') ||
+    authorId === 'u-platform-curated' ||
+    authorId === 'platform' ||
+    authorId === 'user-guest' ||
+    authorId === 'a000000001' ||
+    authorId.startsWith('demo-') ||
+    authorId.startsWith('test-') ||
+    authorId.startsWith('mock-') ||
+    authorId.startsWith('u-vp-') ||
+    authorId.startsWith('u-vc-') ||
+    authorId.startsWith('u-agent-') ||
+    authorId.startsWith('user-') ||
+    authorId.startsWith('exp-') ||
+    authorName === '平台精選' ||
+    authorName === '平台嚴選' ||
+    authorName === 'IdeaX 管理團隊' ||
+    authorName === 'IdeaX創點子團隊' ||
+    Boolean((p as any).isSimulated)
+  );
+}
+
+export function isFakeOrVirtualExpert(e: any): boolean {
+  if (!e || typeof e !== 'object') return true;
+  const id = String(e.id || '').trim();
+  const userId = String(e.userId || '').trim();
+  const expertName = String(e.expertName || e.name || '').trim();
+  const organization = String(e.organization || '').trim();
+  const email = String(e.expertEmail || e.email || '').trim().toLowerCase();
+
+  if (userId === 'ZRXZWS8iiPg91CUV6vQrehK6ZW62') return false;
+  if (!expertName) return true;
+
+  return (
+    e.status === 'rejected' ||
+    id === 'exp-4' ||
+    userId === 'exp-4' ||
+    id.startsWith('test-') ||
+    id.startsWith('demo-') ||
+    id.startsWith('mock-') ||
+    userId.startsWith('test-') ||
+    userId.startsWith('demo-') ||
+    userId.startsWith('mock-') ||
+    userId.startsWith('u-vp-') ||
+    userId.startsWith('u-vc-') ||
+    userId.startsWith('u-agent-') ||
+    userId.startsWith('user-expert-') ||
+    userId.startsWith('solver-') ||
+    userId === 'user-guest' ||
+    userId === 'a000000001' ||
+    userId === 'c100000001' ||
+    userId === 'c200000002' ||
+    userId === 'K338pnIB8JMJ5Af9K5blbECuX8R2' ||
+    userId === 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' ||
+    organization.includes('逢甲') ||
+    organization.includes('實踐') ||
+    expertName.includes('廖音淇') ||
+    expertName.includes('周怡君') ||
+    expertName.includes('料因其') ||
+    expertName.includes('K imi') ||
+    expertName.includes('測試') ||
+    expertName.includes('示範') ||
+    expertName.includes('虛擬') ||
+    email.endsWith('@ideax.demo') ||
+    email.endsWith('@example.com') ||
+    Boolean((e as any).isSimulated)
+  );
+}
+
 /**
- * 取得所有參賽報名資料
+ * 取得所有參賽報名資料（自動剔除假帳號與虛擬團隊）
  */
 export function getCompetitionRegistrations(): CompetitionRegistrationRecord[] {
   try {
     const raw = localStorage.getItem(REGISTRATIONS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter((r) => !isFakeOrVirtualRegistration(r));
+        if (filtered.length !== parsed.length) {
+          try {
+            localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(filtered));
+          } catch {}
+        }
+        return filtered;
+      }
     }
   } catch {}
   return [];
 }
 
 /**
- * 儲存所有參賽報名資料
+ * 儲存所有參賽報名資料（自動剔除假帳號與虛擬團隊）
  */
 export function saveAllCompetitionRegistrations(records: CompetitionRegistrationRecord[]): void {
   try {
-    localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(records));
+    const cleaned = (records || []).filter((r) => !isFakeOrVirtualRegistration(r));
+    localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(cleaned));
   } catch {}
 }
 
@@ -142,25 +313,34 @@ export function updateCompetitionRegistrationStatus(
 }
 
 /**
- * 取得所有競賽提案（管理員審核用）
+ * 取得所有競賽提案（管理員審核用，自動剔除假提案與未參賽資料）
  */
 export function getCompetitionProposalsForAdmin(): StarSeasonProposal[] {
   try {
     const raw = localStorage.getItem(PROPOSALS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter((p) => !isFakeOrVirtualProposal(p));
+        if (filtered.length !== parsed.length) {
+          try {
+            localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(filtered));
+          } catch {}
+        }
+        return filtered;
+      }
     }
   } catch {}
   return [];
 }
 
 /**
- * 儲存所有提案
+ * 儲存所有提案（自動剔除假提案與未參賽資料）
  */
 export function saveAllCompetitionProposals(proposals: StarSeasonProposal[]): void {
   try {
-    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(proposals));
+    const cleaned = (proposals || []).filter((p) => !isFakeOrVirtualProposal(p));
+    localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(cleaned));
   } catch {}
 }
 
@@ -297,20 +477,7 @@ export function getCompetitionExperts(): CompetitionExpertRecord[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // 嚴格過濾：被退回或被撤銷資格者、以及指定未通過審核者一律剔除
-        const filtered = parsed.filter(
-          (e) =>
-            e &&
-            e.status !== 'rejected' &&
-            e.userId !== 'K338pnIB8JMJ5Af9K5blbECuX8R2' &&
-            e.userId !== 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' &&
-            !e.organization?.includes('逢甲') &&
-            !e.organization?.includes('實踐') &&
-            !e.expertName?.includes('廖音淇') &&
-            !e.expertName?.includes('周怡君') &&
-            !e.expertName?.includes('料因其') &&
-            !e.expertName?.includes('K imi')
-        );
+        const filtered = parsed.filter((e) => !isFakeOrVirtualExpert(e));
         if (filtered.length !== parsed.length) {
           try {
             localStorage.setItem(EXPERTS_STORAGE_KEY, JSON.stringify(filtered));
@@ -324,23 +491,11 @@ export function getCompetitionExperts(): CompetitionExpertRecord[] {
 }
 
 /**
- * 儲存所有專家名單（嚴格過濾退回與遭撤銷資格者）
+ * 儲存所有專家名單（嚴格過濾退回、假帳號與遭撤銷資格者）
  */
 export function saveAllCompetitionExperts(experts: CompetitionExpertRecord[]): void {
   try {
-    const cleaned = (experts || []).filter(
-      (e) =>
-        e &&
-        e.status !== 'rejected' &&
-        e.userId !== 'K338pnIB8JMJ5Af9K5blbECuX8R2' &&
-        e.userId !== 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' &&
-        !e.organization?.includes('逢甲') &&
-        !e.organization?.includes('實踐') &&
-        !e.expertName?.includes('廖音淇') &&
-        !e.expertName?.includes('周怡君') &&
-        !e.expertName?.includes('料因其') &&
-        !e.expertName?.includes('K imi')
-    );
+    const cleaned = (experts || []).filter((e) => !isFakeOrVirtualExpert(e));
     localStorage.setItem(EXPERTS_STORAGE_KEY, JSON.stringify(cleaned));
   } catch {}
 }
@@ -446,33 +601,10 @@ export function resetCompetitionDataToZero(): void {
  * 計算競賽全站聚合數據 (供管理員後台檢視)
  */
 export function getCompetitionAggregatedMetrics(): CompetitionAdminMetrics {
-  // 依用戶指示：移除或隱藏所有測試帳號、假資料、模擬數據（不加入採計）
-  const registrations = getCompetitionRegistrations().filter(
-    (r) =>
-      !r.userId?.startsWith('test-') &&
-      !r.userId?.startsWith('demo-') &&
-      !r.userId?.startsWith('user-expert-') &&
-      !r.id?.startsWith('test-') &&
-      !r.id?.startsWith('demo-') &&
-      r.userId !== 'user-guest'
-  );
-  const proposals = getCompetitionProposalsForAdmin().filter(
-    (p) =>
-      !p.id?.startsWith('demo-') &&
-      !p.id?.startsWith('test-') &&
-      !p.id?.startsWith('q-vp-') &&
-      !p.authorId?.startsWith('test-') &&
-      !p.authorId?.startsWith('demo-') &&
-      !p.authorId?.startsWith('user-expert-') &&
-      p.authorId !== 'user-guest'
-  );
-  const experts = getCompetitionExperts().filter(
-    (e) =>
-      !e.userId?.startsWith('test-') &&
-      !e.userId?.startsWith('user-expert-') &&
-      !e.id?.startsWith('test-') &&
-      e.userId !== 'user-guest'
-  );
+  // 依用戶指示：移除或隱藏所有測試帳號、假資料、模擬數據與虛擬團隊（不加入採計）
+  const registrations = getCompetitionRegistrations().filter((r) => !isFakeOrVirtualRegistration(r));
+  const proposals = getCompetitionProposalsForAdmin().filter((p) => !isFakeOrVirtualProposal(p));
+  const experts = getCompetitionExperts().filter((e) => !isFakeOrVirtualExpert(e));
 
   // 1. 登入用戶數（完全基於真實帳號、報名、專家與提案者集合）
   const userSet = new Set<string>();

@@ -61,6 +61,9 @@ import {
   saveCompetitionHomepageStatsConfig,
   getCompetitionAggregatedMetrics,
   resetCompetitionDataToZero,
+  isFakeOrVirtualRegistration,
+  isFakeOrVirtualProposal,
+  isFakeOrVirtualExpert,
 } from '../services/competitionAdminSync';
 import { notifyExpertReviewEmail } from '../services/expertNotificationService';
 import {
@@ -137,13 +140,16 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       if (regsRes?.success && Array.isArray(regsRes.records)) {
         const localRegs = getCompetitionRegistrations();
         const mergedMap = new Map<string, CompetitionRegistrationRecord>();
-        localRegs.forEach((r) => mergedMap.set(r.id || r.userId, r));
+        localRegs.forEach((r) => {
+          if (!isFakeOrVirtualRegistration(r)) mergedMap.set(r.id || r.userId, r);
+        });
         regsRes.records.forEach((r: any) => {
+          if (isFakeOrVirtualRegistration(r)) return;
           const key = r.id || r.userId;
           const existing = mergedMap.get(key);
           mergedMap.set(key, { ...existing, ...r });
         });
-        const mergedList = Array.from(mergedMap.values());
+        const mergedList = Array.from(mergedMap.values()).filter((r) => !isFakeOrVirtualRegistration(r));
         setRegistrations(mergedList);
         saveAllCompetitionRegistrations(mergedList);
       }
@@ -151,12 +157,17 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       if (propsRes?.success && Array.isArray(propsRes.proposals)) {
         const localProps = getCompetitionProposalsForAdmin();
         const mergedPropsMap = new Map<string, StarSeasonProposal>();
-        localProps.forEach((p) => mergedPropsMap.set(p.id, p));
+        localProps.forEach((p) => {
+          if (!isFakeOrVirtualProposal(p) && !isFakeProposal(p)) mergedPropsMap.set(p.id, p);
+        });
         propsRes.proposals.forEach((p: any) => {
+          if (isFakeOrVirtualProposal(p) || isFakeProposal(p)) return;
           const existing = mergedPropsMap.get(p.id);
           mergedPropsMap.set(p.id, { ...existing, ...p });
         });
-        const mergedPropList = Array.from(mergedPropsMap.values());
+        const mergedPropList = Array.from(mergedPropsMap.values()).filter(
+          (p) => !isFakeOrVirtualProposal(p) && !isFakeProposal(p)
+        );
         setProposals(mergedPropList);
         saveAllCompetitionProposals(mergedPropList);
       }
@@ -164,16 +175,20 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       if (expRes?.success && Array.isArray(expRes.experts)) {
         const localExp = getCompetitionExperts();
         const mergedExpMap = new Map<string, CompetitionExpertRecord>();
-        localExp.forEach((e) => mergedExpMap.set(e.id || e.userId, e));
+        localExp.forEach((e) => {
+          if (!isFakeOrVirtualExpert(e)) mergedExpMap.set(e.id || e.userId, e);
+        });
         expRes.experts.forEach((e: any) => {
+          if (isFakeOrVirtualExpert(e)) return;
           const key = e.id || e.userId;
           const existing = mergedExpMap.get(key);
           mergedExpMap.set(key, { ...existing, ...e });
         });
-        const mergedExpList = Array.from(mergedExpMap.values());
+        const mergedExpList = Array.from(mergedExpMap.values()).filter((e) => !isFakeOrVirtualExpert(e));
         setExperts(mergedExpList);
         saveAllCompetitionExperts(mergedExpList);
       }
+      setAdminMetrics(getCompetitionAggregatedMetrics());
     }).catch(() => {});
   };
 
@@ -412,25 +427,15 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const pendingExpertsCount = experts.filter((e) => e.status === 'pending_review').length;
 
   const filteredRegistrations = registrations.filter((r) => {
-    if (
-      r.userId?.startsWith('test-') ||
-      r.userId?.startsWith('demo-') ||
-      r.userId?.startsWith('u-vp-') ||
-      r.userId?.startsWith('u-agent-') ||
-      r.id?.startsWith('test-') ||
-      r.id?.startsWith('demo-') ||
-      r.userId === 'user-guest'
-    ) {
-      return false;
-    }
+    if (isFakeOrVirtualRegistration(r)) return false;
     if (statusFilter === 'pending' && (r.status as string) !== 'pending_review' && (r.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && r.status !== 'approved') return false;
     if (statusFilter === 'rejected' && r.status !== 'rejected') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchTeam = r.teamName.toLowerCase().includes(q);
-      const matchLeader = r.leaderName.toLowerCase().includes(q);
-      const matchSchool = r.schoolName.toLowerCase().includes(q);
+      const matchTeam = (r.teamName || '').toLowerCase().includes(q);
+      const matchLeader = (r.leaderName || '').toLowerCase().includes(q);
+      const matchSchool = (r.schoolName || '').toLowerCase().includes(q);
       const matchTitle = (r.projectTitle || '').toLowerCase().includes(q);
       return matchTeam || matchLeader || matchSchool || matchTitle;
     }
@@ -438,28 +443,29 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   });
 
   const filteredExperts = experts.filter((e) => {
+    if (isFakeOrVirtualExpert(e)) return false;
     if (statusFilter === 'pending' && (e.status as string) !== 'pending_review' && (e.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && e.status !== 'approved') return false;
     if (statusFilter === 'rejected' && e.status !== 'rejected') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = e.expertName.toLowerCase().includes(q);
-      const matchOrg = e.organization.toLowerCase().includes(q);
-      const matchTitle = e.jobTitle.toLowerCase().includes(q);
+      const matchName = (e.expertName || '').toLowerCase().includes(q);
+      const matchOrg = (e.organization || '').toLowerCase().includes(q);
+      const matchTitle = (e.jobTitle || '').toLowerCase().includes(q);
       return matchName || matchOrg || matchTitle;
     }
     return true;
   });
 
   const filteredProposals = proposals.filter((p) => {
-    if (isFakeProposal(p)) return false;
+    if (isFakeProposal(p) || isFakeOrVirtualProposal(p)) return false;
     if (statusFilter === 'pending' && (p.status as string) !== 'pending_review' && (p.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && p.status !== 'approved') return false;
     if (statusFilter === 'rejected' && p.status !== 'rejected') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchTitle = p.title.toLowerCase().includes(q);
-      const matchAuthor = p.authorName.toLowerCase().includes(q);
+      const matchTitle = (p.title || '').toLowerCase().includes(q);
+      const matchAuthor = (p.authorName || '').toLowerCase().includes(q);
       return matchTitle || matchAuthor;
     }
     return true;
@@ -1198,124 +1204,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SUB-VIEW 1: 參賽團隊報名審核 (Registrations) */}
-      {/* ========================================================================= */}
-      {subTab === 'registrations' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-stone-500 px-1">
-            <span>共 {filteredRegistrations.length} 筆參賽團隊報名記錄</span>
-            <span>可直接在此核准或填寫退回原因</span>
-          </div>
 
-          {filteredRegistrations.length === 0 ? (
-            <div className="p-12 text-center text-stone-400 bg-white rounded-3xl border border-stone-200">
-              <Users className="w-8 h-8 mx-auto mb-2 text-stone-300" />
-              <p className="text-xs">尚無符合條件的參賽團隊報名記錄</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredRegistrations.map((reg) => {
-                const trackObj = (reg.track && STAR_SEASON_TRACKS[reg.track]) || (reg.track ? Object.values(STAR_SEASON_TRACKS).find((t) => t.id === reg.track) : undefined);
-                return (
-                  <div
-                    key={reg.id}
-                    className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-emerald-300 transition-all shadow-2xs space-y-3 text-stone-900"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          {trackObj?.name || '一般賽道'}
-                        </span>
-                        <h4 className="text-sm font-black text-stone-900">
-                          {reg.teamName}
-                        </h4>
-                        <span className="text-xs text-stone-500">
-                          （隊長：{reg.leaderName} • {reg.schoolName} {reg.department}）
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            reg.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : reg.status === 'rejected'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800 animate-pulse'
-                          }`}
-                        >
-                          {reg.status === 'approved'
-                            ? '✅ 已核准'
-                            : reg.status === 'rejected'
-                            ? '❌ 已退回'
-                            : '⏳ 待審核'}
-                        </span>
-                        <span className="text-[10px] text-stone-400 font-mono">
-                          {new Date(reg.createdAt).toLocaleDateString('zh-TW')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs text-stone-700">
-                      <div>
-                        <span className="font-bold text-stone-900">專案名稱：</span>
-                        <span className="font-bold text-emerald-800">{reg.projectTitle}</span>
-                      </div>
-                      <p className="text-stone-600 line-clamp-2">
-                        <span className="font-bold text-stone-900">專案摘要：</span>
-                        {reg.summary}
-                      </p>
-                      {reg.advisorName && (
-                        <div className="text-[11px] text-stone-500">
-                          指導教授：{reg.advisorName}
-                        </div>
-                      )}
-                      {reg.referralSource && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 w-fit">
-                          <span className="font-bold">📢 得知管道：</span>
-                          <span>{reg.referralSource}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 審核操作按鍵 */}
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
-                      {reg.status !== 'approved' && (
-                        <button
-                          type="button"
-                          onClick={() => handleReviewReg(reg.id, 'approved')}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>核准參賽</span>
-                        </button>
-                      )}
-                      {reg.status !== 'rejected' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveReviewNoteModal({
-                              id: reg.id,
-                              type: 'reg',
-                              title: reg.teamName,
-                              targetStatus: 'rejected',
-                            })
-                          }
-                          className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>退回修正</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* SUB-VIEW 2: 專家審核 (Experts Management) */}
@@ -1471,163 +1360,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SUB-VIEW 3: 競賽提案審核 (Proposals) */}
-      {/* ========================================================================= */}
-      {subTab === 'proposals' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-stone-500 px-1">
-            <span>共 {filteredProposals.length} 件競賽提案</span>
-            <span>通過審核後將正式刊登於探索提案公開庫</span>
-          </div>
 
-          {filteredProposals.length === 0 ? (
-            <div className="p-12 text-center text-stone-400 bg-white rounded-3xl border border-stone-200">
-              <FileText className="w-8 h-8 mx-auto mb-2 text-stone-300" />
-              <p className="text-xs">尚無符合條件的提案記錄</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredProposals.map((prop) => {
-                const trackObj = STAR_SEASON_TRACKS[prop.track] || Object.values(STAR_SEASON_TRACKS).find((t) => t.id === prop.track);
-                return (
-                  <div
-                    key={prop.id}
-                    className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-emerald-300 transition-all shadow-2xs space-y-3 text-stone-900"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                          {prop.stage === 'pain_point' ? '徵點子 (痛點)' : '創新提案'}
-                        </span>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
-                          {trackObj?.name || '賽道'}
-                        </span>
-                        <h4 className="text-sm font-black text-stone-900">
-                          {prop.title}
-                        </h4>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            prop.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : prop.status === 'rejected'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800 animate-pulse'
-                          }`}
-                        >
-                          {prop.status === 'approved'
-                            ? '✅ 已刊登'
-                            : prop.status === 'rejected'
-                            ? '❌ 已退回'
-                            : '⏳ 待審核'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-stone-600 line-clamp-2">
-                      {prop.summary}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs">
-                      <div className="flex items-center gap-3 text-stone-500 text-[11px]">
-                        <span>提案人：{prop.authorName}</span>
-                        <span>獲得支持：${(prop.supportPoints || 0).toLocaleString()} 點</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {prop.status !== 'approved' && (
-                          <button
-                            type="button"
-                            onClick={() => handleReviewProp(prop.id, 'approved')}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>核准上架</span>
-                          </button>
-                        )}
-                        {prop.status !== 'rejected' && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActiveReviewNoteModal({
-                                id: prop.id,
-                                type: 'prop',
-                                title: prop.title,
-                                targetStatus: 'rejected',
-                              })
-                            }
-                            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>退回</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUB-VIEW 4: 決選名次與痛點採用獎勵 (Awards) */}
-      {/* ========================================================================= */}
-      {subTab === 'awards' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-white border border-stone-200 text-xs text-stone-700 space-y-1">
-            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <span>決賽名次核定與痛點獎勵發放</span>
-            </h4>
-            <p className="text-stone-500">
-              冠軍 NT$30,000、亞軍 NT$10,000、季軍 NT$4,000。獲獎團隊所引用的痛點提出者，核可後發放 $1,500 好禮（1200點提問金）。
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            {proposals.filter((p) => p.status === 'approved').map((prop) => (
-              <div
-                key={prop.id}
-                className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-stone-900 text-sm">{prop.title}</div>
-                  <div className="text-xs text-stone-500">提案人：{prop.authorName}</div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-stone-100 text-xs">
-                  <span className="font-bold text-stone-700">核定名次：</span>
-                  {[1, 2, 3].map((rank) => (
-                    <button
-                      key={rank}
-                      type="button"
-                      onClick={() => handleAward(prop.id, rank, true)}
-                      className={`px-3 py-1 rounded-xl font-bold cursor-pointer transition-all ${
-                        prop.finalRank === rank
-                          ? 'bg-amber-400 text-stone-950 shadow-xs'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                      }`}
-                    >
-                      第 {rank} 名 {rank === 1 ? '(3萬)' : rank === 2 ? '(1萬)' : '(4000元)'}
-                    </button>
-                  ))}
-                  {prop.sourcePainPointProposalId && (
-                    <span className="ml-auto text-[11px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                      🎁 痛點提出者獎勵：已核可 (1200點提問金)
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* SUB-VIEW 1: 參賽團隊報名審核 (Registrations) */}
@@ -1941,7 +1674,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
           </div>
 
           <div className="space-y-2.5">
-            {proposals.map((prop, idx) => {
+            {filteredProposals.map((prop, idx) => {
               const isTop20 = idx < 20;
               const hasAdoptedPainPoint = !!prop.sourcePainPointTitle;
 

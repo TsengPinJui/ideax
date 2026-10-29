@@ -496,13 +496,17 @@ export class WaterLife {
     }
     this.root.add(this.waterLanterns);
 
-    // 天燈（零星幾盞）
+    // 天燈：遍佈全境天空（高空自然漂浮、錯落升空，避免聚集在局部區塊）
     const body = new THREE.MeshBasicMaterial({ color: 0xffa040, side: THREE.DoubleSide, transparent: true, opacity: 0.95, fog: false });
-    this.skyGlow = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xff9a3c, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-    for (let i = 0; i < 9; i++) {
+    this.skyGlow = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xff9a3c, transparent: true, opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+    const SKY_LANTERN_COUNT = 28;
+    for (let i = 0; i < SKY_LANTERN_COUNT; i++) {
       const g = skyLantern(body, this.skyGlow);
-      g.scale.setScalar(1.35);
-      const s = this.spawnSky(g, 4 + this.rand() * 55);
+      const scale = 1.25 + (i % 4) * 0.18;
+      g.scale.setScalar(scale);
+      // 初始均勻錯開於 12m ~ 85m 的天際各個高度
+      const startY = 12 + (i / SKY_LANTERN_COUNT) * 72 + this.rand() * 6;
+      const s = this.spawnSky(g, startY);
       this.skyLanterns.push(s);
       this.skyGroup.add(g);
     }
@@ -528,14 +532,10 @@ export class WaterLife {
   }
 
   private spawnSky(g: THREE.Group, y: number): SkyLantern {
-    let x = 0;
-    let z = 0;
-    for (let k = 0; k < 40; k++) {
-      x = (this.rand() - 0.5) * 170;
-      z = (this.rand() - 0.5) * 150;
-      if (!landAt(x, z) || k > 30) break;
-    }
-    return { g, x, z, y, speed: 0.55 + this.rand() * 0.35, phase: this.rand() * 6 };
+    // 均勻分佈於全島五島與大湖的開闊天際（範圍寬達 340m x 320m）
+    const x = (this.rand() - 0.5) * 340;
+    const z = (this.rand() - 0.5) * 310;
+    return { g, x, z, y, speed: 0.65 + this.rand() * 0.45, phase: this.rand() * Math.PI * 2 };
   }
 
   setTimeOfDay(t: TimeOfDay) {
@@ -561,7 +561,7 @@ export class WaterLife {
       b.night.visible = true;
     }
     this.waterLanterns.visible = clear && night;
-    this.skyGroup.visible = clear && night;
+    this.skyGroup.visible = clear && (night || this.tod === 'dusk');
     this.rain.visible = !clear;
   }
 
@@ -597,13 +597,22 @@ export class WaterLife {
           l.position.y = SEA_Y + Math.sin(t * 0.8 + ph) * 0.04;
           l.rotation.y += dt * 0.05;
         }
+      }
+      if (this.tod === 'night' || this.tod === 'dusk') {
         for (const s of this.skyLanterns) {
           s.y += s.speed * dt;
-          if (s.y > 95) Object.assign(s, this.spawnSky(s.g, 2));
-          s.g.position.set(s.x + Math.sin(t * 0.12 + s.phase) * 3, s.y, s.z + Math.cos(t * 0.1 + s.phase) * 3);
-          s.g.rotation.z = Math.sin(t * 0.7 + s.phase) * 0.06;
+          if (s.y > 96) {
+            Object.assign(s, this.spawnSky(s.g, 10 + this.rand() * 12));
+          }
+          s.g.position.set(
+            s.x + Math.sin(t * 0.15 + s.phase) * 5.5,
+            s.y,
+            s.z + Math.cos(t * 0.12 + s.phase) * 5.5
+          );
+          s.g.rotation.y = t * 0.08 + s.phase;
+          s.g.rotation.z = Math.sin(t * 0.6 + s.phase) * 0.05;
         }
-        this.skyGlow.opacity = 0.5 + Math.sin(t * 2.3) * 0.08;
+        this.skyGlow.opacity = 0.55 + Math.sin(t * 2.3) * 0.08;
       }
     }
     // 在地下室時不下雨

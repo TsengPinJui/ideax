@@ -9,6 +9,8 @@ export interface ControlsInputState {
   left: boolean;
   right: boolean;
   sprint: boolean;
+  ascend: boolean;
+  descend: boolean;
 }
 
 /** 焦點在輸入框、文字區或可編輯區時，鍵盤是拿來打字的 */
@@ -44,12 +46,14 @@ export class FirstPersonControls {
   public static readonly SPRINT_MULTIPLIER = 8.5 / 3.3;
 
   // Desktop keyboard & mouse
-  private keys: ControlsInputState = {
+  public keys: ControlsInputState = {
     forward: false,
     backward: false,
     left: false,
     right: false,
     sprint: false,
+    ascend: false,
+    descend: false,
   };
 
   private isMouseDragging: boolean = false;
@@ -196,6 +200,16 @@ export class FirstPersonControls {
         case 'ShiftRight':
           this.keys.sprint = true;
           break;
+        case 'Space':
+        case 'KeyE':
+        case 'PageUp':
+          this.keys.ascend = true;
+          break;
+        case 'KeyQ':
+        case 'PageDown':
+        case 'KeyX':
+          this.keys.descend = true;
+          break;
       }
     };
 
@@ -220,6 +234,16 @@ export class FirstPersonControls {
         case 'ShiftLeft':
         case 'ShiftRight':
           this.keys.sprint = false;
+          break;
+        case 'Space':
+        case 'KeyE':
+        case 'PageUp':
+          this.keys.ascend = false;
+          break;
+        case 'KeyQ':
+        case 'PageDown':
+        case 'KeyX':
+          this.keys.descend = false;
           break;
       }
     };

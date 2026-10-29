@@ -1149,6 +1149,141 @@ function createDeepHall(b: BuildingInteractable): THREE.Group {
       colliders.push({ id: `${b.id}-hall-col-${k}-${j}`, type: 'cylinder', x: px, z: pz, radius: 0.45 });
     }
   }
+  // 各展區專屬 3D 主題佈景裝置（隨 B1~B4 樓層切換顯示，讓電玩城與展覽館各展區一目了然）
+  const zoneDecorGroups: THREE.Group[] = zones.map((z, zi) => {
+    const zg = new THREE.Group();
+    zg.name = `zone_decor_${z.key}`;
+    zg.visible = zi === 0;
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: z.color,
+      emissive: z.color,
+      emissiveIntensity: arcade ? 0.85 : 0.45,
+      roughness: 0.3,
+      metalness: 0.4,
+    });
+    const subMat = new THREE.MeshStandardMaterial({
+      color: arcade ? 0x00f0ff : 0xf5ca5c,
+      emissive: arcade ? 0x00f0ff : 0xd4a24c,
+      emissiveIntensity: arcade ? 0.75 : 0.35,
+      roughness: 0.25,
+      metalness: 0.5,
+    });
+    const darkBaseMat = lit(arcade ? 0x181326 : 0x3b2618, 0.25);
+
+    // 展廳南北兩端走道交匯處與高空懸吊主題裝置
+    const spotsZ = [cz - D / 2 + 2.1, cz - 1.5, cz + D / 2 - 6.8];
+    spotsZ.forEach((sz, si) => {
+      // 底座展台
+      if (si === 0) {
+        const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.35, 0.48, 20), darkBaseMat);
+        ped.position.set(cx, Y + 0.24, sz);
+        zg.add(ped);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.05, 8, 28), accentMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(cx, Y + 0.5, sz);
+        zg.add(ring);
+      }
+
+      const skyY = si === 0 ? Y + 2.15 : Y + 8.6;
+      const scale = si === 0 ? 1.0 : 1.35;
+
+      if (!arcade) {
+        if (z.key === 'mech') {
+          // B1 機電運輸展場：精密工業雙齒輪組與推進渦輪環
+          const gear1 = new THREE.Mesh(new THREE.TorusGeometry(0.85 * scale, 0.14 * scale, 8, 12), accentMat);
+          gear1.position.set(cx, skyY, sz);
+          zg.add(gear1);
+          const gear2 = new THREE.Mesh(new THREE.TorusGeometry(0.55 * scale, 0.1 * scale, 8, 8), subMat);
+          gear2.position.set(cx, skyY, sz);
+          gear2.rotation.x = Math.PI / 3;
+          zg.add(gear2);
+          const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * scale, 0.18 * scale, 1.4 * scale, 12), subMat);
+          axle.rotation.z = Math.PI / 2;
+          axle.position.set(cx, skyY, sz);
+          zg.add(axle);
+        } else if (z.key === 'ict') {
+          // B2 資通訊AI展場：量子神經網路核心立方與全息軌道環
+          const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.68 * scale, 0), accentMat);
+          core.position.set(cx, skyY, sz);
+          zg.add(core);
+          for (let r = 0; r < 2; r++) {
+            const orbit = new THREE.Mesh(new THREE.TorusGeometry(1.05 * scale, 0.04 * scale, 8, 28), subMat);
+            orbit.position.set(cx, skyY, sz);
+            orbit.rotation.set(r === 0 ? Math.PI / 4 : -Math.PI / 4, r * 0.8, 0);
+            zg.add(orbit);
+          }
+        } else if (z.key === 'bio') {
+          // B3 生醫化才展場：雙股螺旋分子鏈與生醫晶球
+          for (let k = -3; k <= 3; k++) {
+            const ang = k * 0.65;
+            const dy = k * 0.22 * scale;
+            const r = 0.55 * scale;
+            const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.14 * scale, 10, 10), accentMat);
+            s1.position.set(cx + Math.cos(ang) * r, skyY + dy, sz + Math.sin(ang) * r);
+            zg.add(s1);
+            const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.14 * scale, 10, 10), subMat);
+            s2.position.set(cx - Math.cos(ang) * r, skyY + dy, sz - Math.sin(ang) * r);
+            zg.add(s2);
+          }
+        } else {
+          // B4 服務文創展場：流光藝術宮燈與多面文創晶體拱環
+          const lantern = new THREE.Mesh(new THREE.DodecahedronGeometry(0.72 * scale, 0), accentMat);
+          lantern.position.set(cx, skyY, sz);
+          zg.add(lantern);
+          const halo = new THREE.Mesh(new THREE.TorusGeometry(1.08 * scale, 0.05 * scale, 8, 24), subMat);
+          halo.position.set(cx, skyY, sz);
+          zg.add(halo);
+        }
+      } else {
+        if (z.key === 'casual') {
+          // B1 休閒同樂展區：派對幸運星環與繽紛氣球球體組
+          const crown = new THREE.Mesh(new THREE.TorusGeometry(0.88 * scale, 0.12 * scale, 10, 20), accentMat);
+          crown.position.set(cx, skyY, sz);
+          zg.add(crown);
+          for (let bIdx = 0; bIdx < 4; bIdx++) {
+            const ang = (bIdx * Math.PI) / 2;
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.26 * scale, 12, 12), bIdx % 2 === 0 ? accentMat : subMat);
+            orb.position.set(cx + Math.cos(ang) * 0.85 * scale, skyY + 0.25 * scale, sz + Math.sin(ang) * 0.85 * scale);
+            zg.add(orb);
+          }
+        } else if (z.key === 'puzzle') {
+          // B2 益智解謎展區：懸浮魔術方塊矩陣與奧秘魯比克幾何
+          for (const dx of [-0.32, 0.32]) {
+            for (const dy of [-0.32, 0.32]) {
+              const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(0.46 * scale, 0.46 * scale, 0.46 * scale),
+                (dx + dy) === 0 ? subMat : accentMat
+              );
+              cube.position.set(cx + dx * scale, skyY + dy * scale, sz);
+              cube.rotation.set(0.35, 0.45, 0.2);
+              zg.add(cube);
+            }
+          }
+        } else if (z.key === 'action') {
+          // B3 冒險競技展區：電競能量光刃結晶與榮耀雙環護盾
+          const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.55 * scale, 1.55 * scale, 6), accentMat);
+          crystal.position.set(cx, skyY, sz);
+          zg.add(crystal);
+          const shieldRing = new THREE.Mesh(new THREE.TorusGeometry(0.95 * scale, 0.06 * scale, 6, 6), subMat);
+          shieldRing.position.set(cx, skyY, sz);
+          zg.add(shieldRing);
+        } else {
+          // B4 模擬驚悚展區：深淵時空傳送門與詭祕脈衝方尖碑
+          const portal = new THREE.Mesh(new THREE.TorusGeometry(0.95 * scale, 0.11 * scale, 10, 28), accentMat);
+          portal.position.set(cx, skyY, sz);
+          zg.add(portal);
+          const eyeCore = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45 * scale, 0), subMat);
+          eyeCore.position.set(cx, skyY, sz);
+          zg.add(eyeCore);
+        }
+      }
+    });
+
+    root.add(zg);
+    return zg;
+  });
+  root.userData.zoneDecorGroups = zoneDecorGroups;
+
   stat.traverse((o) => {
     const m = o as THREE.Mesh;
     if (m.isMesh) {

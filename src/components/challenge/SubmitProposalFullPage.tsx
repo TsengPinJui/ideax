@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BaiMiaoCardHopper } from '../baimiao/BaiMiaoCardHopper';
+import { isFakeProposal } from './StarSeasonView';
 import {
   Sparkles,
   Send,
@@ -618,8 +619,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       const aiCategorized = formStage === 'pain_point' && painPointTrackChoice === 'auto';
 
       const sourcePainPoint =
-        painPointProposals.find((p) => p.id === formSourcePainPointId) ||
-        questions.find((q) => q.id === formSourcePainPointId);
+        painPointProposals.find((p) => p.id === formSourcePainPointId && !isFakeProposal(p)) ||
+        questions.find((q) => q.id === formSourcePainPointId && !isFakeProposal(q));
 
       const primaryAtt = formAttachments[0] || formAttachment;
 
@@ -665,8 +666,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           const currentProps = getCompetitionProposalsForAdmin();
           const existingProp = currentProps.find((p) => p.id === (editingPublishedProposalId || newPropId));
           const painPointObj =
-            painPointProposals.find((p) => p.id === formSourcePainPointId) ||
-            questions.find((q) => q.id === formSourcePainPointId);
+            painPointProposals.find((p) => p.id === formSourcePainPointId && !isFakeProposal(p)) ||
+            questions.find((q) => q.id === formSourcePainPointId && !isFakeProposal(q));
           const updatedPropItem = {
             id: existingProp?.id || newPropId,
             title: formTitle.trim(),
@@ -1537,7 +1538,11 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               <PainPointAutocompleteInput
                 value={formReferencedPainPoint}
                 onChange={(val) => setFormReferencedPainPoint(val)}
-                questions={questions}
+                questions={(questions || []).filter(
+                  (q) =>
+                    Boolean((q as any).isStarSeason || (q as any).starSeasonProposalId || q.isCompetitionJoined === true) &&
+                    !isFakeProposal(q)
+                )}
                 placeholder="輸入關鍵字自動搜尋公開痛點，或直接填寫提案者自述痛點"
               />
             </div>

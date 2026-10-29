@@ -125,9 +125,8 @@ const LAND_RIDE_PAVED_YARD: WalkableZone[] = [
   ...WORLD_BRIDGES.map((b) => ({ type: 'corridor' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfWidth: b.halfWidth + 0.6 })),
 ];
 function canExitLandRide(ride: { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; x: number; y: number; z: number }) {
-  if (ride.kind === 'horseCart' || ride.kind === 'horse') return true;
+  if (ride.kind === 'horseCart' || ride.kind === 'horse' || ride.kind === 'egret') return true;
   const landZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 6.5, rz: z.rz + 6.5 } : z));
-  if (ride.kind === 'egret' && ride.y > 3.5) return false;
   if (PhysicsController.isInsideWalkableZones(ride.x, ride.z, landZones)) return true;
   return DOCKS.some((dock) => Math.hypot(dock.landX - ride.x, dock.landZ - ride.z) <= 10);
 }
@@ -573,6 +572,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const [riding, setRiding] = useState<null | { role: 'owner' | 'passenger'; owner?: string }>(null);
   const [landRiding, setLandRiding] = useState<null | { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; seat: number }>(null);
   const [landRideHint, setLandRideHint] = useState('');
+  const [craneAltitude, setCraneAltitude] = useState<number>(4.5);
+  const craneAltitudeRef = useRef<number>(4.5);
+  const [isCraneLanding, setIsCraneLanding] = useState<boolean>(false);
+  const craneLandingRef = useRef<{ targetX: number; targetZ: number; targetY: number; startedAt: number } | null>(null);
+  const startCraneLandingRef = useRef<() => void>(() => {});
+  const adjustCraneAltitude = useCallback((deltaH: number) => {
+    if (landRideRef.current?.kind !== 'egret' || isCraneLanding) return;
+    craneAltitudeRef.current = THREE.MathUtils.clamp(craneAltitudeRef.current + deltaH, 0.6, 26.0);
+    setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
+  }, [isCraneLanding]);
   const boatingRef = useRef<BoatingService>(new BoatingService());
   const landRidesRef = useRef<LandRideService>(new LandRideService());
   const queuedDockRef = useRef<string | null>(null);
@@ -719,6 +728,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         zoneMat.emissive.setHex(z.color);
         zoneMat.userData.zone = zone;
       }
+      const zoneDecorGroups = o.userData.zoneDecorGroups as THREE.Group[] | undefined;
+      if (zoneDecorGroups) {
+        zoneDecorGroups.forEach((zg, zi) => {
+          zg.visible = zi === zone;
+        });
+      }
       const setMap = (m: THREE.Mesh, key: string, draw: () => THREE.Texture) => {
         if (m.userData.drawnKey === key) return;
         m.userData.drawnKey = key;
@@ -796,8 +811,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
 
       if (rank) {
         if (rank.carousel && games) {
-          const activeWhich: 'featured' | 'hot' = slideTick % 2 === 0 ? 'featured' : 'hot';
-          lobbyActiveRankRef.current.set(id, activeWhich);
+          const phase = rank.phaseOffset || 0;
+          const activeWhich: 'featured' | 'hot' = (slideTick + phase) % 2 === 0 ? 'featured' : 'hot';
+          if (phase === 0) lobbyActiveRankRef.current.set(id, activeWhich);
           const list = (activeWhich === 'featured' ? r?.featured : r?.hot) || [];
           const key = `cyber_${activeWhich}_${list.map((q) => q.id).join(',')}`;
           if (mesh.userData.drawnKey === key) return;
@@ -808,12 +824,21 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           old?.dispose();
           return;
         }
-        const list = (rank.which === 'featured' ? r?.featured : r?.hot) || [];
-        const key = list.map((q) => q.id).join(',');
+        // 展覽館左右雙榜也支援定時交替輪播精選榜與熱度榜
+        const activeExhWhich: 'featured' | 'hot' =
+          Math.floor(slideTick / 2) % 2 === 0 ? rank.which : rank.which === 'featured' ? 'hot' : 'featured';
+        const list = (activeExhWhich === 'featured' ? r?.featured : r?.hot) || [];
+        const key = `${activeExhWhich}_${list.map((q) => q.id).join(',')}`;
         if (mesh.userData.drawnKey === key) return;
         mesh.userData.drawnKey = key;
         const old = mat.map;
-        mat.map = drawRankBoard(rank.which === 'featured' ? '精選榜' : '熱度榜', games ? '遊戲 TOP 10' : '提案與軟體 TOP 10', list, games, rank.which === 'featured' ? '#9a6a12' : '#8e2420');
+        mat.map = drawRankBoard(
+          activeExhWhich === 'featured' ? '精選榜' : '熱度榜',
+          games ? '遊戲 TOP 10' : '提案與軟體 TOP 10',
+          list,
+          games,
+          activeExhWhich === 'featured' ? '#9a6a12' : '#8e2420'
+        );
         mat.needsUpdate = true;
         old?.dispose();
         return;
@@ -1936,6 +1961,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       };
       landRideRef.current = ride;
       setLandRiding({ kind: ride.kind, seat: ride.seat });
+      if (ride.kind === 'egret') {
+        craneAltitudeRef.current = 4.5;
+        setCraneAltitude(4.5);
+        setIsCraneLanding(false);
+        craneLandingRef.current = null;
+      }
       if (ride.kind === 'buffalo' || ride.kind === 'egret') triggerEggRef.current(ride.kind);
       setDrawer(null);
       controls.yaw = ride.yaw;
@@ -1945,17 +1976,69 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       controls.updateCameraTransform(0);
       playSoundEffect('portal');
     };
-    leaveLandRideRef.current = () => {
+
+    const performDismount = (exitX: number, exitY: number, exitZ: number, yaw: number) => {
       const ride = landRideRef.current;
       if (!ride) return;
-      if (!canExitLandRide(ride)) {
-        setLandRideHint(ride.kind === 'egret' ? '請先降落在可步行地面再下來。' : ride.kind === 'horseCart' ? '請把馬車停在鋪面範圍再下車。' : '請靠近渡口或岸邊後再下牛。');
-        window.setTimeout(() => setLandRideHint(''), 2400);
-        return;
-      }
       landRideRef.current = null;
       void landRidesRef.current.leave(ride.group.name);
       setLandRiding(null);
+      setIsCraneLanding(false);
+      craneLandingRef.current = null;
+      controls.setSpawn(new THREE.Vector3(exitX, Math.max(0, exitY), exitZ), yaw);
+      controls.pitch = 0;
+      controls.updateCameraTransform(0);
+      playSoundEffect('portal');
+      setLandRideHint('已平穩回到地面，平安下乘。');
+      window.setTimeout(() => setLandRideHint(''), 2400);
+    };
+
+    const startCraneLanding = () => {
+      const ride = landRideRef.current;
+      if (!ride || ride.kind !== 'egret') return;
+      if (craneLandingRef.current) return;
+      // 找出安全的平地降落點
+      const isWalkable = PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones());
+      const curBridgeH = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+      let targetX = ride.x;
+      let targetZ = ride.z;
+      if (!isWalkable && curBridgeH <= 0.05) {
+        // 在開闊湖水上空時，自動尋找最近的可行走島嶼地面降落，避免落入水中卡住
+        const safe = nearestReachable(ride.x, ride.z);
+        targetX = safe.x;
+        targetZ = safe.z;
+      }
+      const targetGroundY = Math.max(0, PhysicsController.getGroundHeight(targetX, targetZ, MOVE_BRIDGES, 0));
+      craneLandingRef.current = {
+        targetX,
+        targetZ,
+        targetY: targetGroundY,
+        startedAt: performance.now(),
+      };
+      setIsCraneLanding(true);
+      setLandRideHint('仙鶴正在平穩降落回到地面…');
+    };
+    startCraneLandingRef.current = startCraneLanding;
+
+    leaveLandRideRef.current = () => {
+      const ride = landRideRef.current;
+      if (!ride) return;
+      if (ride.kind === 'egret') {
+        const curGround = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+        const onLand = PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones());
+        // 若已經在地面附近且在可行走陸地，直接下來；否則啟動自動平穩降落至地面再離開
+        if (ride.y <= curGround + 0.65 && onLand) {
+          performDismount(ride.x, Math.max(0, ride.y), ride.z, ride.yaw);
+          return;
+        }
+        startCraneLanding();
+        return;
+      }
+      if (!canExitLandRide(ride)) {
+        setLandRideHint(ride.kind === 'horseCart' ? '請把馬車停在鋪面範圍再下車。' : '請靠近渡口或岸邊後再下牛。');
+        window.setTimeout(() => setLandRideHint(''), 2400);
+        return;
+      }
       let exitX = ride.x - Math.cos(ride.yaw) * 1.8;
       let exitZ = ride.z + Math.sin(ride.yaw) * 1.8;
       if (ride.kind === 'buffalo' && !PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones())) {
@@ -1963,15 +2046,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         exitX = dock.landX;
         exitZ = dock.landZ;
       }
-      if (ride.kind === 'egret') {
-        const safe = nearestReachable(ride.x, ride.z);
-        exitX = safe.x;
-        exitZ = safe.z;
-      }
-      controls.setSpawn(new THREE.Vector3(exitX, Math.max(0, ride.y), exitZ), ride.yaw);
-      controls.pitch = 0;
-      controls.updateCameraTransform(0);
-      playSoundEffect('portal');
+      performDismount(exitX, Math.max(0, ride.y), exitZ, ride.yaw);
     };
     regionManager.onRegionReady = () => {
       refreshPainBoards();
@@ -2882,11 +2957,42 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           const targetY = bridgeH > 0.01 ? bridgeH : onLand ? 0.0 : -0.25;
           ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 6.5), -1, 4.5);
         } else if (ride.seat === 0) {
-          ride.x = THREE.MathUtils.clamp(nx, -168, 175);
-          ride.z = THREE.MathUtils.clamp(nz, -155, 155);
+          // 仙鶴：支援自行升降調整高度（Space/E/PageUp 升空，Q/PageDown/X 降低），點擊降落直接平穩下降回到平面並下鶴離開
+          const MAX_CRANE_ALTITUDE = 26.0;
+          const MIN_CRANE_ALTITUDE = 0.5;
           const bridgeH = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
-          const targetY = isFastWalkRef.current ? MAX_CRANE_ALTITUDE : Math.max(3.5, bridgeH + 2.2);
-          ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 3.2), 0.3, MAX_CRANE_ALTITUDE);
+
+          if (craneLandingRef.current) {
+            // 正在降落中：平滑朝著目標降落點 X/Z 與地面 Y 推進
+            const landing = craneLandingRef.current;
+            const distXZ = Math.hypot(landing.targetX - ride.x, landing.targetZ - ride.z);
+            if (distXZ > 0.08) {
+              const hSpeed = Math.min(distXZ, 8.5 * delta);
+              ride.x += ((landing.targetX - ride.x) / distXZ) * hSpeed;
+              ride.z += ((landing.targetZ - ride.z) / distXZ) * hSpeed;
+            }
+            const targetY = landing.targetY + 0.35;
+            ride.y = Math.max(targetY, ride.y - 7.5 * delta);
+
+            // 當垂直高度接近地面且水平到位時，自動下鶴完成著陸離開
+            if (ride.y <= targetY + 0.35 && distXZ < 0.9) {
+              performDismount(landing.targetX, landing.targetY, landing.targetZ, ride.yaw);
+              return;
+            }
+          } else {
+            // 正常巡遊／飛行：鍵盤即時升降控制
+            if (controls.keys.ascend) {
+              craneAltitudeRef.current = Math.min(MAX_CRANE_ALTITUDE, craneAltitudeRef.current + delta * 6.5);
+              setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
+            } else if (controls.keys.descend) {
+              craneAltitudeRef.current = Math.max(MIN_CRANE_ALTITUDE, craneAltitudeRef.current - delta * 6.5);
+              setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
+            }
+            ride.x = THREE.MathUtils.clamp(nx, -168, 175);
+            ride.z = THREE.MathUtils.clamp(nz, -155, 155);
+            const targetFlightY = Math.max(bridgeH + 0.3, craneAltitudeRef.current);
+            ride.y = THREE.MathUtils.clamp(ride.y + (targetFlightY - ride.y) * Math.min(1, delta * 4.2), MIN_CRANE_ALTITUDE, MAX_CRANE_ALTITUDE);
+          }
         }
         // 騎乘載具（如騎鶴、騎牛）進入北山飛瀑、南山洞口、東山水濂洞時同樣觸發彩蛋
         {
@@ -3999,12 +4105,48 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       />
       {landRiding && (
         <div data-ui-panel="true" className="kx-root absolute left-1/2 -translate-x-1/2 top-16 sm:top-5 z-30 pointer-events-auto">
-          <div className="kx-panel flex items-center gap-2 px-3 py-1.5 rounded-full text-[12.5px]">
-            <span>{landRiding.kind === 'buffalo' ? '騎牛・單人慢速' : landRiding.kind === 'horseCart' ? '驅車・雙人座・定速' : landRiding.kind === 'horse' ? (isFastWalk ? '策馬・快速疾馳' : '騎馬・輕快小跑') : isFastWalk ? '駕鶴飛行中・限高 16.5m' : '駕鶴・低空巡遊'}</span>
+          <div className="kx-panel flex flex-wrap items-center justify-center gap-2 px-3.5 py-1.5 rounded-full text-[12.5px]">
+            <span>
+              {landRiding.kind === 'buffalo'
+                ? '騎牛・單人慢速'
+                : landRiding.kind === 'horseCart'
+                ? '驅車・雙人座・定速'
+                : landRiding.kind === 'horse'
+                ? isFastWalk
+                  ? '策馬・快速疾馳'
+                  : '騎馬・輕快小跑'
+                : isCraneLanding
+                ? '駕鶴・自動緩降著陸中…'
+                : `駕鶴凌空・高度 ${craneAltitude.toFixed(1)}m`}
+            </span>
             {landRiding.kind === 'horseCart' && <span className="kx-sub">僅限人工鋪面與拱橋</span>}
-            {landRiding.kind === 'egret' && <span className="kx-sub">{isFastWalk ? '按起飛鍵降落' : '按起飛鍵升空'}</span>}
-            <button type="button" onClick={() => leaveLandRideRef.current()} className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer">
-              下來(C)
+            {landRiding.kind === 'egret' && !isCraneLanding && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => adjustCraneAltitude(2.2)}
+                  className="kx-btn-ghost px-2 py-0.5 text-[11.5px] rounded-full cursor-pointer"
+                  title="拉高飛行高度 (空白鍵 / E)"
+                >
+                  ▲ 爬升
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustCraneAltitude(-2.2)}
+                  className="kx-btn-ghost px-2 py-0.5 text-[11.5px] rounded-full cursor-pointer"
+                  title="降低飛行高度 (Q / X)"
+                >
+                  ▼ 下降
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => leaveLandRideRef.current()}
+              disabled={isCraneLanding}
+              className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer disabled:opacity-60"
+            >
+              {landRiding.kind === 'egret' ? (isCraneLanding ? '緩降中…' : '降落下來(C)') : '下來(C)'}
             </button>
           </div>
         </div>

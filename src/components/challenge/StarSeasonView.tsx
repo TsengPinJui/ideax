@@ -151,36 +151,70 @@ import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExpos
 import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposalsSeed';
 
 export const isFakeProposal = (p: any): boolean => {
-  if (!p) return false;
-  // 小美余 是真實參賽者，其痛點與未來提案一律納入參賽範圍，切勿過濾
+  if (!p) return true;
+  // 真實參賽隊伍與參賽者白名單（靠臉解決 / 小美余、創星漫遊者 / 陳天奉、超級痛點 / ching）
   if (
     p.authorName === '小美余' ||
     p.leaderName === '小美余' ||
+    p.authorName === '陳天奉' ||
+    p.leaderName === '陳天奉' ||
+    p.authorName === 'ching' ||
+    p.leaderName === 'ching' ||
+    p.teamName === '靠臉解決' ||
+    p.teamName === '超級痛點' ||
+    p.teamName === '創星漫遊者' ||
     p.authorId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
     p.userId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+    p.authorId === '2e9KwdV4uvT1DdcLvnVR9tBO4dD3' ||
+    p.userId === '2e9KwdV4uvT1DdcLvnVR9tBO4dD3' ||
+    p.authorId === 'bqUlZCdy1aeg6wGHOvhGdgOrkOd2' ||
+    p.userId === 'bqUlZCdy1aeg6wGHOvhGdgOrkOd2' ||
     p.id === 'star-prop-1792853867316-1ymcj'
   ) {
     return false;
   }
-  const id = String(p.id || '');
-  const authorId = String(p.authorId || '');
-  if (p.isCompetitionJoined === false || id.startsWith('q-idea-user-') || id.startsWith('q-pain-user-')) {
+  const id = String(p.id || '').trim();
+  const authorId = String(p.authorId || p.userId || '').trim();
+  const authorName = String(p.authorName || p.leaderName || '').trim();
+  const title = String(p.title || p.projectTitle || '').trim();
+  if (!title) return true;
+  if (
+    p.isCompetitionJoined === false ||
+    id.startsWith('q-idea-user-') ||
+    id.startsWith('q-pain-user-') ||
+    id.startsWith('vibe-app-') ||
+    id.startsWith('game-hot-') ||
+    id.startsWith('prop-star-') ||
+    /^q-\d+$/.test(id)
+  ) {
     return true;
   }
   return (
     id.startsWith('demo-') ||
     id.startsWith('test-') ||
+    id.startsWith('mock-') ||
     id.startsWith('q-demo-') ||
     id.startsWith('q-mock-') ||
     id.startsWith('q-test-') ||
     id.startsWith('q-vp-') ||
     id.startsWith('q-179') ||
-    authorId.startsWith('demo-u-') ||
+    authorId === 'u-platform-curated' ||
+    authorId === 'platform' ||
+    authorId === 'user-guest' ||
+    authorId === 'a000000001' ||
+    authorId.startsWith('demo-') ||
     authorId.startsWith('test-') ||
     authorId.startsWith('mock-') ||
     authorId.startsWith('u-vp-') ||
+    authorId.startsWith('u-vc-') ||
     authorId.startsWith('u-agent-') ||
+    authorId.startsWith('user-') ||
+    authorName === '平台精選' ||
+    authorName === '平台嚴選' ||
+    authorName === 'IdeaX 管理團隊' ||
+    authorName === 'IdeaX創點子團隊' ||
     Boolean(p.isSimulated) ||
+    isSimulatedQuestion(p) ||
     isSimulatedUser(authorId)
   );
 };
@@ -1175,9 +1209,16 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         });
       });
 
-    // 2. 舊站創點子痛點專區問題（在創星季那邊先隱藏模擬假痛點）
+    // 2. 舊站創點子痛點專區問題（僅限明確參與創星季之真實痛點，隱藏未參賽之稍早假痛點與假提案）
     (questions || [])
-      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))
+      .filter(
+        (q) =>
+          (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') &&
+          Boolean((q as any).isStarSeason || (q as any).starSeasonProposalId || q.isCompetitionJoined === true) &&
+          !isFakeProposal(q) &&
+          !isSimulatedQuestion(q) &&
+          !isSimulatedUser(q.authorId)
+      )
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({
@@ -3699,7 +3740,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 {/* 關聯痛點連結 */}
                                 {(() => {
                                   const fullProp = proposals.find((item) => item.id === p.id) || (p as any);
-                                  const refPainObj = findReferencedPainPoint(fullProp, questions || []);
+                                  const refPainObj = findReferencedPainPoint(
+                                    fullProp,
+                                    (questions || []).filter((q) => !isFakeProposal(q))
+                                  );
                                   const rawRef = fullProp?.sourcePainPointTitle || fullProp?.referencedPainPoint;
                                   if (!refPainObj && !rawRef) return null;
                                   return (
@@ -3985,7 +4029,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
                             {/* 解決此痛點的提案連結 */}
                             {(() => {
-                              const solvingList = findProposalsReferencingPainPoint((pp as any).rawQuestion || (pp as any), questions || []);
+                              const solvingList = findProposalsReferencingPainPoint(
+                                (pp as any).rawQuestion || (pp as any),
+                                (questions || []).filter((q) => !isFakeProposal(q))
+                              ).filter((sp) => !isFakeProposal(sp));
                               if (solvingList.length === 0) return null;
                               return (
                                 <div className="p-2 rounded-2xl bg-emerald-50/90 border border-emerald-200/80 space-y-1 text-[11px]">

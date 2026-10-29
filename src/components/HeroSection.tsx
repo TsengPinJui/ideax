@@ -7,7 +7,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
 import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
-import { HomeShowcasePlayer, useShowcaseSlides } from './HomeShowcasePlayer';
+import { HomeShowcasePlayer, useCombinedShowcaseSlides } from './HomeShowcasePlayer';
 import { FeaturedGamesBoard, HotGamesRankingBoard } from './HomeHeroSideBoards';
 import { RandomGameDrawModal } from './RandomGameDrawModal';
 import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
@@ -64,8 +64,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     setShowcaseCategory(homeShowcaseConfig.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games');
   }, [homeShowcaseConfig.defaultCategory]);
 
-  // 首頁創點子播放區：管理員啟用且有可播放的內容時，依當前選擇分類（「提案與軟體」或「遊戲」）播放
-  const showcaseSlides = useShowcaseSlides(showcaseCategory);
+  // 首頁創點子播放區：同時輪播「精選榜」與「熱度榜」（依當前選擇分類「創新與軟體」或「遊戲」交替展示）
+  const showcaseSlides = useCombinedShowcaseSlides(showcaseCategory);
 
   // 今日不重複訪客（瀏覽統計更新時跟著變）
   const utc8Today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);

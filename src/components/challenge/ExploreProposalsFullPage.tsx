@@ -457,9 +457,16 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         });
       });
 
-    // 2. 舊站創點子/痛點集問題（在創星季那邊先隱藏模擬假痛點）
+    // 2. 舊站創點子/痛點集問題（僅限明確參與創星季之真實痛點，隱藏未參賽之稍早假痛點與假提案）
     (questions || [])
-      .filter((q) => (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId))
+      .filter(
+        (q) =>
+          (q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points') &&
+          Boolean((q as any).isStarSeason || (q as any).starSeasonProposalId || q.isCompetitionJoined === true) &&
+          !isFakeProposal(q) &&
+          !isSimulatedQuestion(q) &&
+          !isSimulatedUser(q.authorId)
+      )
       .forEach((q) => {
         if (!list.some((item) => item.id === q.id || item.title === q.title)) {
           list.push({
@@ -1358,12 +1365,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         </span>
                       </div>
 
-                      {/* 右上角標籤：示範標籤與階段標籤 (競賽網站不需要綠色創星季標籤) */}
+                      {/* 右上角標籤：階段標籤 */}
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
-                          示範
-                        </span>
                         <span
                           className={`text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${
                             proposal.stage === 'pain_point'
@@ -1401,9 +1404,6 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
                               {trackMeta.name}
-                            </span>
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                              示範
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -1445,7 +1445,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                       {/* 若為解方且引用痛點 */}
                       {(() => {
-                        const refPainObj = findReferencedPainPoint(proposal as any, questions || []);
+                        const refPainObj = findReferencedPainPoint(
+                          proposal as any,
+                          (questions || []).filter((q) => !isFakeProposal(q))
+                        );
                         const rawRef = proposal.sourcePainPointTitle || proposal.referencedPainPoint;
                         if (!refPainObj && !rawRef) return null;
                         return (
@@ -1765,7 +1768,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                   {/* 解決此痛點的提案列表預覽 */}
                   {(() => {
-                    const solvingList = findProposalsReferencingPainPoint(pp.rawQuestion || (pp as any), questions || []);
+                    const solvingList = findProposalsReferencingPainPoint(
+                      pp.rawQuestion || (pp as any),
+                      (questions || []).filter((q) => !isFakeProposal(q))
+                    ).filter((sp) => !isFakeProposal(sp));
                     if (solvingList.length === 0) return null;
                     return (
                       <div className="p-2.5 rounded-2xl bg-emerald-50/90 border border-emerald-200/80 space-y-1.5 text-[11px]">

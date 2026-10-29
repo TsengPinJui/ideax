@@ -329,72 +329,78 @@ export const IslandLoadingOverlay: React.FC<IslandLoadingOverlayProps> = ({
               xmlns="http://www.w3.org/2000/svg"
             >
               <defs>
-                <linearGradient id="amberGlowSweep" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
-                  <stop offset="60%" stopColor="#fbbf24" stopOpacity="0.85" />
-                  <stop offset="100%" stopColor="#fef08a" stopOpacity="1" />
+                {/* 雅緻暖金至碧青的環形漸層流光 */}
+                <linearGradient id="celestialRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fef08a" stopOpacity="1" />
+                  <stop offset="35%" stopColor="#f59e0b" stopOpacity="0.85" />
+                  <stop offset="70%" stopColor="#14b8a6" stopOpacity="0.75" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.05" />
                 </linearGradient>
 
-                <linearGradient id="tealGlowSweep" x1="100%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="#0d9488" stopOpacity="0.1" />
-                  <stop offset="65%" stopColor="#2dd4bf" stopOpacity="0.85" />
-                  <stop offset="100%" stopColor="#a5f3fc" stopOpacity="1" />
+                <linearGradient id="jadeRingGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.95" />
+                  <stop offset="45%" stopColor="#0d9488" stopOpacity="0.6" />
+                  <stop offset="85%" stopColor="#f59e0b" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.0" />
                 </linearGradient>
 
                 <filter id="goldBloom" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="1.5" result="blur" />
+                  <feGaussianBlur stdDeviation="1.8" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
 
-              {/* 最外層：微細八方古盤刻度 */}
-              <g className="animate-[spin_24s_linear_infinite]" style={{ transformOrigin: '50% 50%' }}>
-                <circle cx="50" cy="50" r="44" stroke="#fbbf24" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="2 6" />
-                <circle cx="50" cy="6" r="1.5" fill="#fef08a" opacity="0.6" />
-                <circle cx="50" cy="94" r="1.5" fill="#fef08a" opacity="0.6" />
-                <circle cx="6" cy="50" r="1.5" fill="#fef08a" opacity="0.6" />
-                <circle cx="94" cy="50" r="1.5" fill="#fef08a" opacity="0.6" />
+              {/* 沉穩細膩的底軌星盤底環 */}
+              <circle cx="50" cy="50" r="38" stroke="#fbbf24" strokeOpacity="0.16" strokeWidth="1.2" />
+              <circle cx="50" cy="50" r="30" stroke="#14b8a6" strokeOpacity="0.14" strokeWidth="1" strokeDasharray="3 5" />
+
+              {/* 外層四方雅緻星芒點 (隨緩速星盤旋轉) */}
+              <g className="animate-[spin_32s_linear_infinite]" style={{ transformOrigin: '50% 50%' }}>
+                <circle cx="50" cy="12" r="1.5" fill="#fef08a" opacity="0.6" />
+                <circle cx="88" cy="50" r="1.5" fill="#fef08a" opacity="0.6" />
+                <circle cx="50" cy="88" r="1.5" fill="#fef08a" opacity="0.6" />
+                <circle cx="12" cy="50" r="1.5" fill="#fef08a" opacity="0.6" />
               </g>
 
-              {/* 中外軌：琥珀流光光弧 */}
-              <g className="animate-[spin_2.2s_cubic-bezier(0.4,0,0.2,1)_infinite]" style={{ transformOrigin: '50% 50%' }}>
+              {/* 主流光玉環：平滑旋轉的暖金漸層光弧 */}
+              <g className="animate-[spin_2.4s_linear_infinite]" style={{ transformOrigin: '50% 50%' }}>
                 <circle
                   cx="50"
                   cy="50"
-                  r="37"
-                  stroke="url(#amberGlowSweep)"
-                  strokeWidth="3.2"
-                  strokeLinecap="round"
-                  strokeDasharray="95 145"
-                  filter="url(#goldBloom)"
-                />
-                <circle cx="87" cy="50" r="2.5" fill="#fff" />
-              </g>
-
-              {/* 中內軌：碧水翡翠青光弧 */}
-              <g className="animate-[spin_1.8s_cubic-bezier(0.4,0,0.2,1)_infinite_reverse]" style={{ transformOrigin: '50% 50%' }}>
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="28"
-                  stroke="url(#tealGlowSweep)"
+                  r="38"
+                  stroke="url(#celestialRingGrad)"
                   strokeWidth="2.8"
                   strokeLinecap="round"
-                  strokeDasharray="65 120"
+                  strokeDasharray="145 95"
+                  filter="url(#goldBloom)"
                 />
-                <circle cx="50" cy="22" r="2" fill="#a5f3fc" />
+                <circle cx="88" cy="50" r="2.2" fill="#fffdf0" />
               </g>
 
-              {/* 核心水波漣漪圈 */}
+              {/* 次流光玉環：反向呼吸流轉的碧水玉青光弧 */}
+              <g className="animate-[spin_3.2s_linear_infinite_reverse]" style={{ transformOrigin: '50% 50%' }}>
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="30"
+                  stroke="url(#jadeRingGrad)"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeDasharray="110 80"
+                />
+                <circle cx="50" cy="20" r="1.8" fill="#a5f3fc" />
+              </g>
+
+              {/* 核心柔和呼吸脈衝光暈圈 */}
               <circle
                 cx="50"
                 cy="50"
-                r="20"
-                stroke="#f59e0b"
-                strokeOpacity="0.25"
-                strokeWidth="1"
-                className="animate-ping"
-                style={{ transformOrigin: '50% 50%', animationDuration: '2.8s' }}
+                r="22"
+                stroke="#fbbf24"
+                strokeOpacity="0.22"
+                strokeWidth="1.2"
+                className="animate-pulse"
+                style={{ transformOrigin: '50% 50%', animationDuration: '2.5s' }}
               />
             </svg>
 

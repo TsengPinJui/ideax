@@ -80,9 +80,16 @@ export const PainPointSelector: React.FC<PainPointSelectorProps> = ({
         });
       });
 
-    // 2. IdeaX 主平台切身痛點與懸賞問題（創星季那邊先隱藏假資料）
+    // 2. IdeaX 主平台切身痛點（僅限明確參與創星季之真實痛點，隱藏未參賽之稍早假痛點與假提案）
     const platformQuestions = questions.filter(
-      (q) => q.status !== 'delisted' && q.id && !isSimulatedQuestion(q) && !isSimulatedUser(q.authorId)
+      (q) =>
+        q.status !== 'delisted' &&
+        q.id &&
+        isPainPointQuestion(q) &&
+        Boolean((q as any).isStarSeason || (q as any).starSeasonProposalId || q.isCompetitionJoined === true) &&
+        !isFakeProposal(q) &&
+        !isSimulatedQuestion(q) &&
+        !isSimulatedUser(q.authorId)
     );
 
     platformQuestions.forEach((q, idx) => {

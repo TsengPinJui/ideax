@@ -535,8 +535,38 @@ router.get('/admin/registrations', async (req: Request, res: Response) => {
     const records: any[] = [];
     const seenUids = new Set<string>();
     snap.forEach((doc) => {
-      const data = doc.data();
-      const uid = data.userId || doc.id;
+      const data = doc.data() || {};
+      const id = String(data.id || doc.id || '').trim();
+      const uid = String(data.userId || doc.id || '').trim();
+      const teamName = String(data.teamName || '').trim();
+      const leaderName = String(data.leaderName || '').trim();
+      const isConfirmedRealTeam =
+        teamName === '靠臉解決' ||
+        teamName === '超級痛點' ||
+        teamName === '創星漫遊者' ||
+        uid === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+        uid === 'bqUlZCdy1aeg6wGHOvhGdgOrkOd2' ||
+        uid === '2e9KwdV4uvT1DdcLvnVR9tBO4dD3';
+      const isFakeTeam =
+        !teamName ||
+        !leaderName ||
+        id.startsWith('test-') ||
+        id.startsWith('demo-') ||
+        id.startsWith('mock-') ||
+        uid.startsWith('test-') ||
+        uid.startsWith('demo-') ||
+        uid.startsWith('mock-') ||
+        uid.startsWith('u-vp-') ||
+        uid.startsWith('u-vc-') ||
+        uid.startsWith('u-agent-') ||
+        uid.startsWith('user-') ||
+        uid.startsWith('exp-') ||
+        uid === 'user-guest' ||
+        uid === 'a000000001' ||
+        uid === 'c100000001' ||
+        uid === 'c200000002' ||
+        Boolean(data.isSimulated);
+      if (!isConfirmedRealTeam && isFakeTeam) return;
       if (!seenUids.has(uid)) {
         seenUids.add(uid);
         records.push({
@@ -559,9 +589,59 @@ router.get('/admin/all-proposals', async (req: Request, res: Response) => {
     const snap = await adminDb.collection('competition_proposals').get();
     const proposals: any[] = [];
     snap.forEach((doc) => {
+      const data = doc.data() || {};
+      const id = String(data.id || doc.id || '').trim();
+      const authorId = String(data.authorId || '').trim();
+      const authorName = String(data.authorName || '').trim();
+      const title = String(data.title || '').trim();
+      if (!title) return;
+      const isConfirmedRealParticipant =
+        authorName === '小美余' ||
+        authorName === '陳天奉' ||
+        authorName === 'ching' ||
+        data.teamName === '靠臉解決' ||
+        data.teamName === '超級痛點' ||
+        data.teamName === '創星漫遊者' ||
+        authorId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+        authorId === '2e9KwdV4uvT1DdcLvnVR9tBO4dD3' ||
+        authorId === 'bqUlZCdy1aeg6wGHOvhGdgOrkOd2' ||
+        id === 'star-prop-1792853867316-1ymcj';
+      const isFakeProp =
+        data.isCompetitionJoined === false ||
+        id.startsWith('q-idea-user-') ||
+        id.startsWith('q-pain-user-') ||
+        id.startsWith('vibe-app-') ||
+        id.startsWith('game-hot-') ||
+        id.startsWith('prop-star-') ||
+        /^q-\d+$/.test(id) ||
+        id.startsWith('demo-') ||
+        id.startsWith('test-') ||
+        id.startsWith('q-vp-') ||
+        id.startsWith('q-demo-') ||
+        id.startsWith('q-mock-') ||
+        id.startsWith('q-test-') ||
+        id.startsWith('q-179') ||
+        id.startsWith('mock-') ||
+        authorId === 'u-platform-curated' ||
+        authorId === 'platform' ||
+        authorId === 'user-guest' ||
+        authorId === 'a000000001' ||
+        authorId.startsWith('demo-') ||
+        authorId.startsWith('test-') ||
+        authorId.startsWith('u-vp-') ||
+        authorId.startsWith('u-vc-') ||
+        authorId.startsWith('u-agent-') ||
+        authorId.startsWith('user-') ||
+        authorId.startsWith('mock-') ||
+        authorName === '平台精選' ||
+        authorName === '平台嚴選' ||
+        authorName === 'IdeaX 管理團隊' ||
+        authorName === 'IdeaX創點子團隊' ||
+        Boolean(data.isSimulated);
+      if (!isConfirmedRealParticipant && isFakeProp) return;
       proposals.push({
         id: doc.id,
-        ...doc.data(),
+        ...data,
       });
     });
     // 依建立時間新到舊排序
@@ -579,6 +659,28 @@ router.get('/admin/all-experts', async (req: Request, res: Response) => {
     const experts: any[] = [];
     snap.forEach((doc) => {
       const data = doc.data() || {};
+      const id = String(data.id || doc.id || '').trim();
+      const userId = String(data.userId || doc.id || '').trim();
+      const expertName = String(data.expertName || data.name || '').trim();
+      const isFakeExp =
+        !expertName ||
+        id === 'exp-4' ||
+        userId === 'exp-4' ||
+        id.startsWith('test-') ||
+        id.startsWith('demo-') ||
+        id.startsWith('mock-') ||
+        userId.startsWith('test-') ||
+        userId.startsWith('demo-') ||
+        userId.startsWith('mock-') ||
+        userId.startsWith('u-vp-') ||
+        userId.startsWith('u-vc-') ||
+        userId.startsWith('u-agent-') ||
+        userId.startsWith('user-expert-') ||
+        userId === 'user-guest' ||
+        userId === 'K338pnIB8JMJ5Af9K5blbECuX8R2' ||
+        userId === 'WcJAf17ZIqfL9NK8IZpEJiE6zg92' ||
+        Boolean(data.isSimulated);
+      if (isFakeExp) return;
       experts.push({
         id: doc.id,
         userId: data.userId || doc.id,

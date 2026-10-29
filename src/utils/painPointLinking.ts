@@ -92,35 +92,7 @@ export function findProposalsReferencingPainPoint(
   const painId = painPoint.id;
   const painTitle = (painPoint.title || '').trim();
 
-  // 將 DEFAULT_DEMO_PROPOSALS 轉換為相容 Question 結構一併納入關聯檢索
-  const demoAsQuestions: Question[] = DEFAULT_DEMO_PROPOSALS.filter((dp) => dp.stage !== 'pain_point').map((dp) => ({
-    id: dp.id,
-    title: dp.title,
-    description: dp.description || dp.summary,
-    category: '創新創業',
-    subcategory: '新創孵化',
-    tags: dp.tags || ['創星季', '創新提案'],
-    level: 'L0',
-    bounty: 0,
-    status: 'open',
-    authorId: dp.authorId,
-    authorName: dp.authorName,
-    authorAvatar: dp.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    authorTitle: dp.teamName || dp.organizationName,
-    createdAt: dp.createdAt,
-    deadline: '2026-12-31',
-    views: dp.viewsCount || 0,
-    likes: dp.likeCount || 35,
-    answersCount: dp.commentsCount || 5,
-    postType: 'innovation_proposal',
-    specialZone: 'create_ideas',
-    referencedPainPoint: dp.referencedPainPoint || dp.sourcePainPointTitle,
-    coverImage: dp.images && dp.images.length > 0 ? dp.images[0] : undefined,
-    supportPoints: dp.supportPoints ? Math.round(dp.supportPoints / 100) : 500,
-    supporterCount: dp.supporterCount || 30,
-  }));
-
-  const combinedPool = [...allQuestions, ...DEFAULT_VIBECODING_APPS, ...demoAsQuestions];
+  const combinedPool = [...allQuestions, ...DEFAULT_VIBECODING_APPS];
 
   const results = combinedPool.filter((q) => {
     if (!q || q.id === painId || q.status === 'delisted') return false;

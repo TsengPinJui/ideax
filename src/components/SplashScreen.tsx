@@ -410,7 +410,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           )}
 
           <span className="text-[11px] font-medium text-stone-400">
-            v{APP_VERSION} • 在線探索中
+            v{APP_VERSION} • {Math.max(1, onlineUsersCount || 1).toLocaleString()}
           </span>
         </div>
       </div>

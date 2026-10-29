@@ -130,11 +130,12 @@ export function getNominatedProposalIds(): string[] {
     const raw = localStorage.getItem(NOMINATED_PROPOSALS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((id) => !String(id || '').startsWith('prop-star-'));
+      }
     }
   } catch {}
-  // 預設示範前 3 案自動入圍
-  return ['prop-star-1', 'prop-star-2', 'prop-star-3'];
+  return [];
 }
 
 export function saveNominatedProposalIds(ids: string[]): void {
@@ -418,27 +419,34 @@ export function generateAggregatedRewardsReport(proposals: StarSeasonProposal[])
       user.notes = user.notes ? `${user.notes}；${reasons.join('；')}` : reasons.join('；');
     }
 
-    // 若採用痛點，痛點提出者獎勵
-    if (item.sourcePainPointTitle) {
-      const painAuthorId = 'user-pain-author-q1';
-      const painAuthorName = '張雅涵 (痛點發起人)';
-      const painUser = ensureUser(painAuthorId, painAuthorName, '痛點發起者');
-      
-      const adoptionPts = (item.confirmedRank === 1 || item.rank === 1 || item.rank <= 3) ? 1200 : 400;
-      painUser.breakdown.painPointAdoptionPoints += adoptionPts;
-      painUser.totalPoints += adoptionPts;
-      const adoptionNote = `所提痛點「${item.sourcePainPointTitle}」獲得獎團隊採用：獲得價值 NT$${adoptionPts === 1200 ? '1,500' : '500'} 好禮提問金 ${adoptionPts} 點`;
-      painUser.notes = painUser.notes ? `${painUser.notes}；${adoptionNote}` : adoptionNote;
+    // 若採用痛點，痛點提出者獎勵（僅針對真實痛點作者採計）
+    if (item.sourcePainPointTitle && item.sourcePainPointAuthorId) {
+      const matchedPain = proposals.find((p) => p.id === item.sourcePainPointAuthorId);
+      if (matchedPain && matchedPain.authorId && matchedPain.authorName) {
+        const painUser = ensureUser(matchedPain.authorId, matchedPain.authorName, '痛點發起者');
+        const adoptionPts = (item.confirmedRank === 1 || item.rank === 1 || item.rank <= 3) ? 1200 : 400;
+        painUser.breakdown.painPointAdoptionPoints += adoptionPts;
+        painUser.totalPoints += adoptionPts;
+        const adoptionNote = `所提痛點「${item.sourcePainPointTitle}」獲得獎團隊採用：獲得價值 NT$${adoptionPts === 1200 ? '1,500' : '500'} 好禮提問金 ${adoptionPts} 點`;
+        painUser.notes = painUser.notes ? `${painUser.notes}；${adoptionNote}` : adoptionNote;
+      }
     }
   });
 
-  // 2. 痛點提出獎（人人有獎 200 點）
-  const painSubmitters = [
-    { id: 'user-pain-1', name: '廖冠宇', count: 3 },
-    { id: 'user-pain-2', name: '周柏翰', count: 2 },
-    { id: 'user-author-4', name: '蘇小涵', count: 1 }, // 同時身兼提案者
-  ];
-  painSubmitters.forEach((p) => {
+  // 2. 痛點提出獎（人人有獎 200 點，僅針對真實核准之參賽痛點統計，不使用假帳號）
+  const approvedPainPointProposals = proposals.filter(
+    (p) => p.stage === 'pain_point' && p.status === 'approved' && p.authorId && p.authorName
+  );
+  const painCountByAuthor = new Map<string, { id: string; name: string; count: number }>();
+  approvedPainPointProposals.forEach((p) => {
+    const existing = painCountByAuthor.get(p.authorId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      painCountByAuthor.set(p.authorId, { id: p.authorId, name: p.authorName, count: 1 });
+    }
+  });
+  painCountByAuthor.forEach((p) => {
     const user = ensureUser(p.id, p.name, '痛點發起者');
     const pts = p.count * 200;
     user.breakdown.painPointSubmissionPoints += pts;

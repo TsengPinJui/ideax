@@ -51,6 +51,7 @@ import { adminReviewProposal } from '../../services/competitionClientService';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 import { isGuestPreviewOnly } from '../../utils/guestAccess';
 import { getYoutubeEmbedUrl } from '../../utils/youtubeUtils';
+import { isFakeProposal } from './StarSeasonView';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -146,13 +147,15 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   }, [proposal, allProposals]);
 
   const referencedPainPointQuestion = React.useMemo(() => {
-    return findReferencedPainPoint(proposal as any, questions || []);
-  }, [proposal, questions]);
+    const validQuestions = (questions || []).filter((q) => (isFromCreateIdeasProp ? true : !isFakeProposal(q)));
+    return findReferencedPainPoint(proposal as any, validQuestions);
+  }, [proposal, questions, isFromCreateIdeasProp]);
 
   const referencingProposalsList = React.useMemo(() => {
     if (proposal.stage !== 'pain_point') return [];
     const fromProposals = (allProposals || []).filter((p) => {
       if (p.id === proposal.id) return false;
+      if (!isFromCreateIdeasProp && isFakeProposal(p)) return false;
       const refStr = (p.sourcePainPointTitle || p.referencedPainPoint || '').trim();
       if (!refStr) return false;
       return (
@@ -161,7 +164,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         (proposal.title.length > 5 && refStr.includes(proposal.title))
       );
     });
-    const fromQuestions = findProposalsReferencingPainPoint(proposal as any, questions || []);
+    const validQuestions = (questions || []).filter((q) => (isFromCreateIdeasProp ? true : !isFakeProposal(q)));
+    const fromQuestions = findProposalsReferencingPainPoint(proposal as any, validQuestions);
     const merged: any[] = [...fromProposals];
     fromQuestions.forEach((q) => {
       if (!merged.some((m) => m.id === q.id)) {
@@ -173,7 +177,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
       }
     });
     return merged;
-  }, [proposal, allProposals, questions]);
+  }, [proposal, allProposals, questions, isFromCreateIdeasProp]);
 
   const isFromCreateIdeas = React.useMemo(() => {
     if (isFromCreateIdeasProp) return true;

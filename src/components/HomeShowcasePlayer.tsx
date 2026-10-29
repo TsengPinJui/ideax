@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trophy, Megaphone, Star, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trophy, Megaphone, Star, Play, Flame } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import type { HomeShowcaseCategory, HomeShowcaseMode, Question } from '../types';
 import { getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
@@ -10,23 +10,24 @@ import {
   createHotGameQuestion,
   getFeaturedGames,
   getFeaturedProposalsAndSoftware,
+  getHotRankedGames,
+  getHotRankedProposalsAndSoftware,
   isShowcaseGameQuestion,
   isShowcaseProposalOrSoftwareQuestion,
 } from '../data/hotGamesData';
 
 /**
  * 首頁創點子播放區：依管理員在儀表板勾選的內容輪流播放（分成「提案與軟體」、「遊戲」兩類）
- * - 優秀作品：創星季參賽作品，依按讚、附議、支持點數排出前 8 名
- * - 付費推播：發布時加購推播（大聲公）且仍在招募中的卡片；卡片上標「推播」
- * - 管理員自選：照勾選順序（虛擬卡片也能選）
- * - 「包含虛擬卡片」開著時（預設），優秀作品、付費推播也會納入虛擬（模擬）卡片
- * 沒有任何可播放的內容時，外層照舊顯示創點子標誌
+ * 同時支援「精選榜」與「熱度榜」雙榜交錯輪播展示
  */
 
-const MODE_META: Record<HomeShowcaseMode, { label: string; icon: React.ReactNode; cls: string }> = {
-  excellent: { label: '優秀作品', icon: <Trophy className="w-3 h-3" />, cls: 'bg-amber-400 text-stone-950' },
+type SlideMode = HomeShowcaseMode | 'hot';
+
+const MODE_META: Record<SlideMode, { label: string; icon: React.ReactNode; cls: string }> = {
+  excellent: { label: '精選榜', icon: <Trophy className="w-3 h-3" />, cls: 'bg-amber-400 text-stone-950' },
   paid: { label: '推播', icon: <Megaphone className="w-3 h-3" />, cls: 'bg-white/90 text-stone-800' },
-  custom: { label: '精選', icon: <Star className="w-3 h-3" />, cls: 'bg-sky-500 text-white' },
+  custom: { label: '精選榜', icon: <Star className="w-3 h-3" />, cls: 'bg-sky-500 text-white' },
+  hot: { label: '熱度榜', icon: <Flame className="w-3 h-3" />, cls: 'bg-rose-600 text-white' },
 };
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創新提案',
@@ -38,7 +39,7 @@ const TYPE_LABEL: Record<string, string> = {
 const INTERVAL_MS = 5000;
 const MAX_SLIDES = 30;
 
-type Slide = { q: Question; mode: HomeShowcaseMode; image: string; isVideo: boolean };
+export type Slide = { q: Question; mode: SlideMode; image: string; isVideo: boolean; badgeLabel?: string };
 
 const imageOf = (q: Question): { image: string; isVideo: boolean } => {
   const yt = q.youtubeUrl || (q as any).vibeCodingData?.youtubeUrl;
@@ -140,7 +141,7 @@ export function useShowcaseSlides(categoryOverride?: HomeShowcaseCategory): Slid
           .sort((a, b) => score(b) - score(a))
           .slice(0, 8);
         if (starItems.length > 0) {
-          starItems.forEach((q) => push(q, 'excellent'));
+          starItems.forEach((q, idx) => push(q, 'excellent'));
         } else if (activeCat === 'games') {
           getFeaturedGames(real)
             .slice(0, 8)
@@ -152,8 +153,52 @@ export function useShowcaseSlides(categoryOverride?: HomeShowcaseCategory): Slid
         }
       }
     }
-    return out;
+    return out.map((s, idx) => ({
+      ...s,
+      badgeLabel: s.badgeLabel || `精選榜 #${idx + 1}`,
+    }));
   }, [questions, homeShowcaseConfig, categoryOverride]);
+}
+
+/**
+ * 結合「精選榜」與「熱度榜」雙榜交錯輪播（除了輪播精選榜，也同步輪播熱度榜 TOP 10）
+ */
+export function useCombinedShowcaseSlides(categoryOverride?: HomeShowcaseCategory): Slide[] {
+  const { questions, homeShowcaseConfig } = useApp();
+  const featuredSlides = useShowcaseSlides(categoryOverride);
+  return useMemo(() => {
+    const cfg = homeShowcaseConfig;
+    if (!cfg?.enabled) return featuredSlides;
+    const activeCat: HomeShowcaseCategory =
+      categoryOverride || (cfg.defaultCategory === 'proposals_software' ? 'proposals_software' : 'games');
+
+    const hotRanked =
+      activeCat === 'games'
+        ? getHotRankedGames(questions || [], cfg.hotGamesMode || 'custom', cfg.hotGameIds || [])
+        : getHotRankedProposalsAndSoftware(questions || [], cfg.hotProposalsMode || 'custom', cfg.hotProposalIds || []);
+
+    const hotSlides: Slide[] = hotRanked.slice(0, 10).map((item, idx) => ({
+      q: item.question,
+      mode: 'hot' as const,
+      ...imageOf(item.question),
+      badgeLabel: `熱度榜 #${idx + 1}`,
+    }));
+
+    const combined: Slide[] = [];
+    const maxLen = Math.max(featuredSlides.length, hotSlides.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (featuredSlides[i]) {
+        combined.push({
+          ...featuredSlides[i],
+          badgeLabel: featuredSlides[i].badgeLabel || `精選榜 #${i + 1}`,
+        });
+      }
+      if (hotSlides[i]) {
+        combined.push(hotSlides[i]);
+      }
+    }
+    return combined.slice(0, MAX_SLIDES);
+  }, [featuredSlides, questions, homeShowcaseConfig, categoryOverride]);
 }
 
 export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q: Question) => void }> = ({ slides, onSelectSlide }) => {
@@ -185,7 +230,7 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q:
       className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/80 bg-stone-900 shadow-md"
       role="region"
       aria-roledescription="carousel"
-      aria-label="首頁輪播&精選榜"
+      aria-label="首頁輪播：精選榜與熱度榜"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -202,14 +247,15 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q:
         {slides.map((s, i) => {
           const meta = MODE_META[s.mode];
           const active = i === idx;
+          const badgeText = s.badgeLabel || meta.label;
           return (
             <button
-              key={s.q.id}
+              key={`${s.mode}-${s.q.id}-${i}`}
               type="button"
               onClick={() => open(s.q)}
               aria-hidden={!active}
               tabIndex={active ? 0 : -1}
-              aria-label={`${meta.label}：${s.q.title}`}
+              aria-label={`${badgeText}：${s.q.title}`}
               className={`absolute inset-0 w-full h-full text-left cursor-pointer transition-opacity duration-700 ${active ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
             >
               {s.image ? (
@@ -223,8 +269,8 @@ export const HomeShowcasePlayer: React.FC<{ slides: Slide[]; onSelectSlide?: (q:
                   <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
                 </span>
               )}
-              <span className={`absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black ${meta.cls}`}>
-                {meta.icon}{meta.label}
+              <span className={`absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shadow-xs ${meta.cls}`}>
+                {meta.icon}{badgeText}
               </span>
               <span className="absolute inset-x-0 bottom-0 p-3 sm:p-5 pb-6 sm:pb-8">
                 {(() => {

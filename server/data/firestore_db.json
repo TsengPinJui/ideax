@@ -25,18 +25,12 @@
       ],
       "aiCategorized": false,
       "createdAt": "2026-10-24T14:57:47.316Z",
-      "updatedAt": "2026-10-24T16:37:38.599Z",
+      "updatedAt": "2026-10-28T06:43:31.820Z",
       "reviewNote": "",
       "reviewedBy": "V13yE3d2IIUDuumlsZFYZFwuEi82",
-      "reviewedAt": "2026-10-24T16:37:38.599Z",
-      "viewsCount": 9,
-      "views": 9
-    },
-    "q-1792860392542": {
-      "likesCount": 2,
-      "likeCount": 2,
-      "id": "q-1792860392542",
-      "updatedAt": "2026-10-24T17:16:44.234Z"
+      "reviewedAt": "2026-10-28T06:43:31.820Z",
+      "viewsCount": 11,
+      "views": 11
     }
   },
   "questions": {
@@ -48911,7 +48905,7 @@
       "totalWithdrawn": 0,
       "company": "IdeaX 創點子團隊",
       "authUid": "3uFheztxFGUlsLy2hbVHNVFduTK2",
-      "balance": 77900,
+      "balance": 79100,
       "escrowedEarnings": 0,
       "gender": "female",
       "showQuestionerTitle": false,
@@ -48924,7 +48918,7 @@
         "L3": 14,
         "L4": 9
       },
-      "updatedAt": "2026-10-27T04:55:29.592Z",
+      "updatedAt": "2026-10-28T23:15:13.205Z",
       "isDeactivated": false,
       "honorLevel": 1,
       "expertCertStatus": "verified",
@@ -48944,7 +48938,7 @@
       "showAcceptanceRate": false,
       "hasAgreedQuestionerTerms": true,
       "avgSolutionBounty": 0,
-      "hasIdDocuments": true,
+      "hasIdDocuments": false,
       "pendingEarnings": 0,
       "agreedSolverTermsVersion": "2026-v2.1",
       "isSiteBAdmin": true,
@@ -49061,283 +49055,6 @@
       "pointsRecalculatedAt": "2026-10-23T22:14:34.136Z",
       "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
     },
-    "c100000001": {
-      "assistant24hrConfig": {
-        "offlineTriggerMinutes": 20,
-        "todayReplyCount": 0,
-        "scheduledTasks": [
-          {
-            "executedAt": "剛剛",
-            "clientName": "陳執行長 (智網生醫)",
-            "createdAt": "今日 14:20",
-            "suggestedAction": "24hr 特助代操發送：關鍵技術時程切角與痛點案例說明",
-            "scheduledTimestamp": 1791009585352,
-            "status": "completed",
-            "executionResult": "特助已代操發送成功，客戶聊天室已即時送達！",
-            "scheduledTime": "今日 19:30 (晚間決策尖峰期)",
-            "strategySource": "AI-CRM 軍師策略：客戶猶豫期痛點破冰（意向評分 94%）",
-            "questionTitle": "高頻生醫檢測儀硬體規格選型與 FDA 規範疑難",
-            "questionId": "q-demo-1",
-            "autoExecute": true,
-            "clientAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
-            "clientId": "client-101",
-            "messageTemplate": "陳執行長您好！我是專家的 24hr AI 業務特助。AI-CRM 系統監測到您的 FDA 認證規格案近期正進入審查倒數，專家已針對您提出的硬體公差疑慮梳理出 3 點解套關鍵，特別請我向您主動說明。請問方便安排 15 分鐘線上確認嗎？",
-            "id": "task-1"
-          },
-          {
-            "questionId": "q-demo-2",
-            "strategySource": "AI-CRM 軍師策略：提案檢視後未回覆（發案超過 18 小時）",
-            "clientId": "client-102",
-            "id": "task-2",
-            "clientAvatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80",
-            "messageTemplate": "林總監您好！我是專家的 AI 特助。感謝您檢視專家的微電網調控提案！專家本週四尚保留下午 14:00~15:00 一個諮詢時段，可直接為貴司推演動態調頻演算法模擬，若您有需要我可立即為您保留！",
-            "scheduledTimestamp": 1791068985352,
-            "questionTitle": "儲能系統微電網即時負載調控演算法優化",
-            "autoExecute": true,
-            "executedAt": "今日 下午09:19",
-            "clientName": "林總監 (綠能前瞻科技)",
-            "scheduledTime": "明日 09:30 (晨間開工期)",
-            "createdAt": "今日 16:00",
-            "executionResult": "24hr 特助已於排定時程自動代操送達！",
-            "status": "completed",
-            "suggestedAction": "24hr 特助代操發送：提供同業專利落地數據與里程碑諮詢時段"
-          },
-          {
-            "questionTitle": "智慧物流跨國冷鏈感測節點架構評估",
-            "messageTemplate": "王創辦人您好！專家的 24hr AI 特助已為您送上冷鏈物聯網硬體通訊協議評估清單，隨時歡迎在聊天室進一步討論！",
-            "id": "task-3",
-            "scheduledTimestamp": 1790993385352,
-            "executedAt": "今日 11:15",
-            "clientName": "王創辦人 (智鏈物聯)",
-            "clientAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
-            "executionResult": "特助已代操發送成功，客戶已閱讀並留下 1 則回覆訊息！",
-            "suggestedAction": "24hr 特助已代操發送：冷鏈架構快速自我健檢清單",
-            "strategySource": "AI-CRM 軍師策略：冷鏈感測規格確認（初次觸達破冰）",
-            "autoExecute": true,
-            "status": "completed",
-            "clientId": "client-103",
-            "questionId": "q-demo-3",
-            "createdAt": "今日 09:30",
-            "scheduledTime": "今日 11:15"
-          }
-        ],
-        "enableConfidentialityFirewall": true,
-        "toneDescription": "以專業嚴謹且具同理心的態度接待，釐清客戶時程與需求痛點，引導具體合作方向。",
-        "totalAssistedCount": 0,
-        "tone": "professional",
-        "isEnabled": false,
-        "customPrompts": [
-          {
-            "isEnabled": true,
-            "instruction": "勿代替專家向客戶做出任何絕對保證成效（如「保證獲利」、「保證過審」）之承諾。",
-            "id": "prompt-1"
-          },
-          {
-            "instruction": "提及專家資歷時，以個人檔案公開領域與成功案例為主，請勿虛構或捏造不可考的背書。",
-            "id": "prompt-2",
-            "isEnabled": true
-          }
-        ],
-        "faqList": [
-          {
-            "id": "faq-1",
-            "answer": "確認需求與里程碑報價後，通常可在 1~2 個工作天內排程啟動。",
-            "question": "最快什麼時候可以開始執行專案？"
-          },
-          {
-            "question": "初步諮詢的收費方式為何？",
-            "answer": "平台提供履約款項託管保證，所有報價均依里程碑分階段驗收才撥款，正式報價將由專家親自確認後出具。",
-            "id": "faq-2"
-          },
-          {
-            "question": "如果專案規格有變更怎麼處理？",
-            "answer": "可隨時透過聊天室補充規格並協商調整里程碑，雙方同意後才會變更交付計畫。",
-            "id": "faq-3"
-          }
-        ],
-        "requireHumanApprovalForDeals": true,
-        "dailyMessageLimitPerChat": 30
-      },
-      "acceptedSolutionsCount": 5,
-      "weeklyTop10DiscussionCount": 8,
-      "skills": [
-        "校園商業模式",
-        "無人零售",
-        "早期新創孵化",
-        "社群運營"
-      ],
-      "pendingEarnings": 0,
-      "industry": "資訊科技",
-      "surveyData": {
-        "willingToSubscribeSolverPlan": "depends_profit",
-        "completedAt": "2026-09-29T09:09:35.176Z",
-        "usageFrequency": "few_times_weekly",
-        "relatedDomains": [
-          "創新創業"
-        ],
-        "desiredServices": [
-          "發布懸賞徵求專家解方",
-          "探索市場痛點與創新商機"
-        ],
-        "updatedAt": "2026-09-29T09:09:58.764Z",
-        "willingQuestionBudget": "2000_5000",
-        "willingToProvideSolutions": "very_willing",
-        "willingToBeSideHustle": "considering"
-      },
-      "verifiedExpert": false,
-      "updatedAt": "2026-10-22T14:05:09.127Z",
-      "company": "創點子科技股份有限公司",
-      "balance": 100,
-      "isDeactivated": false,
-      "username": "user_questioner",
-      "showQuestionerBio": false,
-      "agreedSolverTermsAt": "2026-09-26T17:13:09.223Z",
-      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      "totalWithdrawn": 5200,
-      "featuredCase": {
-        "images": [
-          {
-            "caption": "商圈流量與營收實務指標分析",
-            "url": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&auto=format&fit=crop&q=80"
-          },
-          {
-            "url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80",
-            "caption": "分潤模型試算介面"
-          }
-        ],
-        "description": "成功為12家校園新創餐飲品牌提供精準的股權分配、加盟合約範本以及多階段利潤分潤模型，實質降低加盟糾紛。",
-        "files": [
-          {
-            "size": "2.4 MB",
-            "name": "校園特約加盟協議與分潤試算模型.xlsx"
-          },
-          {
-            "size": "1.8 MB",
-            "name": "B2B商圈拓展實務落地指南.pdf"
-          }
-        ],
-        "title": "校園商圈特約加盟條款+分潤模型 Excel 試算包",
-        "outcome": "順利降低合作溝通摩擦並達成高效交付"
-      },
-      "jobTitle": "平台營運總監",
-      "escrowedEarnings": 0,
-      "showAcceptanceRate": false,
-      "email": "shuhao.lin@startup.tw",
-      "isSiteAAdmin": false,
-      "totalRevenue": 5200,
-      "isSiteBAdmin": false,
-      "agreedQuestionerTermsAt": "2026-10-09T00:48:41.273Z",
-      "weeklyTop10SolutionCount": 6,
-      "honorLevel": 3,
-      "showQuestionerTitle": false,
-      "bio": "正在孵化針對大專院校與年輕族群的無人零售與硬體租借專案，深信好的問題比解答更關鍵。",
-      "gender": "undisclosed",
-      "joinedDate": "2025-08-12",
-      "subscriptionExpiresAt": "2026-12-31",
-      "agreedQuestionerTermsVersion": "2026-v3.0",
-      "subscriptionTier": "free",
-      "phone": "0912-345-678",
-      "avgSolutionBounty": 1200,
-      "reputationPoints": 1480,
-      "withheldPoints": 1000,
-      "isInitialAdmin": false,
-      "accountType": "user",
-      "memberId": "c100000001",
-      "rating": 4.8,
-      "showAvgSolutionBounty": false,
-      "agreedGeneralTermsVersion": "2026-v2.1",
-      "annualSalary": "undisclosed",
-      "acceptanceRate": 63,
-      "agreedGeneralTermsAt": "2026-09-25T13:25:03.477Z",
-      "levelAnswerCounts": {
-        "L0": 2,
-        "L1": 3,
-        "L2": 2,
-        "L3": 1,
-        "L4": 0
-      },
-      "id": "c100000001",
-      "achievementsCount": 7,
-      "realNameAuthStatus": "verified",
-      "hasAgreedGeneralTerms": true,
-      "hasAgreedQuestionerTerms": true,
-      "reputation": 94,
-      "totalPaidOut": 4680,
-      "role": "questioner",
-      "honorTitle": "黃金天使提問家",
-      "name": "林書豪",
-      "agreedSolverTermsVersion": "2026-v2.1",
-      "submittedSolutionsCount": 8,
-      "title": "新創團隊創始人",
-      "showRecentSolutions": true,
-      "hasIdDocuments": false,
-      "levelQuestionCounts": {
-        "L0": 3,
-        "L1": 4,
-        "L2": 5,
-        "L3": 2,
-        "L4": 1
-      },
-      "ageGroup": "35_44",
-      "adminSites": [],
-      "hasAgreedSolverTerms": true,
-      "showSubmittedCount": false,
-      "weeklyTop10Honors": [
-        {
-          "questionId": "q-demo-pain-1",
-          "settledAt": "2026-09-22 00:00 (每週一結算)",
-          "rank": 2,
-          "id": "w-hon-1",
-          "metricText": "48 則熱烈交流討論",
-          "boardType": "discussion",
-          "weekRange": "2026 第 38 週 (09/15 ~ 09/21)",
-          "questionTitle": "大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？"
-        },
-        {
-          "settledAt": "2026-09-22 00:00 (每週一結算)",
-          "id": "w-hon-2",
-          "questionTitle": "大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？",
-          "questionId": "q-demo-pain-1",
-          "boardType": "solution",
-          "weekRange": "2026 第 38 週 (09/15 ~ 09/21)",
-          "rank": 4,
-          "metricText": "11 份高價值專家落地方案"
-        },
-        {
-          "questionTitle": "AI 語音客服如何跨越「高併發語意歧義」並降低幻覺？",
-          "boardType": "solution",
-          "weekRange": "2026 第 37 週 (09/08 ~ 09/14)",
-          "id": "w-hon-3",
-          "settledAt": "2026-09-15 00:00 (每週一結算)",
-          "metricText": "8 份實戰落地解方",
-          "questionId": "q-mock-2",
-          "rank": 3
-        },
-        {
-          "id": "w-hon-4",
-          "settledAt": "2026-09-15 00:00 (每週一結算)",
-          "questionTitle": "求冷啟動社群早期破冰激勵制度設計",
-          "weekRange": "2026 第 37 週 (09/08 ~ 09/14)",
-          "metricText": "32 則社群激盪交流",
-          "questionId": "q-mock-3",
-          "rank": 6,
-          "boardType": "discussion"
-        }
-      ],
-      "reviewCount": 9,
-      "bankAccount": {
-        "accountNumber": "***-****-5821",
-        "branchName": "敦南分行",
-        "isVerified": true,
-        "bankCode": "822",
-        "accountHolder": "林書豪",
-        "bankName": "822 中國信託商業銀行"
-      },
-      "domain": "創新創業",
-      "dataRepairedAt": "2026-10-22T19:50:34.723Z",
-      "pointsRecalculatedAt": "2026-10-23T22:14:34.136Z",
-      "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
-    },
     "khQfTsoBdMM9ksz3XM2SEr5ThA02": {
       "reputationPoints": 0,
       "bio": "",
@@ -49411,58 +49128,6 @@
       "dataRepairedAt": "2026-10-22T07:44:35.436Z",
       "balance": 500,
       "pointsRecalculatedAt": "2026-10-23T22:14:34.137Z",
-      "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
-    },
-    "test_solver_musky4ib_380": {
-      "domains": [
-        "創新創業"
-      ],
-      "realNameAuthStatus": "verified",
-      "pendingEarnings": 0,
-      "hasAgreedGeneralTerms": true,
-      "joinedDate": "2026-10-03",
-      "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-      "bio": "【測試環境一鍵生成帳號】專為免註冊、免登入快速驗證各項功能而建立。",
-      "reputation": 100,
-      "role": "questioner",
-      "name": "測試專家顧問 380",
-      "email": "test_solver_musky4ib_380@test.ideax.tw",
-      "agreedQuestionerTermsVersion": "2026-v3.0",
-      "isDeactivated": false,
-      "balance": 100,
-      "memberId": "test_solver_musky4ib_380",
-      "domain": "創新創業",
-      "acceptanceRate": 96,
-      "id": "test_solver_musky4ib_380",
-      "updatedAt": "2026-10-17T15:18:21.030Z",
-      "submittedSolutionsCount": 6,
-      "title": "AI 商業策略與技術架構專家",
-      "levelQuestionCounts": {
-        "L0": 0,
-        "L1": 0,
-        "L2": 1,
-        "L3": 0,
-        "L4": 0
-      },
-      "withheldPoints": 0,
-      "realNameAuthData": {
-        "legalName": "測試專家顧問 380",
-        "phoneNumber": "0912-345-678",
-        "nationality": "中華民國",
-        "agreedAmlPolicy": true,
-        "verifiedAt": "2026-10-04T02:51:30.168Z",
-        "idNumber": "A123456789",
-        "birthDate": "1990-01-01",
-        "email": "test_solver_musky4ib_380@test.ideax.tw"
-      },
-      "hasAgreedSolverTerms": true,
-      "hasAgreedQuestionerTerms": true,
-      "expertApplicationStatus": "approved",
-      "agreedQuestionerTermsAt": "2026-10-03T17:11:24.192Z",
-      "verifiedBadge": "AI 專家顧問",
-      "verifiedExpert": true,
-      "reputationPoints": 120,
-      "pointsRecalculatedAt": "2026-10-23T22:14:34.136Z",
       "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
     },
     "user-guest": {
@@ -50575,95 +50240,6 @@
       "pointsRecalculatedAt": "2026-10-23T22:14:34.136Z",
       "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
     },
-    "c200000002": {
-      "hasIdDocuments": true,
-      "role": "solver",
-      "gender": "female",
-      "isSiteBAdmin": false,
-      "jobTitle": "首席架構顧問",
-      "bio": "專注微服務、AI 落地整合與大型系統資安評估，用於測試提交解答、解鎖收入與專家私聊。",
-      "reputation": 100,
-      "industry": "資訊科技",
-      "title": "資深全端系統架構師 / AI 應用工程顧問",
-      "joinedDate": "2025-04-10",
-      "skills": [
-        "AI Agent 整合",
-        "微服務架構",
-        "系統性能調優",
-        "高併發設計"
-      ],
-      "totalWithdrawn": 0,
-      "balance": 100,
-      "isDeactivated": false,
-      "reviewCount": 0,
-      "escrowedEarnings": 0,
-      "isSiteAAdmin": false,
-      "avgSolutionBounty": 0,
-      "company": "陳怡君科技顧問事務所",
-      "id": "c200000002",
-      "totalRevenue": 0,
-      "subscriptionTier": "free",
-      "memberId": "c200000002",
-      "expertCertStatus": "verified",
-      "accountType": "user",
-      "adminSites": [],
-      "pendingEarnings": 0,
-      "ageGroup": "35_44",
-      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-      "reputationPoints": 0,
-      "expertApplicationStatus": "approved",
-      "withheldPoints": 0,
-      "expertApplicationData": {
-        "subdomains": [
-          "微服務架構",
-          "AI Agent 整合",
-          "系統性能調優"
-        ],
-        "yearsOfExperience": "12年",
-        "credentialsFiles": [
-          {
-            "name": "國際資深雲端與系統架構師資格執照 (TOGAF/AWS-SAP).jpg",
-            "size": "280 KB",
-            "url": "https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80",
-            "storagePath": "expert_credentials/solver-2/togaf_cert.jpg",
-            "isStorage": true,
-            "uploadedAt": "2025-04-10T11:00:00.000Z"
-          }
-        ],
-        "domain": "專業問題",
-        "proofFiles": [
-          {
-            "name": "代表性微服務高併發架構成果報告.pdf",
-            "size": "1.8 MB",
-            "uploadedAt": "2025-04-10T11:00:00.000Z"
-          }
-        ],
-        "domains": [
-          "專業問題",
-          "創新創業"
-        ],
-        "professionalTitle": "資深全端系統架構師 / AI 應用工程顧問",
-        "subdomain": "軟體架構",
-        "appliedAt": "2025-04-10T11:00:00.000Z",
-        "agreedPrivacy": true,
-        "portfolioLink": "https://github.com/yichun-chen",
-        "proofDescription": "專注分散式架構、金融級微服務與 AI 整合，曾輔導 20+ 家企業成功落地商業專案。"
-      },
-      "verifiedExpert": true,
-      "acceptedSolutionsCount": 0,
-      "realNameAuthStatus": "verified",
-      "totalPaidOut": 0,
-      "domain": "專業問題",
-      "name": "陳怡君",
-      "isInitialAdmin": false,
-      "submittedSolutionsCount": 0,
-      "username": "solver_yichun",
-      "rating": 0,
-      "dataRepairedAt": "2026-10-22T07:44:35.435Z",
-      "updatedAt": "2026-10-23T01:05:15.658Z",
-      "pointsRecalculatedAt": "2026-10-23T22:14:34.136Z",
-      "pointsRecalculatedReason": "系統規則點數重算：成功註冊+100、發布痛點+100、發布提案或作品+200"
-    },
     "M8rsOQcRbGXmOn0qAD0JEH1aXDy1": {
       "hasIdDocuments": false,
       "agreedQuestionerTermsVersion": "2026-v3.0",
@@ -51517,9 +51093,58 @@
         "2026-10-27 12:00": 29,
         "2026-10-27 13:00": 17,
         "2026-10-27 14:00": 16,
-        "2026-10-27 15:00": 13
+        "2026-10-27 15:00": 13,
+        "2026-10-27 16:00": 18,
+        "2026-10-27 17:00": 8,
+        "2026-10-27 18:00": 11,
+        "2026-10-27 19:00": 8,
+        "2026-10-27 20:00": 11,
+        "2026-10-27 21:00": 17,
+        "2026-10-27 22:00": 4,
+        "2026-10-27 23:00": 2,
+        "2026-10-28 00:00": 3,
+        "2026-10-28 01:00": 45,
+        "2026-10-28 02:00": 14,
+        "2026-10-28 03:00": 14,
+        "2026-10-28 04:00": 16,
+        "2026-10-28 05:00": 27,
+        "2026-10-28 06:00": 7,
+        "2026-10-28 07:00": 8,
+        "2026-10-28 08:00": 14,
+        "2026-10-28 09:00": 12,
+        "2026-10-28 10:00": 1,
+        "2026-10-28 12:00": 7,
+        "2026-10-28 13:00": 9,
+        "2026-10-28 14:00": 10,
+        "2026-10-28 15:00": 3,
+        "2026-10-28 16:00": 1,
+        "2026-10-28 17:00": 6,
+        "2026-10-28 18:00": 10,
+        "2026-10-28 19:00": 11,
+        "2026-10-28 20:00": 16,
+        "2026-10-28 21:00": 7,
+        "2026-10-28 22:00": 1,
+        "2026-10-28 23:00": 4,
+        "2026-10-29 00:00": 9,
+        "2026-10-29 01:00": 10,
+        "2026-10-29 02:00": 15,
+        "2026-10-29 03:00": 13,
+        "2026-10-29 04:00": 8,
+        "2026-10-29 05:00": 11,
+        "2026-10-29 06:00": 8,
+        "2026-10-29 07:00": 9,
+        "2026-10-29 08:00": 7,
+        "2026-10-29 10:00": 1,
+        "2026-10-29 11:00": 8,
+        "2026-10-29 12:00": 3,
+        "2026-10-29 13:00": 1,
+        "2026-10-29 15:00": 2,
+        "2026-10-29 16:00": 5,
+        "2026-10-29 17:00": 2,
+        "2026-10-29 18:00": 1,
+        "2026-10-29 19:00": 1
       },
-      "uniqueVisitorsTotal": 6800,
+      "uniqueVisitorsTotal": 6989,
       "visitorsDaily": {
         "2026-10-18": 494,
         "2026-10-19": 176,
@@ -51530,10 +51155,12 @@
         "2026-10-24": 1123,
         "2026-10-25": 545,
         "2026-10-26": 136,
-        "2026-10-27": 90
+        "2026-10-27": 127,
+        "2026-10-28": 137,
+        "2026-10-29": 47
       },
       "pageviewBaselineApplied": true,
-      "lastUpdatedUtc8": "2026/10/27 15:53:29 (UTC+8)",
+      "lastUpdatedUtc8": "2026/10/29 19:04:21 (UTC+8)",
       "visitorsHourly": {
         "2026-10-18 10:00": 26,
         "2026-10-18 11:00": 112,
@@ -51753,7 +51380,46 @@
         "2026-10-27 12:00": 10,
         "2026-10-27 13:00": 9,
         "2026-10-27 14:00": 6,
-        "2026-10-27 15:00": 3
+        "2026-10-27 15:00": 3,
+        "2026-10-27 16:00": 8,
+        "2026-10-27 17:00": 1,
+        "2026-10-27 18:00": 7,
+        "2026-10-27 19:00": 2,
+        "2026-10-27 20:00": 3,
+        "2026-10-27 21:00": 12,
+        "2026-10-27 22:00": 4,
+        "2026-10-28 00:00": 3,
+        "2026-10-28 01:00": 30,
+        "2026-10-28 02:00": 11,
+        "2026-10-28 03:00": 10,
+        "2026-10-28 04:00": 8,
+        "2026-10-28 05:00": 5,
+        "2026-10-28 06:00": 2,
+        "2026-10-28 07:00": 2,
+        "2026-10-28 08:00": 10,
+        "2026-10-28 09:00": 10,
+        "2026-10-28 10:00": 1,
+        "2026-10-28 12:00": 3,
+        "2026-10-28 13:00": 5,
+        "2026-10-28 14:00": 7,
+        "2026-10-28 15:00": 2,
+        "2026-10-28 16:00": 1,
+        "2026-10-28 17:00": 1,
+        "2026-10-28 18:00": 9,
+        "2026-10-28 19:00": 9,
+        "2026-10-28 20:00": 4,
+        "2026-10-28 21:00": 2,
+        "2026-10-28 22:00": 1,
+        "2026-10-28 23:00": 1,
+        "2026-10-29 00:00": 9,
+        "2026-10-29 01:00": 4,
+        "2026-10-29 02:00": 11,
+        "2026-10-29 03:00": 9,
+        "2026-10-29 04:00": 3,
+        "2026-10-29 05:00": 2,
+        "2026-10-29 06:00": 2,
+        "2026-10-29 07:00": 4,
+        "2026-10-29 08:00": 3
       },
       "firstHourKey": "2026-10-18 19:00",
       "totalVisits": 2160,
@@ -51768,7 +51434,9 @@
         "2026-10-24": 1769,
         "2026-10-25": 840,
         "2026-10-26": 398,
-        "2026-10-27": 304
+        "2026-10-27": 383,
+        "2026-10-28": 246,
+        "2026-10-29": 114
       },
       "firstRecordedAtUtc8": "2026/10/18 19:31:10 (UTC+8)",
       "firstDateKey": "2026-10-18",
@@ -51779,10 +51447,12 @@
         "2026-10-24": 1053,
         "2026-10-25": 510,
         "2026-10-26": 113,
-        "2026-10-27": 75
+        "2026-10-27": 107,
+        "2026-10-28": 123,
+        "2026-10-29": 34
       },
-      "sessionCount": 1855,
-      "totalOnlineSeconds": 869485
+      "sessionCount": 2294,
+      "totalOnlineSeconds": 1357342
     },
     "global": {
       "adminDailyGrants": {},
@@ -56188,8 +55858,61 @@
       "department": "應用數學系 大一",
       "schoolName": "國立東華大學",
       "track": "ict",
-      "updatedAt": "2026-10-24T14:41:22.202Z",
-      "status": "approved"
+      "updatedAt": "2026-10-24T16:37:55.421Z",
+      "status": "approved",
+      "reviewNote": "",
+      "reviewedAt": "2026-10-24T16:37:55.421Z",
+      "reviewedBy": "V13yE3d2IIUDuumlsZFYZFwuEi82"
+    },
+    "2e9KwdV4uvT1DdcLvnVR9tBO4dD3": {
+      "teamName": "創星漫遊者",
+      "leaderEmail": "ashinryotsu@gmail.com",
+      "advisorName": "",
+      "leaderPhone": "0920375298",
+      "teamMembers": [],
+      "referralSourceOther": "",
+      "userId": "2e9KwdV4uvT1DdcLvnVR9tBO4dD3",
+      "pledgeAgreed": true,
+      "leaderName": "陳天奉",
+      "referralSource": "獎金獵人",
+      "expectedItems": [
+        "痛點",
+        "解方"
+      ],
+      "department": "信用卡產品部",
+      "schoolName": "星展銀行",
+      "track": "cultural_services",
+      "registeredAt": "2026-10-25T04:24:10.577Z",
+      "reviewNote": "",
+      "status": "approved",
+      "reviewedBy": "V13yE3d2IIUDuumlsZFYZFwuEi82",
+      "reviewedAt": "2026-10-25T11:40:12.282Z",
+      "updatedAt": "2026-10-25T11:40:12.282Z"
+    },
+    "bqUlZCdy1aeg6wGHOvhGdgOrkOd2": {
+      "teamName": "超級痛點",
+      "leaderEmail": "akashirukawa12200101@gmail.com",
+      "advisorName": "",
+      "leaderPhone": "0983820784",
+      "teamMembers": [],
+      "referralSourceOther": "",
+      "userId": "bqUlZCdy1aeg6wGHOvhGdgOrkOd2",
+      "pledgeAgreed": true,
+      "leaderName": "ching",
+      "referralSource": "獎金獵人",
+      "expectedItems": [
+        "痛點",
+        "解方"
+      ],
+      "department": "",
+      "schoolName": "國立台北商業大學/中原大學",
+      "track": "cultural_services",
+      "registeredAt": "2026-10-28T02:40:12.351Z",
+      "reviewNote": "",
+      "reviewedAt": "2026-10-28T06:43:40.378Z",
+      "reviewedBy": "V13yE3d2IIUDuumlsZFYZFwuEi82",
+      "status": "approved",
+      "updatedAt": "2026-10-28T06:43:40.378Z"
     }
   },
   "competition_judge_applications": {
@@ -56213,89 +55936,6 @@
     }
   },
   "solvers": {
-    "solver-1": {
-      "verifiedBadge": true,
-      "rating": 4.9,
-      "bio": "8 年新創產品從 0 到 1 實戰經驗。專精共享硬體營運、B2B 商家廣告分成協議與訂閱留存模型。",
-      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      "title": "前新創產品經理 / 雙邊市場商業顧問",
-      "skills": [
-        "產品策略",
-        "SaaS",
-        "市場驗證",
-        "雙邊市場",
-        "異業聯盟"
-      ],
-      "earnings": 128500,
-      "answerCount": 87,
-      "tier": "認證專家",
-      "reviewCount": 92,
-      "domain": "創新創業",
-      "acceptedRate": 91,
-      "name": "柯育任",
-      "subdomain": "服務餐飲",
-      "id": "solver-1",
-      "subcategory": "服務餐飲",
-      "featuredCase": {
-        "title": "校園共享空間 3 個月翻倍單車位月坪效",
-        "outcome": "透過週邊早餐店優惠券廣告置換，租借收入佔比降至 30%，周邊導流收益達 70%。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "test_solver_musky4ib_380": {
-      "verifiedBadge": true,
-      "rating": 4.9,
-      "bio": "【測試環境一鍵生成帳號】專為免註冊、免登入快速驗證各項功能而建立。",
-      "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-      "title": "AI 商業策略與技術架構專家",
-      "skills": [
-        "商業模式",
-        "市場驗證",
-        "落地方案"
-      ],
-      "earnings": 18000,
-      "answerCount": 6,
-      "tier": "認證專家",
-      "reviewCount": 9,
-      "domain": "創新創業",
-      "acceptedRate": 96,
-      "name": "測試專家顧問 380",
-      "id": "test_solver_musky4ib_380",
-      "featuredCase": {
-        "description": "協助企業落地 AI 策略顧問與系統對接",
-        "title": "AI 商業化落地方案",
-        "outcome": "成功提升 3 倍營運效能並縮短 40% 決策週期"
-      },
-      "updatedAt": "2026-10-03T16:01:57.587Z"
-    },
-    "solver-5": {
-      "verifiedBadge": true,
-      "rating": 4.91,
-      "bio": "協助深科技（Deep Tech）與生醫/材料團隊申請政府研發補助、專利智財授權評估。",
-      "avatar": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80",
-      "title": "台大創新育成產學顧問 / 科技政策研究員",
-      "skills": [
-        "產學合作",
-        "專利技術移轉",
-        "科研補助計畫",
-        "法規沙盒"
-      ],
-      "earnings": 67000,
-      "answerCount": 35,
-      "tier": "特邀顧問",
-      "reviewCount": 39,
-      "domain": "學術探討",
-      "acceptedRate": 92,
-      "name": "李立衡博士",
-      "subdomain": "生技醫療",
-      "id": "solver-5",
-      "subcategory": "生技醫療",
-      "featuredCase": {
-        "title": "生醫感測晶片實驗室技轉方案評估",
-        "outcome": "成功媒合上市電子廠產學合資，取得天使期 1,500 萬技術授權款。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
     "solver-ZRXZWS8iiPg91CUV6vQrehK6ZW62": {
       "verifiedBadge": true,
       "rating": 5,
@@ -56332,176 +55972,17 @@
         "outcome": "提供專業商業模式驗證、產業對接建議與技術可行性評估。"
       },
       "updatedAt": "2026-10-22T23:08:23.610Z"
-    },
-    "solver-8": {
-      "verifiedBadge": true,
-      "rating": 4.96,
-      "bio": "25 年實體水電工程與智慧家庭水電設計經驗，專解各種疑難雜症漏水跳電與老屋整修管線規劃。",
-      "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80",
-      "title": "甲級水電技師 / 建築機電整合顧問",
-      "skills": [
-        "老屋電線抽換",
-        "高低壓配電",
-        "抓漏檢測",
-        "機電負載計算"
-      ],
-      "earnings": 89000,
-      "answerCount": 82,
-      "tier": "特邀顧問",
-      "reviewCount": 78,
-      "domain": "專業問題",
-      "acceptedRate": 96,
-      "name": "陳金水 師傅",
-      "subdomain": "水電",
-      "id": "solver-8",
-      "subcategory": "水電",
-      "featuredCase": {
-        "title": "老舊商業大樓隱匿性漏水點紅外線熱成像查核",
-        "outcome": "精準找出 7 樓管道間暗管破裂點，免敲大面積磁磚省下 15 萬修繕費。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "solver-4": {
-      "verifiedBadge": true,
-      "rating": 4.82,
-      "bio": "擅長以低預算達成高聲量，拆解跨通路社群轉換漏斗與內容裂變飛輪。",
-      "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
-      "title": "D2C 品牌增長策略師 / 數位社群操盤手",
-      "skills": [
-        "冷啟動流量",
-        "KOL 合作模型",
-        "集客式行銷",
-        "社群分銷"
-      ],
-      "earnings": 52000,
-      "answerCount": 41,
-      "tier": "專業解答者",
-      "reviewCount": 47,
-      "domain": "創新創業",
-      "acceptedRate": 85,
-      "name": "黃雅筑 Alice",
-      "subdomain": "文創工藝",
-      "id": "solver-4",
-      "subcategory": "文創工藝",
-      "featuredCase": {
-        "title": "環保生活小物單月募資突破 300 萬實戰",
-        "outcome": "打造創作者種草矩陣，ROI 達 4.3，有效累積前 5,000 位忠誠會員。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "solver-2": {
-      "verifiedBadge": true,
-      "rating": 4.95,
-      "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-      "tier": "特邀顧問",
-      "domain": "專業問題",
-      "id": "solver-2",
-      "skills": [
-        "SaaS 定價",
-        "Unit Economics",
-        "PLG 增長",
-        "客戶成功"
-      ],
-      "earnings": 98000,
-      "answerCount": 52,
-      "reviewCount": 64,
-      "acceptedRate": 94,
-      "name": "陳美琪 Maggie",
-      "bio": "專為種子輪與 A 輪企業診斷定價分級、客戶獲取成本 (CAC) 與生命週期價值 (LTV) 槓桿。",
-      "subdomain": "企業管理",
-      "title": "B2B SaaS 商業架構師 / 前矽谷增長負責人",
-      "subcategory": "企業管理",
-      "featuredCase": {
-        "description": "輔導企業完成數位轉型與高效算力架構。",
-        "title": "協助企管軟體改制 Freemium 轉向 Seat-based",
-        "outcome": "年經常性收入 (ARR) 於 6 個月內提升 180%，Churn rate 降低 4.2%。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "solver-6": {
-      "verifiedBadge": true,
-      "rating": 4.86,
-      "bio": "10 年軟體與半導體獵才歷練，一對一輔導超過 300 位工程與產品人才達成年薪躍升。",
-      "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
-      "title": "科技獵頭總監 / 職涯策略諮詢師",
-      "skills": [
-        "科技業薪資談判",
-        "跨領域轉職",
-        "主管領導力",
-        "個人品牌"
-      ],
-      "earnings": 49500,
-      "answerCount": 59,
-      "tier": "專業解答者",
-      "reviewCount": 52,
-      "domain": "日常疑難",
-      "acceptedRate": 88,
-      "name": "周承翰 Ryan",
-      "subdomain": "職場",
-      "id": "solver-6",
-      "subcategory": "職場",
-      "featuredCase": {
-        "title": "傳統硬體工程師轉進外商 AI 產品經理",
-        "outcome": "重新包裝技術資產與跨部門專案亮點，成功獲取 1.6 倍年薪 Offer。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "solver-7": {
-      "verifiedBadge": true,
-      "rating": 4.93,
-      "bio": "審查超過 800 份創業商業計畫書，精準洞察投資人關注的核心防禦力指標。",
-      "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
-      "title": "早期天使投資機構投資經理 / 財務分析師",
-      "skills": [
-        "BP 募資簡報",
-        "估值模型",
-        "投資條款清單",
-        "股權架構設計"
-      ],
-      "earnings": 58000,
-      "answerCount": 28,
-      "tier": "認證專家",
-      "reviewCount": 33,
-      "domain": "專業問題",
-      "acceptedRate": 93,
-      "name": "徐宛婷 Sonia",
-      "subdomain": "法律智財",
-      "id": "solver-7",
-      "subcategory": "法律智財",
-      "featuredCase": {
-        "title": "無人零售新創 Pre-A 輪 3,000 萬融資架構梳理",
-        "outcome": "優化 Cap Table 與毛利結構，一個月內取得 2 家領投機構 Term Sheet。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
-    },
-    "solver-3": {
-      "verifiedBadge": true,
-      "rating": 4.88,
-      "bio": "專門解決企業導入大語言模型時的幻覺、Token 爆表與資料隱私隔離等落地難題。",
-      "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-      "title": "AI 解決方案架構師 / 雲端全端資深工程師",
-      "skills": [
-        "LLM 應用",
-        "RAG 知識庫",
-        "高併發架構",
-        "向量資料庫",
-        "成本優化"
-      ],
-      "earnings": 84000,
-      "answerCount": 63,
-      "tier": "認證專家",
-      "reviewCount": 58,
-      "domain": "創新創業",
-      "acceptedRate": 89,
-      "name": "張維哲 Allen",
-      "subdomain": "資訊科技",
-      "id": "solver-3",
-      "subcategory": "資訊科技",
-      "featuredCase": {
-        "title": "智慧法務合約檢索系統私有化架構",
-        "outcome": "以混合檢索 + 語意快取，將推理成本壓低 72%，精準度維持在 94% 以上。"
-      },
-      "updatedAt": "2026-10-17T15:18:21.882Z"
+    }
+  },
+  "competition_expert_notifications": {
+    "OEL25FPUk0mx0gyqjONj": {
+      "targetEmail": "yating.chen@greentech.tw",
+      "expertName": "陳雅婷 博士",
+      "status": "rejected",
+      "subject": "【IdeaX 創星季】專家資格審核結果通知",
+      "reviewNote": "專家證明資料未通過",
+      "resendId": "01a1875b-ffdf-74bf-9726-c3a6855efe6c",
+      "sentAt": "2026-10-29T11:11:56.085Z"
     }
   }
 }

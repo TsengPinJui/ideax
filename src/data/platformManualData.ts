@@ -41,6 +41,42 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#269',
+    version: 'v4.6.8',
+    releaseDate: '2026.10.29',
+    releaseTime: '19:52',
+    author: 'IdeaX 核心工程團隊',
+    summary: '開屏畫面底部版本號補上 v 前綴（格式：v4.6.8 • 1）',
+    changes: [
+      '將開屏載入畫面（SplashScreen）底部版本與線上人數顯示調整為 v 開頭（例如：v4.6.8 • 1）',
+    ],
+  },
+  {
+    seqNumber: '#268',
+    version: 'v4.6.7',
+    releaseDate: '2026.10.29',
+    releaseTime: '19:45',
+    author: 'IdeaX 核心工程團隊',
+    summary: '開屏載入畫面底部線上人數極簡化顯示：僅顯示純數字並與版本號保持一致字色（如 4.6.7 • 1）',
+    changes: [
+      '將開屏載入畫面（SplashScreen）底部版本號旁的線上人數簡化為純數字顯示，字體顏色與樣式與版本號完全一致（格式：4.6.7 • 1）',
+    ],
+  },
+  {
+    seqNumber: '#267',
+    version: 'v4.6.6',
+    releaseDate: '2026.10.29',
+    releaseTime: '19:30',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季隱藏未參賽之稍早假提案與假痛點、移除審核假帳號與虛擬團隊（保留真實參賽隊伍）、開屏線上人數顯示與 3D 展區特色化升級',
+    changes: [
+      '創星季網站全面隱藏未參賽之稍早假提案與假痛點（包含平台精選歷史種子、虛擬人格提案與非參賽痛點），僅展示真實參賽內容',
+      '創星季後台申請審核與認證管理移除假帳號與虛擬團隊，完整保留真實參賽隊伍（靠臉解決、超級痛點、創星漫遊者）與真實帳號',
+      '開屏載入畫面（SplashScreen）底部狀態改為即時顯示「線上 X 人」',
+      '首頁與 3D 展覽館、電玩城大廳同步輪播「精選榜」與「熱度榜」，並為地下 B1–B4 各展區打造專屬 3D 主題佈景與仙鶴升降緩降體驗',
+    ],
+  },
+  {
     seqNumber: '#266',
     version: 'v4.6.5',
     releaseDate: '2026.10.29',

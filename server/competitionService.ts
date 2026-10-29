@@ -1879,29 +1879,59 @@ export async function getPublicProposals(
 
   snap.forEach((doc: any) => {
     const data = doc.data() as StarSeasonProposal;
-    const id = String(data?.id || doc.id || '');
-    const authorId = String(data?.authorId || '');
-    // 移除創星季所有假資料（排除 demo- / test- / q-vp- / u-vp- / u-agent- 等模擬資料）
+    const id = String(data?.id || doc.id || '').trim();
+    const authorId = String(data?.authorId || '').trim();
+    const authorName = String(data?.authorName || '').trim();
+    const title = String(data?.title || '').trim();
+    if (!title) return;
+
+    const isConfirmedRealParticipant =
+      authorName === '小美余' ||
+      authorName === '陳天奉' ||
+      authorName === 'ching' ||
+      (data as any).teamName === '靠臉解決' ||
+      (data as any).teamName === '超級痛點' ||
+      (data as any).teamName === '創星漫遊者' ||
+      authorId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
+      authorId === '2e9KwdV4uvT1DdcLvnVR9tBO4dD3' ||
+      authorId === 'bqUlZCdy1aeg6wGHOvhGdgOrkOd2' ||
+      id === 'star-prop-1792853867316-1ymcj';
+
+    // 移除創星季所有假資料與未參賽之稍早提案/痛點
     const isFakeOrSeed =
+      (data as any).isCompetitionJoined === false ||
+      id.startsWith('q-idea-user-') ||
+      id.startsWith('q-pain-user-') ||
+      id.startsWith('vibe-app-') ||
+      id.startsWith('game-hot-') ||
+      id.startsWith('prop-star-') ||
+      /^q-\d+$/.test(id) ||
       id.startsWith('demo-') ||
       id.startsWith('test-') ||
       id.startsWith('q-vp-') ||
       id.startsWith('q-demo-') ||
       id.startsWith('q-mock-') ||
+      id.startsWith('q-test-') ||
+      id.startsWith('q-179') ||
       id.startsWith('mock-') ||
+      authorId === 'u-platform-curated' ||
+      authorId === 'platform' ||
+      authorId === 'user-guest' ||
+      authorId === 'a000000001' ||
       authorId.startsWith('demo-') ||
       authorId.startsWith('test-') ||
       authorId.startsWith('u-vp-') ||
+      authorId.startsWith('u-vc-') ||
       authorId.startsWith('u-agent-') ||
+      authorId.startsWith('user-') ||
       authorId.startsWith('mock-') ||
+      authorName === '平台精選' ||
+      authorName === '平台嚴選' ||
+      authorName === 'IdeaX 管理團隊' ||
+      authorName === 'IdeaX創點子團隊' ||
       Boolean((data as any).isSimulated);
 
-    const isXiaoMeiYu =
-      data.authorName === '小美余' ||
-      authorId === '0VcD0rRXRHbfNjmDVVBgk7Iil2F2' ||
-      id === 'star-prop-1792853867316-1ymcj';
-
-    if (!isXiaoMeiYu && isFakeOrSeed) return;
+    if (!isConfirmedRealParticipant && isFakeOrSeed) return;
 
     // 待審不公開原則：未通過審核之提案僅作者本人或管理員可查閱；痛點開放直接展示
     if (data.status === 'approved' || data.stage === 'pain_point' || options?.includePending || (options?.authorId && data.authorId === options.authorId)) {
