@@ -662,7 +662,9 @@ export const KingdomSideDrawer: React.FC<{
       const isBoard = p.kind === 'board';
       const unit = isDiscProp ? '則討論' : '件';
       const siblingShops = isDiscProp
-        ? STREET_PROPS['region-discussion'].filter((s) => s.kind === 'shop' && (isCraft ? s.id.includes('craft') : s.id.includes('tea')))
+        ? STREET_PROPS['region-discussion'].filter(
+            (s) => (s.kind === 'shop' || s.kind === 'stall') && (isCraft ? s.id.includes('craft') : s.id.includes('tea'))
+          )
         : [];
       body = (
         <>

@@ -206,6 +206,8 @@ interface IslandScene3DProps {
   onSelectIsland: (islandId: string, districtId?: string, streetId?: string) => void;
   onFocusIsland?: (islandId: string) => void;
   onEasterEggTriggered?: (verse: string) => void;
+  onLoadingChange?: (loading: boolean) => void;
+  onSwitchToKingdom3D?: () => void;
 }
 
 // 一級地名：島名標籤（< 75% 遠景俯瞰時顯示；點擊島名自動聚焦到 100% 並顯示建築物與分展區）
@@ -712,6 +714,8 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
   onSelectIsland,
   onFocusIsland,
   onEasterEggTriggered,
+  onLoadingChange,
+  onSwitchToKingdom3D,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const labelRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -722,6 +726,10 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
   const [loadingHint, setLoadingHint] = useState('正在啟動 3D 繪圖引擎與江南水鄉光影...');
   const [easterEggToast, setEasterEggToast] = useState<{ verse: string; key: number } | null>(null);
   const easterEggTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onLoadingChange?.(isSceneLoading);
+  }, [isSceneLoading, onLoadingChange]);
 
   const onEasterEggTriggeredRef = useRef(onEasterEggTriggered);
   onEasterEggTriggeredRef.current = onEasterEggTriggered;
@@ -776,17 +784,22 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
     return () => window.clearTimeout(t);
   }, []);
 
+  const startBootNowRef = useRef<(() => void) | null>(null);
+  const cancelBootRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
     let cancelled = false;
+    let bootStarted = false;
     let teardownScene: (() => void) | null = null;
     setIsSceneLoading(true);
     setLoadingHint('正在建構創點源五島地形、拱橋水道與田園景觀...');
 
-    const bootTimer = window.setTimeout(() => {
-      if (cancelled || !mountRef.current) return;
+    const runSceneBoot = () => {
+      if (cancelled || bootStarted || !mountRef.current) return;
+      bootStarted = true;
 
       let renderer: THREE.WebGLRenderer;
       try {
@@ -11441,11 +11454,28 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         container.removeChild(canvas);
       }
     };
-    }, 48);
+    };
+
+    const bootTimer = window.setTimeout(runSceneBoot, 1500);
+    startBootNowRef.current = () => {
+      window.clearTimeout(bootTimer);
+      setLoadingHint('正在加速進入創點源 3D 地圖...');
+      window.setTimeout(runSceneBoot, 16);
+    };
+    cancelBootRef.current = () => {
+      cancelled = true;
+      window.clearTimeout(bootTimer);
+      if (teardownScene) {
+        teardownScene();
+        teardownScene = null;
+      }
+    };
 
     return () => {
       cancelled = true;
       window.clearTimeout(bootTimer);
+      startBootNowRef.current = null;
+      cancelBootRef.current = null;
       if (easterEggTimerRef.current !== null) {
         window.clearTimeout(easterEggTimerRef.current);
       }
@@ -11637,15 +11667,23 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         </div>
       )}
 
-      {/* 3D 地圖載入中提示與轉圈圈動畫 */}
+      {/* 3D 地圖載入中提示與轉圈圈動畫（支援在載入畫面直接選擇進入 3D地圖 或 實境漫遊） */}
       <div
-        className={`pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center transition-opacity duration-500 ${
-          isSceneLoading ? 'opacity-100' : 'opacity-0'
+        className={`island-ui-interactive absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-500 ${
+          isSceneLoading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        style={{ touchAction: 'manipulation' }}
         aria-live="polite"
         aria-busy={isSceneLoading}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-amber-200/60 bg-stone-900/75 px-8 py-6 text-center shadow-2xl backdrop-blur-md">
+        <div
+          className="island-ui-interactive flex flex-col items-center gap-4 rounded-3xl border border-amber-200/60 bg-stone-900/80 px-6 sm:px-8 py-6 text-center shadow-2xl backdrop-blur-md max-w-[92vw]"
+          style={{ touchAction: 'manipulation' }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {/* 雙環轉圈圈動畫 */}
           <div className="relative flex h-14 w-14 items-center justify-center">
             <div className="absolute inset-0 rounded-full border-4 border-amber-200/20" />
@@ -11667,6 +11705,61 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
           {/* 動態進度光條 */}
           <div className="h-1.5 w-48 overflow-hidden rounded-full bg-stone-700/80">
             <div className="h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-teal-400 via-amber-300 to-amber-500" />
+          </div>
+
+          {/* 載入畫面直接選擇：3D地圖 ⇄ 實境漫遊 */}
+          <div className="pt-1 flex flex-col items-center gap-2 w-full">
+            <span className="text-[11px] text-amber-200/85 font-semibold tracking-wide">
+              可隨時選擇您要進入的探索模式：
+            </span>
+            <div
+              className="inline-flex items-center p-1 rounded-full bg-stone-950/75 border border-amber-300/45 shadow-inner gap-1"
+              role="group"
+              aria-label="載入期間選擇探索模式"
+            >
+              <button
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  startBootNowRef.current?.();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startBootNowRef.current?.();
+                }}
+                className="px-4 py-1.5 rounded-full text-xs sm:text-sm font-black text-amber-50 bg-gradient-to-b from-[#b3261e] to-[#7d1a16] border border-amber-300/70 shadow-sm cursor-pointer transition-transform active:scale-95"
+              >
+                3D地圖（載入中）
+              </button>
+              <button
+                type="button"
+                style={{ touchAction: 'manipulation' }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  cancelBootRef.current?.();
+                  if (onSwitchToKingdom3D) onSwitchToKingdom3D();
+                  else {
+                    window.dispatchEvent(
+                      new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } })
+                    );
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelBootRef.current?.();
+                  if (onSwitchToKingdom3D) onSwitchToKingdom3D();
+                  else {
+                    window.dispatchEvent(
+                      new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } })
+                    );
+                  }
+                }}
+                className="px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold text-amber-100/90 hover:text-amber-50 hover:bg-amber-500/25 border border-transparent hover:border-amber-300/40 cursor-pointer transition-all active:scale-95"
+              >
+                進入實境漫遊 →
+              </button>
+            </div>
           </div>
         </div>
       </div>

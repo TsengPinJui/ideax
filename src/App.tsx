@@ -2671,6 +2671,12 @@ function MainContent() {
               setSelectedSolver(null);
               setActiveTab('explore');
             }}
+            onSwitchToKingdom3D={() => {
+              kingdomReturnTabRef.current = 'island_explorer';
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('kingdom_fp');
+            }}
           />
         )}
 

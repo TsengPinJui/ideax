@@ -1412,6 +1412,53 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   } else if (hallOf(b.id)) {
     // 藏書閣：大廳中央是往地下圖書館的下樓口（不放寶珠台）
     root.add(createHallStairEntrance(b as BuildingInteractable, deskZ));
+  } else if (b.id === 'discussion-street') {
+    // 茶藝街主建築內：擺設多張江南品茗茶桌、茶壺茶盞與木圓凳（不放中間那顆球）
+    const teaTableSpots: [number, number][] = [
+      [-3.15, 1.05],
+      [3.15, 1.05],
+      [-3.15, -1.55],
+      [3.15, -1.55],
+      [0, -1.65],
+    ];
+    teaTableSpots.forEach(([tx, tz], idx) => {
+      // 圓形木茶桌（桌面、鎏金邊、桌柱與底座）
+      addMesh(inner, new THREE.CylinderGeometry(0.62, 0.62, 0.07, 18), mats.darkWood, tx, 0.76, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.64, 0.64, 0.03, 18), mats.redLacquer, tx, 0.735, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.12, 0.18, 0.7, 10), mats.darkWood, tx, 0.36, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.32, 0.36, 0.06, 12), mats.darkWood, tx, 0.03, tz);
+      // 桌上竹木茶盤、紫砂／青瓷茶壺、四只茶盞與茶點碟（全無發光球體）
+      addMesh(inner, new THREE.BoxGeometry(0.42, 0.025, 0.28), mats.redLacquer, tx, 0.805, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.085, 0.11, 0.15, 12), mats.pot, tx - 0.06, 0.89, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.05, 0.065, 0.025, 10), mats.gold, tx - 0.06, 0.975, tz);
+      addMesh(inner, new THREE.CylinderGeometry(0.11, 0.09, 0.022, 12), mats.stoneLight, tx + 0.12, 0.825, tz - 0.04);
+      for (const [cx, cz] of [
+        [-0.36, 0],
+        [0.36, 0],
+        [0, -0.34],
+        [0, 0.34],
+      ] as [number, number][]) {
+        addMesh(inner, new THREE.CylinderGeometry(0.046, 0.036, 0.065, 10), mats.plaster, tx + cx, 0.828, tz + cz);
+      }
+      // 四周四張木圓凳
+      for (const [sx, sz] of [
+        [-0.92, 0],
+        [0.92, 0],
+        [0, -0.92],
+        [0, 0.92],
+      ] as [number, number][]) {
+        addMesh(inner, new THREE.CylinderGeometry(0.22, 0.24, 0.44, 12), mats.darkWood, tx + sx, 0.22, tz + sz);
+        addMesh(inner, new THREE.CylinderGeometry(0.23, 0.23, 0.04, 12), mats.redLacquer, tx + sx, 0.45, tz + sz);
+      }
+      const [wx, wz] = toWorld(tx, tz);
+      extraColliders.push({
+        id: `${b.id}-tea-table-${idx}`,
+        type: 'cylinder',
+        x: wx,
+        z: wz,
+        radius: 0.72,
+      });
+    });
   } else {
     addMesh(inner, new THREE.CylinderGeometry(0.72, 0.85, 0.5, 16), mats.stoneLight, 0, 0.25, deskZ);
     addMesh(inner, new THREE.CylinderGeometry(0.55, 0.7, 0.75, 12), mats.redLacquer, 0, 0.85, deskZ);

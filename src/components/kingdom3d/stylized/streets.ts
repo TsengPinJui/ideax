@@ -199,17 +199,22 @@ const TEA_NOTE = '茶藝街兩側茶莊與茶座林立，每個主題為一間�
 const TEA_BOARD_NOTE = '茶藝街街道佈告欄：張貼日常交流、生活慢調、職場江湖與靈感悟道討論。';
 
 const DISCUSSION_PROPS: StreetProp[] = [
-  // ── 西區：茶藝街（真正的一條南北向江南茶街，街心 x = 55.8，西側主茶樓＋茶鋪朝東，東側茶鋪＋茶攤朝西）
+  // ── 西區：茶藝街（南北向軸線石板長街 x = 55.8，北端由主建築「茶藝街主茶樓 (55.8,-60.2)」坐鎮，兩側茶莊、春毫茶攤與漫天彩燈）
   DISC('tea-gate', 'gate', '茶藝街', '日常・生活・職場・靈感', 'tea', 55.8, -28.0, 0, 'tea_daily', TEA_NOTE),
-  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.9, -54.6, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  // 西側北端：清茗茶莊（朝東 Math.PI / 2，避開西南側過橋上岸動線）
+  DISC('tea-0', 'shop', '清茗茶莊', '日常交流茶館', 'tea', 49.4, -51.0, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  // 東側一排雙層黛瓦茶樓（朝西 -Math.PI / 2）
   DISC('tea-1', 'shop', '雅韻茶樓', '生活慢調茶館', 'tea', 62.2, -35.0, -Math.PI / 2, 'tea_life', TEA_NOTE),
-  DISC('tea-2', 'shop', '龍井茶寮', '職場江湖茶館', 'tea', 62.2, -43.5, -Math.PI / 2, 'tea_work', TEA_NOTE),
-  DISC('tea-3', 'shop', '茗香茶點', '靈感悟道茶館', 'sweets', 62.2, -52.0, -Math.PI / 2, 'tea_idea', TEA_NOTE),
-  DISC('tea-stall-0', 'stall', '春毫茶攤', '新茶試飲・日常閒聊', 'tea', 49.6, -60.4, Math.PI / 2, 'tea_daily', TEA_NOTE),
-  DISC('tea-seat-0', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -38.8, 0, 'tea_life', TEA_NOTE),
-  DISC('tea-seat-1', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -48.5, 0, 'tea_idea', TEA_NOTE),
-  DISC('tea-board-0', 'board', '茶街討論欄・日常生活', '街道佈告欄・張貼日常與生活討論', 'tea', 52.8, -30.8, Math.PI / 2, 'tea_board', TEA_BOARD_NOTE, 2.7, 0.62),
-  DISC('tea-board-1', 'board', '茶街討論欄・職場靈感', '街道佈告欄・張貼職場與靈感討論', 'tea', 58.8, -30.8, -Math.PI / 2, 'tea_work', TEA_BOARD_NOTE, 2.7, 0.62),
+  DISC('tea-2', 'shop', '龍井茶寮', '職場江湖茶館', 'tea', 62.2, -43.0, -Math.PI / 2, 'tea_work', TEA_NOTE),
+  DISC('tea-3', 'shop', '茗香茶點', '靈感悟道茶館', 'sweets', 62.2, -51.0, -Math.PI / 2, 'tea_idea', TEA_NOTE),
+  // 西側中段：春毫茶攤（與清茗茶莊同列茶藝街五大茶館／茶攤標籤）
+  DISC('tea-stall-0', 'stall', '春毫茶攤', '新茶試飲・日常閒聊', 'tea', 49.4, -41.0, Math.PI / 2, 'tea_daily', TEA_NOTE),
+  // 街心油紙傘露天茶座
+  DISC('tea-seat-0', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -36.5, 0, 'tea_life', TEA_NOTE),
+  DISC('tea-seat-1', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -44.5, 0, 'tea_idea', TEA_NOTE),
+  DISC('tea-seat-2', 'seat', '露天茶座', '茶藝街・品茗論道', 'tea', 55.8, -52.5, 0, 'tea_work', TEA_NOTE),
+  DISC('tea-board-0', 'board', '茶街討論欄・日常生活', '街道佈告欄・張貼日常與生活討論', 'tea', 52.2, -30.8, Math.PI / 2, 'tea_board', TEA_BOARD_NOTE, 2.7, 0.62),
+  DISC('tea-board-1', 'board', '茶街討論欄・職場靈感', '街道佈告欄・張貼職場與靈感討論', 'tea', 59.4, -30.8, -Math.PI / 2, 'tea_work', TEA_BOARD_NOTE, 2.7, 0.62),
 
   // ── 東區：百工坊街（右手邊是大熊匠鋪〔建築 discussion-workshop〕，左手邊白牆上一排百工佈告欄，街心淨空）
   DISC('craft-gate', 'gate', '百工坊', '百工佈告欄・大熊匠鋪', 'general', 88.2, -28.0, 0, 'craft_board', CRAFT_NOTE),
@@ -634,7 +639,25 @@ function buildShop(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   add(g, eave, sm.roofs[theme], 0, pl + H1 + 0.32, d / 2 + 0.5);
   add(g, new THREE.BoxGeometry(w + 1.0, 0.16, 0.16), sm.ridges[theme], 0, pl + H1 + 0.08, d / 2 + 1.12);
 
-  // 討論島各分類店鋪（如水電坊、室內裝修坊、法律智財坊、會計稅務坊、企業管理坊等）：一樓門前懸掛「熱門討論輪播」走馬燈看板
+  // 茶藝街雙層茶樓特色（呼應參考圖四：二樓外挑雕花木欄杆＋一樓門前延伸彩色條紋遮陽布篷＋簷下排燈）
+  if (p.regionId === 'region-discussion') {
+    const [ca, cb] = AWNINGS[hv % AWNINGS.length];
+    const awnMat = cachedMat(m.awnings, `shop_${ca}${cb}`, () => new THREE.MeshStandardMaterial({ map: awningTexture(ca, cb), roughness: 0.88, side: THREE.DoubleSide }));
+    const awnGeo = new THREE.PlaneGeometry(w + 0.4, 1.45).rotateX(-Math.PI / 2 + 0.32);
+    add(g, awnGeo, awnMat, 0, pl + H1 - 0.28, d / 2 + 0.72);
+    add(g, new THREE.PlaneGeometry(w + 0.4, 0.28), awnMat, 0, pl + H1 - 0.56, d / 2 + 1.38);
+    // 二樓外挑木欄杆
+    add(g, new THREE.BoxGeometry(w + 0.2, 0.08, 0.08), sm.darkWood, 0, pl + H1 + 0.92, d / 2 + 0.38);
+    for (let rx = -w / 2 + 0.25; rx <= w / 2 - 0.25; rx += 0.45) {
+      add(g, new THREE.BoxGeometry(0.06, 0.58, 0.06), sm.darkWood, rx, pl + H1 + 0.62, d / 2 + 0.38);
+    }
+    for (const lx of [-w * 0.22, w * 0.22]) {
+      const v = toWorld(g, lx, pl + H1 - 0.55, d / 2 + 0.92);
+      lanterns.addHanging(v.x, v.y, v.z, 0.68);
+    }
+  }
+
+  // 討論島各分類店鋪：一樓門前懸掛「熱門討論輪播」走馬燈看板
   if (p.regionId === 'region-discussion' && p.content) {
     const cw = Math.min(w - 0.9, 3.6);
     const ch = 0.96;
@@ -902,6 +925,104 @@ function buildGate(p: StreetProp, root: THREE.Group, lanterns: LanternBatch, toW
   return cols;
 }
 
+/**
+ * 茶藝街節慶氛圍（呼應參考圖四「茶藝街參考」）：
+ * - 街道青石板鋪面（x = 55.8, z = -28 .. -58）
+ * - 橫跨東西兩側茶樓二樓屋簷的 7 道弧形燈籠長串（懸掛金黃書法長燈籠、朱紅、翠綠、天藍等多彩節慶宮燈）
+ * - 茶藝街上空冉冉升起的暖光祈福天燈群（隨時間緩緩上下浮動）
+ */
+function buildTeaStreetAtmosphere(root: THREE.Group, lanterns: LanternBatch) {
+  const sm = getStyleMaterials();
+  const streetX = 55.8;
+  // 青石板長街中央鋪面與邊石
+  const road = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.06, 31.5), sm.stoneLight ?? sm.stone);
+  road.position.set(streetX, 0.03, -43.8);
+  road.receiveShadow = true;
+  root.add(road);
+
+  const ropeMat = new THREE.MeshBasicMaterial({ color: 0x2b190e });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x241409, roughness: 0.7 });
+  const colorMats = [
+    new THREE.MeshStandardMaterial({ color: 0xffd86b, emissive: new THREE.Color(0xffa826), emissiveIntensity: 1.25, roughness: 0.35 }), // 金黃長燈
+    new THREE.MeshStandardMaterial({ color: 0xff5a36, emissive: new THREE.Color(0xe62e00), emissiveIntensity: 1.15, roughness: 0.38 }), // 朱紅燈籠
+    new THREE.MeshStandardMaterial({ color: 0x38d399, emissive: new THREE.Color(0x10b981), emissiveIntensity: 1.05, roughness: 0.38 }), // 翠玉綠燈籠
+    new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: new THREE.Color(0x0284c7), emissiveIntensity: 1.05, roughness: 0.38 }), // 晴空藍燈籠
+    new THREE.MeshStandardMaterial({ color: 0xf472b6, emissive: new THREE.Color(0xdb2777), emissiveIntensity: 1.05, roughness: 0.38 }), // 桃粉燈籠
+  ];
+
+  const zRows = [-31.5, -35.2, -39.0, -43.0, -47.0, -51.0, -55.2];
+  const xSpan = 10.6; // 從西排茶樓簷口 (50.5) 跨至東排茶樓簷口 (61.1)
+  zRows.forEach((zRow, ri) => {
+    const nSegs = 8;
+    for (let i = 0; i < nSegs; i++) {
+      const u0 = i / nSegs;
+      const u1 = (i + 1) / nSegs;
+      const x0 = streetX - xSpan / 2 + u0 * xSpan;
+      const x1 = streetX - xSpan / 2 + u1 * xSpan;
+      const sag0 = Math.sin(u0 * Math.PI) * 0.85;
+      const sag1 = Math.sin(u1 * Math.PI) * 0.85;
+      const y0 = 6.15 - sag0;
+      const y1 = 6.15 - sag1;
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, len, 5), ropeMat);
+      seg.position.set((x0 + x1) / 2, (y0 + y1) / 2, zRow);
+      seg.rotation.z = Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2;
+      root.add(seg);
+    }
+    // 每條燈繩懸掛 7 盞多彩宮燈與長筒燈籠
+    for (let k = 1; k <= 7; k++) {
+      const u = k / 8;
+      const lx = streetX - xSpan / 2 + u * xSpan;
+      const ly = 6.15 - Math.sin(u * Math.PI) * 0.85 - 0.32;
+      const kind = (ri + k) % colorMats.length;
+      const cMat = colorMats[kind];
+      const isTall = (ri + k) % 2 === 0;
+      const bodyGeo = isTall
+        ? new THREE.CylinderGeometry(0.2, 0.2, 0.56, 12)
+        : new THREE.SphereGeometry(0.24, 12, 10).scale(1, 0.88, 1);
+      const body = new THREE.Mesh(bodyGeo, cMat);
+      body.position.set(lx, ly, zRow);
+      root.add(body);
+      const topCap = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 8), capMat);
+      topCap.position.set(lx, ly + (isTall ? 0.3 : 0.22), zRow);
+      root.add(topCap);
+      const botCap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 8), capMat);
+      botCap.position.set(lx, ly - (isTall ? 0.3 : 0.22), zRow);
+      root.add(botCap);
+    }
+  });
+
+  // 上空漂浮的祈福天燈群（呼應參考圖四茶藝街夜空漫天升起的天燈）
+  const skyGroup = new THREE.Group();
+  skyGroup.name = 'tea_street_sky_lanterns';
+  skyGroup.userData.noMerge = true;
+  root.add(skyGroup);
+  const skyMat = new THREE.MeshStandardMaterial({
+    color: 0xffe49e,
+    emissive: new THREE.Color(0xff9d2e),
+    emissiveIntensity: 1.35,
+    roughness: 0.35,
+  });
+  const skyItems: { mesh: THREE.Mesh; baseY: number; phase: number }[] = [];
+  for (let i = 0; i < 24; i++) {
+    const sx = streetX + (((i * 37) % 100) / 100 - 0.5) * 14.5;
+    const sz = -29.0 - ((i * 53) % 32);
+    const sy = 8.2 + ((i * 29) % 11) * 0.95;
+    const scale = 0.75 + (i % 4) * 0.14;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * scale, 0.15 * scale, 0.48 * scale, 10), skyMat);
+    m.position.set(sx, sy, sz);
+    m.userData.noMerge = true;
+    skyGroup.add(m);
+    skyItems.push({ mesh: m, baseY: sy, phase: i * 0.85 });
+  }
+  skyGroup.userData.tick = (t: number) => {
+    for (const it of skyItems) {
+      it.mesh.position.y = it.baseY + Math.sin(t * 0.9 + it.phase) * 0.28;
+    }
+  };
+  void lanterns;
+}
+
 /** 某座島的街景（店面、攤位、牌坊、街道佈告欄）；userData.colliders 放碰撞 */
 export function createStreetProps(regionId: RegionId): THREE.Group | null {
   const list = STREET_PROPS[regionId];
@@ -918,6 +1039,9 @@ export function createStreetProps(regionId: RegionId): THREE.Group | null {
     else if (p.kind === 'seat') colliders.push(...buildSeat(p, root));
     else if (p.kind === 'board') colliders.push(...buildBoard(p, root, lanterns, toWorld));
     else colliders.push(...buildGate(p, root, lanterns, toWorld));
+  }
+  if (regionId === 'region-discussion') {
+    buildTeaStreetAtmosphere(root, lanterns);
   }
   mergeByMaterial(root);
   root.add(lanterns.build());

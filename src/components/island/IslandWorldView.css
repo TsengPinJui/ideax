@@ -1613,6 +1613,10 @@
   pointer-events: auto;
 }
 
+.island-right-atlas.is-loading {
+  display: none !important;
+}
+
 .island-right-atlas-toggle {
   position: absolute;
   top: 92px;
@@ -1882,6 +1886,11 @@
     left: 14px;
     transform: none;
     align-items: flex-start;
+  }
+
+  .island-top-center-brand.is-loading {
+    top: 20px;
+    left: 60px;
   }
 
   .island-brand-text-center {

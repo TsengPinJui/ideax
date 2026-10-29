@@ -73,7 +73,14 @@ import { BASIN_LANDMARKS } from './stylized/basinLayout';
 const LIBRARY_ID = 'discussion-library';
 // 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
 const MOVE_BRIDGES = [...WORLD_BRIDGES, GARDEN_ARCH_BRIDGE as unknown as (typeof WORLD_BRIDGES)[number]];
-import { lobbyPit, inLobbyStairTop, drawScreenCaption, drawRankBoard } from './stylized/hallLobby';
+import {
+  lobbyPit,
+  inLobbyStairTop,
+  drawScreenCaption,
+  drawRankBoard,
+  drawCyberRankBoard,
+  drawArcadeWallScreenTexture,
+} from './stylized/hallLobby';
 import { useShowcaseSlides } from '../HomeShowcasePlayer';
 import { drawHomeBoardTexture } from './stylized/noticeBoard';
 import { drawSteleTexture, plazaTopics, drawWallBoardTexture, WallBoardWhich } from './stylized/discussionPlaza';
@@ -547,9 +554,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     } else if (t.kind === 'discStele') {
       setDrawer({ kind: 'discList', which: t.which });
     } else if (t.kind === 'lobbyRank') {
-      setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: t.which });
+      const activeWhich = t.buildingId === 'creative-arcade' ? lobbyActiveRankRef.current.get(t.buildingId) || t.which : t.which;
+      setDrawer({ kind: 'hallRank', buildingId: t.buildingId, which: activeWhich });
     } else if (t.kind === 'lobbyScreen') {
-      const cur = lobbyScreenCurrentRef.current.get(t.buildingId);
+      const slot = (t as any).slot as number | undefined;
+      const slotQ = slot !== undefined ? arcadeWallSlotQuestionRef.current.get(`${t.buildingId}#${slot}`) : undefined;
+      const cur = slotQ || lobbyScreenCurrentRef.current.get(t.buildingId);
       setDrawer(cur ? { kind: 'question', question: cur, back: { kind: 'hallRank', buildingId: t.buildingId, which: 'featured' } } : { kind: 'hallRank', buildingId: t.buildingId, which: 'featured' });
     }
   }, []);
@@ -575,6 +585,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   openForTargetRef.current = openForTarget;
   const nearBoothRef = useRef<{ buildingId: string; index: number } | null>(null);
   const lobbyScreenCurrentRef = useRef<Map<string, Question>>(new Map());
+  const lobbyActiveRankRef = useRef<Map<string, 'featured' | 'hot'>>(new Map());
+  const arcadeWallSlotQuestionRef = useRef<Map<string, Question>>(new Map());
   const goFloorRef = useRef<((buildingId: string, level: number, zone?: number) => void) | null>(null);
   // 藏書閣大門／書廳出口的觸發（離開觸發點後才重新上膛，避免一傳送就又被傳回去）
   const libDoorArmedRef = useRef(true);
@@ -769,16 +781,32 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const scene = sceneRef.current;
     if (!scene) return;
     scene.traverse((o) => {
-      const rank = o.userData?.lobbyRank as { buildingId: string; which: 'featured' | 'hot' } | undefined;
+      const rank = o.userData?.lobbyRank as { buildingId: string; which: 'featured' | 'hot'; carousel?: boolean; phaseOffset?: number } | undefined;
       const cap = o.userData?.lobbyScreenCaption as { buildingId: string } | undefined;
       const img = o.userData?.lobbyScreenImage as { buildingId: string } | undefined;
-      if (!rank && !cap && !img) return;
-      const id = (rank || cap || img)!.buildingId;
+      const wallScr = o.userData?.arcadeWallScreen as { buildingId: string; slot: number } | undefined;
+      if (!rank && !cap && !img && !wallScr) return;
+      const id = (rank || cap || img || wallScr)!.buildingId;
       const r = rankingsRef.current[id];
       const games = hallOf(id)?.showcase === 'games';
       const mesh = o as THREE.Mesh;
       const mat = mesh.material as THREE.MeshBasicMaterial;
+      const slideTick = lobbySlideRef.current[id] || 0;
+
       if (rank) {
+        if (rank.carousel && games) {
+          const activeWhich: 'featured' | 'hot' = slideTick % 2 === 0 ? 'featured' : 'hot';
+          lobbyActiveRankRef.current.set(id, activeWhich);
+          const list = (activeWhich === 'featured' ? r?.featured : r?.hot) || [];
+          const key = `cyber_${activeWhich}_${list.map((q) => q.id).join(',')}`;
+          if (mesh.userData.drawnKey === key) return;
+          mesh.userData.drawnKey = key;
+          const old = mat.map;
+          mat.map = drawCyberRankBoard(activeWhich, list);
+          mat.needsUpdate = true;
+          old?.dispose();
+          return;
+        }
         const list = (rank.which === 'featured' ? r?.featured : r?.hot) || [];
         const key = list.map((q) => q.id).join(',');
         if (mesh.userData.drawnKey === key) return;
@@ -789,8 +817,41 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         old?.dispose();
         return;
       }
+
+      if (wallScr) {
+        const slides = r?.slides || [];
+        const pickIdx = slides.length ? (wallScr.slot + Math.floor(slideTick / 2)) % slides.length : 0;
+        const entry = slides[pickIdx];
+        const q = entry?.q || null;
+        const badge = entry?.badge || `TOP #${wallScr.slot + 1}`;
+        if (q) {
+          arcadeWallSlotQuestionRef.current.set(`${id}#${wallScr.slot}`, q);
+          if (wallScr.slot === 0) lobbyScreenCurrentRef.current.set(id, q);
+        }
+        const url = q ? mediaOf(q).images[0] || '' : '';
+        const key = `aws_${wallScr.slot}_${q?.id || 'empty'}_${badge}_${url}`;
+        if (mesh.userData.drawnKey === key) return;
+        mesh.userData.drawnKey = key;
+        const old = mat.map;
+        mat.map = drawArcadeWallScreenTexture(wallScr.slot, q, badge, null);
+        mat.needsUpdate = true;
+        old?.dispose();
+        if (url) {
+          loadMediaTexture(url).then((tex) => {
+            if (!tex || mesh.userData.drawnKey !== key) return;
+            const imgSource = tex.image as HTMLImageElement | HTMLCanvasElement | ImageBitmap | undefined;
+            if (!imgSource) return;
+            const prev = mat.map;
+            mat.map = drawArcadeWallScreenTexture(wallScr.slot, q, badge, imgSource);
+            mat.needsUpdate = true;
+            prev?.dispose();
+          });
+        }
+        return;
+      }
+
       const slides = r?.slides || [];
-      const idx = slides.length ? (lobbySlideRef.current[id] || 0) % slides.length : 0;
+      const idx = slides.length ? slideTick % slides.length : 0;
       const cur = slides[idx];
       if (cur) lobbyScreenCurrentRef.current.set(id, cur.q);
       if (cap) {
@@ -3778,7 +3839,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         className="absolute inset-0 w-full h-full touch-none cursor-grab active:cursor-grabbing"
       />
 
-      {/* 載入畫面（水墨風） */}
+      {/* 載入畫面（水墨風，支援載入期間直接切換 3D地圖 或 實境漫遊） */}
       {(regionStatus === 'loading' || (!warmDone && regionStatus !== 'error')) && (
         <div className="kx-root absolute inset-0 z-40 flex flex-col items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center, #2b1a10 0%, #120a06 75%)' }}>
           <svg viewBox="0 0 120 70" className="w-40 h-24 mb-3 opacity-90" aria-hidden="true">

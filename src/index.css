@@ -26,10 +26,15 @@ body {
   min-height: 100vh;
 }
 
-/* 行動版與手機直式觸控防亂滑設定 */
+/* 行動版與手機直式觸控防亂滑設定（支援「鎖定畫面／雙指縮放」開關切換） */
 @media (max-width: 768px) {
-  html, body {
+  html:not([data-mobile-zoom="pinch"]),
+  html:not([data-mobile-zoom="pinch"]) body {
     touch-action: pan-y;
+  }
+  html[data-mobile-zoom="pinch"],
+  html[data-mobile-zoom="pinch"] body {
+    touch-action: pan-x pan-y pinch-zoom;
   }
 }
 

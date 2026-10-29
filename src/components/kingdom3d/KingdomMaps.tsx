@@ -1,5 +1,5 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Minus, Plus } from 'lucide-react';
 import { RegionId } from './types';
 import { REGION_CONFIGS, ALL_REGION_IDS, WORLD_BRIDGES } from './regionConfigs';
 import { STREET_PROPS } from './stylized/streets';
@@ -305,7 +305,7 @@ export function CompassMinimap({
   );
 }
 
-/** 全島地圖（羊皮紙水墨風），點島嶼可直接前往 */
+/** 全島地圖（羊皮紙水墨風），點島嶼可直接前往，底部附 -/+ 縮放橫條與拖曳平移 */
 export function WorldMapModal({
   open,
   onClose,
@@ -326,8 +326,112 @@ export function WorldMapModal({
   /** 點地圖任一處：前往最近可以去的地方（世界座標） */
   onGoToPoint?: (x: number, z: number) => void;
 }) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      suppressClickRef.current = false;
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  const BASE_W = 430;
+  const BASE_H = 390;
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 3.2;
+
+  const clampPan = (px: number, py: number, z: number) => {
+    const vw = BASE_W / z;
+    const vh = BASE_H / z;
+    const maxX = Math.max(0, (BASE_W - vw) / 2);
+    const maxY = Math.max(0, (BASE_H - vh) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, px)),
+      y: Math.max(-maxY, Math.min(maxY, py)),
+    };
+  };
+
+  const applyZoom = (nextZoom: number) => {
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(nextZoom.toFixed(2))));
+    setZoom(clamped);
+    setPan((prev) => clampPan(prev.x, prev.y, clamped));
+  };
+
+  const vw = BASE_W / zoom;
+  const vh = BASE_H / zoom;
+  const clampedPan = clampPan(pan.x, pan.y, zoom);
+  const vbMinX = clampedPan.x - vw / 2;
+  const vbMinY = clampedPan.y - vh / 2;
+
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (zoom <= 1.01) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      panX: clampedPan.x,
+      panY: clampedPan.y,
+      moved: false,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (Math.hypot(dx, dy) > 6) {
+      d.moved = true;
+      suppressClickRef.current = true;
+    }
+    if (!d.moved) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scaleX = vw / Math.max(1, rect.width);
+    const scaleY = vh / Math.max(1, rect.height);
+    setPan(clampPan(d.panX - dx * scaleX, d.panY - dy * scaleY, zoom));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = dragRef.current;
+    if (d && d.pointerId === e.pointerId) {
+      dragRef.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      if (d.moved) {
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 120);
+      }
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.2 : -0.2;
+    applyZoom(zoom + delta);
+  };
+
   const pickPoint = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (suppressClickRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
     if (!onGoToPoint) return;
     const svg = e.currentTarget;
     const m = svg.getScreenCTM();
@@ -348,6 +452,10 @@ export function WorldMapModal({
     onGoToPoint(p.x, p.y);
     onClose();
   };
+
+  const compassX = vbMinX + vw - 20 / zoom;
+  const compassY = vbMinY + vh - 20 / zoom;
+
   return (
     <div className="kx-root fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/55 backdrop-blur-sm pointer-events-auto" onClick={onClose}>
       <div className="kx-parchment relative w-full max-w-4xl rounded-2xl p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
@@ -360,11 +468,21 @@ export function WorldMapModal({
               點地圖任一處就能前往（點到水上會到最近的水邊）；紅色箭頭是你的位置與面向；{bondedPartner ? '粉色心形是羈絆夥伴的位置；' : ''}藍色船章是乘船點
             </p>
           </div>
-          <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
+          <button type="button" onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/10 cursor-pointer shrink-0" aria-label="關閉地圖" style={{ color: '#5a2a14' }}>
             <X className="w-5 h-5" />
           </button>
         </div>
-        <svg viewBox="-215 -195 430 390" className="w-full h-auto block rounded-xl cursor-crosshair" style={{ maxHeight: '72vh' }} onClickCapture={onGoToPoint ? pickPoint : undefined}>
+        <svg
+          viewBox={`${vbMinX} ${vbMinY} ${vw} ${vh}`}
+          className={`w-full h-auto block rounded-xl ${zoom > 1.01 ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
+          style={{ maxHeight: '66vh', touchAction: 'none' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onWheel={handleWheel}
+          onClickCapture={onGoToPoint ? pickPoint : undefined}
+        >
           <defs>
             <pattern id="kx-paddy" width="10" height="10" patternUnits="userSpaceOnUse">
               <rect width="10" height="10" fill="#9fbf6a" />
@@ -380,6 +498,7 @@ export function WorldMapModal({
             activeRegionId={activeRegionId}
             detail="full"
             onSelectRegion={(id) => {
+              if (suppressClickRef.current) return;
               onSelectRegion(id);
               onClose();
             }}
@@ -387,13 +506,59 @@ export function WorldMapModal({
           <PlayerArrow x={playerPos.x} y={playerPos.z} yawRad={yawRad} size={4.5} />
           {bondedPartner && <BondPartnerMarker x={bondedPartner.x} y={bondedPartner.z} name={bondedPartner.name} size={4.5} showName />}
           {/* 羅盤 */}
-          <g transform="translate(195 175)" className="kx-serif">
+          <g transform={`translate(${compassX} ${compassY}) scale(${1 / zoom})`} className="kx-serif">
             <circle r={15} fill="rgba(255,248,230,0.7)" stroke={INK} strokeWidth={0.8} />
             <path d="M 0 -13 L 3 0 L 0 13 L -3 0 Z" fill="#8e1f17" />
             <path d="M -13 0 L 0 3 L 13 0 L 0 -3 Z" fill={INK} opacity={0.75} />
             <text y={-16.5} textAnchor="middle" fontSize={6} fontWeight={900} fill="#8e1f17">北</text>
           </g>
         </svg>
+
+        {/* 底部 -/+ 橫條：縮放地圖與重設 */}
+        <div
+          className="mt-2.5 pt-2 border-t border-[#8a6a3a]/35 flex items-center justify-center gap-2.5 sm:gap-3 px-2 select-none"
+          style={{ color: '#5a2a14' }}
+        >
+          <button
+            type="button"
+            onClick={() => applyZoom(zoom - 0.25)}
+            disabled={zoom <= MIN_ZOOM}
+            className="w-8 h-8 rounded-full flex items-center justify-center border border-[#8a6a3a]/60 bg-[#fff8e6]/80 hover:bg-[#fff8e6] disabled:opacity-40 cursor-pointer active:scale-95 transition-all shrink-0"
+            title="縮小地圖"
+            aria-label="縮小地圖"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+
+          <input
+            type="range"
+            min={MIN_ZOOM}
+            max={MAX_ZOOM}
+            step={0.05}
+            value={zoom}
+            onChange={(e) => applyZoom(parseFloat(e.target.value))}
+            className="w-40 sm:w-64 h-2 rounded-lg appearance-none cursor-pointer accent-[#8e1f17]"
+            style={{
+              background: `linear-gradient(to right, #8e1f17 ${((zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 100}%, rgba(138, 106, 58, 0.28) ${((zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 100}%)`,
+            }}
+            aria-label="地圖縮放比例"
+          />
+
+          <button
+            type="button"
+            onClick={() => applyZoom(zoom + 0.25)}
+            disabled={zoom >= MAX_ZOOM}
+            className="w-8 h-8 rounded-full flex items-center justify-center border border-[#8a6a3a]/60 bg-[#fff8e6]/80 hover:bg-[#fff8e6] disabled:opacity-40 cursor-pointer active:scale-95 transition-all shrink-0"
+            title="放大地圖"
+            aria-label="放大地圖"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+
+          <span className="kx-serif text-xs sm:text-sm font-black tabular-nums min-w-[3.2rem] text-center">
+            {Math.round(zoom * 100)}%
+          </span>
+        </div>
       </div>
     </div>
   );

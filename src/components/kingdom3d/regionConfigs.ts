@@ -106,14 +106,17 @@ export function generateBuildingWallColliders(b: BuildingInteractable): Collider
       z2: frZ,
       halfThickness: wallHalfThick,
     },
-    // Interior interactive desk/altar pedestal
-    {
-      id: `${b.id}-interior-desk`,
-      type: 'cylinder',
-      x: tableX,
-      z: tableZ,
-      radius: 0.75,
-    },
+    ...(b.id === 'creative-exhibition' || b.id === 'creative-arcade' || b.id === 'discussion-street'
+      ? []
+      : [
+          {
+            id: `${b.id}-interior-desk`,
+            type: 'cylinder' as const,
+            x: tableX,
+            z: tableZ,
+            radius: 0.75,
+          },
+        ]),
   ];
 }
 
@@ -598,17 +601,17 @@ const discussionBuildings: BuildingInteractable[] = [
   {
     id: 'discussion-street',
     name: '茶藝街',
-    subtitle: '討論島西區・江南茶藝長街，街道兩側茶莊林立、露天茶座飄香',
-    position: new THREE.Vector3(48.5, 0, -44.5),
-    facingYaw: Math.PI / 2,
-    width: 11.5,
-    depth: 8.8,
-    height: 5.0,
+    subtitle: '討論島西區・江南茶藝長街，街道兩側茶莊林立、漫天彩燈與露天茶座飄香',
+    position: new THREE.Vector3(55.8, 0, -60.2),
+    facingYaw: 0,
+    width: 11.2,
+    depth: 7.4,
+    height: 5.6,
     exterior: 'huizhou',
-    doorWidth: 3.8,
+    doorWidth: 4.2,
     tiers: 2,
     colorHex: 0x15803d,
-    interactionRadius: 4.8,
+    interactionRadius: 5.2,
     description: '討論島西區「茶藝街」主茶樓，與街道兩側的清茗茶莊、雅韻茶樓、龍井茶寮、茗香茶點及露天茶座連成一條熱鬧的江南茶街。',
     targetModule: 'l0_discussion',
     previewBadge: '討論島・西區',
@@ -1018,7 +1021,7 @@ export const REGION_CAREER: RegionManifest = {
   courtyardWalls: careerCourtyardWalls,
   colliders: [
     ...generateCourtyardWallColliders(careerCourtyardWalls),
-    ...careerBuildings.flatMap(generateBuildingWallColliders),
+    ...careerBuildings.filter((b) => b.exterior !== 'temple').flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
   buildings: careerBuildings,

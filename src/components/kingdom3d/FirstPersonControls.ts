@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TouchStickState, TouchLookState, QualitySettings } from './types';
 import { PhysicsController } from './PhysicsController';
+import { getMobileZoomMode } from '../../utils/mobileZoomLock';
 
 export interface ControlsInputState {
   forward: boolean;
@@ -18,11 +19,18 @@ export function isTypingTarget(t: EventTarget | null) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 }
 
+function isScenePinchTouch(t: Touch): boolean {
+  const el = t.target as Element | null;
+  if (!el || typeof el.closest !== 'function') return true;
+  return !el.closest('[data-joystick-zone], [data-ui-panel], button, a, input, select, textarea');
+}
+
 export class FirstPersonControls {
   public camera: THREE.PerspectiveCamera;
   public domElement: HTMLElement;
   private touchElement: HTMLElement;
   public settings: QualitySettings;
+  public pinchZoomEnabled: boolean = getMobileZoomMode() === 'pinch';
 
   // Player state
   public position: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -57,6 +65,7 @@ export class FirstPersonControls {
   private touchStartHandler: (e: TouchEvent) => void;
   private touchMoveHandler: (e: TouchEvent) => void;
   private touchEndHandler: () => void;
+  private zoomModeChangeHandler: (e: Event) => void;
   private pinchDistance = 0;
 
   // Mobile virtual joystick & look pad states
@@ -93,6 +102,7 @@ export class FirstPersonControls {
     this.domElement = domElement;
     this.touchElement = domElement.parentElement || domElement;
     this.settings = settings;
+    this.pinchZoomEnabled = getMobileZoomMode() === 'pinch';
 
     // Desktop look is controlled by dragging; the camera never captures the pointer.
     this.mouseDownHandler = (e: MouseEvent) => {
@@ -126,23 +136,40 @@ export class FirstPersonControls {
       this.camera.updateProjectionMatrix();
     };
     this.touchStartHandler = (e: TouchEvent) => {
-      if (e.touches.length >= 2) {
-        this.pinchDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        e.preventDefault();
+      if (!this.pinchZoomEnabled) {
+        this.pinchDistance = 0;
+        return;
+      }
+      const sceneTouches = Array.from(e.touches).filter(isScenePinchTouch);
+      if (sceneTouches.length >= 2) {
+        this.pinchDistance = Math.hypot(
+          sceneTouches[0].clientX - sceneTouches[1].clientX,
+          sceneTouches[0].clientY - sceneTouches[1].clientY
+        );
+        if (e.cancelable) e.preventDefault();
       }
     };
     this.touchMoveHandler = (e: TouchEvent) => {
-      if (e.touches.length < 2) return;
-      const distance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (!this.pinchZoomEnabled) return;
+      const sceneTouches = Array.from(e.touches).filter(isScenePinchTouch);
+      if (sceneTouches.length < 2) return;
+      const distance = Math.hypot(
+        sceneTouches[0].clientX - sceneTouches[1].clientX,
+        sceneTouches[0].clientY - sceneTouches[1].clientY
+      );
       if (this.pinchDistance > 0 && distance > 0) {
-        this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (distance / this.pinchDistance), 0.75, 2.4);
+        this.camera.zoom = THREE.MathUtils.clamp(this.camera.zoom * (distance / this.pinchDistance), 0.65, 2.6);
         this.camera.updateProjectionMatrix();
       }
       this.pinchDistance = distance;
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
     };
     this.touchEndHandler = () => {
       this.pinchDistance = 0;
+    };
+    this.zoomModeChangeHandler = (e: Event) => {
+      const mode = (e as CustomEvent<'locked' | 'pinch'>).detail || getMobileZoomMode();
+      this.setPinchZoomEnabled(mode === 'pinch');
     };
 
     this.keyDownHandler = (e: KeyboardEvent) => {
@@ -207,6 +234,16 @@ export class FirstPersonControls {
     this.touchElement.addEventListener('touchmove', this.touchMoveHandler, { passive: false, capture: true });
     this.touchElement.addEventListener('touchend', this.touchEndHandler, { capture: true });
     this.touchElement.addEventListener('touchcancel', this.touchEndHandler, { capture: true });
+    window.addEventListener('ideax_mobile_zoom_mode_change', this.zoomModeChangeHandler);
+  }
+
+  public setPinchZoomEnabled(enabled: boolean) {
+    this.pinchZoomEnabled = enabled;
+    this.pinchDistance = 0;
+    if (!enabled) {
+      this.camera.zoom = 1;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   public setSpawn(pos: THREE.Vector3, yaw: number) {
@@ -318,5 +355,6 @@ export class FirstPersonControls {
     this.touchElement.removeEventListener('touchmove', this.touchMoveHandler, true);
     this.touchElement.removeEventListener('touchend', this.touchEndHandler, true);
     this.touchElement.removeEventListener('touchcancel', this.touchEndHandler, true);
+    window.removeEventListener('ideax_mobile_zoom_mode_change', this.zoomModeChangeHandler);
   }
 }

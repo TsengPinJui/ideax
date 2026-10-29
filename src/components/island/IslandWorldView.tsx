@@ -96,6 +96,7 @@ interface IslandWorldViewProps {
   onOpenQuestion: (question: Question) => void;
   onAction: (action: IslandAction) => void;
   onBack?: () => void;
+  onSwitchToKingdom3D?: () => void;
 }
 
 export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
@@ -103,6 +104,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   onOpenQuestion,
   onAction,
   onBack,
+  onSwitchToKingdom3D,
 }) => {
   const { currentUser, publicMetricsConfig, solvers, setSelectedSolver } = useApp();
   const isAdmin = currentUser?.role === 'admin';
@@ -650,6 +652,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
       yaw: 0,
     });
   };
+  const [isMapSceneLoading, setIsMapSceneLoading] = useState(true);
 
   // 滑鼠滾輪縮放（支援最小 40% 至最大 240%）
   useEffect(() => {
@@ -1030,23 +1033,28 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           >
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
-          <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
-            <span className="island-mode-pill is-active" aria-current="page">
-              3D地圖
-            </span>
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
-              className="island-mode-pill is-switch"
-              title="點擊切換至 3D 第一人稱實境漫遊"
-            >
-              <span>實境漫遊</span>
-            </button>
-          </div>
+          {!isMapSceneLoading && (
+            <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
+              <span className="island-mode-pill is-active" aria-current="page">
+                3D地圖
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSwitchToKingdom3D) onSwitchToKingdom3D();
+                  else window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }));
+                }}
+                className="island-mode-pill is-switch"
+                title="點擊切換至 3D 第一人稱實境漫遊"
+              >
+                <span>實境漫遊</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 頂部中間：IdeaX 創點源 — 3D地圖 — */}
-        <div className="island-top-center-brand">
+        <div className={`island-top-center-brand${isMapSceneLoading ? ' is-loading' : ''}`}>
           <div className="island-brand-text-center">
             <h1 className="island-map-main-title">IdeaX 創點源</h1>
             <div className="island-subtitle-row">
@@ -1056,241 +1064,249 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
         </div>
 
         {/* 右上角：時間與佈景分兩排顯示（第一排：時辰與時間；第二排：佈景；點擊可預覽切換 8 大場景） */}
-        <div className="island-top-right-shichen island-ui-interactive">
-          <button
-            type="button"
-            onClick={() => setShowAtmosphereMenu((prev) => !prev)}
-            className="island-shichen-pure-text-btn"
-            title="點擊切換時辰與晴雨佈景"
-          >
-            <span className="shichen-main-row">
-              <span className="shichen-calligraphy-title">
-                {shichenDisplay.shichenName} · {localTimeInfo.timeString}
-              </span>
-            </span>
-            <span className="shichen-sub-row">
-              {renderPhaseIcon(activeTimePhase, activeWeather)}
-              <span>{activeSceneTitle}</span>
-            </span>
-          </button>
-
-          {/* 8 大場景彈出選單 */}
-          {showAtmosphereMenu && (
-            <div
-              className="island-atmosphere-dropdown is-right-aligned"
-              onClick={(e) => e.stopPropagation()}
+        {!isMapSceneLoading && (
+          <div className="island-top-right-shichen island-ui-interactive">
+            <button
+              type="button"
+              onClick={() => setShowAtmosphereMenu((prev) => !prev)}
+              className="island-shichen-pure-text-btn"
+              title="點擊切換時辰與晴雨佈景"
             >
-              <div className="atmos-dropdown-header">
-                <div className="flex items-center gap-1.5 text-xs font-black text-stone-800">
-                  <Clock size={14} className="text-amber-700" />
-                  <span>
-                    {shichenDisplay.shichenName} · {localTimeInfo.timeString}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimeMode('auto');
-                    setWeatherMode('auto');
-                  }}
-                  className={`atmos-auto-pill ${
-                    timeMode === 'auto' && weatherMode === 'auto' ? 'active' : ''
-                  }`}
-                >
-                  依所在地自動
-                </button>
-              </div>
+              <span className="shichen-main-row">
+                <span className="shichen-calligraphy-title">
+                  {shichenDisplay.shichenName} · {localTimeInfo.timeString}
+                </span>
+              </span>
+              <span className="shichen-sub-row">
+                {renderPhaseIcon(activeTimePhase, activeWeather)}
+                <span>{activeSceneTitle}</span>
+              </span>
+            </button>
 
-              <div className="atmos-grid-section">
-                <span className="atmos-section-label">時段</span>
-                <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
-                  <button type="button" onClick={() => setTimeMode('auto')} className={`atmos-scene-btn ${timeMode === 'auto' ? 'active' : ''}`}>
-                    <span className="font-black">自動</span>
-                    <small>依所在地</small>
+            {/* 8 大場景彈出選單 */}
+            {showAtmosphereMenu && (
+              <div
+                className="island-atmosphere-dropdown is-right-aligned"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="atmos-dropdown-header">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-stone-800">
+                    <Clock size={14} className="text-amber-700" />
+                    <span>
+                      {shichenDisplay.shichenName} · {localTimeInfo.timeString}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimeMode('auto');
+                      setWeatherMode('auto');
+                    }}
+                    className={`atmos-auto-pill ${
+                      timeMode === 'auto' && weatherMode === 'auto' ? 'active' : ''
+                    }`}
+                  >
+                    依所在地自動
                   </button>
-                  {(['morning', 'noon', 'dusk', 'night'] as TimeOfDayPhase[]).map((ph) => (
-                    <button key={`t-${ph}`} type="button" onClick={() => setTimeMode(ph)} className={`atmos-scene-btn ${timeMode === ph ? 'active' : ''}`}>
-                      <span className="font-black">{TIME_OF_DAY_CONFIGS[ph].clearLabel.slice(0, 2)}</span>
-                      <small>{TIME_OF_DAY_CONFIGS[ph].timeRange}</small>
-                    </button>
-                  ))}
                 </div>
-              </div>
 
-              <div className="atmos-grid-section mt-2">
-                <span className="atmos-section-label">天氣</span>
-                <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-                  {([
-                    ['auto', '自動', '依所在地'],
-                    ['clear', '晴天', '水燈・天燈'],
-                    ['rain', '雨天', '動態落雨'],
-                  ] as [WeatherMode, string, string][]).map(([w, label, sub]) => (
-                    <button key={`w-${w}`} type="button" onClick={() => setWeatherMode(w)} className={`atmos-scene-btn ${w === 'rain' ? 'is-rain' : ''} ${weatherMode === w ? 'active' : ''}`}>
-                      <span className="font-black">{label}</span>
-                      <small>{sub}</small>
+                <div className="atmos-grid-section">
+                  <span className="atmos-section-label">時段</span>
+                  <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+                    <button type="button" onClick={() => setTimeMode('auto')} className={`atmos-scene-btn ${timeMode === 'auto' ? 'active' : ''}`}>
+                      <span className="font-black">自動</span>
+                      <small>依所在地</small>
                     </button>
-                  ))}
+                    {(['morning', 'noon', 'dusk', 'night'] as TimeOfDayPhase[]).map((ph) => (
+                      <button key={`t-${ph}`} type="button" onClick={() => setTimeMode(ph)} className={`atmos-scene-btn ${timeMode === ph ? 'active' : ''}`}>
+                        <span className="font-black">{TIME_OF_DAY_CONFIGS[ph].clearLabel.slice(0, 2)}</span>
+                        <small>{TIME_OF_DAY_CONFIGS[ph].timeRange}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="atmos-grid-section mt-2">
+                  <span className="atmos-section-label">天氣</span>
+                  <div className="atmos-scene-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                    {([
+                      ['auto', '自動', '依所在地'],
+                      ['clear', '晴天', '水燈・天燈'],
+                      ['rain', '雨天', '動態落雨'],
+                    ] as [WeatherMode, string, string][]).map(([w, label, sub]) => (
+                      <button key={`w-${w}`} type="button" onClick={() => setWeatherMode(w)} className={`atmos-scene-btn ${w === 'rain' ? 'is-rain' : ''} ${weatherMode === w ? 'active' : ''}`}>
+                        <span className="font-black">{label}</span>
+                        <small>{sub}</small>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* 底部置中視角控制工具列（全圖示按鈕：縮放、重設視角、古風音樂開關、說明） */}
         {/* 拖曳小人到地圖上任一處：進入實境漫遊的對應位置 */}
-        <IslandPegman />
+        {!isMapSceneLoading && <IslandPegman />}
 
-        <div className="island-map-controls island-ui-interactive" aria-label="地圖操作">
-          <div className="island-map-zoom-controls">
-            <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖">
-              <Minus size={14} />
+        {!isMapSceneLoading && (
+          <div className="island-map-controls island-ui-interactive" aria-label="地圖操作">
+            <div className="island-map-zoom-controls">
+              <button type="button" onClick={() => updateZoom(view.zoom - 0.15)} aria-label="縮小地圖">
+                <Minus size={14} />
+              </button>
+              <output aria-live="polite">{Math.round(view.zoom * 100)}%</output>
+              <button type="button" onClick={() => updateZoom(view.zoom + 0.15)} aria-label="放大地圖">
+                <Plus size={14} />
+              </button>
+            </div>
+
+            <div className="island-controls-divider" />
+
+            <button
+              type="button"
+              onClick={resetView}
+              className="island-reset-btn"
+              title="重設視角"
+              aria-label="重設視角"
+            >
+              <RotateCcw size={15} />
             </button>
-            <output aria-live="polite">{Math.round(view.zoom * 100)}%</output>
-            <button type="button" onClick={() => updateZoom(view.zoom + 0.15)} aria-label="放大地圖">
-              <Plus size={14} />
+
+            <div className="island-controls-divider" />
+
+            <button
+              type="button"
+              onClick={handleToggleBgm}
+              className={`island-bgm-btn ${isBgmMuted ? 'is-muted' : 'is-playing'}`}
+              title={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
+              aria-label={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
+            >
+              {isBgmMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+
+            <div className="island-controls-divider" />
+
+            <button
+              type="button"
+              onClick={() => setShowGuideModal(true)}
+              className="island-guide-btn"
+              title="島覽說明"
+              aria-label="島覽說明"
+            >
+              <HelpCircle size={15} />
             </button>
           </div>
-
-          <div className="island-controls-divider" />
-
-          <button
-            type="button"
-            onClick={resetView}
-            className="island-reset-btn"
-            title="重設視角"
-            aria-label="重設視角"
-          >
-            <RotateCcw size={15} />
-          </button>
-
-          <div className="island-controls-divider" />
-
-          <button
-            type="button"
-            onClick={handleToggleBgm}
-            className={`island-bgm-btn ${isBgmMuted ? 'is-muted' : 'is-playing'}`}
-            title={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
-            aria-label={isBgmMuted ? '開啟古風背景樂' : '關閉古風背景樂'}
-          >
-            {isBgmMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-          </button>
-
-          <div className="island-controls-divider" />
-
-          <button
-            type="button"
-            onClick={() => setShowGuideModal(true)}
-            className="island-guide-btn"
-            title="島覽說明"
-            aria-label="島覽說明"
-          >
-            <HelpCircle size={15} />
-          </button>
-        </div>
+        )}
 
         {/* 右下角城市與當地天氣設定按鈕及彈窗選單（純文字兩排顯示，與右上角形式一致） */}
-        <div className="island-bottom-right-city island-ui-interactive" aria-label="城市與天氣設定">
-          <button
-            type="button"
-            onClick={() => setShowCityMenu((prev) => !prev)}
-            className="island-shichen-pure-text-btn island-city-pure-text-btn"
-            title="設定城市：地圖時間與天氣將依當地即時調整"
-          >
-            <span className="shichen-main-row">
-              <MapPin size={15} className="shrink-0" />
-              <span className="shichen-calligraphy-title">{currentCity.name}</span>
-            </span>
-            <span className="shichen-sub-row">
-              <span>
-                {cityWeatherInfo
-                  ? `${cityWeatherInfo.temp}°C · ${cityWeatherInfo.weatherDesc}`
-                  : currentCity.country}
+        {!isMapSceneLoading && (
+          <div className="island-bottom-right-city island-ui-interactive" aria-label="城市與天氣設定">
+            <button
+              type="button"
+              onClick={() => setShowCityMenu((prev) => !prev)}
+              className="island-shichen-pure-text-btn island-city-pure-text-btn"
+              title="設定城市：地圖時間與天氣將依當地即時調整"
+            >
+              <span className="shichen-main-row">
+                <MapPin size={15} className="shrink-0" />
+                <span className="shichen-calligraphy-title">{currentCity.name}</span>
               </span>
-            </span>
-          </button>
+              <span className="shichen-sub-row">
+                <span>
+                  {cityWeatherInfo
+                    ? `${cityWeatherInfo.temp}°C · ${cityWeatherInfo.weatherDesc}`
+                    : currentCity.country}
+                </span>
+              </span>
+            </button>
 
-          {showCityMenu && (
-            <div className="island-city-dropdown" onClick={(e) => e.stopPropagation()}>
-              <div className="city-dropdown-header">
-                <div>
-                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                    <MapPin size={13} className="text-amber-700" />
-                    <span>城市與當地天候</span>
+            {showCityMenu && (
+              <div className="island-city-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="city-dropdown-header">
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <MapPin size={13} className="text-amber-700" />
+                      <span>城市與當地天候</span>
+                    </div>
+                    <div className="text-[10px] text-stone-500">地圖時間與天氣將依當地自動連動調整</div>
                   </div>
-                  <div className="text-[10px] text-stone-500">地圖時間與天氣將依當地自動連動調整</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCityMenu(false)}
+                    className="city-dropdown-close text-stone-400 hover:text-stone-700 p-1"
+                    aria-label="關閉選單"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCityMenu(false)}
-                  className="city-dropdown-close text-stone-400 hover:text-stone-700 p-1"
-                  aria-label="關閉選單"
-                >
-                  <X size={14} />
-                </button>
-              </div>
 
-              <div className="city-dropdown-grid">
-                {SUPPORTED_CITIES.map((c) => {
-                  const isSelected = selectedCityId === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCityId(c.id);
-                        setStoredUserCityId(c.id);
-                        setShowCityMenu(false);
-                      }}
-                      className={`city-select-card ${isSelected ? 'active' : ''}`}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-bold text-stone-900 text-xs">{c.name}</span>
-                        <span className="text-[10px] text-stone-500 font-medium">{c.country}</span>
-                      </div>
-                      <div className="text-[10px] text-stone-500 line-clamp-1">{c.description}</div>
-                    </button>
-                  );
-                })}
+                <div className="city-dropdown-grid">
+                  {SUPPORTED_CITIES.map((c) => {
+                    const isSelected = selectedCityId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCityId(c.id);
+                          setStoredUserCityId(c.id);
+                          setShowCityMenu(false);
+                        }}
+                        className={`city-select-card ${isSelected ? 'active' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-bold text-stone-900 text-xs">{c.name}</span>
+                          <span className="text-[10px] text-stone-500 font-medium">{c.country}</span>
+                        </div>
+                        <div className="text-[10px] text-stone-500 line-clamp-1">{c.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* 左下角：彩蛋收集冊按鈕與新解鎖提示 */}
-        <div
-          className="island-bottom-left-collection island-ui-interactive"
-          aria-label="彩蛋收集冊"
-        >
-          {recentUnlockedEggToast && (
-            <div
-              className="island-easter-book-toast"
-              onClick={() => {
-                setShowEasterEggBook(true);
-                setRecentUnlockedEggToast(null);
-              }}
-            >
-              <div className="easter-toast-badge">
-                <Sparkles size={13} />
-                <span>新彩蛋收入第 {String(recentUnlockedEggToast.slotIndex).padStart(2, '0')} 格</span>
-              </div>
-              <div className="easter-toast-verse">{recentUnlockedEggToast.verse}</div>
-              <div className="easter-toast-time">{recentUnlockedEggToast.unlockedAt}</div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowEasterEggBook((prev) => !prev)}
-            className="island-easter-book-btn"
-            title="打開彩蛋收集冊：查看已解鎖的隱藏詩句"
+        {!isMapSceneLoading && (
+          <div
+            className="island-bottom-left-collection island-ui-interactive"
+            aria-label="彩蛋收集冊"
           >
-            <ScrollText size={16} className="easter-book-icon shrink-0 text-amber-700" />
-            <span className="easter-book-btn-title">彩蛋收集冊</span>
-            <span className="easter-book-btn-count">
-              {collectedEasterEggs.length} / {TOTAL_ISLAND_EASTER_EGGS}
-            </span>
-          </button>
-        </div>
+            {recentUnlockedEggToast && (
+              <div
+                className="island-easter-book-toast"
+                onClick={() => {
+                  setShowEasterEggBook(true);
+                  setRecentUnlockedEggToast(null);
+                }}
+              >
+                <div className="easter-toast-badge">
+                  <Sparkles size={13} />
+                  <span>新彩蛋收入第 {String(recentUnlockedEggToast.slotIndex).padStart(2, '0')} 格</span>
+                </div>
+                <div className="easter-toast-verse">{recentUnlockedEggToast.verse}</div>
+                <div className="easter-toast-time">{recentUnlockedEggToast.unlockedAt}</div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowEasterEggBook((prev) => !prev)}
+              className="island-easter-book-btn"
+              title="打開彩蛋收集冊：查看已解鎖的隱藏詩句"
+            >
+              <ScrollText size={16} className="easter-book-icon shrink-0 text-amber-700" />
+              <span className="easter-book-btn-title">彩蛋收集冊</span>
+              <span className="easter-book-btn-count">
+                {collectedEasterEggs.length} / {TOTAL_ISLAND_EASTER_EGGS}
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* ============================================================
             主舞台內容：Three.js 3D 立體建模（支援 +8 時區 8 大時辰與天氣動態場景）
@@ -1308,13 +1324,15 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           onSelectIsland={handleSelectIsland}
           onFocusIsland={handleFocusIsland}
           onEasterEggTriggered={handleEasterEggTriggered}
+          onLoadingChange={setIsMapSceneLoading}
+          onSwitchToKingdom3D={onSwitchToKingdom3D}
         />
       </div>
 
       {/* ============================================================
           右側島覽面板 (Right-side Atlas Panel)
           ============================================================ */}
-      <aside className={`island-right-atlas ${isRightAtlasOpen ? 'is-open' : ''}`}>
+      <aside className={`island-right-atlas ${isRightAtlasOpen ? 'is-open' : ''} ${isMapSceneLoading ? 'is-loading' : ''}`}>
         <button
           type="button"
           onClick={() => setIsRightAtlasOpen(!isRightAtlasOpen)}

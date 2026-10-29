@@ -7,9 +7,7 @@ import {
 } from './regionConfigs';
 import {
   Menu,
-  Map as MapIcon,
   Settings,
-  Activity,
   LogOut,
   Hand,
   Sparkles,
@@ -17,8 +15,6 @@ import {
   Sun,
   Moon,
   Footprints,
-  Volume2,
-  VolumeX,
   Users,
   Share2,
   Check,
@@ -27,15 +23,17 @@ import {
   Copy,
   Lightbulb,
   Armchair,
-  Compass,
   ChevronLeft,
   ChevronRight,
+  Lock,
+  ZoomIn,
 } from 'lucide-react';
 import { CompassMinimap, WorldMapModal } from './KingdomMaps';
 import {
   triggerDirectAppDownloadOrInstall,
   downloadAppLauncherFile,
 } from '../../services/pwaInstaller';
+import { useMobileZoomMode } from '../../utils/mobileZoomLock';
 import './kingdomUi.css';
 import { EnvControls, TimeMode, WeatherMode } from './EnvControls';
 
@@ -221,6 +219,10 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   const maxRadiusRef = useRef(maxRadius);
   maxRadiusRef.current = maxRadius;
 
+  const [mobileZoomMode, setMobileZoomMode] = useMobileZoomMode();
+  const mobileZoomModeRef = useRef(mobileZoomMode);
+  mobileZoomModeRef.current = mobileZoomMode;
+
   // Mobile Virtual Joystick State
   const [joystickActive, setJoystickActive] = useState(false);
   const [stickPos, setStickPos] = useState({ x: 0, y: 0 });
@@ -358,7 +360,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
   }, []);
 
-  // 全畫面觸控轉頭與點選（支援左手搖桿移動＋右手滑動轉向雙指同步操作，徹底防止被誤判為畫面縮放）
+  // 全畫面觸控轉頭與點選（支援左手搖桿移動＋右手滑動轉向雙指同步操作，並支援「鎖定畫面／雙指縮放」開關）
   useEffect(() => {
     let isPinching = false;
     const isInteractiveUiTarget = (el: EventTarget | null): boolean => {
@@ -384,8 +386,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         (t) => t.identifier !== joystickTouchIdRef.current
       );
 
-      // 只有在搖桿以外的區域有兩指以上同時觸控時才判定為雙指縮放，一手搖桿一手轉向絕對不會被誤判
-      if (lookTouches.length >= 2) {
+      // 只有在開啟「雙指縮放」且搖桿以外的區域有兩指以上同時觸控時才切換為雙指縮放
+      if (mobileZoomModeRef.current === 'pinch' && lookTouches.length >= 2) {
         isPinching = true;
         lookTouchIdRef.current = null;
         lookTapRef.current = null;
@@ -433,7 +435,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         (t) => t.identifier !== joystickTouchIdRef.current
       );
 
-      if (lookTouches.length >= 2) {
+      if (mobileZoomModeRef.current === 'pinch' && lookTouches.length >= 2) {
         isPinching = true;
         lookTouchIdRef.current = null;
         lookTapRef.current = null;
@@ -724,6 +726,42 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               </span>
             </div>
           )}
+
+          {/* 手機版：鎖定畫面 ⇄ 雙指縮放 切換開關 */}
+          <div
+            className="kx-panel md:hidden inline-flex items-center p-0.5 rounded-full text-[11px] sm:text-[12px]"
+            role="group"
+            aria-label="手機畫面鎖定與雙指縮放切換"
+          >
+            <button
+              type="button"
+              onClick={() => setMobileZoomMode('locked')}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer whitespace-nowrap ${
+                mobileZoomMode === 'locked'
+                  ? 'font-bold text-amber-50 bg-gradient-to-b from-[#b3261e] to-[#7d1a16] border border-amber-300/60 shadow-2xs'
+                  : 'text-amber-100/80 hover:text-amber-50 hover:bg-amber-500/20'
+              }`}
+              aria-pressed={mobileZoomMode === 'locked'}
+              title="鎖定畫面（防止雙指誤觸縮放，雙手操控更穩定）"
+            >
+              <Lock className="w-3 h-3 shrink-0" />
+              <span>鎖定畫面</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileZoomMode('pinch')}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors cursor-pointer whitespace-nowrap ${
+                mobileZoomMode === 'pinch'
+                  ? 'font-bold text-amber-50 bg-gradient-to-b from-[#b3261e] to-[#7d1a16] border border-amber-300/60 shadow-2xs'
+                  : 'text-amber-100/80 hover:text-amber-50 hover:bg-amber-500/20'
+              }`}
+              aria-pressed={mobileZoomMode === 'pinch'}
+              title="雙指縮放（允許雙指捏合放大縮小視野）"
+            >
+              <ZoomIn className="w-3 h-3 shrink-0" />
+              <span>雙指縮放</span>
+            </button>
+          </div>
         </div>
 
         {multiplayer && !menuOpen && (
@@ -915,21 +953,6 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               );
             })}
             <div className="kx-divider" />
-            {onSwitchToIslandMap && (
-              <button
-                type="button"
-                className="kx-menu-item"
-                onClick={() => {
-                  closeMenu();
-                  onSwitchToIslandMap();
-                }}
-              >
-                <Compass className="w-4 h-4 text-amber-200" /> 切換至「3D地圖」
-              </button>
-            )}
-            <button type="button" className="kx-menu-item" onClick={() => { setMapOpen(true); closeMenu(); }}>
-              <MapIcon className="w-4 h-4 text-amber-200" /> 全島地圖
-            </button>
             {!isAppMode && (
               <button
                 type="button"
@@ -947,16 +970,6 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                 <span className="text-amber-200 [&>svg]:w-4 [&>svg]:h-4">{todIcon}</span> 時段：{todLabel}
               </button>
             )}
-            {onToggleBgm && (
-              <button type="button" className="kx-menu-item" onClick={onToggleBgm}>
-                {bgmMuted ? <VolumeX className="w-4 h-4 text-amber-200" /> : <Volume2 className="w-4 h-4 text-amber-200" />} 古風背景樂：{bgmMuted ? '關' : '開'}
-              </button>
-            )}
-            <button type="button" className="kx-menu-item" onClick={onToggleFastWalk} disabled={landRideMode === 'buffalo' || landRideMode === 'horseCart'}>
-              <Footprints className="w-4 h-4 text-amber-200" /> {landRideMode === 'buffalo' ? '騎牛（固定慢速）' : landRideMode === 'horseCart' ? '驅車（定速）' : landRideMode === 'horse' ? (isFastWalk ? '策馬（快速）' : '騎馬（慢速）') : landRideMode === 'egret' ? (isFastWalk ? '駕鶴飛行中（按一下降落）' : '駕鶴（按一下起飛）') : isOnBoat
-                ? (isFastWalk ? '疾駛中（點一下恢復遊船速度）' : '遊船（點一下改疾駛）')
-                : (isFastWalk ? '疾走中（點一下恢復常速）' : '常速（點一下改疾走）')}
-            </button>
             {onToggleFancy && (
               <button type="button" className="kx-menu-item" onClick={onToggleFancy}>
                 <Sparkles className="w-4 h-4 text-amber-200" /> 畫質：{isFancy ? '精緻（陰影、泛光）' : '流暢'}
@@ -964,9 +977,6 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             )}
             <button type="button" className="kx-menu-item" onClick={() => { onOpenSettings(); closeMenu(); }}>
               <Settings className="w-4 h-4 text-amber-200" /> 操作說明
-            </button>
-            <button type="button" className="kx-menu-item" onClick={() => { onToggleDevStats(); closeMenu(); }}>
-              <Activity className="w-4 h-4 text-amber-200" /> 效能與碰撞面板
             </button>
             <div className="kx-divider" />
             <button type="button" className="kx-menu-item" onClick={onExit}>
