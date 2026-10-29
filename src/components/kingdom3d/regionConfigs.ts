@@ -226,7 +226,7 @@ export const WORLD_BRIDGES: BridgeZone[] = [
     fromRegionId: 'region-home',
     toRegionId: 'region-career',
   },
-  // 主島南岸通往湖心亭，讓亭子與九曲橋可以步行抵達
+  // 主島南岸通往湖心亭，讓亭子可以步行抵達；橋堤拱起並設有圓形橋洞供船隻穿行
   {
     id: 'bridge-home-lake-pavilion',
     name: '主島 ↔ 湖心亭',
@@ -235,7 +235,7 @@ export const WORLD_BRIDGES: BridgeZone[] = [
     x2: 0,
     z2: 72,
     halfWidth: 2.6,
-    bridgeMaxHeight: 0.55,
+    bridgeMaxHeight: 3.2,
     fromRegionId: 'region-home',
     toRegionId: 'region-home',
   },
@@ -256,8 +256,8 @@ export function bridgeRailRange(b: { x1: number; z1: number; x2: number; z2: num
     { cx: -68, cz: 48, rx: 33.0, rz: 30.0 },
     { cx: 72, cz: 48, rx: 35.0, rz: 31.0 },
   ];
-  // 岸邊：可走範圍外緣往內 1.5 公尺的地方
-  const onLand = (x: number, z: number) => isles.some((e) => ((x - e.cx) / (e.rx - 1.5)) ** 2 + ((z - e.cz) / (e.rz - 1.5)) ** 2 < 1);
+  // 岸邊：島緣外側 1.8 公尺就收掉橋欄杆，避免橋頭欄杆和島上外牆、建築夾出死角
+  const onLand = (x: number, z: number) => isles.some((e) => ((x - e.cx) / (e.rx + 1.8)) ** 2 + ((z - e.cz) / (e.rz + 1.8)) ** 2 < 1);
   let t0 = 0;
   let t1 = 1;
   const n = 400;
@@ -275,7 +275,9 @@ export function bridgeRailRange(b: { x1: number; z1: number; x2: number; z2: num
       break;
     }
   }
-  return t1 > t0 ? [t0, t1] : [0, 1];
+  t0 = Math.max(0.14, t0);
+  t1 = Math.min(0.86, t1);
+  return t1 > t0 ? [t0, t1] : [0.14, 0.86];
 }
 
 /** 橋上釣客的位置：每座橋兩位，坐在欄杆內側、面向橋外（碰撞也用這份） */
@@ -625,13 +627,13 @@ const discussionBuildings: BuildingInteractable[] = [
 
 // =========================================================
 // 4. 創意島 (region-creative)
-// 原定名稱：展覽館（AI工具展場、軟體應用展場、創新提案展場）、電玩城
+// 原定名稱：展覽館（機電運輸、資通訊AI、生醫化才、服務文創）、電玩城
 // =========================================================
 const creativeBuildings: BuildingInteractable[] = [
   {
     id: 'creative-exhibition',
     name: '展覽館',
-    subtitle: '創意島・作品、AI 工具與創新提案主題展館',
+    subtitle: '創意島・機電運輸、資通訊AI、生醫化才與服務文創主題展館',
     // 貼著創意島西緣；地下是很大的主展場（從館內的樓層表或下樓入口進入）
     position: new THREE.Vector3(-88, 0, 48),
     facingYaw: Math.PI / 2,
@@ -643,20 +645,20 @@ const creativeBuildings: BuildingInteractable[] = [
     tiers: 2,
     colorHex: 0x0284c7,
     interactionRadius: 5.5,
-    description: '作品、AI 工具與創新提案主題展館，一樓大廳有榜單大螢幕與精選榜、熱度榜，走下大樓梯是三層地下展場：B1 AI 工具展場、B2 軟體應用展場、B3 創新提案展場。',
+    description: '主題展館，一樓大廳有榜單大螢幕與精選榜、熱度榜，走下大樓梯是四層地下展場：B1 機電運輸展場、B2 資通訊AI展場、B3 生醫化才展場、B4 服務文創展場。',
     targetModule: 'vibecoding',
     previewBadge: '創意島',
     previewFeatures: [
       '一樓大廳：進門正對精選榜＋熱度榜作品大螢幕輪播，左牆精選榜、右牆熱度榜（和首頁同一份榜單）',
-      '中央大樓梯往下：每一層是一類展場（B1 AI 工具、B2 軟體應用、B3 創新提案），用右側樓層表也能直接換樓層',
-      '一個攤位展示一件真實作品：上方名稱、中間圖片或影片縮圖（多張輪播）、下方簡述，櫃台上擺攤主姓名牌；靠近攤位按 E 或點攤位就能看',
-      'AI 工具展場（小艾）：生成式 AI、智慧自動化、影像視覺與多媒體創作攤位',
-      '軟體應用展場（程程）：網站平台、生活實用、商業營運與數位系統攤位',
-      '創新提案展場（提提）：資訊科技、商業模式、日常生活文創、生醫療材提案攤位',
+      '中央大樓梯往下：每一層是一類展場（B1 機電運輸、B2 資通訊AI、B3 生醫化才、B4 服務文創），用右側樓層表也能直接換樓層',
+      '機電運輸展場：機械工業、電機控制、交通載具、智慧硬體與自動化系統展位',
+      '資通訊AI展場：生成式 AI、軟體應用、網站平台、資訊工程與演算法展位',
+      '生醫化才展場：生技醫療、化學化工、先進材料、生醫藥物與健康檢測展位',
+      '服務文創展場：生活服務、餐飲文旅、文化創意、數位設計與商業模式展位',
     ],
     mockData: {
-      stats: '地下三層展場：AI 工具、軟體應用、創新提案',
-      notice: '走進展覽館即可瀏覽三大展場與各個別個案攤位。',
+      stats: '地下四層展場：機電運輸、資通訊AI、生醫化才、服務文創',
+      notice: '走進展覽館即可瀏覽四大主題展場與各攤位作品。',
       primaryActionLabel: '進入展覽館',
     },
   },
@@ -702,18 +704,18 @@ const careerCourtyardWalls: CourtyardWallSegment[] = [
     x1: 48,
     z1: 28,
     x2: 48,
-    z2: 43,
+    z2: 39,
     height: 3.2,
     hasMoonGate: true,
-    // 拱橋斜著接上院牆，橋面在牆線上約佔 z 31.6～39.3，門要整個讓開
-    gateWidth: 8.8,
+    // 拱橋斜著接上院牆，門口對準橋頭並加寬，讓外牆與橋欄杆之間完全通暢不卡人
+    gateWidth: 7.6,
     gateLabel: '月洞門',
     colorHex: 0xf5f5f4,
   },
   {
     id: 'career-wall-west-south',
     x1: 48,
-    z1: 43,
+    z1: 39,
     x2: 48,
     z2: 68,
     height: 3.2,
@@ -801,7 +803,7 @@ const careerBuildings: BuildingInteractable[] = [
     facingYaw: 0, // Door faces South (+Z) into the courtyard
     width: 12.5,
     depth: 9.5,
-    height: 6.0,
+    height: 7.8,
     npc: 'soso',
     doorWidth: 4.2,
     tiers: 2,
@@ -900,10 +902,10 @@ export const REGION_HOME: RegionManifest = {
 
 export const REGION_PAIN: RegionManifest = {
   id: 'region-pain',
-  name: '痛點島',
-  shortName: '痛點島',
-  compassLabel: '創點樓',
-  subtitle: '創點樓（懸賞牆、佈告桌）',
+  name: '創點島',
+  shortName: '創點島',
+  compassLabel: '創點樓・創點舞台',
+  subtitle: '創點樓・創點舞台',
   center: [-68, -48],
   islandRadiusX: 31,
   islandRadiusZ: 28,
@@ -984,7 +986,7 @@ export const REGION_CREATIVE: RegionManifest = {
   plazaColorHex: 0xe7e5e4,
   walkableZones: getGlobalWalkableZones(),
   colliders: [
-    ...creativeBuildings.flatMap(generateBuildingWallColliders),
+    ...creativeBuildings.filter((b) => b.exterior !== 'exhibition').flatMap(generateBuildingWallColliders),
     ...getBridgeSideColliders(),
   ],
   buildings: creativeBuildings,
@@ -995,8 +997,8 @@ export const REGION_CAREER: RegionManifest = {
   id: 'region-career',
   name: '徵才島',
   shortName: '徵才島',
-  compassLabel: '翰林院・求職廟',
-  subtitle: '翰林院・求職廟・人才獵頭/媒合專家',
+  compassLabel: '翰林院・求職廟・人才媒合中心',
+  subtitle: '翰林院・求職廟・人才媒合中心',
   center: [72, 48],
   islandRadiusX: 35,
   islandRadiusZ: 31,

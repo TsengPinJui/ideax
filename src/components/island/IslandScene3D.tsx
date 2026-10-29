@@ -3706,21 +3706,21 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         post.position.set(px, 0.78, 0);
         bGroup.add(post);
       });
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.72, 0.09), mats.woodFrame);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.72, 0.09), mats.woodDark);
       frame.position.set(0, 0.96, 0);
       bGroup.add(frame);
-      const paper = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.58, 0.11), mats.plasterWall);
+      const paper = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.58, 0.11), mats.wallCream);
       paper.position.set(0, 0.96, 0);
       bGroup.add(paper);
       [-0.24, 0.02, 0.26].forEach((nx, nIdx) => {
         const note = new THREE.Mesh(
           new THREE.BoxGeometry(0.21, 0.34, 0.125),
-          nIdx === 1 ? mats.goldTrim : mats.lanternWarm,
+          nIdx === 1 ? mats.goldTrim : mats.lanternGlow,
         );
         note.position.set(nx, 0.95 + (nIdx % 2 === 0 ? 0.04 : -0.03), 0);
         bGroup.add(note);
       });
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.12, 0.42), mats.tileDark);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.12, 0.42), mats.roofSlate);
       roof.position.set(0, 1.48, 0);
       bGroup.add(roof);
       const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.06, 0.1), mats.goldTrim);

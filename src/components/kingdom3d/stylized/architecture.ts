@@ -285,14 +285,17 @@ export function chineseRoofGeometry(w: number, d: number, rise: number, overhang
   const params = (x: number, z: number) => {
     const a = Math.abs(alongX ? x : z);
     const b = Math.abs(alongX ? z : x);
-    const ta = A - ridgeHalf > 1e-4 ? Math.max(0, a - ridgeHalf) / (A - ridgeHalf) : 0;
-    const tb = b / B;
-    return { ta, tb, t: Math.max(ta, tb) };
+    const ta = A - ridgeHalf > 1e-4 ? Math.min(1, Math.max(0, (a - ridgeHalf) / (A - ridgeHalf))) : 0;
+    const tb = B > 1e-4 ? Math.min(1, Math.max(0, b / B)) : 0;
+    const t = Math.min(1, Math.max(0, Math.max(ta, tb)));
+    return { ta, tb, t };
   };
   const sample = (x: number, z: number) => {
     const { ta, tb, t } = params(x, z);
     const corner = sm(ta) * sm(tb);
-    return rise * Math.pow(1 - t, 1.7) + curl * corner * 1.4 + curl * 0.22 * Math.pow(t, 6);
+    const clampedT = Math.min(1, Math.max(0, t));
+    const invT = Math.max(0, 1 - clampedT);
+    return rise * Math.pow(invT, 1.7) + curl * corner * 1.4 + curl * 0.22 * Math.pow(clampedT, 6);
   };
   const nx = seg;
   const nz = Math.max(8, Math.round((seg * halfD) / halfW));
@@ -304,7 +307,7 @@ export function chineseRoofGeometry(w: number, d: number, rise: number, overhang
       const x = -halfW + (2 * halfW * i) / nx;
       const z = -halfD + (2 * halfD * j) / nz;
       const y = sample(x, z);
-      pos.push(x, y, z);
+      pos.push(x, Number.isFinite(y) ? y : 0, z);
       const { ta, tb, t } = params(x, z);
       const across = tb >= ta ? (alongX ? x : z) : alongX ? z : x;
       uvs.push(across / 1.5, (t * slope) / 1.5);
@@ -715,7 +718,7 @@ function hashStr(s: string) {
 
 let lionGeoCache: THREE.BufferGeometry | null = null;
 /** 石獅：須彌座、蹲坐的身體（前腿直立、後腿蹲）、大頭與一圈圈捲毛鬃、眼眉鼻吻、頸上鈴帶、腳邊繡球、捲尾 */
-function getLionGeometry() {
+export function getLionGeometry() {
   if (lionGeoCache) return lionGeoCache;
   const P = 0.57; // 座台頂面
   const S = (r: number, ws = 12, hs = 10) => new THREE.SphereGeometry(r, ws, hs);
@@ -828,8 +831,8 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   const em = ext === 'exhibition' || ext === 'arcade' || modern ? exteriorMats() : null;
   // 徽派（討論島，照 /island）：白牆黛瓦、深色木柱、兩側馬頭牆
   const huizhou = ext === 'huizhou';
-  // 廟宇（求職廟）：朱紅牆、金黃琉璃瓦，前面另外加三川殿門廊、龍柱、剪黏雙龍搶珠
-  const temple = ext === 'temple';
+  // 廟宇（求職廟）已於上方獨立處理並返回，其餘常規建築 temple 為 false
+  const temple = false;
   const facade = ext === 'stoneBox' ? exteriorMats().whiteStone : ext === 'lattice' ? exteriorMats().warmGlass : ext === 'exhibition' ? exteriorMats().granite : huizhou ? exteriorMats().cream : ext === 'arcade' ? em!.arcade : temple ? mats.templeFacade : mats.facades[hv % mats.facades.length];
   // 柱子：展覽館與徽派深色木柱、電玩城深色金屬，其餘紅柱
   const pillarMat = ext === 'stoneBox' ? exteriorMats().whiteStone : ext === 'lattice' ? exteriorMats().lightWood : ext === 'exhibition' ? exteriorMats().granite : huizhou ? mats.darkWood : ext === 'arcade' ? em!.arcadeTrim : mats.redLacquer;
@@ -891,17 +894,20 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     }
     addMesh(body, wg, facade, x, plinthH + wallH / 2, z);
   };
-  wall(w, thick, 0, -d / 2);
-  wall(thick, d, -w / 2, 0);
-  wall(thick, d, w / 2, 0);
   const wingW = Math.max(0.8, (w - doorW) / 2);
-  wall(wingW, thick, -w / 2 + wingW / 2, d / 2);
-  wall(wingW, thick, w / 2 - wingW / 2, d / 2);
-  // 門楣
-  const lintelH = lay ? 0.6 : Math.max(0.6, h - doorH);
-  addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), ext === 'arcade' ? em!.arcade : ext === 'exhibition' ? em!.granite : ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
+  if (ext !== 'exhibition') {
+    wall(w, thick, 0, -d / 2);
+    wall(thick, d, -w / 2, 0);
+    wall(thick, d, w / 2, 0);
+    wall(wingW, thick, -w / 2 + wingW / 2, d / 2);
+    wall(wingW, thick, w / 2 - wingW / 2, d / 2);
+    // 門楣
+    const lintelH = lay ? 0.6 : Math.max(0.6, h - doorH);
+    addMesh(body, new THREE.BoxGeometry(doorW + 0.1, lintelH, thick), ext === 'arcade' ? em!.arcade : ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : mats.redLacquer, 0, doorH + lintelH / 2, d / 2);
+  }
   if (lay) {
     // 門楣上方到頂樓之間的正面牆
+    const lintelH = 0.6;
     const fh0 = doorH + lintelH;
     if (wallTop - fh0 > 0.05) {
       const fg = scaledBox(doorW + 0.1, wallTop - fh0, thick, 3.2, lay.floorH, 3.2);
@@ -976,27 +982,30 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     band(true, d / 2, -w / 2, w / 2, [-doorW / 2 - 0.12, doorW / 2 + 0.12]);
   }
 
-  // 紅柱：四角、門兩側、沿牆每約 3.2 公尺
-  const colGeo = new THREE.CylinderGeometry(0.24, 0.27, h - 0.1, 10);
-  const colAt = (x: number, z: number) => addMesh(body, colGeo, pillarMat, x, (h - 0.1) / 2 + 0.05, z);
-  for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) colAt(x, z);
-  colAt(-doorW / 2 - 0.12, d / 2 + 0.05);
-  colAt(doorW / 2 + 0.12, d / 2 + 0.05);
-  const bays = (len: number) => Math.max(0, Math.floor(len / 3.2) - 1);
-  for (let i = 1; i <= bays(w); i++) {
-    const x = -w / 2 + (w * i) / (bays(w) + 1);
-    colAt(x, -d / 2 - 0.02);
+  // 圓柱與門框金邊（現代玻璃金字塔展覽館不立傳統圓柱與金門楣）
+  if (ext !== 'exhibition') {
+    const colGeo = new THREE.CylinderGeometry(0.24, 0.27, h - 0.1, 10);
+    const colAt = (x: number, z: number) => addMesh(body, colGeo, pillarMat, x, (h - 0.1) / 2 + 0.05, z);
+    for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) colAt(x, z);
+    colAt(-doorW / 2 - 0.12, d / 2 + 0.05);
+    colAt(doorW / 2 + 0.12, d / 2 + 0.05);
+    const bays = (len: number) => Math.max(0, Math.floor(len / 3.2) - 1);
+    for (let i = 1; i <= bays(w); i++) {
+      const x = -w / 2 + (w * i) / (bays(w) + 1);
+      colAt(x, -d / 2 - 0.02);
+    }
+    for (let i = 1; i <= bays(d); i++) {
+      const z = -d / 2 + (d * i) / (bays(d) + 1);
+      colAt(-w / 2 - 0.02, z);
+      colAt(w / 2 + 0.02, z);
+    }
+    addMesh(body, new THREE.BoxGeometry(doorW + 0.7, 0.18, thick + 0.25), mats.gold, 0, doorH, d / 2);
   }
-  for (let i = 1; i <= bays(d); i++) {
-    const z = -d / 2 + (d * i) / (bays(d) + 1);
-    colAt(-w / 2 - 0.02, z);
-    colAt(w / 2 + 0.02, z);
-  }
-  // 門框金邊
-  addMesh(body, new THREE.BoxGeometry(doorW + 0.7, 0.18, thick + 0.25), mats.gold, 0, doorH, d / 2);
 
-  // 屋簷下的額枋（展覽館：奶油色簷口；電玩城：深色平台；徽派：深色木枋）
-  addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : ext === 'exhibition' ? em!.granite : ext === 'arcade' ? em!.arcadeTrim : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
+  // 屋簷下的額枋（展覽館由 futureFacades.ts 造型幾何石材與玻璃金字塔包覆；電玩城：深色平台；徽派：深色木枋）
+  if (ext !== 'exhibition') {
+    addMesh(body, scaledBox(w + 0.5, 0.42, d + 0.5, 3, 0.42, 3), ext === 'stoneBox' ? em!.whiteStone : ext === 'lattice' ? em!.lightWood : ext === 'arcade' ? em!.arcadeTrim : huizhou ? mats.darkWood : mats.redLacquer, 0, h - 0.1, 0);
+  }
   // 斗拱：額枋上方一排青綠彩繪的托架（中式樓閣才有）
   if (!em && !huizhou) {
     const blockGeo = new THREE.BoxGeometry(0.3, 0.22, 0.3);
@@ -1032,19 +1041,19 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     root.add(leaf);
   }
 
-  // 天花（藻井）
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.4, d - 0.4), mats.ceiling);
-  ceil.rotation.x = Math.PI / 2;
-  ceil.position.y = h - 0.3;
-  const cu = ceil.geometry.attributes.uv as THREE.BufferAttribute;
-  for (let i = 0; i < cu.count; i++) cu.setXY(i, (cu.getX(i) * (w - 0.4)) / 3, (cu.getY(i) * (d - 0.4)) / 3);
-  body.add(ceil);
+  // 天花：展覽館中央為全通透三角形水晶玻璃金字塔（不設方形平頂天花板遮擋玻璃金字塔）；其餘建築為藻井天花
+  if (ext !== 'exhibition') {
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.4, d - 0.4), mats.ceiling);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.y = h - 0.3;
+    const cu = ceil.geometry.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < cu.count; i++) cu.setXY(i, (cu.getX(i) * (w - 0.4)) / 3, (cu.getY(i) * (d - 0.4)) / 3);
+    body.add(ceil);
+  }
 
-  // 屋頂：展覽館＝菱格藍玻璃採光穹頂；電玩城＝平頂＋屋頂大手把；其餘＝多重簷
+  // 屋頂：展覽館由 futureFacades.ts 建構中央菱格玻璃金字塔、玻璃光塔與幾何石材高塔；電玩城＝平頂＋屋頂大手把；其餘＝多重簷
   if (ext === 'exhibition') {
-    const rimY = h + 0.1;
-    addMesh(body, scaledBox(w + 0.9, 0.36, d + 0.9, 3, 0.36, 3), em!.granite, 0, rimY + 0.18, 0);
-    // 玻璃大廳屋頂、兩側樓閣、門面布置由 hallFacades.ts 另外蓋（照參考圖）
+    // 屋頂與立面量體全數由 createExhibitionFacade 建構
   } else if (ext === 'stoneBox') {
     // 人才獵頭：平頂白石方盒（玻璃正面、石鰭、懸挑簷板由 futureFacades.ts 另外蓋）
     addMesh(body, scaledBox(w + 0.5, 0.4, d + 0.5, 3, 0.4, 3), em!.whiteStone, 0, h + 0.3, 0);
@@ -1138,10 +1147,11 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const lz = d / 2 + 1.3;
     if (Math.abs(lx) + 0.5 > w / 2 + 1.5 || em) continue;
     addMesh(body, lionGeo, mats.sculpt, lx, 0, lz, sx * 0.25);
+    root.add(makePickProxy(1.25, 2.1, 1.35, lx, lz, sx * 0.25, { kind: 'egg', egg: 'stoneLion', maxDist: 28 }));
     const [wx, wz] = toWorld(lx, lz);
     extraColliders.push({ id: `${b.id}-lion-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.6 });
   }
-  if (w / 2 - 0.55 > doorW / 2 + 2.3) {
+  if (ext !== 'exhibition' && w / 2 - 0.55 > doorW / 2 + 2.3) {
     const potGeo = new THREE.CylinderGeometry(0.34, 0.24, 0.55, 12);
     const plantGeo = getRoundBushGeometry();
     for (const sx of [-1, 1]) {
@@ -1158,24 +1168,26 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
   // 搜搜（求職廟裡的人物）不放碰撞：人物之間可以穿過去
   root.userData.colliders = extraColliders;
 
-  // 門口一對大燈籠、兩側旗幟、牌匾
-  lanterns.addHanging(-doorW / 2 - 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
-  lanterns.addHanging(doorW / 2 + 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
-  // 門聯：與建築功能有關的七言詩句（面向大門時上聯在右）；沒有設定的才用館名旗幟
-  const couplet = DOOR_COUPLETS[b.id];
-  const bannerText = (b.name || '').replace(/[（(].*$/, '').replace(/[^\p{Script=Han}A-Za-z]/gu, '').slice(0, 4) || '創點';
-  const bannerTex = bannerTexture(bannerText);
-  const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, emissive: 0xffffff, emissiveMap: bannerTex, emissiveIntensity: 0.52, roughness: 0.85, side: THREE.DoubleSide });
-  const bannerH = Math.min(couplet ? 3.1 : 2.6, wallH - 0.6, doorH - 0.15);
-  for (const sx of [-1, 1]) {
-    const x = sx * (doorW / 2 + Math.min(1.25, wingW * 0.55));
-    if (Math.abs(x) + 0.5 > w / 2) continue;
-    const cTex = couplet ? coupletTexture(sx > 0 ? couplet[0] : couplet[1]) : null;
-    const mat = cTex ? new THREE.MeshStandardMaterial({ map: cTex, emissive: 0xffffff, emissiveMap: cTex, emissiveIntensity: 0.55, roughness: 0.8 }) : bannerMat;
-    const ban = new THREE.Mesh(new THREE.PlaneGeometry(couplet ? 0.62 : 0.85, bannerH), mat);
-    ban.position.set(x, plinthH + 0.35 + bannerH / 2, d / 2 + thick / 2 + 0.03);
-    ban.userData.noMerge = true;
-    root.add(ban);
+  if (ext !== 'exhibition') {
+    // 門口一對大燈籠、兩側旗幟、牌匾
+    lanterns.addHanging(-doorW / 2 - 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
+    lanterns.addHanging(doorW / 2 + 0.85, Math.min(doorH - 0.15, 3.1), d / 2 + 0.75, 1.15);
+    // 門聯：與建築功能有關的七言詩句（面向大門時上聯在右）；沒有設定的才用館名旗幟
+    const couplet = DOOR_COUPLETS[b.id];
+    const bannerText = (b.name || '').replace(/[（(].*$/, '').replace(/[^\p{Script=Han}A-Za-z]/gu, '').slice(0, 4) || '創點';
+    const bannerTex = bannerTexture(bannerText);
+    const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, emissive: 0xffffff, emissiveMap: bannerTex, emissiveIntensity: 0.52, roughness: 0.85, side: THREE.DoubleSide });
+    const bannerH = Math.min(couplet ? 3.1 : 2.6, wallH - 0.6, doorH - 0.15);
+    for (const sx of [-1, 1]) {
+      const x = sx * (doorW / 2 + Math.min(1.25, wingW * 0.55));
+      if (Math.abs(x) + 0.5 > w / 2) continue;
+      const cTex = couplet ? coupletTexture(sx > 0 ? couplet[0] : couplet[1]) : null;
+      const mat = cTex ? new THREE.MeshStandardMaterial({ map: cTex, emissive: 0xffffff, emissiveMap: cTex, emissiveIntensity: 0.55, roughness: 0.8 }) : bannerMat;
+      const ban = new THREE.Mesh(new THREE.PlaneGeometry(couplet ? 0.62 : 0.85, bannerH), mat);
+      ban.position.set(x, plinthH + 0.35 + bannerH / 2, d / 2 + thick / 2 + 0.03);
+      ban.userData.noMerge = true;
+      root.add(ban);
+    }
   }
   const sTex = signboardTexture(b.name, b.signSub ?? b.previewBadge);
   const signMat = new THREE.MeshStandardMaterial({ map: sTex, emissive: 0xffffff, emissiveMap: sTex, emissiveIntensity: 0.58, roughness: 0.45, metalness: 0.12 });
@@ -1389,7 +1401,11 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const lobby = createHallLobby(
       b as BuildingInteractable,
       { stone: mats.stoneLight, red: mats.redLacquer, gold: mats.gold, dark: mats.darkWood, floor: mats.woodFloor },
-      { back: -d / 2 + thick / 2, side: w / 2 - thick / 2, h: wallH }
+      {
+        back: -d / 2 + thick / 2,
+        side: ext === 'exhibition' ? 10.55 : w / 2 - thick / 2,
+        h: ext === 'exhibition' ? 9.6 : wallH,
+      }
     );
     root.add(lobby.group);
     extraColliders.push(...lobby.colliders);
@@ -1473,11 +1489,53 @@ export function createStyledBridge(bridge: { id: string; x1: number; z1: number;
       parts.add(cap);
     }
   }
-  // 拱下的橋墩與拱圈
-  for (const t of [0.22, 0.78]) {
-    const pier = new THREE.Mesh(scaledBox(w - 0.4, yAt(t) + 3, 1.6, 2, 2, 2), mats.stone);
-    pier.position.set(0, (yAt(t) - 3) / 2 - 0.3, (t - 0.5) * span);
-    parts.add(pier);
+  // 拱下的圓形橋洞（拱券、拱頂石與兩側拱肩橋台，供船隻穿行）
+  const archR = Math.min(2.1, maxH * 0.65);
+  if (bridge.id === 'bridge-home-lake-pavilion' || maxH >= 2.5) {
+    const archW = w + 0.2;
+    // 圓拱桶券（圓形橋洞內壁頂拱）
+    const vaultGeo = new THREE.CylinderGeometry(archR, archR, archW, 24, 1, true, 0, Math.PI);
+    vaultGeo.rotateZ(Math.PI / 2);
+    const vault = new THREE.Mesh(vaultGeo, mats.stone);
+    vault.position.set(0, 0, 0);
+    parts.add(vault);
+
+    // 兩側外立面石拱圈（浮雕石拱券與拱頂水獸石）
+    for (const sx of [-w / 2 - 0.02, w / 2 + 0.02]) {
+      const ringGeo = new THREE.RingGeometry(archR - 0.26, archR + 0.22, 24, 1, 0, Math.PI);
+      ringGeo.rotateY(sx > 0 ? Math.PI / 2 : -Math.PI / 2);
+      const ring = new THREE.Mesh(ringGeo, mats.stoneLight);
+      ring.position.set(sx, 0, 0);
+      parts.add(ring);
+
+      const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.45, 0.42), mats.stoneLight);
+      keystone.position.set(sx + (sx > 0 ? 0.1 : -0.1), archR + 0.12, 0);
+      parts.add(keystone);
+    }
+
+    // 拱洞兩側的水下橋墩（頂面嚴格低於外側較低處的橋面板底面，絕不穿出橋面）
+    const abutmentLen = Math.min(span * 0.16, 3.6);
+    for (const sz of [-1, 1]) {
+      const zOuter = archR + abutmentLen + 0.3;
+      const tOuter = Math.min(0.95, 0.5 + zOuter / span);
+      const topY = yAt(tOuter) - 0.36;
+      const botY = -1.8;
+      const aH = Math.max(0.6, topY - botY);
+      const az = sz * (archR + abutmentLen / 2 + 0.3);
+      const abutment = new THREE.Mesh(scaledBox(w - 0.35, aH, abutmentLen, 2, 2, 2), mats.stone);
+      abutment.position.set(0, botY + aH / 2, az);
+      parts.add(abutment);
+    }
+  } else {
+    for (const t of [0.22, 0.78]) {
+      const tOuter = t < 0.5 ? Math.max(0.02, t - 0.9 / span) : Math.min(0.98, t + 0.9 / span);
+      const topY = yAt(tOuter) - 0.36;
+      const botY = -2.2;
+      const pH = Math.max(0.6, topY - botY);
+      const pier = new THREE.Mesh(scaledBox(w - 0.4, pH, 1.6, 2, 2, 2), mats.stone);
+      pier.position.set(0, botY + pH / 2, (t - 0.5) * span);
+      parts.add(pier);
+    }
   }
   // 橋頭與橋中的石燈
   for (const t of [Math.max(0.04, ra), 0.5, Math.min(0.96, rb)]) {
@@ -1670,8 +1728,8 @@ export function createStyledIsland(inp: StyledIslandInput, trees: TreeBatch, gra
     // 創意島兩棟建物的背面拆掉一小段島岸欄杆，讓建物後方視野打開；其餘島岸維持原樣。
     const creativeRearOpening = inp.id === 'region-creative' &&
       ((x < -rx * 0.9 && Math.abs(z) < 13) || (z > rz * 0.88 && Math.abs(x) < 14));
-    // 每隔一段留一個缺口（步道口）：可以走到欄杆外的草地、靠近水邊
-    posts.push(blockedByBridge(x + cx, z + cz, 1.2) || creativeRearOpening || i % 7 === 3 ? null : { x, z });
+    // 每隔一段留一個缺口（步道口）：可以走到欄杆外的草地、靠近水邊；橋頭加寬開口避免外牆與橋欄杆夾角卡人
+    posts.push(blockedByBridge(x + cx, z + cz, 3.4) || creativeRearOpening || i % 7 === 3 ? null : { x, z });
   }
   const edgeCols: Collider[] = [];
   const postGeo = new THREE.BoxGeometry(0.28, 0.9, 0.28);

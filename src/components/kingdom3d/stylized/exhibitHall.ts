@@ -56,11 +56,91 @@ const discMatch = (re: RegExp, fallbackCat?: string) => (q: Question) => {
   return Boolean(fallbackCat && q.category === fallbackCat);
 };
 
+const isExhibitCandidate = (q: Question) => {
+  if (isGameQuestion(q)) return false;
+  return q.postType === 'innovation_proposal' || q.postType === 'vibecoding_app' || !q.postType;
+};
+
+/**
+ * 展覽館作品分類（四大主題）：
+ * 0: 機電運輸（機械工業、電機控制、交通載具、智慧硬體與自動化系統）
+ * 1: 資通訊AI（生成式 AI、軟體應用、網站平台、資訊工程與演算法）
+ * 2: 生醫化才（生技醫療、化學化工、先進材料、生醫藥物與健康檢測）
+ * 3: 服務文創（生活服務、餐飲文旅、文化創意、數位設計與商業模式）
+ */
+function classifyExhibitDomain(q: Question): number {
+  const sub = String(q.subcategory || '');
+  const cat = String(q.category || '');
+  const tags = Array.isArray(q.tags) ? q.tags.join(' ') : '';
+  const hay = `${q.title || ''} ${q.description || ''} ${sub} ${cat} ${tags}`;
+
+  // 0. 機電運輸
+  if (
+    sub === '機械工業' ||
+    sub === '電機' ||
+    sub === '自動化' ||
+    /機械|電機|運輸|交通|載具|車輛|汽車|機車|單車|無人機|航太|空拍|自動化|硬體|物聯網|機器人|動力|能源|機電|製造|工廠|馬達|傳動|感測器|機構/i.test(hay)
+  ) {
+    return 0;
+  }
+
+  // 2. 生醫化才 (優先判斷生醫化學材料)
+  if (
+    sub === '生醫材料' ||
+    sub === '生技醫療' ||
+    /生醫|生技|醫療|醫材|藥|健康|化學|化工|材料|自然|生物|生命|分子|基因|臨床|照護|檢測|奈米|生醫化才|生醫化材|高分子|環保材料/i.test(hay)
+  ) {
+    return 2;
+  }
+
+  // 1. 資通訊AI
+  if (
+    isAi(q) ||
+    sub === 'AI工具' ||
+    sub === '資訊科技' ||
+    sub === '資訊工程' ||
+    sub === '網站程式' ||
+    sub === '擴充功能' ||
+    cat === '網站程式' ||
+    /資訊|AI|人工智慧|深度學習|機器學習|LLM|GPT|Claude|Gemini|演算法|程式|軟體|網站|App|雲端|資料庫|網路|系統|大數據|全端|前端|後端|資安|代碼|模型/i.test(hay)
+  ) {
+    return 1;
+  }
+
+  // 3. 服務文創 (生活服務、餐飲、文創、商業設計與其他)
+  return 3;
+}
+
 export const HALL_ZONES: Record<HallKind, HallZone[]> = {
   exhibit: [
-    { key: 'ai', name: 'AI 工具展場', sub: '生成式 AI、智慧自動化與 AI 應用', color: 0x2f6bb3, match: (q) => q.postType === 'vibecoding_app' && !isGameQuestion(q) && isAi(q) },
-    { key: 'app', name: '軟體應用展場', sub: '網站、App 與各類軟體作品', color: 0x2c8a62, match: (q) => q.postType === 'vibecoding_app' && !isGameQuestion(q) && !isAi(q) },
-    { key: 'proposal', name: '創新提案展場', sub: '大家發表的創新提案', color: 0xb3261e, match: (q) => q.postType === 'innovation_proposal' },
+    {
+      key: 'mech',
+      name: '機電運輸展場',
+      sub: '機械工業、電機控制、交通載具、智慧硬體與自動化系統',
+      color: 0x2563eb,
+      match: (q) => isExhibitCandidate(q) && classifyExhibitDomain(q) === 0,
+    },
+    {
+      key: 'ict',
+      name: '資通訊AI展場',
+      sub: '生成式 AI、軟體應用、網站平台、資訊工程與演算法',
+      color: 0x0284c7,
+      match: (q) => isExhibitCandidate(q) && classifyExhibitDomain(q) === 1,
+    },
+    {
+      key: 'bio',
+      name: '生醫化才展場',
+      sub: '生技醫療、化學化工、先進材料、生醫藥物與健康檢測',
+      color: 0x0f766e,
+      match: (q) => isExhibitCandidate(q) && classifyExhibitDomain(q) === 2,
+    },
+    {
+      key: 'service',
+      name: '服務文創展場',
+      sub: '生活服務、餐飲文旅、文化創意、數位設計與商業模式',
+      color: 0xd97706,
+      match: (q) => isExhibitCandidate(q) && classifyExhibitDomain(q) === 3,
+    },
   ],
   arcade: [
     { key: 'casual', name: '休閒同樂展區', sub: '休閒派對、親子兒童、甜蜜浪漫', color: 0xd9822b, match: genreIn(['休閒派對', '親子兒童', '甜蜜浪漫']) },
@@ -191,6 +271,12 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, ma
   return out;
 }
 
+function getWorkAppName(q: Question | null | undefined): string {
+  if (!q) return '';
+  const vc = (q as any).vibeCodingData || {};
+  return String((q as any).appName || vc.appName || (q as any).projectName || (q as any).productName || '').trim();
+}
+
 export function drawBoothTexture(zoneName: string, color: number, q: Question | null, more = 0) {
   const isLib = zoneName.includes('層・');
   const c = document.createElement('canvas');
@@ -204,10 +290,12 @@ export function drawBoothTexture(zoneName: string, color: number, q: Question | 
   ctx.strokeStyle = 'rgba(120,80,30,0.65)';
   ctx.lineWidth = 6;
   ctx.strokeRect(3, 3, 506, 378);
+  const appName = !isLib && q ? getWorkAppName(q) : '';
+  const topHeaderText = appName || zoneName;
   ctx.fillStyle = '#fff9de';
   ctx.font = `900 30px ${KAI_FONT}`;
   ctx.textBaseline = 'middle';
-  ctx.fillText(zoneName, 22, 32);
+  ctx.fillText(wrapLines(ctx, topHeaderText, 468, 1)[0] || topHeaderText, 22, 32);
   ctx.textBaseline = 'alphabetic';
   if (!q) {
     ctx.fillStyle = '#755a38';
@@ -236,8 +324,8 @@ export function drawBoothTexture(zoneName: string, color: number, q: Question | 
     ctx.fillText(badge, 34, 107);
     ctx.fillStyle = '#24140a';
     ctx.font = `900 35px ${KAI_FONT}`;
-    const title = ((q as any).appName || q.title || '（未命名）').trim();
-    wrapLines(ctx, title, 468, 2).forEach((l, i) => ctx.fillText(l, 22, 166 + i * 46));
+    const mainTitle = (q.title || appName || '（未命名）').trim();
+    wrapLines(ctx, mainTitle, 468, 2).forEach((l, i) => ctx.fillText(l, 22, 166 + i * 46));
     ctx.fillStyle = '#4e3a25';
     ctx.font = `700 23px ${KAI_FONT}`;
     const desc = String(q.description || '').replace(/[#*_>`\[\]()]/g, '').replace(/\s+/g, ' ').trim();
@@ -710,7 +798,36 @@ export function loadMediaTexture(u: string): Promise<THREE.Texture | null> {
   return p;
 }
 
-/** 攤位看板：上方名稱、中間留給圖片（另一塊面板）、下方簡述 */
+/** 攤位頂棚上方的提案／作品名稱橫匾 */
+export function drawBoothHeaderTexture(color: number, q: Question | null, more = 0) {
+  const c = document.createElement('canvas');
+  c.width = 640;
+  c.height = 84;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#261309';
+  ctx.fillRect(0, 0, 640, 84);
+  ctx.fillStyle = hex(color);
+  ctx.fillRect(6, 6, 628, 72);
+  ctx.strokeStyle = '#e5bd5a';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(4, 4, 632, 76);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fffbe0';
+  ctx.font = `900 38px ${KAI_FONT}`;
+  const label = !q
+    ? more
+      ? `還有 ${more} 件作品`
+      : '待展攤位'
+    : (getWorkAppName(q) || q.title || '（未命名）').trim();
+  ctx.fillText(wrapLines(ctx, label, 596, 1)[0] || label, 320, 44);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/** 攤位看板：上方放提案／作品名稱，原本提案名稱位置改放標題，中間圖片、下方簡述 */
 export function drawDeepBoothTexture(color: number, q: Question | null, opts: { more?: number; video?: boolean; hasMedia?: boolean; slides?: number } = {}) {
   const c = document.createElement('canvas');
   c.width = 640;
@@ -721,11 +838,10 @@ export function drawDeepBoothTexture(color: number, q: Question | null, opts: { 
   ctx.strokeStyle = 'rgba(120,80,30,0.65)';
   ctx.lineWidth = 8;
   ctx.strokeRect(4, 4, 632, 472);
-  // 上方名稱帶
-  ctx.fillStyle = hex(color);
-  ctx.fillRect(8, 8, 624, 74);
-  ctx.textBaseline = 'middle';
   if (!q) {
+    ctx.fillStyle = hex(color);
+    ctx.fillRect(8, 8, 624, 74);
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fffbe0';
     ctx.font = `900 34px ${KAI_FONT}`;
     ctx.textAlign = 'center';
@@ -734,31 +850,63 @@ export function drawDeepBoothTexture(color: number, q: Question | null, opts: { 
     ctx.font = `900 40px ${KAI_FONT}`;
     ctx.fillText(opts.more ? '點這裡看本層全部作品 →' : '歡迎上架作品', 320, 236);
   } else {
-    const title = ((q as any).appName || q.title || '（未命名）').trim();
-    ctx.fillStyle = '#fffbe0';
-    ctx.font = `900 38px ${KAI_FONT}`;
-    ctx.fillText(wrapLines(ctx, title, 590, 1)[0] || title, 24, 46);
-    // 中間：沒有圖片時寫上名稱當底
+    const appName = getWorkAppName(q);
+    const postTitle = (q.title || appName || '（未命名）').trim();
+    const typeTag =
+      q.postType === 'innovation_proposal'
+        ? '創新提案'
+        : isGameQuestion(q)
+        ? '遊戲作品'
+        : isAi(q)
+        ? 'AI 工具'
+        : '軟體作品';
+    const topName = appName || typeTag;
+
+    // 頂棚已有提案／作品名稱，看板不重複，直接將空間留給「標題、圖片、說明」
+    // 1. 頂部標題區：直接顯示「標題（q.title）」
+    ctx.fillStyle = '#efe3c6';
+    ctx.fillRect(8, 8, 624, 64);
+    ctx.fillStyle = hex(color);
+    ctx.fillRect(8, 8, 8, 64);
+    ctx.strokeStyle = 'rgba(120,80,30,0.32)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(16, 72);
+    ctx.lineTo(624, 72);
+    ctx.stroke();
+
+    ctx.fillStyle = '#24140a';
+    ctx.font = `900 31px ${KAI_FONT}`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(wrapLines(ctx, postTitle, 584, 1)[0] || postTitle, 26, 40);
+
+    // 2. 中間：圖片展示區（y=78..332）。沒有圖片時在中央大字呈現標題
     if (!opts.hasMedia) {
       ctx.fillStyle = '#e9dcc0';
-      ctx.fillRect(20, 92, 600, 260);
-      ctx.fillStyle = '#9a7c52';
+      ctx.fillRect(20, 80, 600, 252);
+      ctx.strokeStyle = 'rgba(120,80,30,0.22)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, 80, 600, 252);
+      ctx.fillStyle = '#6e4e2e';
       ctx.textAlign = 'center';
-      ctx.font = `900 34px ${KAI_FONT}`;
-      wrapLines(ctx, title, 540, 3).forEach((l, i, arr) => ctx.fillText(l, 320, 222 - (arr.length - 1) * 22 + i * 44));
+      ctx.font = `900 35px ${KAI_FONT}`;
+      wrapLines(ctx, postTitle, 540, 3).forEach((l, i, arr) => ctx.fillText(l, 320, 206 - (arr.length - 1) * 24 + i * 48));
       ctx.textAlign = 'left';
     }
-    // 下方簡述
+
+    // 3. 下方：說明文字（空間更充裕，可容納 3 行說明文字，不被裁切）
     ctx.fillStyle = '#3e2c1a';
-    ctx.font = `700 25px ${KAI_FONT}`;
+    ctx.font = `700 24px ${KAI_FONT}`;
     const desc = String(q.description || '').replace(/[#*_>`\[\]()]/g, '').replace(/\s+/g, ' ').trim();
     ctx.textBaseline = 'alphabetic';
-    wrapLines(ctx, desc, 600, 3).forEach((l, i) => ctx.fillText(l, 22, 392 + i * 32));
+    wrapLines(ctx, desc, 600, 3).forEach((l, i) => ctx.fillText(l, 22, 372 + i * 34));
+
     if (opts.video || (opts.slides || 0) > 1) {
       ctx.textAlign = 'right';
       ctx.fillStyle = hex(color);
       ctx.font = `700 20px ${KAI_FONT}`;
-      ctx.fillText([opts.video ? '▶ 有影片' : '', (opts.slides || 0) > 1 ? `${opts.slides} 張輪播` : ''].filter(Boolean).join('・'), 618, 82 + 268);
+      ctx.fillText([opts.video ? '▶ 有影片' : '', (opts.slides || 0) > 1 ? `${opts.slides} 張輪播` : ''].filter(Boolean).join('・'), 618, 464);
     }
   }
   const t = new THREE.CanvasTexture(c);
@@ -937,22 +1085,29 @@ function createDeepHall(b: BuildingInteractable): THREE.Group {
         const canopy = box(g, 3.3, 0.16, 1.6, zoneMat, 0, 3.7, -0.05);
         canopy.userData.noMerge = true;
         box(g, 3.3, 0.34, 0.06, goldMat, 0, 3.52, 0.74);
+        // 攤位頂棚最上方橫匾：顯示提案名稱／作品名稱
+        const topSign = new THREE.Mesh(new THREE.PlaneGeometry(3.18, 0.32), new THREE.MeshBasicMaterial({ map: drawBoothHeaderTexture(zones[0].color, null) }));
+        topSign.position.set(0, 3.52, 0.78);
+        topSign.userData.noMerge = true;
+        topSign.userData.boothTopSign = { index: idx };
+        topSign.userData.pick = { kind: 'booth', buildingId: b.id, zone: -1, index: idx };
+        g.add(topSign);
         box(g, 2.7, 0.92, 0.72, redMat, 0, 0.46, 0.42);
         box(g, 2.8, 0.06, 0.8, goldMat, 0, 0.95, 0.42);
         for (const sx of [-1, 1]) box(g, 0.1, 3.6, 0.1, trimMat, sx * 1.58, 1.8, 0.68);
         const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), lampMat);
         lamp.position.set(0, 3.38, 0.5);
         g.add(lamp);
-        // 看板（名稱／簡述）
+        // 看板（頂部標題、中間圖片、下方說明）
         const card = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 2.175), new THREE.MeshBasicMaterial({ map: drawDeepBoothTexture(zones[0].color, null) }));
         card.position.set(0, 2.18, -0.53);
         card.userData.noMerge = true;
         card.userData.hallBooth = { buildingId: b.id, zone: -1, index: idx };
         card.userData.pick = { kind: 'booth', buildingId: b.id, zone: -1, index: idx };
         g.add(card);
-        // 圖片面板（蓋在看板中間；沒有圖片時隱藏）
-        const media = new THREE.Mesh(new THREE.PlaneGeometry(2.72, 1.18), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-        media.position.set(0, 2.18 + 0.115, -0.515);
+        // 圖片面板（位於標題區下方 y=78..332，不遮蓋上方的標題；沒有圖片時隱藏）
+        const media = new THREE.Mesh(new THREE.PlaneGeometry(2.72, 1.15), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        media.position.set(0, 2.18 + 0.16, -0.515);
         media.visible = false;
         media.userData.noMerge = true;
         media.userData.boothMedia = { index: idx };

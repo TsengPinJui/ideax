@@ -33,7 +33,6 @@ import {
   Volume2,
   VolumeX,
   X,
-  Footprints,
 } from 'lucide-react';
 import {
   HANLIN_EXPERT_ROSTER,
@@ -88,6 +87,7 @@ import {
 } from '../../services/islandIntroVideoService';
 import './IslandWorldView.css';
 import { IslandPegman } from './IslandPegman';
+import { enterRoamAt, roamTargetForBuilding, roamTargetForIsland } from '../kingdom3d/roamEntry';
 import { trackFeature } from '../../services/featureUsage';
 import { addEasterEgg, loadEasterEggBook, onEasterEggBookChange, EasterEggRecord } from './easterEggBook';
 
@@ -1030,17 +1030,18 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           >
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
-          <div className="island-mode-switcher" role="group" aria-label="3D地圖與漫遊操作說明">
+          <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
             <span className="island-mode-pill is-active" aria-current="page">
               3D地圖
             </span>
-            <span
-              className="island-mode-pill is-hint"
-              title="將右下角小人拖曳到地圖上，進入實境漫遊互動場景"
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } }))}
+              className="island-mode-pill is-switch"
+              title="點擊切換至 3D 第一人稱實境漫遊"
             >
-              <Footprints size={15} strokeWidth={2.2} />
               <span>實境漫遊</span>
-            </span>
+            </button>
           </div>
         </div>
 
@@ -1371,9 +1372,14 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
               )}
             </div>
 
-            <span className="island-atlas-roam-hint shrink-0" title="將右下角小人拖曳到地圖上，從選取位置進入漫遊">
-              拖曳右下角小人進入漫遊
-            </span>
+            <button
+              type="button"
+              onClick={() => enterRoamAt(roamTargetForBuilding(selectedDistrict?.id) || roamTargetForIsland(selectedIslandId))}
+              className="island-atlas-roam-btn shrink-0"
+              title="直接走到這棟建築門口（或該島入口）進入實境漫遊"
+            >
+              <span>實境漫遊</span>
+            </button>
             <button
               type="button"
               onClick={() => setIsRightAtlasOpen(false)}

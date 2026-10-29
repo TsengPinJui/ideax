@@ -1019,7 +1019,7 @@ export const KingdomSideDrawer: React.FC<{
             <p className="kx-sub text-[15px]">多人連線中斷，暫時無法綁定羈絆。</p>
           ) : rel === 'partner' ? (
             <>
-              <p className="text-[16px]" style={{ color: '#f6e7c4' }}>你們已是羈絆夥伴，兩人之間有一條發光的羈絆線。一起去遊船、登上聚雲塔、在各地一起遊覽，完成雙人任務吧！</p>
+              <p className="text-[16px]" style={{ color: '#f6e7c4' }}>你們已是羈絆夥伴，兩人之間有一條發光的羈絆線。一起去遊船、登上聚雲塔、在各地一起遊覽，完成今日任務吧！</p>
               <button type="button" onClick={() => bond.release()} className="kx-btn-ghost w-full px-4 py-2 text-[15.5px] cursor-pointer">
                 解除羈絆
               </button>
@@ -1042,7 +1042,7 @@ export const KingdomSideDrawer: React.FC<{
           ) : (
             <>
               <p className="kx-sub text-[15px] leading-relaxed">
-                邀請對方綁定羈絆：對方接受後，兩人之間會出現一條發光的羈絆線，可以一起完成雙人任務（一起遊船、一起登上聚雲塔、在指定地點一起遊覽 5 分鐘）。同一時間只能和一位旅人綁定。
+                邀請對方綁定羈絆：對方接受後，兩人之間會出現一條發光的羈絆線，可以一起完成今日任務（一起遊船、一起登上聚雲塔、在指定地點一起遊覽 5 分鐘）。同一時間只能和一位旅人綁定。
               </p>
               {bond.partnerName && <p className="kx-sub text-[14px]">送出邀請會先解除和 {bond.partnerName} 的羈絆。</p>}
               <button type="button" onClick={() => bond.invite(userKey)} className="kx-btn-primary w-full px-4 py-2.5 text-[16px] cursor-pointer">

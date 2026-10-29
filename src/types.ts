@@ -956,6 +956,12 @@ export interface Question {
   likes?: number; // 痛點/提問按讚數
   secondedCount?: number; // 痛點附議數（綠色+1）
   sameQuestionCount?: number; // 提問同問數（舉手）
+  meTooCount?: number; // 痛點附議相容欄位
+  discussionsCount?: number; // 討論數
+  discussions?: any[];
+  solutionsCount?: number; // 方案數
+  solutions?: any[];
+  comments?: any[]; // 留言評論列表
   answersCount: number;
   authorTitle?: string;
   invitedSolverIds?: string[];

@@ -76,31 +76,31 @@ interface Preset {
 const PRESETS: Record<TimeOfDay, Preset> = {
   day: {
     top: 0x3f86d6, horizon: 0xcfe5f2, bottom: 0x9cc3d8,
-    sunDir: [0.35, 0.75, -0.45], sunColor: 0xfff1d6, sunIntensity: 2.4, skyGlow: 0.6,
+    sunDir: [0.35, 0.75, -0.45], sunColor: 0xfff3dc, sunIntensity: 2.5, skyGlow: 0.65,
     hemiSky: 0xdbeeff, hemiGround: 0x9a8466, hemiIntensity: 1.05, ambient: 0.22,
     fog: 0xd3e2e8, fogNear: 95, fogFar: 640,
-    deep: 0x16627a, shallow: 0x3aa2a8, waterSky: 0x9fcbe6, glint: 1.0,
+    deep: 0x114d63, shallow: 0x359ca4, waterSky: 0xa8d4f0, glint: 1.35,
     lantern: 0.55, lamp: 0.4, windows: 0.0, glowOpacity: 0.12, glowSize: 1.8, orb: 1.0,
-    exposure: 1.0, stars: 0, moon: false, playerLamp: 0, mountain: 0xffffff, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
+    exposure: 1.02, stars: 0, moon: false, playerLamp: 0, mountain: 0xffffff, cloud: 0xffffff, cloudOpacity: 0.95, bloom: 0.18,
   },
   dusk: {
     top: 0x4d79b8, horizon: 0xffc88f, bottom: 0xd99a6a,
-    sunDir: [-0.45, 0.16, -0.88], sunColor: 0xffb265, sunIntensity: 2.6, skyGlow: 1.0,
+    sunDir: [-0.45, 0.18, -0.88], sunColor: 0xffb86c, sunIntensity: 2.7, skyGlow: 1.05,
     hemiSky: 0xffe2c0, hemiGround: 0x6d5446, hemiIntensity: 0.95, ambient: 0.22,
     fog: 0xeec29a, fogNear: 70, fogFar: 540,
-    deep: 0x1f4f63, shallow: 0x3f7d80, waterSky: 0xf2a877, glint: 1.4,
-    lantern: 1.2, lamp: 0.95, windows: 0.4, glowOpacity: 0.28, glowSize: 2.0, orb: 1.3,
-    exposure: 1.05, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.26,
+    deep: 0x163f52, shallow: 0x3b787c, waterSky: 0xf7b07e, glint: 1.75,
+    lantern: 1.25, lamp: 1.0, windows: 0.45, glowOpacity: 0.3, glowSize: 2.0, orb: 1.35,
+    exposure: 1.06, stars: 0, moon: false, playerLamp: 0.6, mountain: 0xe9dccd, cloud: 0xffd2b0, cloudOpacity: 0.9, bloom: 0.26,
   },
   night: {
-    top: 0x060c22, horizon: 0x1d2b4f, bottom: 0x0b1226,
-    sunDir: [0.35, 0.42, -0.84], sunColor: 0x9db4ff, sunIntensity: 0.55, skyGlow: 0.35,
-    hemiSky: 0x3a4f88, hemiGround: 0x1a1418, hemiIntensity: 0.75, ambient: 0.2,
-    fog: 0x15203b, fogNear: 70, fogFar: 420,
-    deep: 0x07142a, shallow: 0x123049, waterSky: 0x223a66, glint: 0.9,
-    // 夜晚：燈光柔和一點，避免泛光太暈、太刺眼
-    lantern: 1.7, lamp: 1.4, windows: 0.75, glowOpacity: 0.38, glowSize: 2.1, orb: 1.5,
-    exposure: 1.12, stars: 1, moon: true, playerLamp: 1.8, mountain: 0x4a5582, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.3,
+    top: 0x050b1f, horizon: 0x1b2b52, bottom: 0x091022,
+    sunDir: [0.35, 0.38, -0.85], sunColor: 0xc4d7ff, sunIntensity: 0.72, skyGlow: 0.45,
+    hemiSky: 0x425b9c, hemiGround: 0x161218, hemiIntensity: 0.78, ambient: 0.2,
+    fog: 0x131f3b, fogNear: 70, fogFar: 420,
+    deep: 0x051024, shallow: 0x102e4a, waterSky: 0x2c4b82, glint: 1.65,
+    // 夜晚：燈光柔和、月光清亮，水面清楚映出月色與倒影
+    lantern: 1.75, lamp: 1.45, windows: 0.78, glowOpacity: 0.4, glowSize: 2.1, orb: 1.55,
+    exposure: 1.14, stars: 1, moon: true, playerLamp: 1.8, mountain: 0x4a5582, cloud: 0x3a4a73, cloudOpacity: 0.35, bloom: 0.3,
   },
 };
 
@@ -119,9 +119,10 @@ function makeWaterMaterial() {
         uSunDir: { value: new THREE.Vector3(0, 1, 0) },
         uSunColor: { value: new THREE.Color() },
         uGlint: { value: 1 },
+        uNight: { value: 0 },
         uFoam: { value: new THREE.Color(0xffffff) },
         uFoamAmt: { value: 0.35 },
-        // 即時倒影（精緻畫質才有）：倒影貼圖與投影矩陣
+        // 即時倒影：倒影貼圖與投影矩陣
         tReflect: { value: null },
         uReflMatrix: { value: new THREE.Matrix4() },
         uReflStrength: { value: 0 },
@@ -160,6 +161,7 @@ function makeWaterMaterial() {
       uniform vec3 uFoam;
       uniform float uFoamAmt;
       uniform float uGlint;
+      uniform float uNight;
       uniform sampler2D tReflect;
       uniform float uReflStrength;
       uniform vec4 uIslands[5];
@@ -171,13 +173,13 @@ function makeWaterMaterial() {
       // 大浪（慢）＋中浪＋細碎漣漪：幾組不同方向、不同頻率的波疊起來
       float waveH(vec2 p, float detail) {
         float h = 0.0;
-        h += sin(dot(p, vec2(0.31, 0.12)) + uTime * 0.8) * 0.5;
-        h += sin(dot(p, vec2(-0.14, 0.27)) - uTime * 0.65) * 0.45;
-        h += sin(dot(p, vec2(0.52, 0.47)) + uTime * 1.25) * 0.22;
-        h += sin(dot(p, vec2(-0.77, 0.61)) - uTime * 1.6) * 0.13 * detail;
-        h += sin(dot(p, vec2(1.31, -0.93)) + uTime * 2.3) * 0.07 * detail;
-        h += sin(dot(p, vec2(2.17, 1.71)) - uTime * 3.1) * 0.035 * detail;
-        h += sin(dot(p, vec2(-3.4, 2.6)) + uTime * 4.0) * 0.018 * detail;
+        h += sin(dot(p, vec2(0.31, 0.12)) + uTime * 0.85) * 0.52;
+        h += sin(dot(p, vec2(-0.14, 0.27)) - uTime * 0.68) * 0.46;
+        h += sin(dot(p, vec2(0.52, 0.47)) + uTime * 1.28) * 0.24;
+        h += sin(dot(p, vec2(-0.77, 0.61)) - uTime * 1.65) * 0.15 * detail;
+        h += sin(dot(p, vec2(1.31, -0.93)) + uTime * 2.35) * 0.08 * detail;
+        h += sin(dot(p, vec2(2.17, 1.71)) - uTime * 3.15) * 0.042 * detail;
+        h += sin(dot(p, vec2(-3.4, 2.6)) + uTime * 4.1) * 0.022 * detail;
         return h;
       }
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -210,44 +212,67 @@ function makeWaterMaterial() {
         float dist = length(toCam);
         vec3 V = toCam / dist;
         // 遠處的細浪淡掉（不會閃爍），近處清楚
-        float detail = clamp(1.0 - dist / 260.0, 0.15, 1.0);
-        float e = 0.18;
+        float detail = clamp(1.0 - dist / 280.0, 0.18, 1.0);
+        float e = 0.16;
         vec3 n = normalize(vec3(
-          -(waveH(p + vec2(e, 0.0), detail) - waveH(p - vec2(e, 0.0), detail)) * 0.42 * detail,
+          -(waveH(p + vec2(e, 0.0), detail) - waveH(p - vec2(e, 0.0), detail)) * 0.56 * detail,
           1.0,
-          -(waveH(p + vec2(0.0, e), detail) - waveH(p - vec2(0.0, e), detail)) * 0.42 * detail));
+          -(waveH(p + vec2(0.0, e), detail) - waveH(p - vec2(0.0, e), detail)) * 0.56 * detail));
 
+        vec3 L = normalize(uSunDir);
         float sd = shoreDist(p);
-        float shallow = 1.0 - smoothstep(0.0, 14.0, sd);
-        // 水色：深處偏墨綠藍、岸邊淺水偏翠、浪峰透光
-        float crest = clamp(0.5 + 0.5 * waveH(p * 0.45, 1.0), 0.0, 1.0);
-        vec3 body = mix(uDeep, uShallow, clamp(0.25 + shallow * 0.75 + crest * 0.12, 0.0, 1.0));
+        float shallow = 1.0 - smoothstep(0.0, 15.0, sd);
+        // 水色與明暗立體感：浪峰受光透亮、波谷深邃有暗部光影對比
+        float wH = waveH(p * 0.52, 1.0);
+        float crest = clamp(0.5 + 0.5 * wH, 0.0, 1.0);
+        float waveLight = clamp(dot(n, normalize(vec3(L.x, max(0.28, L.y), L.z))), 0.0, 1.0);
+        float shadowContrast = mix(0.62, 1.24, pow(waveLight, 1.35) * (0.65 + 0.35 * crest));
+        vec3 body = mix(uDeep, uShallow, clamp(0.18 + shallow * 0.72 + crest * 0.22, 0.0, 1.0)) * shadowContrast;
+        // 次表面散射（浪尖迎光泛出翠玉／銀藍透光）
+        float sss = pow(clamp(dot(-V, L + n * 0.65), 0.0, 1.0), 3.0) * (0.35 + 0.65 * crest);
+        body += mix(uShallow * 0.42, vec3(0.38, 0.64, 0.95), uNight) * sss;
 
-        // 天空倒影（菲涅耳）
+        // 天空與鏡面映射倒影（增強菲涅耳與近岸建築／山影映射）
         vec3 R = reflect(-V, n);
         float ry = clamp(R.y, 0.0, 1.0);
-        vec3 skyCol = mix(uSkyHorizon, uSkyTop, pow(ry, 0.55));
-        skyCol = mix(skyCol, uSky, 0.5) * 0.82;
+        vec3 skyCol = mix(uSkyHorizon, uSkyTop, pow(ry, 0.5));
+        skyCol = mix(skyCol, uSky, 0.48) * 0.92;
         float cosT = max(dot(n, V), 0.0);
-        float fres = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
-        // 沒有即時倒影時（手機）別讓水面整片反白
-        fres = clamp(fres, 0.0, uReflStrength > 0.0 ? 0.8 : 0.55);
+        float fres = 0.24 + 0.74 * pow(1.0 - cosT, 2.75);
+        fres = clamp(fres, 0.0, uReflStrength > 0.0 ? 0.88 : 0.68);
         vec3 refl = skyCol;
-        // 即時倒影（建築、樹、山、燈籠），用水波法線擾動
-        if (uReflStrength > 0.0) {
-          vec2 uv = vRefl.xy / vRefl.w + n.xz * 0.045 * detail;
+        // 即時鏡面倒影（建築、樹、山、燈籠、月影），隨水波輕微搖曳
+        if (uReflStrength > 0.0 && vRefl.w > 0.0) {
+          vec2 uv = clamp(vRefl.xy / vRefl.w + n.xz * (0.032 + 0.018 * (1.0 - shallow)) * detail, 0.002, 0.998);
           vec3 rc = texture2D(tReflect, uv).rgb;
+          // 提亮倒影中的燈火與建築輪廓對比
+          rc = max(vec3(0.0), (rc - 0.03) * 1.16 + 0.03);
           refl = mix(refl, rc, uReflStrength);
         }
+        // 岸邊暖色燈籠水波倒影（黃昏與夜晚沿岸泛起搖曳金紅波光）
+        float shoreGlow = smoothstep(18.0, 0.5, sd) * smoothstep(-1.0, 1.2, sd);
+        float lanternRipple = 0.55 + 0.45 * sin(p.x * 1.3 + uTime * 2.4) * cos(p.y * 1.2 - uTime * 1.9);
+        refl += vec3(1.0, 0.58, 0.24) * shoreGlow * lanternRipple * (0.12 + uNight * 0.26);
+
         vec3 col = mix(body, refl, fres);
 
-        // 太陽（夜裡是月亮）的波光
-        vec3 L = normalize(uSunDir);
+        // 太陽與月光波光：核心高光＋寬幅銀藍月光帶＋細碎星芒波光
         float rl = max(dot(R, L), 0.0);
-        float spec = pow(rl, 220.0) * 3.0 + pow(rl, 32.0) * 0.22;
-        // 細碎閃光
-        float sparkle = step(0.985, vnoise(p * 3.0 + uTime * 0.7)) * pow(rl, 8.0) * 1.6 * detail;
-        col += uSunColor * (spec + sparkle) * uGlint;
+        // 橫向拉長的水波光帶（模擬真實水面波紋把陽光／月光拉成一條粼粼光路）
+        vec3 R_ribbon = normalize(vec3(R.x + n.x * 1.65, R.y * 0.68, R.z + n.z * 1.65));
+        float rlRibbon = max(dot(R_ribbon, L), 0.0);
+        float specCore = pow(rl, 260.0) * 3.8 + pow(rl, 48.0) * 0.42;
+        float specRibbon = pow(rlRibbon, 26.0) * (0.36 + uNight * 0.58) * (0.6 + 0.4 * sin(wH * 6.0 + uTime * 2.2));
+        float sparkle = step(0.978, vnoise(p * 3.1 + vec2(uTime * 0.65, -uTime * 0.48))) * pow(rl, 5.0) * (2.1 + uNight * 1.4) * detail;
+        vec3 lightTint = mix(uSunColor, vec3(0.84, 0.92, 1.0), uNight * 0.65);
+        col += lightTint * (specCore + specRibbon + sparkle) * uGlint;
+
+        // 夜晚專屬：清澈月輪倒影與銀白月華水紋
+        if (uNight > 0.01) {
+          float moonDisc = smoothstep(0.9965, 0.9994, dot(normalize(vec3(R.x + n.x * 0.35, R.y, R.z + n.z * 0.35)), L));
+          float moonHalo = pow(rl, 14.0) * 0.28 + pow(rlRibbon, 12.0) * 0.32;
+          col += vec3(0.86, 0.93, 1.0) * (moonDisc * 2.2 + moonHalo) * uNight;
+        }
 
         // 岸邊浪花：沿岸一圈白沫，隨浪推近退遠
         if (sd > -0.5 && sd < 2.2) {
@@ -320,7 +345,7 @@ export class StylizedWorld {
   // 即時倒影
   private reflRT: THREE.WebGLRenderTarget | null = null;
   private reflCam = new THREE.PerspectiveCamera();
-  public reflections = false;
+  public reflections = true;
   private stars: THREE.Points;
   private moon: THREE.Sprite;
   private clouds: THREE.Sprite[] = [];
@@ -531,9 +556,27 @@ export class StylizedWorld {
   private buildMountainRing(trees: TreeBatch) {
     const mats = getStyleMaterials();
     const g = new THREE.Group();
+    const ef = BASIN_LANDMARKS.eastFalls;
     for (const pk of MOUNTAIN_RING) {
       if (pk.kind === 'westPlateau') continue;
       const geo = this.mountainGeometry(pk.r, pk.h, pk.i * 7 + 3);
+      // 東山飛瀑（pk.i === 1 及相鄰山峰）：在洞口水道範圍內把山腳頂點往上拱起，留出可讓遊船直接駛入水濂洞的拱門隧道
+      if (pk.i === 1 || pk.i === 0 || pk.i === 2) {
+        const pos = geo.attributes.position as THREE.BufferAttribute;
+        for (let vi = 0; vi < pos.count; vi++) {
+          const wx = pk.x + pos.getX(vi);
+          const wy = -2 + pos.getY(vi);
+          const wz = pk.z + pos.getZ(vi);
+          const dz = Math.abs(wz - ef.caveZ);
+          if (dz < 11.5 && wx < ef.faceX + 27.5 && wy < 9.5) {
+            const archH = Math.max(0, Math.cos((dz / 11.5) * (Math.PI / 2)) * 8.2);
+            if (wy < archH) {
+              pos.setY(vi, archH + 2.2);
+            }
+          }
+        }
+        geo.computeVertexNormals();
+      }
       const m = new THREE.Mesh(geo, this.mountainMat);
       m.position.set(pk.x, -2, pk.z);
       g.add(m);
@@ -542,7 +585,10 @@ export class StylizedWorld {
       for (let k = 0; k < 5; k++) {
         const a = Math.atan2(-pk.z, -pk.x) + (rand() - 0.5) * 1.6;
         const rr = pk.r * (0.82 + rand() * 0.12);
-        trees.add(rand() > 0.3 ? 'pine' : 'green', pk.x + Math.cos(a) * rr, 1 + rand() * 2, pk.z + Math.sin(a) * rr, 1.3 + rand() * 0.8);
+        const tx = pk.x + Math.cos(a) * rr;
+        const tz = pk.z + Math.sin(a) * rr;
+        if (Math.abs(tz - ef.caveZ) < 10 && tx > 110) continue;
+        trees.add(rand() > 0.3 ? 'pine' : 'green', tx, 1 + rand() * 2, tz, 1.3 + rand() * 0.8);
       }
     }
     mergeByMaterial(g, false);
@@ -579,59 +625,107 @@ export class StylizedWorld {
       this.addConformingFall(g, { ...north, base: lb }, 7.0, -0.3, 4.6, 1.6, 99, 0);
     }
 
-    // 東山飛瀑與水濂洞：洞口朝向湖面，水幕兩側落下，中間留出遊船通道。
-    const ef = BASIN_LANDMARKS.eastFalls;
+    // 東山飛瀑與水濂洞：水瀑自崖頂 36m 直瀉入湖（-0.3m），水濂完整遮覆洞門，水濂洞隱藏於飛瀑水幕之後，船隻與遊人可穿瀑而入，別有洞天
     const eastFallAt = { base: new THREE.Vector3(ef.faceX - 60, 0, ef.caveZ), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) };
     {
-      for (const side of [-1, 1]) this.addConformingFall(g, { ...eastFallAt, base: eastFallAt.base.clone().setZ(ef.caveZ + side * 6.5) }, 36, -0.3, 5.5, 1.0);
-      this.addConformingFall(g, eastFallAt, 36, -0.3, 1.0, 0.9, 99, 0);
+      // 兩側山壁輔助水簾
+      for (const side of [-1, 1]) this.addConformingFall(g, { ...eastFallAt, base: eastFallAt.base.clone().setZ(ef.caveZ + side * 6.8) }, 36, -0.3, 5.2, 1.0);
+      // 正面主瀑布：自 36m 頂峰一路垂落至湖面 -0.3m，不挖除洞前水流，將水濂洞完整隱藏在磅礡水瀑之後
+      this.addConformingFall(g, eastFallAt, 36, -0.3, 8.8, 1.1, 0, 0.75);
       const waterBase = new THREE.Vector3(ef.faceX - 48, 0, ef.caveZ);
-      for (const side of [-1, 1]) this.addConformingFall(g, { base: waterBase.clone().setZ(ef.caveZ + side * 6.5), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 18, -0.3, 3.4, 1.0);
-      this.addConformingFall(g, { base: waterBase, dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 10, -0.3, 1.0, 0.9, 99, 0);
+      for (const side of [-1, 1]) this.addConformingFall(g, { base: waterBase.clone().setZ(ef.caveZ + side * 6.8), dir: new THREE.Vector3(1, 0, 0), side: new THREE.Vector3(0, 0, 1) }, 18, -0.3, 3.6, 1.0);
       const cg = new THREE.Group();
       cg.name = 'shuilian_cave';
-      cg.position.set(ef.faceX + 0.25, -0.1, ef.caveZ);
+      cg.position.set(ef.faceX, -0.1, ef.caveZ);
       cg.rotation.y = -Math.PI / 2;
       this.root.add(cg);
       const darkMat = new THREE.MeshBasicMaterial({ color: 0x05090c });
       const rockMat = mats.rock;
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(2.9, 32, 0, Math.PI), darkMat);
-      hole.scale.y = 1.55;
-      hole.position.set(0, 0.15, 0.05);
-      cg.add(hole);
-      const frame = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.48, 10, 28, Math.PI), rockMat);
-      frame.scale.set(1, 1.5, 0.8);
-      frame.position.set(0, 0.15, 0.08);
+      // 洞口薄水簾（半透明水幕，船可直接穿過，不會擋住視線或船隻）
+      const curtainTex = waterfallTexture().clone();
+      curtainTex.needsUpdate = true;
+      curtainTex.wrapS = curtainTex.wrapT = THREE.RepeatWrapping;
+      curtainTex.repeat.set(2.2, 1.8);
+      const curtainMat = new THREE.MeshBasicMaterial({
+        map: curtainTex,
+        color: 0xdff6ff,
+        transparent: true,
+        opacity: 0.36,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      this.waterfalls.push(curtainMat);
+      this.ownedTextures.push(curtainTex);
+      const curtain = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 6.6), curtainMat);
+      curtain.position.set(0, 3.1, 0.25);
+      cg.add(curtain);
+      // 洞口外岩石拱門（加寬至半徑 5.4m，讓遊船雙向進出順暢）
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(5.4, 0.95, 12, 32, Math.PI), rockMat);
+      frame.scale.set(1.05, 1.18, 1.35);
+      frame.position.set(0, 0.1, 0.2);
       cg.add(frame);
       for (const sx of [-1, 1]) {
-        const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 1.0), rockMat);
-        jamb.position.set(sx * 3.0, 0.45, 0.08);
+        const jamb = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.2, 2.4), rockMat);
+        jamb.position.set(sx * 5.4, 0.9, 0.2);
         cg.add(jamb);
       }
-      const tunnelMat = new THREE.MeshStandardMaterial({ color: 0x20272a, roughness: 1, side: THREE.DoubleSide });
-      const floor = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.5, 25), tunnelMat);
-      floor.position.set(0, -0.65, -13);
+      const tunnelMat = new THREE.MeshStandardMaterial({ color: 0x1c252c, roughness: 0.92, side: THREE.DoubleSide });
+      // 洞底低於水面（y = -1.25），讓湖水自然延伸進水濂洞內形成地下水道
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.5, 26), tunnelMat);
+      floor.position.set(0, -1.25, -13);
       cg.add(floor);
-      for (const sx of [-4.0, 4.0]) {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(0.55, 5.2, 25), tunnelMat);
-        wall.position.set(sx, 2.0, -13);
+      // 洞內兩側石岸平台與鐘乳石柱
+      for (const sx of [-1, 1]) {
+        const bank = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 24), rockMat);
+        bank.position.set(sx * 5.1, -0.15, -13);
+        cg.add(bank);
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(0.9, 6.8, 26), tunnelMat);
+        wall.position.set(sx * 6.0, 2.5, -13);
         cg.add(wall);
       }
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.6, 25), tunnelMat);
-      roof.position.set(0, 5.0, -13);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(12.6, 0.9, 26), tunnelMat);
+      roof.position.set(0, 6.0, -13);
       cg.add(roof);
-      for (const z of [-5, -12, -19]) {
-        const lantern = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x70d7e8, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending }));
-        lantern.scale.set(2.8, 3.4, 1);
-        lantern.position.set(0, 2.1, z);
+      // 洞底最深處的玄武岩壁與「別有洞天」仙石秘境
+      const backWall = new THREE.Mesh(new THREE.CircleGeometry(6.2, 32, 0, Math.PI), darkMat);
+      backWall.scale.y = 1.15;
+      backWall.position.set(0, 0.1, -25.8);
+      cg.add(backWall);
+      for (let k = 0; k < 7; k++) {
+        const sx = ((k % 2 === 0 ? -1 : 1) * (2.2 + (k % 3) * 1.1));
+        const stal = new THREE.Mesh(new THREE.ConeGeometry(0.38 + (k % 3) * 0.12, 1.5 + (k % 2) * 0.6, 7), rockMat);
+        stal.rotation.x = Math.PI;
+        stal.position.set(sx, 5.2, -4 - k * 3.1);
+        cg.add(stal);
+      }
+      for (const z of [-4.5, -11, -17.5, -23]) {
+        const lantern = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x70d7e8, transparent: true, opacity: 0.48, depthWrite: false, blending: THREE.AdditiveBlending }));
+        lantern.scale.set(3.8, 4.2, 1);
+        lantern.position.set(0, 3.2, z);
         cg.add(lantern);
       }
+      // 洞內深處石壇與仙石彩蛋
+      const altar = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 0.8, 12), rockMat);
+      altar.position.set(0, 0.1, -22.2);
+      cg.add(altar);
+      const magicStone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.72, 1), mats.gold);
+      magicStone.position.set(0, 0.95, -22.2);
+      cg.add(magicStone);
+      cg.add(makePickProxy(2.4, 2.4, 2.4, 0, -22.2, 0, { kind: 'egg', egg: 'stoneEgg', maxDist: 45 }, 0.8));
+      const innerTex = signboardTexture('別有洞天', '花果山福地・水簾洞洞天');
+      const innerPlaque = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.6, 1.1),
+        new THREE.MeshStandardMaterial({ map: innerTex, emissive: 0xffffff, emissiveMap: innerTex, emissiveIntensity: 0.65, roughness: 0.5 })
+      );
+      innerPlaque.position.set(0, 3.8, -24.8);
+      innerPlaque.userData.noMerge = true;
+      cg.add(innerPlaque);
       const tex = signboardTexture('水濂洞', '東山飛瀑・乘舟入洞');
       const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.15), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.5, roughness: 0.6 }));
       plaque.position.set(0, 7.2, 3.6);
       plaque.userData.noMerge = true;
       cg.add(plaque);
-      cg.add(makePickProxy(5.2, 5.2, 0.5, 0, 2.2, 0, { kind: 'egg', egg: 'shuilian', maxDist: 260 }, 0.1));
+      cg.add(makePickProxy(6.4, 5.6, 1.2, 0, 2.2, 0, { kind: 'egg', egg: 'shuilian', maxDist: 260 }, 0.1));
     }
 
     // 南山洞口：水道一路通進山腳的大溶洞
@@ -800,19 +894,108 @@ export class StylizedWorld {
       floor.rotation.y = Math.PI / 8;
       g.add(floor);
       const postRadius = s * 0.52;
+      // 1～4 層（t < 4）建造八角實心塔牆與朱漆門窗，避免只有柱子鏤空；頂層（t === 4）保留為開闊觀景台
+      if (t < 4) {
+        const wallR = postRadius * 0.96;
+        const wallH = bh - 0.18;
+        const wallCore = new THREE.Mesh(
+          new THREE.CylinderGeometry(wallR, wallR, wallH, 8),
+          mats.plaster,
+        );
+        wallCore.position.y = y + wallH * 0.5;
+        wallCore.rotation.y = Math.PI / 8;
+        g.add(wallCore);
+
+        const baseSkirt = new THREE.Mesh(
+          new THREE.CylinderGeometry(wallR * 1.015, wallR * 1.02, 0.24, 8),
+          mats.stone,
+        );
+        baseSkirt.position.y = y + 0.12;
+        baseSkirt.rotation.y = Math.PI / 8;
+        g.add(baseSkirt);
+
+        const midBelt = new THREE.Mesh(
+          new THREE.CylinderGeometry(wallR * 1.012, wallR * 1.012, 0.14, 8),
+          mats.redLacquer,
+        );
+        midBelt.position.y = y + wallH * 0.86;
+        midBelt.rotation.y = Math.PI / 8;
+        g.add(midBelt);
+
+        const apothem = wallR * Math.cos(Math.PI / 8);
+        const faceW = 2 * wallR * Math.sin(Math.PI / 8);
+        for (let f = 0; f < 8; f++) {
+          const faceAng = (f / 8) * Math.PI * 2;
+          const fx = Math.cos(faceAng) * (apothem + 0.03);
+          const fz = Math.sin(faceAng) * (apothem + 0.03);
+          const isCardinal = f % 2 === 0;
+          const panelW = faceW * (isCardinal ? 0.52 : 0.44);
+          const panelH = wallH * (isCardinal ? 0.66 : 0.46);
+          const panelY = y + (isCardinal ? panelH * 0.5 + 0.22 : wallH * 0.52);
+
+          const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, panelH + 0.16, panelW + 0.16),
+            mats.darkWood,
+          );
+          frame.position.set(fx, panelY, fz);
+          frame.rotation.y = -faceAng;
+          g.add(frame);
+
+          const inset = new THREE.Mesh(
+            new THREE.BoxGeometry(0.13, panelH, panelW),
+            t === 0 && isCardinal ? mats.door : mats.lampPaper,
+          );
+          inset.position.set(fx, panelY, fz);
+          inset.rotation.y = -faceAng;
+          g.add(inset);
+        }
+      }
+      // 頂層（t === 4，觀景台）：不建擋住東側（+X）遠眺五島與湖面的前排柱子，頂層其餘柱樑標記 pagoda-top-roof，登上塔頂眺望時自動隱藏，確保 360° 全無視線遮擋
       for (let p = 0; p < 8; p++) {
         const a = (p / 8) * Math.PI * 2 + Math.PI / 8;
+        if (t === 4 && Math.cos(a) > -0.2) continue; // 移除正面與兩側擋人視線的柱子
         const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2 - t * 0.012, 0.24 - t * 0.012, bh - 0.35, 8), mats.redLacquer);
         col.position.set(Math.cos(a) * postRadius, y + (bh + 0.25) / 2, Math.sin(a) * postRadius);
+        if (t === 4) {
+          col.name = 'pagoda-top-roof';
+          col.userData.noMerge = true;
+        }
         g.add(col);
         const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.31 - t * 0.015, 0.31 - t * 0.015, 0.12, 8), mats.gold);
         collar.position.set(Math.cos(a) * postRadius, y + 0.42, Math.sin(a) * postRadius);
+        if (t === 4) {
+          collar.name = 'pagoda-top-roof';
+          collar.userData.noMerge = true;
+        }
         g.add(collar);
       }
       const beamRing = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.62, s * 0.62, 0.32, 8), mats.redLacquer);
       beamRing.position.y = y + bh - 0.18;
       beamRing.rotation.y = Math.PI / 8;
+      if (t === 4) {
+        beamRing.name = 'pagoda-top-roof';
+        beamRing.userData.noMerge = true;
+      }
       g.add(beamRing);
+      // 頂層觀景台周圍設置低矮雕花欄杆（低於胸口，不擋視線）
+      if (t === 4) {
+        for (let p = 0; p < 8; p++) {
+          const a = (p / 8) * Math.PI * 2 + Math.PI / 8;
+          const aNext = ((p + 1) / 8) * Math.PI * 2 + Math.PI / 8;
+          const x1 = Math.cos(a) * postRadius;
+          const z1 = Math.sin(a) * postRadius;
+          const x2 = Math.cos(aNext) * postRadius;
+          const z2 = Math.sin(aNext) * postRadius;
+          const mx = (x1 + x2) / 2;
+          const mz = (z1 + z2) / 2;
+          const segLen = Math.hypot(x2 - x1, z2 - z1);
+          const segYaw = Math.atan2(x2 - x1, z2 - z1);
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, segLen), mats.redLacquer);
+          rail.position.set(mx, y - bh + 0.32, mz);
+          rail.rotation.y = segYaw;
+          g.add(rail);
+        }
+      }
       y += bh;
       const last = t === 4;
       const roof = buildRoofTier(s, s, { rise: last ? 3.2 : 1.3, overhang: 1.5, curl: 0.9, theme: 'red', ridge: last, finial: last });
@@ -1000,12 +1183,20 @@ export class StylizedWorld {
       col.position.set(sx * 3, 2.4, sz * 3);
       g.add(col);
     }
-    // 欄杆
-    // 北側留出入口，與主島相連的步道可直接登亭。
-    for (const [x, z, rx] of [[-2.85, -4.2, 0], [2.85, -4.2, 0], [0, 4.2, 0], [-4.2, 0, 1], [4.2, 0, 1]] as [number, number, number][]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(rx ? 0.14 : 2.7, 0.7, rx ? 8.4 : 0.14), mats.redLacquer);
-      rail.position.set(x, 1.05, z);
-      g.add(rail);
+    // 欄杆：北側留出入口與橋堤相連，東、西、南三側完整圍起，無後方棧道
+    const northLeft = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.7, 0.14), mats.redLacquer);
+    northLeft.position.set(-2.85, 1.05, -4.2);
+    g.add(northLeft);
+    const northRight = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.7, 0.14), mats.redLacquer);
+    northRight.position.set(2.85, 1.05, -4.2);
+    g.add(northRight);
+    const southRail = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.7, 0.14), mats.redLacquer);
+    southRail.position.set(0, 1.05, 4.2);
+    g.add(southRail);
+    for (const sx of [-4.2, 4.2]) {
+      const sideRail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.7, 8.4), mats.redLacquer);
+      sideRail.position.set(sx, 1.05, 0);
+      g.add(sideRail);
     }
     const beam = new THREE.Mesh(scaledBox(6.6, 0.4, 6.6, 3, 0.4, 3), mats.redLacquer);
     beam.position.y = 4.0;
@@ -1013,19 +1204,6 @@ export class StylizedWorld {
     const roof = buildRoofTier(6, 6, { rise: 2.6, overhang: 1.4, curl: 1.1, theme: 'teal', finial: true });
     roof.position.y = 4.2;
     g.add(roof);
-    // 九曲橋（往南延伸，純景觀）
-    let px = 0;
-    let pz = 4.5;
-    for (let k = 0; k < 5; k++) {
-      const dir = k % 2 ? 1 : -1;
-      const seg = new THREE.Mesh(scaledBox(2.2, 0.3, 4.4, 2, 0.3, 2), mats.woodFloor);
-      const nx = px + dir * 1.6;
-      seg.position.set(nx, 0.35, pz + 2.1);
-      seg.rotation.y = dir * 0.35;
-      g.add(seg);
-      px = nx;
-      pz += 4;
-    }
     mergeByMaterial(g);
     const lan = new LanternBatch();
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) lan.addHanging(sx * 4.1, 3.6, sz * 4.1, 0.95);
@@ -1112,6 +1290,7 @@ export class StylizedWorld {
     w.uSunDir.value.copy(sd);
     w.uSunColor.value.setHex(p.sunColor);
     w.uGlint.value = p.glint;
+    w.uNight.value = t === 'night' ? 1.0 : t === 'dusk' ? 0.35 : 0.0;
     mats.lanternBody.emissiveIntensity = p.lantern;
     mats.lampPaper.emissiveIntensity = p.lamp;
     mats.facades.forEach((f) => (f.emissiveIntensity = p.windows));
@@ -1255,7 +1434,7 @@ export class StylizedWorld {
     renderer.setRenderTarget(prevRT);
     renderer.shadowMap.autoUpdate = prevShadow;
     this.water.visible = true;
-    u.uReflStrength.value = 0.85;
+    u.uReflStrength.value = 0.9;
   }
 
   /** 開啟或關閉陰影（依畫質設定） */

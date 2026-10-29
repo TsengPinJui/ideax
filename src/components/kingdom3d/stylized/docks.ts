@@ -234,15 +234,16 @@ export function createPlateauExtras(): { group: THREE.Group; colliders: Collider
   g.add(makePickProxy(1.8, 2.8, 1.8, x, z, 0, { kind: 'trail', dir: 'down' }, TRAIL.topY));
   // 點塔：上到塔頂眺望（目前塔樓的功能只有這個）
   g.add(makePickProxy(11.4, 16, 11.4, TRAIL.pagodaX, TRAIL.pagodaZ, 0, { kind: 'trail', dir: 'top' }, TRAIL.topY));
-  // 塔頂：「下塔」小牌（點了回到塔外空地）
+  // 塔頂：「下塔」小牌（放在靠山西側 -X 的南北兩側欄杆旁，不擋往東眺望五島的風景）
   {
-    // 牌子放在南北兩側面（不擋往東看五島的風景），而且放低一點
     for (const sd of [-1, 1]) {
-      const sg = sign('下塔', '回到塔外空地', 0.9);
-      sg.position.set(TRAIL.pagodaX - 0.4, TRAIL.topFloorY + 2.55, TRAIL.pagodaZ + sd * 1.6);
-      sg.rotation.y = sd > 0 ? Math.PI : 0;
+      const sx = TRAIL.pagodaX - 1.25;
+      const sz = TRAIL.pagodaZ + sd * 1.32;
+      const sg = sign('下塔', '回到塔外空地', 0.88);
+      sg.position.set(sx, TRAIL.topFloorY + 1.18, sz);
+      sg.rotation.y = sd > 0 ? Math.PI - 0.42 : 0.42;
       g.add(sg);
-      g.add(makePickProxy(1.8, 1.6, 0.8, TRAIL.pagodaX - 0.4, TRAIL.pagodaZ + sd * 1.6, 0, { kind: 'trail', dir: 'down-top' }, TRAIL.topFloorY + 2.25));
+      g.add(makePickProxy(1.8, 1.8, 1.2, sx, sz, 0, { kind: 'trail', dir: 'down-top' }, TRAIL.topFloorY + 1.05));
     }
     // 塔頂樓板
     const fl = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.08, 8), sm.woodFloor);

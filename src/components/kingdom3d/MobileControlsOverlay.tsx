@@ -27,6 +27,9 @@ import {
   Copy,
   Lightbulb,
   Armchair,
+  Compass,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { CompassMinimap, WorldMapModal } from './KingdomMaps';
 import {
@@ -54,6 +57,8 @@ interface MobileControlsOverlayProps {
   isFastWalk: boolean;
   isOnBoat?: boolean;
   landRideMode?: 'buffalo' | 'horseCart' | 'horse' | 'egret' | null;
+  /** 玩家附近是否有載具或渡口（供 C 鍵顯示「上馬/騎牛/駕鶴/登船」） */
+  nearMountType?: 'buffalo' | 'horse' | 'egret' | 'horseCart' | 'dock' | null;
   onToggleFastWalk: () => void;
   /** 小燈泡照明（按 F 或點按鍵呼喚，拿在手上照亮四周） */
   bulbOn?: boolean;
@@ -71,6 +76,10 @@ interface MobileControlsOverlayProps {
   placeOverride?: string;
   /** 點一下畫面（沒有拖曳）：回傳 true 表示點到了可互動的東西 */
   onTapScreen?: (clientX: number, clientY: number) => boolean;
+  /** 長按畫面（約 450ms）：長按載具騎乘，長按地面近距離瞬移（18m 內） */
+  onLongPressScreen?: (clientX: number, clientY: number) => boolean;
+  /** 聚雲塔頂下塔按鍵回呼（放在螢幕兩側避開中央風景） */
+  onDescendPagoda?: () => void;
   /** 數字變動時打開全島地圖（左側面板的「打開全島地圖」） */
   openMapSignal?: number;
   bgmMuted?: boolean;
@@ -94,6 +103,8 @@ interface MobileControlsOverlayProps {
 
 function getBuildingFeatureLabel(b: BuildingInteractable): string {
   switch (b.id) {
+    case 'trailhead-west-plateau':
+      return '登上山頂（聚雲塔山台・眺望五島）';
     case 'home-explore':
       return '探索看板（看全站最新內容）';
     case 'home-map':
@@ -159,6 +170,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   isFastWalk,
   isOnBoat = false,
   landRideMode = null,
+  nearMountType = null,
   onToggleFastWalk,
   bulbOn,
   onToggleBulb,
@@ -171,6 +183,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onToggleFancy,
   placeOverride,
   onTapScreen,
+  onLongPressScreen,
+  onDescendPagoda,
   openMapSignal,
   bgmMuted,
   onToggleBgm,
@@ -219,11 +233,15 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   const lookTouchIdRef = useRef<number | null>(null);
   const lookTapRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lookLastPosRef = useRef({ x: 0, y: 0 });
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const onTouchLookDeltaRef = useRef(onTouchLookDelta);
   onTouchLookDeltaRef.current = onTouchLookDelta;
   const onTapScreenRef = useRef(onTapScreen);
   onTapScreenRef.current = onTapScreen;
+  const onLongPressScreenRef = useRef(onLongPressScreen);
+  onLongPressScreenRef.current = onLongPressScreen;
   const onJoystickMoveRef = useRef(onJoystickMove);
   onJoystickMoveRef.current = onJoystickMove;
   const onJoystickEndRef = useRef(onJoystickEnd);
@@ -340,27 +358,44 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
   }, []);
 
-  // 全畫面觸控轉頭與點選（解決直式無法轉頭，支援在畫面任意空白處滑動轉視角、與左下搖桿多點觸控同步操作）
+  // 全畫面觸控轉頭與點選（支援左手搖桿移動＋右手滑動轉向雙指同步操作，徹底防止被誤判為畫面縮放）
   useEffect(() => {
     let isPinching = false;
     const isInteractiveUiTarget = (el: EventTarget | null): boolean => {
       if (!(el instanceof Element)) return false;
       return Boolean(
         el.closest(
-          '[data-joystick-zone], [data-ui-panel], button, a, input, select, textarea, .kx-panel, .kx-parchment'
+          '[data-joystick-zone], [data-ui-panel], button, a, input, select, textarea, .kx-panel, .kx-parchment, .kx-menu-item'
         )
       );
     };
 
+    // 防止 iOS Safari 雙指手勢縮放整個網頁
+    const onGesture = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener('gesturestart', onGesture);
+    window.addEventListener('gesturechange', onGesture);
+    window.addEventListener('gestureend', onGesture);
+
     const onWindowTouchStart = (e: TouchEvent) => {
-      if (e.touches.length >= 2) {
+      // 排除左手搖桿的觸控點，僅計算畫面上的其他手指
+      const lookTouches = Array.from(e.touches).filter(
+        (t) => t.identifier !== joystickTouchIdRef.current
+      );
+
+      // 只有在搖桿以外的區域有兩指以上同時觸控時才判定為雙指縮放，一手搖桿一手轉向絕對不會被誤判
+      if (lookTouches.length >= 2) {
         isPinching = true;
         lookTouchIdRef.current = null;
         lookTapRef.current = null;
+        if (e.cancelable) e.preventDefault();
         return;
       }
-      if (isPinching) return;
+
+      isPinching = false;
       if (lookTouchIdRef.current !== null) return;
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         if (t.identifier === joystickTouchIdRef.current) continue;
@@ -368,24 +403,60 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         lookTouchIdRef.current = t.identifier;
         lookLastPosRef.current = { x: t.clientX, y: t.clientY };
         lookTapRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
+        longPressTriggeredRef.current = false;
+        if (longPressTimerRef.current !== null) {
+          window.clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        const startX = t.clientX;
+        const startY = t.clientY;
+        const touchId = t.identifier;
+        longPressTimerRef.current = window.setTimeout(() => {
+          if (lookTouchIdRef.current === touchId) {
+            longPressTriggeredRef.current = true;
+            try {
+              if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(35);
+            } catch {
+              // ignore
+            }
+            onLongPressScreenRef.current?.(startX, startY);
+          }
+        }, 450);
+        if (e.cancelable) e.preventDefault();
         break;
       }
     };
 
     const onWindowTouchMove = (e: TouchEvent) => {
-      if (e.touches.length >= 2) {
+      // 排除左手搖桿觸控點
+      const lookTouches = Array.from(e.touches).filter(
+        (t) => t.identifier !== joystickTouchIdRef.current
+      );
+
+      if (lookTouches.length >= 2) {
         isPinching = true;
         lookTouchIdRef.current = null;
         lookTapRef.current = null;
+        if (longPressTimerRef.current !== null) {
+          window.clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
         if (e.cancelable) e.preventDefault();
         return;
       }
-      if (isPinching) return;
+
       if (lookTouchIdRef.current === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         if (t.identifier === lookTouchIdRef.current) {
           if (e.cancelable) e.preventDefault();
+          const st = lookTapRef.current;
+          if (st && Math.hypot(t.clientX - st.x, t.clientY - st.y) > 12) {
+            if (longPressTimerRef.current !== null) {
+              window.clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
+          }
           const dx = t.clientX - lookLastPosRef.current.x;
           const dy = t.clientY - lookLastPosRef.current.y;
           lookLastPosRef.current = { x: t.clientX, y: t.clientY };
@@ -399,12 +470,19 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
     };
 
     const onWindowTouchEnd = (e: TouchEvent) => {
-      if (isPinching) {
-        if (e.touches.length < 2) isPinching = false;
-        lookTouchIdRef.current = null;
-        lookTapRef.current = null;
-        return;
+      const lookTouches = Array.from(e.touches).filter(
+        (t) => t.identifier !== joystickTouchIdRef.current
+      );
+
+      if (lookTouches.length < 2) {
+        isPinching = false;
       }
+
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
       if (lookTouchIdRef.current === null) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
@@ -412,11 +490,14 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           lookTouchIdRef.current = null;
           const st = lookTapRef.current;
           lookTapRef.current = null;
+          const wasLongPressed = longPressTriggeredRef.current;
+          longPressTriggeredRef.current = false;
           if (
+            !wasLongPressed &&
             st &&
             e.type === 'touchend' &&
-            Math.hypot(t.clientX - st.x, t.clientY - st.y) < 12 &&
-            performance.now() - st.t < 380
+            Math.hypot(t.clientX - st.x, t.clientY - st.y) < 14 &&
+            performance.now() - st.t < 420
           ) {
             onTapScreenRef.current?.(t.clientX, t.clientY);
           }
@@ -425,11 +506,14 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       }
     };
 
-    window.addEventListener('touchstart', onWindowTouchStart, { passive: true });
+    window.addEventListener('touchstart', onWindowTouchStart, { passive: false });
     window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
     window.addEventListener('touchend', onWindowTouchEnd, { passive: true });
     window.addEventListener('touchcancel', onWindowTouchEnd, { passive: true });
     return () => {
+      window.removeEventListener('gesturestart', onGesture);
+      window.removeEventListener('gesturechange', onGesture);
+      window.removeEventListener('gestureend', onGesture);
       window.removeEventListener('touchstart', onWindowTouchStart);
       window.removeEventListener('touchmove', onWindowTouchMove);
       window.removeEventListener('touchend', onWindowTouchEnd);
@@ -456,6 +540,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
 
   const [mapOpen, setMapOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [inviteCollapsed, setInviteCollapsed] = useState(false);
   const [isAppMode] = useState<boolean>(detectStandaloneApp);
   const [appBannerDismissed, setAppBannerDismissed] = useState<boolean>(false);
   const [appGuideOpen, setAppGuideOpen] = useState<boolean>(false);
@@ -642,42 +727,139 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
         </div>
 
         {multiplayer && !menuOpen && (
-          <div className="kx-panel mt-1 inline-flex flex-wrap items-center gap-1.5 px-2.5 py-1 text-[11px] sm:text-[11.5px] max-w-full" title="多人同遊">
-            <Users className="w-3.5 h-3.5 text-amber-200 shrink-0" />
-            <span className="kx-sub truncate">
-              {multiplayer.status === 'online'
-                ? multiplayer.others > 0
-                  ? '多人同遊中，推薦好友一起逛'
-                  : '目前只有你，快快邀請好友同遊'
-                : multiplayer.status === 'guest'
-                ? '登入後可和其他人一起逛'
-                : multiplayer.status === 'connecting'
-                ? '正在連線其他旅人…'
-                : multiplayer.status === 'off'
-                ? '多人同遊尚未開通'
-                : '多人連線暫時無法使用'}
-            </span>
-            {multiplayer.status === 'online' && (
-              <button
-                type="button"
-                onClick={handleShareInvite}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] sm:text-[11px] font-semibold text-amber-100 bg-amber-500/20 hover:bg-amber-500/35 border border-amber-300/45 transition-colors cursor-pointer shrink-0"
-                title="複製連結或分享給好友一起逛五島"
-              >
-                {shareCopied ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-300" />
-                    <span className="text-emerald-200">已複製</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-3 h-3 text-amber-200" />
-                    <span>分享</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          inviteCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setInviteCollapsed(false)}
+              title="展開同遊邀請"
+              aria-label="展開同遊邀請"
+              className="kx-panel mt-1 inline-flex items-center gap-1 self-start px-2 py-1 text-[11px] sm:text-[11.5px] cursor-pointer transition-transform active:scale-95"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+            </button>
+          ) : (
+            <div className="kx-panel mt-1 inline-flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:py-1 text-[11px] sm:text-[11.5px] max-w-full self-start" title="多人同遊">
+              {multiplayer.status === 'online' && multiplayer.others === 0 ? (
+                <>
+                  {/* 手機版：第一行「目前只有你，快快邀請」＋收合鍵；第二行「好友同遊 + 分享鍵」 */}
+                  <div className="flex items-center justify-between gap-2 sm:hidden">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                      <span className="kx-sub">目前只有你，快快邀請</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInviteCollapsed(true)}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full text-amber-200/85 hover:text-amber-100 hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
+                      title="收合"
+                      aria-label="收合"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 pl-5 sm:hidden">
+                    <span className="kx-sub">好友同遊</span>
+                    <button
+                      type="button"
+                      onClick={handleShareInvite}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold text-amber-100 bg-amber-500/20 hover:bg-amber-500/35 border border-amber-300/45 transition-colors cursor-pointer shrink-0"
+                      title="複製連結或分享給好友一起逛五島"
+                    >
+                      {shareCopied ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-300" />
+                          <span className="text-emerald-200">已複製</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3 h-3 text-amber-200" />
+                          <span>分享</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* 桌機版：維持單行呈現＋收合鍵 */}
+                  <div className="hidden sm:inline-flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                    <span className="kx-sub truncate">目前只有你，快快邀請好友同遊</span>
+                    <button
+                      type="button"
+                      onClick={handleShareInvite}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-amber-100 bg-amber-500/20 hover:bg-amber-500/35 border border-amber-300/45 transition-colors cursor-pointer shrink-0"
+                      title="複製連結或分享給好友一起逛五島"
+                    >
+                      {shareCopied ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-300" />
+                          <span className="text-emerald-200">已複製</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3 h-3 text-amber-200" />
+                          <span>分享</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteCollapsed(true)}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full text-amber-200/85 hover:text-amber-100 hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
+                      title="收合"
+                      aria-label="收合"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="inline-flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                  <span className="kx-sub truncate">
+                    {multiplayer.status === 'online'
+                      ? '多人同遊中，推薦好友一起逛'
+                      : multiplayer.status === 'guest'
+                      ? '登入後可和其他人一起逛'
+                      : multiplayer.status === 'connecting'
+                      ? '正在連線其他旅人…'
+                      : multiplayer.status === 'off'
+                      ? '多人同遊尚未開通'
+                      : '多人連線暫時無法使用'}
+                  </span>
+                  {multiplayer.status === 'online' && (
+                    <button
+                      type="button"
+                      onClick={handleShareInvite}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] sm:text-[11px] font-semibold text-amber-100 bg-amber-500/20 hover:bg-amber-500/35 border border-amber-300/45 transition-colors cursor-pointer shrink-0"
+                      title="複製連結或分享給好友一起逛五島"
+                    >
+                      {shareCopied ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-300" />
+                          <span className="text-emerald-200">已複製</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3 h-3 text-amber-200" />
+                          <span>分享</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setInviteCollapsed(true)}
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full text-amber-200/85 hover:text-amber-100 hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
+                    title="收合"
+                    aria-label="收合"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )
         )}
 
         {/* 建議橫式握持＆建議在 App 體驗更佳（附下載按鍵，符合古風漆木描金美術風格） */}
@@ -892,23 +1074,73 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
           </div>
         </div>
 
-        {/* 右下操作按鈕群：上排環境與音樂、下排加大版跑步／疾走鍵 */}
+        {/* 右下操作按鈕群：橫式螢幕時將「坐下(C)」「照明(F)」移至底部橫排（疾走鍵左側），避免與右上角彩蛋／任務按鈕重疊 */}
         <div
           data-ui-panel="true"
-          className="relative pointer-events-auto flex flex-col items-end gap-2 sm:gap-2.5 shrink-0"
+          className={`relative pointer-events-auto flex ${
+            viewport.vw > viewport.vh || viewport.vh < 680 ? 'flex-row items-end' : 'flex-col items-end'
+          } gap-2 sm:gap-2.5 shrink-0`}
         >
-          {/* 坐下鍵（C）：坐著休息；和羈絆一起坐在桃樹下會落桃花 */}
+          {/* 坐下／上下載具鍵（C）：騎乘或乘船時按 C 下乘，靠近載具或渡口時按 C 騎乘／登船 */}
           {onToggleSit && (
             <button
               type="button"
               onClick={onToggleSit}
-              data-on={Boolean(sitting)}
+              data-on={Boolean(sitting || landRideMode || isOnBoat || nearMountType)}
               className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg"
-              title={sitting ? '站起來（C，或直接走動）' : '坐下（C）'}
-              aria-label="坐下"
+              title={
+                landRideMode === 'horse'
+                  ? '下馬（C）'
+                  : landRideMode === 'buffalo'
+                  ? '下牛（C）'
+                  : landRideMode === 'egret'
+                  ? '降落白鶴（C）'
+                  : landRideMode === 'horseCart'
+                  ? '下車（C）'
+                  : isOnBoat
+                  ? '下船（C）'
+                  : nearMountType === 'horse'
+                  ? '上馬（C）'
+                  : nearMountType === 'buffalo'
+                  ? '騎牛（C）'
+                  : nearMountType === 'egret'
+                  ? '駕鶴（C）'
+                  : nearMountType === 'horseCart'
+                  ? '乘車（C）'
+                  : nearMountType === 'dock'
+                  ? '登船（C）'
+                  : sitting
+                  ? '站起來（C，或直接走動）'
+                  : '坐下／上下載具（C）'
+              }
+              aria-label="坐下或上下載具"
             >
               <Armchair className="w-6 h-6 sm:w-7 sm:h-7" />
-              <span className="text-[10.5px] sm:text-[11px] font-bold tracking-wider leading-none">{sitting ? '站起' : '坐下(C)'}</span>
+              <span className="text-[10px] sm:text-[10.5px] font-bold tracking-wider leading-none">
+                {landRideMode === 'horse'
+                  ? '下馬(C)'
+                  : landRideMode === 'buffalo'
+                  ? '下牛(C)'
+                  : landRideMode === 'egret'
+                  ? '降落(C)'
+                  : landRideMode === 'horseCart'
+                  ? '下車(C)'
+                  : isOnBoat
+                  ? '下船(C)'
+                  : nearMountType === 'horse'
+                  ? '上馬(C)'
+                  : nearMountType === 'buffalo'
+                  ? '騎牛(C)'
+                  : nearMountType === 'egret'
+                  ? '駕鶴(C)'
+                  : nearMountType === 'horseCart'
+                  ? '乘車(C)'
+                  : nearMountType === 'dock'
+                  ? '登船(C)'
+                  : sitting
+                  ? '站起'
+                  : '坐下(C)'}
+              </span>
             </button>
           )}
           {/* 照明鍵：呼喚小燈泡拿在手上 */}
@@ -931,25 +1163,59 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
             onClick={onToggleFastWalk}
             data-on={landRideMode === 'buffalo' || landRideMode === 'horseCart' ? true : landRideMode === 'egret' ? isFastWalk : isFastWalk || shiftHeld}
             className="kx-round w-20 h-20 sm:w-24 sm:h-24 flex-col gap-0.5 shadow-lg"
-            title={landRideMode === 'buffalo' ? '騎牛（固定慢速）' : landRideMode === 'horseCart' ? '驅車（定速）' : landRideMode === 'horse' ? (isFastWalk ? '策馬（快速，點一下慢行）' : '騎馬（慢速，點一下策馬）') : landRideMode === 'egret' ? (isFastWalk ? '駕鶴中（點一下降落）' : '駕鶴（點一下起飛）') : isOnBoat
-              ? (isFastWalk ? '疾駛中（點一下恢復遊船速度，或按住 Shift）' : '遊船（點一下疾駛，或按住 Shift）')
-              : (isFastWalk ? '疾走中（點一下恢復常速，或按住 Shift）' : '疾走（或按住 Shift）')}
+            title={
+              landRideMode === 'buffalo'
+                ? '騎牛（固定慢速）'
+                : landRideMode === 'horseCart'
+                ? '驅車（定速）'
+                : landRideMode === 'horse'
+                ? isFastWalk
+                  ? '策馬疾馳中（點擊換慢行）'
+                  : '策馬疾馳（點擊換快速）'
+                : landRideMode === 'egret'
+                ? isFastWalk
+                  ? '騰空高飛中（限高 16.5m，點擊降落）'
+                  : '駕鶴起飛（點擊升空）'
+                : isOnBoat
+                ? isFastWalk
+                  ? '疾駛中（點一下恢復遊船速度，或按住 Shift）'
+                  : '遊船（點一下疾駛，或按住 Shift）'
+                : isFastWalk
+                ? '疾走中（點一下恢復常速，或按住 Shift）'
+                : '疾走（或按住 Shift）'
+            }
             aria-label={landRideMode === 'buffalo' ? '騎牛' : landRideMode === 'horseCart' ? '驅車定速' : landRideMode === 'horse' ? '騎馬慢速／策馬快速' : landRideMode === 'egret' ? '駕鶴' : isOnBoat ? '遊船／疾駛' : '疾走'}
             disabled={landRideMode === 'buffalo' || landRideMode === 'horseCart'}
           >
             <Footprints className="w-9 h-9 sm:w-11 sm:h-11" />
             <span className="text-[11px] sm:text-xs font-bold tracking-wider leading-none">
-              {landRideMode === 'buffalo' ? '騎牛' : landRideMode === 'horseCart' ? '驅車' : landRideMode === 'horse' ? (isFastWalk ? '策馬' : '騎馬') : landRideMode === 'egret' ? (isFastWalk ? '降落' : '駕鶴') : isOnBoat
-                ? (isFastWalk || shiftHeld ? '疾駛中' : '遊船')
-                : (isFastWalk || shiftHeld ? '疾走中' : '疾走')}
+              {landRideMode === 'buffalo'
+                ? '騎牛'
+                : landRideMode === 'horseCart'
+                ? '驅車'
+                : landRideMode === 'horse'
+                ? isFastWalk
+                  ? '策馬'
+                  : '騎馬'
+                : landRideMode === 'egret'
+                ? isFastWalk
+                  ? '降落'
+                  : '起飛'
+                : isOnBoat
+                ? isFastWalk || shiftHeld
+                  ? '疾駛中'
+                  : '遊船'
+                : isFastWalk || shiftHeld
+                ? '疾走中'
+                : '疾走'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* 暗處提示：點【照明(F)】呼喚小燈泡 */}
+      {/* 暗處提示：點【照明(F)】呼喚小燈泡（下移避開上方橫幅與狀態列，不重疊） */}
       {darkHint && !bulbOn && onToggleBulb && (
-        <div data-ui-panel="true" className="absolute left-1/2 -translate-x-1/2 top-24 sm:top-20 pointer-events-auto">
+        <div data-ui-panel="true" className="absolute left-1/2 -translate-x-1/2 top-32 sm:top-24 z-10 pointer-events-auto">
           <div className="kx-panel px-4 py-2 text-[13px] sm:text-[14px] whitespace-nowrap flex items-center gap-1.5">
             <Lightbulb className="w-4 h-4 text-amber-200 shrink-0" />
             覺得暗？點擊
@@ -964,7 +1230,7 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
       {/* 電腦版提示 */}
       <div data-ui-panel="true" className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-5 pointer-events-none">
         <div className="kx-panel px-4 py-1.5 text-[12.5px] whitespace-nowrap">
-          拖曳畫面環顧・滾輪縮放・WASD 移動・E 互動・Q 瞬移・C 坐下・F 照明
+          拖曳畫面環顧・滾輪縮放・WASD 移動・E 互動・Q 瞬移・C 上下載具／坐下・F 照明
         </div>
       </div>
 

@@ -89,6 +89,8 @@ fs.writeFileSync(path.join(DIST, 'sitemap.xml'), xml);
 console.log(`seo-pages: ${sitelinks.length} 個分頁、sitemap ${urls.length} 筆`);
 
 // 確認 vercel.json 每個分頁都有對應的轉址規則，避免新增分頁卻忘了加
-const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-const missing = sitelinks.filter((s) => !vercel.rewrites.some((r) => r.source === s.path && r.destination === `/seo/${fileName(s.path)}.html`));
-if (missing.length) throw new Error(`seo-pages: vercel.json 缺少這些分頁的 rewrites：${missing.map((s) => s.path).join('、')}`);
+if (fs.existsSync('vercel.json')) {
+  const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+  const missing = sitelinks.filter((s) => !vercel.rewrites.some((r) => r.source === s.path && r.destination === `/seo/${fileName(s.path)}.html`));
+  if (missing.length) throw new Error(`seo-pages: vercel.json 缺少這些分頁的 rewrites：${missing.map((s) => s.path).join('、')}`);
+}

@@ -281,22 +281,26 @@ export function createHallLobby(
   }
 
   // ---- 左牆精選榜、右牆熱度榜 ----
-  const bw = Math.min(b.depth * 0.42, 8);
-  const bh = bw * (1100 / 900);
-  const by = Math.max(2.0 + bh / 2, Math.min(wallInner.h - bh / 2 - 0.8, 1.6 + bh / 2));
+  const isExh = b.exterior === 'exhibition';
+  const maxBh = Math.max(4.8, wallInner.h - (isExh ? 2.2 : 1.5));
+  const rawBw = Math.min(b.depth * (isExh ? 0.34 : 0.42), 8);
+  const bh = Math.min(rawBw * (1100 / 900), maxBh);
+  const bw = bh * (900 / 1100);
+  const by = 1.15 + bh / 2;
+  const rankZ = isExh ? -b.depth * 0.18 : -b.depth * 0.04;
   for (const [sx, which] of [[-1, 'featured'], [1, 'hot']] as [number, 'featured' | 'hot'][]) {
-    const x = sx * (wallInner.side - 0.05);
-    add(new THREE.BoxGeometry(0.12, bh + 0.4, bw + 0.4), mats.gold, x - sx * 0.02, by, -b.depth * 0.04);
+    const x = sx * (wallInner.side - 0.08);
+    add(new THREE.BoxGeometry(0.12, bh + 0.36, bw + 0.36), mats.gold, x - sx * 0.04, by, rankZ);
     const m = add(
       new THREE.PlaneGeometry(bw, bh),
       new THREE.MeshBasicMaterial({ map: drawRankBoard(which === 'featured' ? '精選榜' : '熱度榜', 'TOP 10', [], games, which === 'featured' ? '#9a6a12' : '#8e2420') }),
-      x - sx * 0.1,
+      x - sx * 0.14,
       by,
-      -b.depth * 0.04
+      rankZ
     );
     m.rotation.y = -sx * (Math.PI / 2);
     m.userData.lobbyRank = { buildingId: b.id, which };
-    g.add(makePickProxy(0.5, bh, bw, x - sx * 0.3, -b.depth * 0.04, 0, { kind: 'lobbyRank', buildingId: b.id, which }, by - bh / 2));
+    g.add(makePickProxy(0.5, bh, bw, x - sx * 0.32, rankZ, 0, { kind: 'lobbyRank', buildingId: b.id, which }, by - bh / 2));
   }
   return { group: g, colliders };
 }

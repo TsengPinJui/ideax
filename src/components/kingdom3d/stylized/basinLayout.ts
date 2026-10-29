@@ -133,7 +133,8 @@ export const BOARDING_SPOTS: { id: string; regionId: string; deg: number; name: 
   { id: 'dock-pain-ne', regionId: 'region-pain', deg: -43, name: '痛點島東北渡口' },
   { id: 'dock-pain-sw', regionId: 'region-pain', deg: 128, name: '痛點島西南渡口' },
   { id: 'dock-home-n', regionId: 'region-home', deg: -90, name: '主島北渡口' },
-  { id: 'dock-home-s', regionId: 'region-home', deg: 90, name: '主島南渡口' }, // 原本在西邊，改到南邊（往湖心亭方向）
+  { id: 'dock-home-s', regionId: 'region-home', deg: 72, name: '主島南東渡口' }, // 移開橋堤，橋堤東側可乘船
+  { id: 'dock-home-sw', regionId: 'region-home', deg: 108, name: '主島南西渡口' }, // 橋堤西側也可乘船
   { id: 'dock-disc-nw', regionId: 'region-discussion', deg: -139, name: '討論島西北渡口' },
   { id: 'dock-disc-s', regionId: 'region-discussion', deg: 82, name: '討論島南渡口' },
   { id: 'dock-career-ne', regionId: 'region-career', deg: -22, name: '徵才島東北渡口' }, // 院牆東北角外會和牆疊在一起，挪到東牆外的空地
@@ -204,6 +205,9 @@ const FILLS: Landmass[] = (() => {
         if (walk.some((o) => insideEllipse(px, pz, { cx: o.cx, cz: o.cz, rx: o.rx + 14.5, rz: o.rz + 14.5 }))) hit = true;
         if (WORLD_BRIDGES.some((b) => distToSeg(px, pz, b.x1, b.z1, b.x2, b.z2) < b.halfWidth + 6)) hit = true;
         if (reserve.some(([rx0, rz0]) => Math.hypot(px - rx0, pz - rz0) < 9)) hit = true;
+        // 東山飛瀑水濂洞航道淨空，不放田園陸地擋住船道
+        const efPeak = MOUNTAIN_RING.find((q) => q.i === 1);
+        if (efPeak && Math.abs(pz - (efPeak.z + 6)) < 12 && px > 92) hit = true;
       }
       if (!hit) {
         l = cand;
@@ -300,9 +304,9 @@ export function chimneyTop(h: FarmHouse): [number, number, number] {
   return [h.x + lx * c + lz * s, 0.5 + 2.6 + 1.75, h.z - lx * s + lz * c];
 }
 
-/** 湖心亭北面的「三潭印月」三座小石塔（船會繞開） */
+/** 湖心亭兩側水面的「三潭印月」三座小石塔（在湖水中立著，避開中央橋堤） */
 export const THREE_POOLS: [number, number][] = [
-  [-6, 60.5],
-  [6, 60.5],
-  [0, 55.5],
+  [-17.0, 52.0],
+  [17.0, 52.0],
+  [-14.5, 66.0],
 ];

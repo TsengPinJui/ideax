@@ -30,6 +30,7 @@ export type EggId =
   | 'agent007'
   | 'bear'
   | 'shuilian'
+  | 'bieyou'
   | 'stoneEgg'
   | 'stoneLion'
   | 'ding';
@@ -68,6 +69,8 @@ export const EGG_VERSES = {
   bear: '「找到了大熊！敲敲打打修修補補，再難的技術都能幫你落地！」',
   /** 東山飛瀑後面的水濂洞（西遊記第一回） */
   shuilian: '「花果山福地，水簾洞洞天。」',
+  /** 乘船或深入水濂洞內部秘境 */
+  bieyou: '「別有洞天!」',
   /** 水濂洞口的仙石 */
   stoneEgg: '「靈根育孕源流出，心性修持大道生。」—— 這顆仙石裡，說不定正孕育著下一個好點子！',
   ding: '「君子，一言九鼎」',
@@ -127,6 +130,7 @@ export function eggVerse(egg: EggId, ctx: { night: boolean; clear: boolean; id?:
     case 'agent007':
     case 'bear':
     case 'shuilian':
+    case 'bieyou':
     case 'stoneEgg':
     case 'ding':
     case 'stoneLion':

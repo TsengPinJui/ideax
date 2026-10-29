@@ -58,6 +58,7 @@ import {
   mediaOf,
   loadMediaTexture,
   drawDeepBoothTexture,
+  drawBoothHeaderTexture,
   drawNameplateTexture,
   drawFloorPlaqueTexture,
   DeepBoothSpot,
@@ -107,19 +108,20 @@ const detectFancyDefault = () => {
   return !touch && window.innerWidth >= 900 && (navigator.hardwareConcurrency || 4) >= 4;
 };
 const LAND_RIDE_PAVED_YARD: WalkableZone[] = [
-  // 馬車停放區及三處馬匹的石板／磚地活動範圍。
-  { type: 'rect', minX: 75, maxX: 92, minZ: -57, maxZ: -32 },
-  { type: 'rect', minX: -97, maxX: -84, minZ: -55, maxZ: -41 }, // 痛點島西緣
-  { type: 'rect', minX: -97, maxX: -84, minZ: 41, maxZ: 55 }, // 創意島西緣
-  { type: 'rect', minX: 89, maxX: 103, minZ: 41, maxZ: 55 }, // 徵才島東緣
-  ...WORLD_BRIDGES.map((b) => ({ type: 'corridor' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfWidth: b.halfWidth - 0.25 })),
+  // 馬車與馬匹可在各島石板地、草地外環、大熊匠鋪後方水岸及跨島石拱橋順暢通行，不會被隱形邊界卡住。
+  ...getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 5.2, rz: z.rz + 5.2 } : z)),
+  { type: 'rect', minX: 72, maxX: 108, minZ: -64, maxZ: -26 },
+  { type: 'rect', minX: -98, maxX: -80, minZ: -58, maxZ: -38 },
+  { type: 'rect', minX: -98, maxX: -80, minZ: 38, maxZ: 58 },
+  { type: 'rect', minX: 86, maxX: 106, minZ: 38, maxZ: 58 },
+  ...WORLD_BRIDGES.map((b) => ({ type: 'corridor' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfWidth: b.halfWidth + 0.6 })),
 ];
 function canExitLandRide(ride: { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; x: number; y: number; z: number }) {
-  if (ride.kind === 'horseCart' || ride.kind === 'horse') return PhysicsController.isInsideWalkableZones(ride.x, ride.z, LAND_RIDE_PAVED_YARD);
-  const landZones = getGlobalWalkableZones();
-  if (ride.kind === 'egret' && ride.y > 3.1) return false;
+  if (ride.kind === 'horseCart' || ride.kind === 'horse') return true;
+  const landZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 6.5, rz: z.rz + 6.5 } : z));
+  if (ride.kind === 'egret' && ride.y > 3.5) return false;
   if (PhysicsController.isInsideWalkableZones(ride.x, ride.z, landZones)) return true;
-  return ride.kind === 'buffalo' && DOCKS.some((dock) => Math.hypot(dock.landX - ride.x, dock.landZ - ride.z) <= 8);
+  return DOCKS.some((dock) => Math.hypot(dock.landX - ride.x, dock.landZ - ride.z) <= 10);
 }
 import './kingdomUi.css';
 import {
@@ -172,8 +174,26 @@ const PLATEAU_B: BuildingInteractable = {
   description: '西側的平頂山台，五層聚雲塔立在山頂（山頂常有雲停留），塔外的空地可以眺望五座島與整片湖面。點山上的「下山」石碑就能回到痛點島的登山口。',
   targetModule: '',
   previewBadge: '聚雲塔山台',
-  previewFeatures: ['從痛點島西岸的「聚雲塔登山口」一點直上', '塔外空地眺望五島與湖面', '「下山」石碑回到登山口'],
+  previewFeatures: ['從西岸田園的「聚雲塔登山口」登上山頂', '山頂山台眺望五島與湖面', '「下山」回到登山口'],
   mockData: { stats: '海拔約 30 公尺', notice: '山上風大，慢慢逛。', primaryActionLabel: '聚雲塔山台' },
+} as unknown as BuildingInteractable;
+
+const TRAILHEAD_INTERACTABLE: BuildingInteractable = {
+  id: 'trailhead-west-plateau',
+  name: '聚雲塔登山口',
+  subtitle: '登上山頂・眺望五島',
+  position: new THREE.Vector3(TRAIL.x, 0, TRAIL.z),
+  facingYaw: TRAIL.yaw,
+  width: 6,
+  depth: 6,
+  height: 8,
+  colorHex: 0x8b5a2b,
+  interactionRadius: 8,
+  description: '西側田園山腳的石牌坊登山口，登上山頂聚雲塔山台。',
+  targetModule: 'trail',
+  previewBadge: '登山口',
+  previewFeatures: ['登上山頂眺望五島與湖面'],
+  mockData: { stats: '', notice: '', primaryActionLabel: '登上山頂' },
 } as unknown as BuildingInteractable;
 
 function plateauTower(): Tower {
@@ -408,11 +428,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   useEffect(() => () => {
     if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
   }, []);
-  /** 雙人任務完成：畫面上方跳提示 */
+  /** 今日任務完成：畫面上方跳提示 */
   const questDoneRef = useRef<(title: string, partner: string) => void>(() => {});
   questDoneRef.current = (title, partner) => {
     playSoundEffect('bulb');
-    setEggToast({ header: '✦ 雙人任務完成', verse: `${title}（和 ${partner}）`, slotIndex: 0, added: true, key: Date.now() });
+    setEggToast({ header: '✦ 今日任務完成', verse: `${title}（和 ${partner}）`, slotIndex: 0, added: true, key: Date.now() });
     if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
     eggTimerRef.current = window.setTimeout(() => setEggToast(null), 5200);
   };
@@ -439,6 +459,27 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   questsRef.current = quests;
   const [partnerOnline, setPartnerOnline] = useState(false);
   const openForBuilding = useCallback((b: BuildingInteractable) => {
+    // 痛點島西岸聚雲塔登山口：按 E 先登上山頂（聚雲塔山台空地），而非直接上塔頂
+    if (b.id === 'trailhead-west-plateau') {
+      goTrailRef.current?.('up');
+      return;
+    }
+    if (b.id === 'plateau-pagoda-climb') {
+      goTrailRef.current?.('top');
+      return;
+    }
+    if (b.id === 'plateau-stele-down') {
+      goTrailRef.current?.('down');
+      return;
+    }
+    if (b.id === 'plateau-pagoda-descend' || (b.id === PLATEAU_ID && storyRef.current.level >= 2)) {
+      goTrailRef.current?.('down-top');
+      return;
+    }
+    if (b.id === PLATEAU_ID && storyRef.current.level === 1) {
+      goTrailRef.current?.('top');
+      return;
+    }
     // 地下展場裡靠近攤位：按 E 直接看那個攤位
     if (b.id === 'hall-booth' && nearBoothRef.current) {
       const nb = nearBoothRef.current;
@@ -645,18 +686,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       // 收集攤位零件（只做一次）
       if (!o.userData.parts) {
         const cards: THREE.Mesh[] = [];
+        const topSigns: THREE.Mesh[] = [];
         const media: THREE.Mesh[] = [];
         const plates: THREE.Mesh[] = [];
         let plaque: THREE.Mesh | null = null;
         o.traverse((c) => {
           if (c.userData?.hallBooth) cards[c.userData.hallBooth.index] = c as THREE.Mesh;
+          if (c.userData?.boothTopSign) topSigns[c.userData.boothTopSign.index] = c as THREE.Mesh;
           if (c.userData?.boothMedia) media[c.userData.boothMedia.index] = c as THREE.Mesh;
           if (c.userData?.boothPlate) plates[c.userData.boothPlate.index] = c as THREE.Mesh;
           if (c.userData?.hallFloorSign) plaque = c as THREE.Mesh;
         });
-        o.userData.parts = { cards, media, plates, plaque };
+        o.userData.parts = { cards, topSigns, media, plates, plaque };
       }
-      const parts = o.userData.parts as { cards: THREE.Mesh[]; media: THREE.Mesh[]; plates: THREE.Mesh[]; plaque: THREE.Mesh | null };
+      const parts = o.userData.parts as { cards: THREE.Mesh[]; topSigns: THREE.Mesh[]; media: THREE.Mesh[]; plates: THREE.Mesh[]; plaque: THREE.Mesh | null };
       const zoneMat = o.userData.zoneMat as THREE.MeshStandardMaterial | undefined;
       if (zoneMat && zoneMat.userData.zone !== zone) {
         zoneMat.color.setHex(z.color);
@@ -682,8 +725,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         const q = isMore ? null : items[i] || null;
         const more = isMore ? items.length - (DEEP_SLOTS - 1) : 0;
         const md = q ? mediaOf(q) : { images: [], video: false };
-        titles[i] = q ? ((q as any).appName || q.title || '').trim() : isMore ? `本層還有 ${more} 件` : '';
-        setMap(card, q ? `${zone}|${q.id}|${q.title}|${(q.description || '').length}|${md.images.length}|${md.video}` : `${zone}|${more ? `more${more}` : 'empty'}`, () =>
+        const appName = q ? String((q as any).appName || (q as any).vibeCodingData?.appName || '').trim() : '';
+        const qTitle = q ? String(q.title || '').trim() : '';
+        titles[i] = q ? (appName && qTitle && appName !== qTitle ? `${appName}・${qTitle}` : qTitle || appName) : isMore ? `本層還有 ${more} 件` : '';
+        const topSign = parts.topSigns?.[i];
+        if (topSign) {
+          setMap(topSign, q ? `${zone}|${q.id}|${appName}|${qTitle}` : `${zone}|${more ? `more${more}` : 'empty'}`, () =>
+            drawBoothHeaderTexture(z.color, q, more)
+          );
+        }
+        setMap(card, q ? `${zone}|${q.id}|${appName}|${qTitle}|${(q.description || '').length}|${md.images.length}|${md.video}` : `${zone}|${more ? `more${more}` : 'empty'}`, () =>
           drawDeepBoothTexture(z.color, q, { more, video: md.video, hasMedia: false, slides: md.images.length })
         );
         // 圖片（多張時輪播）
@@ -1058,9 +1109,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   // Proximity interactables
   const [nearBuilding, setNearBuilding] = useState<BuildingInteractable | null>(null);
   const [nearDock, setNearDock] = useState<Dock | null>(null);
+  const [nearMountType, setNearMountType] = useState<'horse' | 'buffalo' | 'egret' | 'horseCart' | 'dock' | null>(null);
   const [nearPortal] = useState<Portal | null>(null);
   const nearBuildingRef = useRef<BuildingInteractable | null>(null);
   const nearDockIdRef = useRef<string | null>(null);
+  const nearMountTypeRef = useRef<'horse' | 'buffalo' | 'egret' | 'horseCart' | 'dock' | null>(null);
 
   // Settings & Dev stats
   const [quality, setQuality] = useState<QualitySettings>({
@@ -1201,6 +1254,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   }, []);
   const { soso, sendSoso, searchSoso, resetSoso } = useSosoJobs(writeJobScrolls);
   const tapRef = useRef<((x: number, y: number) => boolean) | null>(null);
+  const longPressRef = useRef<((x: number, y: number) => boolean) | null>(null);
+  const triggerProximityRideRef = useRef<(() => boolean) | null>(null);
   const currentUserNameRef = useRef(currentUser?.name || '');
   currentUserNameRef.current = currentUser?.name || '';
   const currentUserIdRef = useRef(currentUser?.id || '');
@@ -1463,82 +1518,324 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const tickers: ((t: number) => void)[] = [];
     const hallGroups = new Map<string, THREE.Object3D>();
     const lobbyPits: THREE.Object3D[] = [];
-    // 大熊匠鋪後方的一台雙人馬車；小型低多邊形馬匹與木製車身直接併入既有場景。
+    // 大熊匠鋪後方靠近水邊那側的雙人馬車（本地 -Z 為車頭與馬頭前進方向，包含精細木造車廂、輻條車輪、車轅、燈籠與四肢可動駿馬）
+    const buildArticulatedHorse = (coatHex: number, maneHex: number, saddleHex: number, withSaddle: boolean) => {
+      const hGroup = new THREE.Group();
+      const coat = new THREE.MeshStandardMaterial({ color: coatHex, roughness: 0.82 });
+      const mane = new THREE.MeshStandardMaterial({ color: maneHex, roughness: 0.92 });
+      const saddle = new THREE.MeshStandardMaterial({ color: saddleHex, roughness: 0.78 });
+      const gold = new THREE.MeshStandardMaterial({ color: 0xd4a64a, roughness: 0.38, metalness: 0.55 });
+      const addP = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(px, py, pz);
+        mesh.rotation.set(rx, ry, rz);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData.noMerge = true;
+        parent.add(mesh);
+        return mesh;
+      };
+      const body = new THREE.Group();
+      hGroup.add(body);
+      // 駿馬軀幹、胸肌與臀部（沿本地 Z 軸，-Z 朝前）
+      addP(body, new THREE.CapsuleGeometry(0.39, 0.92, 8, 14), coat, 0, 1.15, 0, Math.PI / 2, 0, 0);
+      addP(body, new THREE.SphereGeometry(0.41, 12, 10).scale(0.92, 0.96, 1.05), coat, 0, 1.18, -0.42);
+      addP(body, new THREE.SphereGeometry(0.39, 12, 10).scale(0.94, 0.95, 1.02), coat, 0, 1.16, 0.44);
+      if (withSaddle) {
+        addP(body, new THREE.BoxGeometry(0.68, 0.1, 0.72), saddle, 0, 1.54, 0.02);
+        addP(body, new THREE.BoxGeometry(0.72, 0.36, 0.58), saddle, 0, 1.34, 0.02);
+        addP(body, new THREE.CylinderGeometry(0.06, 0.08, 0.56, 8), saddle, 0, 1.61, -0.28, 0, 0, Math.PI / 2);
+        addP(body, new THREE.CylinderGeometry(0.07, 0.09, 0.58, 8), saddle, 0, 1.62, 0.32, 0, 0, Math.PI / 2);
+        for (const s of [-1, 1]) {
+          addP(body, new THREE.BoxGeometry(0.03, 0.42, 0.05), mane, s * 0.38, 1.18, -0.02);
+          addP(body, new THREE.TorusGeometry(0.065, 0.014, 6, 12), gold, s * 0.39, 0.94, -0.02, 0, Math.PI / 2, 0);
+        }
+      }
+      // 馬頸與馬頭（含雙耳、鬃毛、眼眸、鼻吻與韁繩）
+      const neck = new THREE.Group();
+      neck.position.set(0, 1.32, -0.52);
+      body.add(neck);
+      addP(neck, new THREE.CylinderGeometry(0.18, 0.27, 0.66, 10), coat, 0, 0.24, -0.14, 0.55, 0, 0);
+      for (let k = 0; k < 5; k++) {
+        addP(neck, new THREE.BoxGeometry(0.07, 0.16, 0.14), mane, 0, 0.08 + k * 0.11, 0.02 - k * 0.06, 0.55, 0, 0);
+      }
+      addP(neck, new THREE.SphereGeometry(0.21, 12, 10).scale(0.85, 0.92, 1.15), coat, 0, 0.54, -0.32);
+      addP(neck, new THREE.CylinderGeometry(0.11, 0.16, 0.34, 10), coat, 0, 0.44, -0.54, 1.18, 0, 0);
+      addP(neck, new THREE.TorusGeometry(0.13, 0.018, 6, 14), gold, 0, 0.44, -0.52, 0.35, 0, 0);
+      for (const s of [-1, 1]) {
+        addP(neck, new THREE.ConeGeometry(0.065, 0.2, 6), coat, s * 0.11, 0.74, -0.26, -0.2, 0, s * -0.18);
+        addP(neck, new THREE.SphereGeometry(0.032, 8, 8), mane, s * 0.16, 0.56, -0.38);
+      }
+      // 飄逸馬尾
+      const tail = new THREE.Group();
+      tail.position.set(0, 1.32, 0.72);
+      body.add(tail);
+      addP(tail, new THREE.CapsuleGeometry(0.075, 0.52, 5, 8), mane, 0, -0.24, 0.16, -0.5, 0, 0);
+      // 四條可動馬腿（含膝關節與馬蹄）
+      const legs: THREE.Group[] = [];
+      const legCoords: [number, number, number][] = [
+        [-0.22, -0.45, 1],
+        [0.22, -0.45, -1],
+        [-0.22, 0.45, -1],
+        [0.22, 0.45, 1],
+      ];
+      for (const [lx, lz, phase] of legCoords) {
+        const leg = new THREE.Group();
+        leg.position.set(lx, 0.88, lz);
+        leg.userData.phase = phase;
+        addP(leg, new THREE.CylinderGeometry(0.095, 0.072, 0.44, 8), coat, 0, -0.2, 0);
+        addP(leg, new THREE.SphereGeometry(0.072, 8, 6), coat, 0, -0.42, 0);
+        addP(leg, new THREE.CylinderGeometry(0.066, 0.055, 0.4, 8), coat, 0, -0.62, 0);
+        addP(leg, new THREE.CylinderGeometry(0.068, 0.082, 0.11, 8), mane, 0, -0.83, 0.01);
+        hGroup.add(leg);
+        legs.push(leg);
+      }
+      return { hGroup, body, neck, tail, legs };
+    };
+
     const makeHorseCart = (id: string, x: number, z: number, yaw: number) => {
       const cart = new THREE.Group();
       cart.name = id;
-      const wood = new THREE.MeshStandardMaterial({ color: 0x70452a, roughness: 0.82 });
-      const trim = new THREE.MeshStandardMaterial({ color: 0xc99850, roughness: 0.62, metalness: 0.12 });
-      const horse = new THREE.MeshStandardMaterial({ color: 0x55392b, roughness: 0.9 });
-      const dark = new THREE.MeshStandardMaterial({ color: 0x241d19, roughness: 0.9 });
-      const add = (geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rz = 0) => {
+      const wood = new THREE.MeshStandardMaterial({ color: 0x6e4226, roughness: 0.78 });
+      const darkWood = new THREE.MeshStandardMaterial({ color: 0x3d2313, roughness: 0.84 });
+      const trim = new THREE.MeshStandardMaterial({ color: 0xd4a24c, roughness: 0.42, metalness: 0.35 });
+      const cushion = new THREE.MeshStandardMaterial({ color: 0x9e2a22, roughness: 0.75 });
+      const canopyMat = new THREE.MeshStandardMaterial({ color: 0x7c2820, roughness: 0.72 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x241d19, roughness: 0.88 });
+      const lanternGlow = new THREE.MeshStandardMaterial({ color: 0xffe4a8, emissive: 0xffb84d, emissiveIntensity: 1.2, roughness: 0.4 });
+      const add = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(px, py, pz);
-        mesh.rotation.z = rz;
+        mesh.rotation.set(rx, ry, rz);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        cart.add(mesh);
+        mesh.userData.noMerge = true;
+        parent.add(mesh);
         return mesh;
       };
-      // 車廂、座板與扶手
-      add(new THREE.BoxGeometry(2.05, 0.72, 1.65), wood, 0, 0.9, 0);
-      add(new THREE.BoxGeometry(2.14, 0.12, 1.74), trim, 0, 1.28, 0);
-      add(new THREE.BoxGeometry(0.16, 0.52, 1.7), wood, -0.91, 1.58, 0);
-      add(new THREE.BoxGeometry(0.13, 0.36, 1.7), trim, -0.91, 1.98, 0);
-      // 車輪（兩側）與車軸
-      add(new THREE.CylinderGeometry(0.56, 0.56, 0.16, 12), dark, 0.1, 0.68, -1.02, Math.PI / 2);
-      add(new THREE.CylinderGeometry(0.56, 0.56, 0.16, 12), dark, 0.1, 0.68, 1.02, Math.PI / 2);
-      add(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8), trim, 0.1, 0.68, 0, Math.PI / 2);
-      // 一匹駕車馬
-      add(new THREE.CapsuleGeometry(0.38, 0.82, 4, 8), horse, 1.45, 1.05, 0, Math.PI / 2);
-      add(new THREE.SphereGeometry(0.28, 8, 6), horse, 2.0, 1.45, 0);
-      add(new THREE.ConeGeometry(0.12, 0.35, 5), dark, 1.94, 1.76, -0.16, -0.2);
-      add(new THREE.ConeGeometry(0.12, 0.35, 5), dark, 1.94, 1.76, 0.16, -0.2);
-      for (const wz of [-0.25, 0.25]) for (const wx of [1.18, 1.72]) add(new THREE.CylinderGeometry(0.07, 0.06, 0.55, 6), dark, wx, 0.38, wz);
+      const carriage = new THREE.Group();
+      cart.add(carriage);
+      // 車廂底盤、雕花圍欄、雙人軟墊長椅、靠背與古風頂篷（本地 -Z 為前方）
+      add(carriage, new THREE.BoxGeometry(1.78, 0.24, 2.15), darkWood, 0, 0.78, 0.35);
+      add(carriage, new THREE.BoxGeometry(1.86, 0.1, 2.24), trim, 0, 0.92, 0.35);
+      for (const s of [-1, 1]) {
+        add(carriage, new THREE.BoxGeometry(0.1, 0.52, 2.12), wood, s * 0.86, 1.2, 0.35);
+        add(carriage, new THREE.BoxGeometry(0.13, 0.08, 2.18), trim, s * 0.86, 1.48, 0.35);
+        // 兩側車轅連接前方駿馬
+        add(carriage, new THREE.CylinderGeometry(0.045, 0.05, 2.25, 8), darkWood, s * 0.42, 0.95, -1.45, Math.PI / 2, 0, 0);
+        // 車頭迎風宮燈
+        add(carriage, new THREE.SphereGeometry(0.12, 10, 8).scale(0.85, 1.2, 0.85), lanternGlow, s * 0.92, 1.62, -0.68);
+      }
+      add(carriage, new THREE.BoxGeometry(1.66, 0.62, 0.12), wood, 0, 1.25, 1.38);
+      add(carriage, new THREE.BoxGeometry(1.62, 0.16, 0.78), cushion, 0, 1.06, 0.55);
+      add(carriage, new THREE.BoxGeometry(1.62, 0.48, 0.14), cushion, 0, 1.34, 0.92);
+      // 四柱飛簷車篷
+      for (const [px, pz] of [[-0.8, -0.55], [0.8, -0.55], [-0.8, 1.25], [0.8, 1.25]]) {
+        add(carriage, new THREE.CylinderGeometry(0.04, 0.045, 1.32, 8), darkWood, px, 2.1, pz);
+      }
+      add(carriage, new THREE.BoxGeometry(1.96, 0.12, 2.16), canopyMat, 0, 2.78, 0.35);
+      add(carriage, new THREE.BoxGeometry(2.04, 0.06, 2.24), trim, 0, 2.71, 0.35);
+      // 兩側大輻條木輪（隨車速轉動）
+      const wheels: THREE.Group[] = [];
+      for (const s of [-1, 1]) {
+        const wGroup = new THREE.Group();
+        wGroup.position.set(s * 1.02, 0.64, 0.35);
+        add(wGroup, new THREE.TorusGeometry(0.58, 0.065, 10, 24), dark, 0, 0, 0, 0, Math.PI / 2, 0);
+        add(wGroup, new THREE.TorusGeometry(0.51, 0.045, 8, 24), wood, 0, 0, 0, 0, Math.PI / 2, 0);
+        add(wGroup, new THREE.CylinderGeometry(0.14, 0.14, 0.22, 10), trim, 0, 0, 0, 0, 0, Math.PI / 2);
+        for (let k = 0; k < 6; k++) {
+          add(wGroup, new THREE.CylinderGeometry(0.025, 0.025, 1.08, 6), wood, 0, 0, 0, (k * Math.PI) / 6, 0, 0);
+        }
+        cart.add(wGroup);
+        wheels.push(wGroup);
+      }
+      add(carriage, new THREE.CylinderGeometry(0.065, 0.065, 2.16, 8), dark, 0, 0.64, 0.35, 0, 0, Math.PI / 2);
+      // 前方拉車駿馬（位於 z = -1.95，朝 -Z）
+      const pullHorse = buildArticulatedHorse(0x5c3a24, 0x241811, 0x8c2d1f, false);
+      pullHorse.hGroup.position.set(0, 0, -1.95);
+      cart.add(pullHorse.hGroup);
+
+      let prevX = x;
+      let prevZ = z;
+      let prevT = 0;
+      let phase = 0;
+      cart.userData.tick = (t: number) => {
+        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+        prevT = t;
+        const spd = Math.hypot(cart.position.x - prevX, cart.position.z - prevZ) / dt;
+        prevX = cart.position.x;
+        prevZ = cart.position.z;
+        if (spd > 0.06) {
+          phase += dt * Math.min(14, 5.2 + spd * 2.2);
+          for (const w of wheels) w.rotation.x -= dt * spd * 1.75;
+          carriage.position.y = Math.abs(Math.sin(phase * 2)) * 0.025;
+          pullHorse.body.position.y = Math.abs(Math.sin(phase)) * 0.045;
+          pullHorse.neck.rotation.x = Math.sin(phase * 2) * 0.08;
+          pullHorse.tail.rotation.z = Math.sin(phase * 1.7) * 0.28;
+          for (const leg of pullHorse.legs) {
+            const p = (leg.userData.phase as number) || 1;
+            leg.rotation.x = Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.55;
+          }
+        } else {
+          carriage.position.y = 0;
+          pullHorse.body.position.y = Math.sin(t * 1.5) * 0.01;
+          pullHorse.neck.rotation.x = Math.sin(t * 0.9) * 0.06;
+          pullHorse.tail.rotation.z = Math.sin(t * 1.4) * 0.15;
+          for (const leg of pullHorse.legs) leg.rotation.x *= 0.85;
+        }
+      };
+
       cart.position.set(x, 0, z);
       cart.rotation.y = yaw;
       scene.add(cart);
-      const proxy = makePickProxy(4.8, 2.6, 3.3, x, z, yaw, { kind: 'mount', id, rideType: 'horseCart' }, 0);
+      const proxy = makePickProxy(3.2, 2.8, 4.8, x, z, yaw, { kind: 'mount', id, rideType: 'horseCart' }, 0);
       proxy.name = `${id}-proxy`;
       scene.add(proxy);
       return cart;
     };
-    makeHorseCart('ride-horse-cart-1', 83, -44.4, Math.PI / 2);
-    const makeRideableHorse = (id: string, x: number, z: number) => {
+    // 移到大熊匠鋪（x=93.6, z=-43.6, 朝西）後方靠近水邊那側（x=101.2, z=-43.6）
+    makeHorseCart('ride-horse-cart-1', 101.2, -43.6, 0);
+
+    const makeRideableHorse = (id: string, x: number, z: number, coatHex = 0x805234) => {
       const horse = new THREE.Group();
       horse.name = id;
-      const coat = new THREE.MeshStandardMaterial({ color: 0x805234, roughness: 0.88 });
-      const mane = new THREE.MeshStandardMaterial({ color: 0x30231b, roughness: 0.95 });
-      const saddle = new THREE.MeshStandardMaterial({ color: 0x9c3d27, roughness: 0.85 });
-      const part = (geometry: THREE.BufferGeometry, material: THREE.Material, px: number, py: number, pz: number, rx = 0, rz = 0) => {
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(px, py, pz);
-        mesh.rotation.set(rx, 0, rz);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        horse.add(mesh);
+      const built = buildArticulatedHorse(coatHex, 0x2c1e16, 0x9c3d27, true);
+      horse.add(built.hGroup);
+      let prevX = x;
+      let prevZ = z;
+      let prevT = 0;
+      let phase = Math.random() * 6;
+      horse.userData.tick = (t: number) => {
+        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+        prevT = t;
+        const spd = Math.hypot(horse.position.x - prevX, horse.position.z - prevZ) / dt;
+        prevX = horse.position.x;
+        prevZ = horse.position.z;
+        if (spd > 0.06) {
+          phase += dt * Math.min(16, 6.0 + spd * 2.1);
+          built.body.position.y = Math.abs(Math.sin(phase)) * 0.06;
+          built.body.rotation.x = Math.cos(phase) * 0.04;
+          built.neck.rotation.x = 0.08 + Math.sin(phase * 2) * 0.1;
+          built.tail.rotation.x = -0.25 + Math.sin(phase * 2) * 0.18;
+          built.tail.rotation.z = Math.cos(phase) * 0.25;
+          for (const leg of built.legs) {
+            const p = (leg.userData.phase as number) || 1;
+            leg.rotation.x = Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.62;
+          }
+        } else {
+          built.body.position.y = Math.sin(t * 1.6 + phase) * 0.012;
+          built.body.rotation.x = 0;
+          built.neck.rotation.x = Math.sin(t * 0.8 + phase) * 0.08;
+          built.neck.rotation.y = Math.cos(t * 0.5 + phase) * 0.08;
+          built.tail.rotation.x = 0;
+          built.tail.rotation.z = Math.sin(t * 1.5 + phase) * 0.18;
+          for (const leg of built.legs) leg.rotation.x *= 0.85;
+        }
       };
-      part(new THREE.CapsuleGeometry(0.42, 0.98, 5, 8), coat, 0, 1.15, 0, 0, Math.PI / 2);
-      part(new THREE.SphereGeometry(0.29, 8, 6), coat, 0.63, 1.64, 0.02);
-      part(new THREE.ConeGeometry(0.12, 0.33, 5), mane, 0.58, 1.93, -0.17, 0, -0.18);
-      part(new THREE.ConeGeometry(0.12, 0.33, 5), mane, 0.58, 1.93, 0.18, 0, -0.18);
-      part(new THREE.CapsuleGeometry(0.12, 0.36, 3, 6), mane, 0.14, 1.69, 0, Math.PI / 2, -0.1);
-      part(new THREE.BoxGeometry(0.76, 0.12, 0.68), saddle, -0.04, 1.58, 0);
-      for (const [lx, lz] of [[-0.45, -0.25], [-0.45, 0.25], [0.42, -0.25], [0.42, 0.25]]) {
-        part(new THREE.CylinderGeometry(0.075, 0.06, 0.82, 6), coat, lx, 0.45, lz);
-        part(new THREE.CylinderGeometry(0.09, 0.09, 0.14, 6), mane, lx, 0.08, lz);
-      }
-      part(new THREE.CylinderGeometry(0.025, 0.045, 0.68, 5), mane, -0.76, 1.23, 0, 0, -0.75);
       horse.position.set(x, 0, z);
-      horse.rotation.y = -Math.PI / 2;
+      horse.rotation.y = 0;
       scene.add(horse);
-      const proxy = makePickProxy(2.1, 2.2, 3.0, x, z, horse.rotation.y, { kind: 'mount', id, rideType: 'horse' }, 0);
+      const proxy = makePickProxy(2.2, 2.3, 3.0, x, z, horse.rotation.y, { kind: 'mount', id, rideType: 'horse' }, 0);
       proxy.name = `${id}-proxy`;
       scene.add(proxy);
     };
-    makeRideableHorse('ride-horse-pain-island', -90.5, -48);
-    makeRideableHorse('ride-horse-creative-island', -90.5, 48);
-    makeRideableHorse('ride-horse-career-island', 96, 48);
+    makeRideableHorse('ride-horse-home-island', -15.5, 14.2, 0x805234);
+    makeRideableHorse('ride-horse-pain-island', -95.5, -48, 0x805234);
+    makeRideableHorse('ride-horse-creative-island', -68, 22.5, 0x6b4228);
+    makeRideableHorse('ride-horse-career-island', 98.2, 48, 0x8f5b38);
+
+    // 仙鶴騎乘（分置於湖心亭北側與主島南岸，可長按或按 C 駕鶴，支援升空飛行並嚴格限高 16.5m）
+    const makeRideableEgret = (id: string, x: number, z: number, yaw = 0) => {
+      const crane = new THREE.Group();
+      crane.name = id;
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.55 });
+      const blackMat = new THREE.MeshStandardMaterial({ color: 0x1e1d22, roughness: 0.72 });
+      const redCrownMat = new THREE.MeshStandardMaterial({ color: 0xc92a22, roughness: 0.45, emissive: 0x5c0f0b, emissiveIntensity: 0.35 });
+      const beakMat = new THREE.MeshStandardMaterial({ color: 0xd4a246, roughness: 0.48 });
+      const addPart = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(px, py, pz);
+        m.rotation.set(rx, ry, rz);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        m.userData.noMerge = true;
+        parent.add(m);
+        return m;
+      };
+      const body = new THREE.Group();
+      crane.add(body);
+      // 仙鶴修長身軀與黑羽尾翼（本地 -Z 為鶴首朝向）
+      addPart(body, new THREE.SphereGeometry(0.46, 14, 12).scale(0.88, 0.82, 1.48), whiteMat, 0, 1.32, 0);
+      addPart(body, new THREE.ConeGeometry(0.36, 0.72, 10).scale(0.95, 1, 0.55), blackMat, 0, 1.28, 0.74, -Math.PI * 0.42, 0, 0);
+      // 鶴頸、丹頂鶴冠與長喙
+      const neck = new THREE.Group();
+      neck.position.set(0, 1.52, -0.52);
+      body.add(neck);
+      addPart(neck, new THREE.CylinderGeometry(0.085, 0.13, 0.88, 10), whiteMat, 0, 0.36, -0.14, 0.35, 0, 0);
+      addPart(neck, new THREE.CylinderGeometry(0.082, 0.095, 0.32, 10), blackMat, 0, 0.52, -0.2, 0.35, 0, 0);
+      addPart(neck, new THREE.SphereGeometry(0.14, 12, 10).scale(0.9, 0.92, 1.15), whiteMat, 0, 0.82, -0.32);
+      addPart(neck, new THREE.SphereGeometry(0.09, 10, 8).scale(0.85, 0.55, 0.95), redCrownMat, 0, 0.92, -0.31);
+      addPart(neck, new THREE.ConeGeometry(0.048, 0.44, 8), beakMat, 0, 0.8, -0.62, -Math.PI / 2 + 0.08, 0, 0);
+      // 左右展翅（雙段羽翼，飛行時振翅）
+      const wings: THREE.Group[] = [];
+      for (const s of [-1, 1]) {
+        const w = new THREE.Group();
+        w.position.set(s * 0.34, 1.42, -0.06);
+        w.userData.side = s;
+        addPart(w, new THREE.BoxGeometry(1.18, 0.05, 0.68), whiteMat, s * 0.56, 0, 0.04, 0, s * -0.12, 0);
+        addPart(w, new THREE.BoxGeometry(0.68, 0.045, 0.54), blackMat, s * 1.28, -0.02, 0.12, 0, s * -0.24, 0);
+        body.add(w);
+        wings.push(w);
+      }
+      // 雙足（停駐時直立、飛行時向後收起）
+      const legs: THREE.Group[] = [];
+      for (const s of [-1, 1]) {
+        const leg = new THREE.Group();
+        leg.position.set(s * 0.15, 0.98, 0.06);
+        addPart(leg, new THREE.CylinderGeometry(0.028, 0.024, 0.96, 8), blackMat, 0, -0.48, 0);
+        crane.add(leg);
+        legs.push(leg);
+      }
+      let prevX = x;
+      let prevZ = z;
+      let prevT = 0;
+      let phase = Math.random() * 6;
+      crane.userData.tick = (t: number) => {
+        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+        prevT = t;
+        const spd = Math.hypot(crane.position.x - prevX, crane.position.z - prevZ) / dt;
+        prevX = crane.position.x;
+        prevZ = crane.position.z;
+        const airborne = crane.position.y > 0.65 || spd > 0.15;
+        if (airborne) {
+          phase += dt * (4.6 + Math.min(4.5, spd * 0.45));
+          const flap = Math.sin(phase);
+          body.position.y = flap * 0.09;
+          neck.rotation.x = 0.28 + Math.cos(phase) * 0.06;
+          for (const w of wings) {
+            const s = (w.userData.side as number) || 1;
+            w.rotation.z = s * (flap * 0.56 + 0.08);
+          }
+          for (const leg of legs) leg.rotation.x = -1.05;
+        } else {
+          body.position.y = Math.sin(t * 1.8 + phase) * 0.02;
+          neck.rotation.x = Math.sin(t * 1.1 + phase) * 0.06;
+          for (const w of wings) {
+            const s = (w.userData.side as number) || 1;
+            w.rotation.z = s * -0.52;
+          }
+          for (const leg of legs) leg.rotation.x = 0;
+        }
+      };
+      crane.position.set(x, 0.3, z);
+      crane.rotation.y = yaw;
+      scene.add(crane);
+      const proxy = makePickProxy(2.8, 2.8, 2.8, x, z, yaw, { kind: 'mount', id, rideType: 'egret' }, 0);
+      proxy.name = `${id}-proxy`;
+      scene.add(proxy);
+    };
+    makeRideableEgret('ride-egret-lake-pavilion', 3.8, 70.8, Math.PI);
+    makeRideableEgret('ride-egret-home-south', 5.2, 28.5, 0);
     const collectPickables = () => {
       pickables.length = 0;
       tickers.length = 0;
@@ -1662,6 +1959,52 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         return;
       }
       if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // 上下載具都是按 C：若正在騎乘陸上載具則下乘；若正在乘船則下船；若在步行且靠近載具或渡口則直接騎乘／登船；否則才切換坐下
+        if (landRideRef.current) {
+          leaveLandRideRef.current();
+          return;
+        }
+        if (boatRideRef.current) {
+          leaveBoatRef.current?.();
+          return;
+        }
+        if (storyRef.current.level === 0) {
+          const px = controls.position.x;
+          const pz = controls.position.z;
+          let bestMount: { id: string; rideType: 'buffalo' | 'horseCart' | 'horse' | 'egret'; dist: number } | null = null;
+          for (const obj of pickables) {
+            const pk = obj.userData?.pick;
+            if (pk?.kind === 'mount' && pk.id && pk.rideType) {
+              const targetGrp = scene.getObjectByName(pk.id);
+              const mx = targetGrp ? targetGrp.position.x : obj.position.x;
+              const mz = targetGrp ? targetGrp.position.z : obj.position.z;
+              const d = Math.hypot(mx - px, mz - pz);
+              if (d < 6.5 && (!bestMount || d < bestMount.dist)) {
+                bestMount = { id: pk.id, rideType: pk.rideType, dist: d };
+              }
+            }
+          }
+          if (bestMount) {
+            void mountLandRideRef.current({ kind: 'mount', id: bestMount.id, rideType: bestMount.rideType });
+            return;
+          }
+          // 靠近渡口或主島南面橋堤兩側時，按 C 也能直接登船
+          let nearD = DOCKS.find((dk) => dk.id === nearDockIdRef.current) || null;
+          if (!nearD) {
+            let bestDist = 7.5;
+            for (const dk of DOCKS) {
+              const d = Math.min(Math.hypot(px - dk.landX, pz - dk.landZ), Math.hypot(px - dk.waterX, pz - dk.waterZ));
+              if (d < bestDist) {
+                bestDist = d;
+                nearD = dk;
+              }
+            }
+          }
+          if (nearD) {
+            void boardBoatRef.current?.(nearD.id);
+            return;
+          }
+        }
         toggleSitRef.current();
         return;
       }
@@ -1801,11 +2144,118 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const t = pickAt(clientX, clientY) || peachAt(clientX, clientY);
       if (!t) return false;
       playSoundEffect('interact');
-      if (t.kind === 'mount') mountLandRideRef.current(t);
-      else openForTarget(t);
+      if (t.kind === 'mount') {
+        const label = t.rideType === 'horse' ? '上馬' : t.rideType === 'buffalo' ? '騎牛' : t.rideType === 'egret' ? '駕鶴' : '乘車';
+        setLandRideHint(`請長按載具，或點右下角按鈕（C）即可${label}`);
+        window.setTimeout(() => setLandRideHint(''), 2200);
+      } else {
+        openForTarget(t);
+      }
       return true;
     };
     tapRef.current = (x, y) => tapAt(x, y);
+
+    // 長按畫面：若長按在牛、馬、白鶴、馬車上則直接騎乘；若長按在近距離可行走地面／拱橋上則瞬移過去（近距離瞬移）
+    const longPressAt = (clientX: number, clientY: number): boolean => {
+      const picked = pickAt(clientX, clientY);
+      if (picked && picked.kind === 'mount') {
+        playSoundEffect('interact');
+        void mountLandRideRef.current(picked);
+        return true;
+      }
+      const st = storyRef.current;
+      if (boatRideRef.current || landRideRef.current || st.tween || st.level !== 0 || regionManager.status !== 'active') return false;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const touchNdc = new THREE.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1
+      );
+      const maxDist = 18;
+      blinkRay.setFromCamera(touchNdc, camera);
+      blinkRay.far = maxDist;
+      const hits = blinkRay.intersectObjects(scene.children, true).filter((h) => {
+        const o = h.object as THREE.Mesh;
+        if (!(o as any).isMesh || (o as any).isSprite) return false;
+        for (let q: THREE.Object3D | null = o; q; q = q.parent) if (!q.visible) return false;
+        const m = o.material as THREE.Material & { visible?: boolean; transparent?: boolean; opacity?: number };
+        if (Array.isArray(o.material)) return true;
+        return m.visible !== false && !(m.transparent && (m.opacity ?? 1) < 0.5);
+      });
+      const dir = blinkRay.ray.direction.clone();
+      let target: THREE.Vector3 | null = null;
+      if (hits.length) {
+        const h = hits[0];
+        const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
+        target = h.point.clone();
+        if (n.y < 0.6) target.addScaledVector(dir, -0.8);
+      } else if (dir.y < -0.02) {
+        const t = -camera.position.y / dir.y;
+        if (t > 0 && t < maxDist) target = camera.position.clone().addScaledVector(dir, t);
+      }
+      if (!target) return false;
+      const cols = regionManager.getAllColliders();
+      const ok = (x: number, z: number) =>
+        PhysicsController.isInsideWalkableZones(x, z, globalWalkableZones) &&
+        !PhysicsController.checkCollision(new THREE.Vector3(x, 0, z), cols);
+      const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+      let x = target.x;
+      let z = target.z;
+      let tries = 0;
+      while (!ok(x, z) && tries < 10) {
+        x -= flat.x * 0.5;
+        z -= flat.z * 0.5;
+        tries++;
+      }
+      if (!ok(x, z)) return false;
+      const dist = Math.hypot(x - controls.position.x, z - controls.position.z);
+      if (dist < 0.8 || dist > maxDist) return false;
+      sitRef.current = false;
+      setSitting(false);
+      controls.position.set(x, PhysicsController.getGroundHeight(x, z, MOVE_BRIDGES, 0), z);
+      controls.updateCameraTransform(0);
+      playSoundEffect('portal');
+      return true;
+    };
+    longPressRef.current = (x, y) => longPressAt(x, y);
+
+    triggerProximityRideRef.current = () => {
+      if (storyRef.current.level !== 0) return false;
+      const px = controls.position.x;
+      const pz = controls.position.z;
+      let bestMount: { id: string; rideType: 'buffalo' | 'horseCart' | 'horse' | 'egret'; dist: number } | null = null;
+      for (const obj of pickables) {
+        const pk = obj.userData?.pick;
+        if (pk?.kind === 'mount' && pk.id && pk.rideType) {
+          const targetGrp = scene.getObjectByName(pk.id);
+          const mx = targetGrp ? targetGrp.position.x : obj.position.x;
+          const mz = targetGrp ? targetGrp.position.z : obj.position.z;
+          const d = Math.hypot(mx - px, mz - pz);
+          if (d < 6.5 && (!bestMount || d < bestMount.dist)) {
+            bestMount = { id: pk.id, rideType: pk.rideType, dist: d };
+          }
+        }
+      }
+      if (bestMount) {
+        void mountLandRideRef.current({ kind: 'mount', id: bestMount.id, rideType: bestMount.rideType });
+        return true;
+      }
+      let nearD = DOCKS.find((dk) => dk.id === nearDockIdRef.current) || null;
+      if (!nearD) {
+        let bestDist = 7.5;
+        for (const dk of DOCKS) {
+          const d = Math.min(Math.hypot(px - dk.landX, pz - dk.landZ), Math.hypot(px - dk.waterX, pz - dk.waterZ));
+          if (d < bestDist) {
+            bestDist = d;
+            nearD = dk;
+          }
+        }
+      }
+      if (nearD) {
+        void boardBoatRef.current?.(nearD.id);
+        return true;
+      }
+      return false;
+    };
     let downAt: { x: number; y: number; t: number } | null = null;
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -1937,11 +2387,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     goTrailRef.current = (dir) => {
       playSoundEffect('portal');
       if (dir === 'top') {
-        // 塔頂眺望
+        // 塔頂眺望（面向東側 +X 五島湖景，靠山西側 -X 兩旁為下塔牌與按鈕）
         storyRef.current = { towerId: PLATEAU_ID, level: 2, armed: false, tween: null };
         setFloorLevel(2);
         setStoryTowerId(PLATEAU_ID);
-        controls.setSpawn(new THREE.Vector3(TRAIL.pagodaX - 0.6, TRAIL.topFloorY, TRAIL.pagodaZ), Math.PI / 2);
+        controls.setSpawn(new THREE.Vector3(TRAIL.pagodaX + 0.35, TRAIL.topFloorY, TRAIL.pagodaZ), -Math.PI / 2);
         // 彩蛋：登上塔頂（塔樓詩句三選一）
         window.setTimeout(() => triggerEggRef.current('pagoda'), 900);
       } else if (dir === 'up' || dir === 'down-top') {
@@ -2061,14 +2511,29 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           if (navigable(ride.x, nz)) ride.z = nz;
           else rr.vz *= -0.2;
         }
-        // 南山洞口與北山飛瀑是同一條水道的兩端；船頭駛入洞口時送到另一端。
+        // 南山洞口、北山飛瀑與東山水濂洞：進入時自動觸發對應彩蛋；水濂洞可開船直接駛入，進去後再觸發「別有洞天!」彩蛋。
         const northCave = BASIN_LANDMARKS.northFalls;
         const southCave = BASIN_LANDMARKS.southCave;
+        const eastCave = BASIN_LANDMARKS.eastFalls;
         const now = performance.now();
+        if (Math.abs(ride.x - northCave.x) < 8.5 && ride.z > northCave.faceZ - 3.5 && ride.z < northCave.faceZ + 9) {
+          triggerEggRef.current('waterfall');
+        }
+        if (Math.abs(ride.x - southCave.x) < 8.5 && ride.z < southCave.faceZ + 3.5 && ride.z > southCave.faceZ - 9) {
+          triggerEggRef.current('cave');
+        }
+        if (Math.abs(ride.z - eastCave.caveZ) < 6.8 && ride.x > eastCave.faceX - 3.5) {
+          triggerEggRef.current('shuilian');
+          if (ride.x > eastCave.faceX + 4.5) {
+            triggerEggRef.current('bieyou');
+          }
+        }
         if (now >= caveWarpCooldownRef.current) {
           const entersNorth = Math.abs(ride.x - northCave.x) < 7 && ride.z > northCave.faceZ - 2 && ride.z < northCave.faceZ + 7 && rr.vz < -0.12;
           const entersSouth = Math.abs(ride.x - southCave.x) < 7 && ride.z < southCave.faceZ + 2 && ride.z > southCave.faceZ - 7 && rr.vz > 0.12;
           if (entersNorth) {
+            triggerEggRef.current('waterfall');
+            triggerEggRef.current('cave');
             ride.x = southCave.x;
             ride.z = southCave.faceZ - 11;
             ride.yaw = 0;
@@ -2077,6 +2542,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             caveWarpCooldownRef.current = now + 1800;
             playSoundEffect('portal');
           } else if (entersSouth) {
+            triggerEggRef.current('cave');
+            triggerEggRef.current('waterfall');
             ride.x = northCave.x;
             ride.z = northCave.faceZ + 11;
             ride.yaw = Math.PI;
@@ -2309,41 +2776,93 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
         const desired = controls.getDesiredVelocity();
         const requested = Math.hypot(desired.x, desired.z);
-        const maxSpeed = ride.kind === 'buffalo' ? 2.0 : ride.kind === 'egret' ? 4.2 : ride.kind === 'horse' && isFastWalkRef.current ? 8.5 : 3.3;
-        const speed = ride.seat === 0 && requested > 0.05 ? (ride.kind === 'egret' || ride.kind === 'buffalo' || ride.kind === 'horseCart' ? maxSpeed : Math.min(maxSpeed, requested)) : 0;
-        if (ride.seat === 0 && requested > 0.05) ride.yaw = Math.atan2(desired.x, desired.z);
-        const nx = ride.x + (requested > 0.05 ? desired.x / requested * speed * delta : 0);
-        const nz = ride.z + (requested > 0.05 ? desired.z / requested * speed * delta : 0);
-        if (ride.seat === 0 && ride.kind === 'horseCart') {
-          // 馬車只在匠鋪後方的石板停車場與短巷活動，不跨上草坡、田地或水面。
+        const MAX_CRANE_ALTITUDE = 16.5;
+        const maxSpeed =
+          ride.kind === 'buffalo'
+            ? 3.8
+            : ride.kind === 'egret'
+            ? isFastWalkRef.current
+              ? 12.8
+              : 7.2
+            : ride.kind === 'horse'
+            ? isFastWalkRef.current
+              ? 14.5
+              : 7.2
+            : 5.4;
+        const speed = ride.seat === 0 && requested > 0.05 ? maxSpeed : 0;
+        if (ride.seat === 0 && requested > 0.05) {
+          // 所有載具皆以本地 -Z 為車頭／獸首前方，移動時平滑轉向並避免視角反轉卡死
+          const targetYaw = Math.atan2(-desired.x, -desired.z);
+          let dy = targetYaw - ride.yaw;
+          dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+          ride.yaw += dy * Math.min(1, delta * 10);
+        }
+        const stepX = requested > 0.05 ? (desired.x / requested) * speed * delta : 0;
+        const stepZ = requested > 0.05 ? (desired.z / requested) * speed * delta : 0;
+        const nx = ride.x + stepX;
+        const nz = ride.z + stepZ;
+        if (ride.seat === 0 && (ride.kind === 'horseCart' || ride.kind === 'horse')) {
           if (PhysicsController.isInsideWalkableZones(nx, nz, LAND_RIDE_PAVED_YARD)) {
             ride.x = nx;
             ride.z = nz;
-          }
-        } else if (ride.seat === 0 && ride.kind === 'horse') {
-          if (PhysicsController.isInsideWalkableZones(nx, nz, LAND_RIDE_PAVED_YARD)) {
+          } else if (PhysicsController.isInsideWalkableZones(nx, ride.z, LAND_RIDE_PAVED_YARD)) {
             ride.x = nx;
+          } else if (PhysicsController.isInsideWalkableZones(ride.x, nz, LAND_RIDE_PAVED_YARD)) {
             ride.z = nz;
-            ride.y = 0.5;
           }
-        } else if (ride.seat === 0) {
-          ride.x = THREE.MathUtils.clamp(nx, -155, 155);
+          // 馬與馬車登上石拱橋時貼合橋面拱高，不再穿模
+          ride.y = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+        } else if (ride.seat === 0 && ride.kind === 'buffalo') {
+          ride.x = THREE.MathUtils.clamp(nx, -168, 175);
           ride.z = THREE.MathUtils.clamp(nz, -155, 155);
-          const onLand = PhysicsController.isInsideWalkableZones(ride.x, ride.z, globalWalkableZones);
-          const targetY = ride.kind === 'egret' ? (isFastWalkRef.current ? 8.5 : 2.5) : onLand ? 0.5 : -0.25;
-          ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 2.5), ride.kind === 'egret' ? 1.5 : -1, ride.kind === 'egret' ? 9 : 3);
+          const bridgeH = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+          const onLand = PhysicsController.isInsideWalkableZones(ride.x, ride.z, LAND_RIDE_PAVED_YARD);
+          const targetY = bridgeH > 0.01 ? bridgeH : onLand ? 0.0 : -0.25;
+          ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 6.5), -1, 4.5);
+        } else if (ride.seat === 0) {
+          ride.x = THREE.MathUtils.clamp(nx, -168, 175);
+          ride.z = THREE.MathUtils.clamp(nz, -155, 155);
+          const bridgeH = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+          const targetY = isFastWalkRef.current ? MAX_CRANE_ALTITUDE : Math.max(3.5, bridgeH + 2.2);
+          ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 3.2), 0.3, MAX_CRANE_ALTITUDE);
+        }
+        // 騎乘載具（如騎鶴、騎牛）進入北山飛瀑、南山洞口、東山水濂洞時同樣觸發彩蛋
+        {
+          const nf = BASIN_LANDMARKS.northFalls;
+          const sc = BASIN_LANDMARKS.southCave;
+          const ef = BASIN_LANDMARKS.eastFalls;
+          if (Math.abs(ride.x - nf.x) < 9 && ride.z > nf.faceZ - 4 && ride.z < nf.faceZ + 10) triggerEggRef.current('waterfall');
+          if (Math.abs(ride.x - sc.x) < 9 && ride.z < sc.faceZ + 4 && ride.z > sc.faceZ - 10) triggerEggRef.current('cave');
+          if (Math.abs(ride.z - ef.caveZ) < 7.5 && ride.x > ef.faceX - 3.5) {
+            triggerEggRef.current('shuilian');
+            if (ride.x > ef.faceX + 4.5) triggerEggRef.current('bieyou');
+          }
         }
         ride.group.position.set(ride.x, ride.y, ride.z);
         ride.group.rotation.y = ride.yaw;
+        // 在拱橋坡面上自動調整車身／獸身俯仰角，貼合橋面不穿模
+        if (ride.kind === 'horse' || ride.kind === 'horseCart' || ride.kind === 'buffalo') {
+          const fwdX = -Math.sin(ride.yaw) * 0.9;
+          const fwdZ = -Math.cos(ride.yaw) * 0.9;
+          const frontH = PhysicsController.getGroundHeight(ride.x + fwdX, ride.z + fwdZ, MOVE_BRIDGES, ride.y < -0.05 ? -0.25 : 0);
+          const backH = PhysicsController.getGroundHeight(ride.x - fwdX, ride.z - fwdZ, MOVE_BRIDGES, ride.y < -0.05 ? -0.25 : 0);
+          ride.group.rotation.x = Math.atan2(backH - frontH, 1.8) * 0.75;
+        } else {
+          ride.group.rotation.x = 0;
+        }
         landRidesRef.current.push(ride.group.name, ride.seat, ride.x, ride.y, ride.z, ride.yaw);
         const proxy = scene.getObjectByName(`${ride.group.name}-proxy`);
         if (proxy) {
           proxy.position.set(ride.x, ride.y + 1.3, ride.z);
           proxy.rotation.y = ride.yaw;
         }
-        const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.25 : 0.32) : 0;
-        controls.position.set(ride.x - Math.sin(ride.yaw) * seatOffset, ride.y + (ride.kind === 'horseCart' ? 2.55 : ride.kind === 'egret' ? 2.5 : ride.kind === 'horse' ? 2.3 : 2.2), ride.z - Math.cos(ride.yaw) * seatOffset);
-        controls.yaw = ride.yaw;
+        const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.32 : 0.32) : 0;
+        const seatBack = ride.kind === 'horseCart' ? 0.55 : 0;
+        controls.position.set(
+          ride.x + Math.cos(ride.yaw) * seatOffset + Math.sin(ride.yaw) * seatBack,
+          ride.y + (ride.kind === 'horseCart' ? 2.45 : ride.kind === 'egret' ? 2.2 : ride.kind === 'horse' ? 2.35 : 2.2),
+          ride.z - Math.sin(ride.yaw) * seatOffset + Math.cos(ride.yaw) * seatBack
+        );
         controls.updateCameraTransform(delta);
         const spatial = detectPlayerSpatialContext(ride.x, ride.z);
         regionManager.syncActiveRegionByPosition(spatial.regionId);
@@ -2504,16 +3023,26 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         regionManager.syncActiveRegionByPosition(spatial.regionId);
         setActiveRegionId(spatial.regionId);
 
-        // 靠近岸上渡口時自動出現乘船入口；只在渡口切換時更新 React 狀態，避免每幀重繪。
+        // 靠近岸上渡口或主島南面橋堤兩側時自動出現乘船入口；只在渡口切換時更新 React 狀態，避免每幀重繪。
         let closestDock: Dock | null = null;
-        let closestDockDistance = 5.2;
+        let closestDockDistance = 6.4;
         if (!boatRideRef.current && story.level === 0 && !spatial.insideBuilding) {
+          const px = controls.position.x;
+          const pz = controls.position.z;
           for (const dock of DOCKS) {
-            const distance = Math.hypot(controls.position.x - dock.landX, controls.position.z - dock.landZ);
+            const distance = Math.min(
+              Math.hypot(px - dock.landX, pz - dock.landZ),
+              Math.hypot(px - dock.waterX, pz - dock.waterZ)
+            );
             if (distance < closestDockDistance) {
               closestDock = dock;
               closestDockDistance = distance;
             }
+          }
+          // 站在主島往湖心亭的橋堤北段時，橋堤東側（主島南東渡口）與西側（主島南西渡口）皆可乘船
+          if (!closestDock && Math.abs(px) < 9.5 && pz >= 23 && pz <= 42) {
+            const targetId = px >= 0 ? 'dock-home-s' : 'dock-home-sw';
+            closestDock = DOCKS.find((d) => d.id === targetId) || null;
           }
         }
         const nextDockId = closestDock?.id || null;
@@ -2522,8 +3051,42 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           setNearDock(closestDock);
         }
 
+        // 偵測附近可騎乘的載具（牛、馬、白鶴、馬車）或渡口，讓右下角 C 鍵動態顯示「上馬(C)／騎牛(C)／駕鶴(C)／登船(C)」
+        let nextNearMount: 'horse' | 'buffalo' | 'egret' | 'horseCart' | 'dock' | null = null;
+        if (!boatRideRef.current && !landRideRef.current && story.level === 0) {
+          const px = controls.position.x;
+          const pz = controls.position.z;
+          let bestDist = 6.5;
+          for (const obj of pickables) {
+            const pk = obj.userData?.pick;
+            if (pk?.kind === 'mount' && pk.id && pk.rideType) {
+              const targetGrp = scene.getObjectByName(pk.id);
+              const mx = targetGrp ? targetGrp.position.x : obj.position.x;
+              const mz = targetGrp ? targetGrp.position.z : obj.position.z;
+              const d = Math.hypot(mx - px, mz - pz);
+              if (d < bestDist) {
+                bestDist = d;
+                nextNearMount = pk.rideType;
+              }
+            }
+          }
+          if (!nextNearMount && closestDock) {
+            nextNearMount = 'dock';
+          }
+        }
+        if (nearMountTypeRef.current !== nextNearMount) {
+          nearMountTypeRef.current = nextNearMount;
+          setNearMountType(nextNearMount);
+        }
+
         // Building interaction detection: triggers when inside a main building or right at its front door
         let foundBuilding: BuildingInteractable | null = spatial.insideBuilding;
+        // 走到西岸田園「聚雲塔登山口」區域時，顯示「按 E 或點擊啟動：登上山頂（聚雲塔山台・眺望五島）」
+        if (!foundBuilding && story.level === 0 && !spatial.insideBuilding) {
+          if (Math.hypot(controls.position.x - TRAIL.x, controls.position.z - TRAIL.z) <= 7.8) {
+            foundBuilding = TRAILHEAD_INTERACTABLE;
+          }
+        }
         if (!foundBuilding) {
           const allBuildings = regionManager.getAllBuildings();
           for (const b of allBuildings) {
@@ -2538,7 +3101,45 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           }
         }
         // 在樓上或地下時，所在的就是那棟建築
-        if (tower) foundBuilding = REGION_BUILDINGS.get(tower.b.id) || tower.b;
+        if (tower) {
+          if (tower.b.id === PLATEAU_ID) {
+            if (story.level >= 2) {
+              // 塔頂眺望：眺望東側湖景時不擋視線，只有轉身走近西側下塔木牌匾時才提示下塔
+              if (controls.position.x < TRAIL.pagodaX - 0.7) {
+                foundBuilding = {
+                  ...PLATEAU_B,
+                  id: 'plateau-pagoda-descend',
+                  name: '聚雲塔・下塔木牌',
+                  mockData: { ...PLATEAU_B.mockData, primaryActionLabel: '下塔（回到山頂空地）' },
+                } as BuildingInteractable;
+              } else {
+                foundBuilding = null;
+              }
+            } else {
+              const distToStele = Math.hypot(controls.position.x - (TRAIL.plateauX + 6.5), controls.position.z - (TRAIL.plateauZ + 7.6));
+              const distToPagoda = Math.hypot(controls.position.x - TRAIL.pagodaX, controls.position.z - TRAIL.pagodaZ);
+              if (distToStele <= 4.2) {
+                foundBuilding = {
+                  ...PLATEAU_B,
+                  id: 'plateau-stele-down',
+                  name: '聚雲塔山台・下山石碑',
+                  mockData: { ...PLATEAU_B.mockData, primaryActionLabel: '下山（回到痛點島登山口）' },
+                } as BuildingInteractable;
+              } else if (distToPagoda <= 8.5) {
+                foundBuilding = {
+                  ...PLATEAU_B,
+                  id: 'plateau-pagoda-climb',
+                  name: '聚雲塔',
+                  mockData: { ...PLATEAU_B.mockData, primaryActionLabel: '登上聚雲塔頂（眺望五島）' },
+                } as BuildingInteractable;
+              } else {
+                foundBuilding = null;
+              }
+            }
+          } else {
+            foundBuilding = REGION_BUILDINGS.get(tower.b.id) || tower.b;
+          }
+        }
         // 地下展場：靠近攤位時提示「按 E 查看攤位」
         nearBoothRef.current = null;
         if (tower && isFloorsHall(tower.b.id) && story.level < 0) {
@@ -3256,6 +3857,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           controlsRef.current?.applyTouchLookDelta(dx, dy);
         }}
         onTapScreen={(x, y) => tapRef.current?.(x, y) ?? false}
+        onLongPressScreen={(x, y) => longPressRef.current?.(x, y) ?? false}
         openMapSignal={mapSignal}
         bgmMuted={bgmMuted}
         onToggleBgm={toggleBgm}
@@ -3307,7 +3909,20 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         bulbOn={bulbOn}
         onToggleBulb={toggleBulb}
         sitting={sitting}
-        onToggleSit={toggleSit}
+        onToggleSit={() => {
+          if (landRideRef.current) {
+            leaveLandRideRef.current();
+            return;
+          }
+          if (boatRideRef.current) {
+            leaveBoatRef.current?.();
+            return;
+          }
+          if (triggerProximityRideRef.current?.()) {
+            return;
+          }
+          toggleSit();
+        }}
         darkHint={darkHint}
         isFastWalk={isFastWalk}
         onToggleFastWalk={() => {
@@ -3317,15 +3932,17 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           });
         }}
         landRideMode={landRiding?.kind || null}
+        nearMountType={nearMountType}
+        onDescendPagoda={storyTowerId === PLATEAU_ID && floorLevel >= 2 ? () => goTrailRef.current?.('down-top') : undefined}
       />
       {landRiding && (
         <div data-ui-panel="true" className="kx-root absolute left-1/2 -translate-x-1/2 top-16 sm:top-5 z-30 pointer-events-auto">
           <div className="kx-panel flex items-center gap-2 px-3 py-1.5 rounded-full text-[12.5px]">
-            <span>{landRiding.kind === 'buffalo' ? '騎牛・單人慢速' : landRiding.kind === 'horseCart' ? '驅車・雙人座・定速' : landRiding.kind === 'horse' ? (isFastWalk ? '策馬・快速' : '騎馬・慢速') : isFastWalk ? '駕鶴飛行中・高度上限 9m' : '駕鶴・固定速度'}</span>
-            {landRiding.kind === 'horseCart' && <span className="kx-sub">僅限人工鋪面</span>}
-            {landRiding.kind === 'egret' && <span className="kx-sub">{isFastWalk ? '降落' : '疾走鍵起飛'}</span>}
+            <span>{landRiding.kind === 'buffalo' ? '騎牛・單人慢速' : landRiding.kind === 'horseCart' ? '驅車・雙人座・定速' : landRiding.kind === 'horse' ? (isFastWalk ? '策馬・快速疾馳' : '騎馬・輕快小跑') : isFastWalk ? '駕鶴飛行中・限高 16.5m' : '駕鶴・低空巡遊'}</span>
+            {landRiding.kind === 'horseCart' && <span className="kx-sub">僅限人工鋪面與拱橋</span>}
+            {landRiding.kind === 'egret' && <span className="kx-sub">{isFastWalk ? '按起飛鍵降落' : '按起飛鍵升空'}</span>}
             <button type="button" onClick={() => leaveLandRideRef.current()} className="kx-btn-primary px-2.5 py-0.5 text-[12px] cursor-pointer">
-              下來
+              下來(C)
             </button>
           </div>
         </div>
@@ -3364,7 +3981,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         tick={boatTick}
         dockId={boatDock}
         riding={riding}
-        canLeaveBoat={Boolean(boatRideRef.current && DOCKS.some((dock) => Math.hypot(dock.waterX - boatRideRef.current!.x, dock.waterZ - boatRideRef.current!.z) <= 10))}
+        canLeaveBoat={Boolean(
+          boatRideRef.current &&
+            (DOCKS.some((dock) => Math.hypot(dock.waterX - boatRideRef.current!.x, dock.waterZ - boatRideRef.current!.z) <= 13.5) ||
+              (Math.abs(boatRideRef.current.x) <= 13 && boatRideRef.current.z >= 22 && boatRideRef.current.z <= 45))
+        )}
         service={boatingRef.current}
         onClose={() => setBoatDock(null)}
         onBoard={(dockId, join) => void boardBoatRef.current?.(dockId, join)}

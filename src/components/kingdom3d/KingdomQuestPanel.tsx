@@ -19,7 +19,7 @@ export const KingdomQuestButton: React.FC<{ onToggle: () => void; open: boolean;
     data-ui-panel="true"
     className="kx-root kx-round relative h-7 sm:h-8 px-2 gap-1 text-[11px] sm:text-[12px] font-bold"
     style={{ width: 'auto', borderRadius: 999 }}
-    title="任務清單：收集彩蛋、和羈絆夥伴一起完成雙人任務"
+    title="任務清單：收集彩蛋、和羈絆夥伴一起完成今日任務"
     aria-label="任務清單"
     aria-expanded={open}
   >
@@ -146,9 +146,9 @@ export const KingdomQuestPanel: React.FC<{
           )}
         </section>
 
-        {/* 雙人任務 */}
+        {/* 今日任務 */}
         <section>
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#e2b85a' }}>雙人任務（和羈絆夥伴一起）</div>
+          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#e2b85a' }}>今日任務</div>
           <div className="space-y-1.5">
             {DUO_QUESTS.map((q) => {
               const d = quests.done[q.id];

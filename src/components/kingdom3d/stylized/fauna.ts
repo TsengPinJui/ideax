@@ -137,19 +137,60 @@ function addM(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mate
 
 function buffalo(m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
-  addM(g, new THREE.CapsuleGeometry(0.42, 1.0, 6, 10).rotateX(Math.PI / 2), m.buffalo, 0, 0.95, 0);
-  for (const [x, z] of [[-0.25, -0.45], [0.25, -0.45], [-0.25, 0.45], [0.25, 0.45]]) addM(g, new THREE.CylinderGeometry(0.09, 0.08, 0.6, 6), m.buffalo, x, 0.3, z);
-  const head = new THREE.Group();
-  head.position.set(0, 1.0, -0.95);
-  g.add(head);
-  addM(head, new THREE.BoxGeometry(0.42, 0.38, 0.46), m.buffalo, 0, 0, 0);
-  addM(head, new THREE.BoxGeometry(0.34, 0.2, 0.14), m.muzzle, 0, -0.08, -0.26);
-  for (const s of [-1, 1]) {
-    const horn = addM(head, new THREE.TorusGeometry(0.22, 0.04, 6, 10, Math.PI * 0.8), m.horn, s * 0.22, 0.2, 0.05);
-    horn.rotation.set(0, Math.PI / 2, s > 0 ? 0.2 : Math.PI - 0.2);
+  const body = new THREE.Group();
+  g.add(body);
+  // 圓潤飽滿的水牛軀幹、肩峰、胸腹與背部草編坐墊
+  addM(body, new THREE.CapsuleGeometry(0.46, 0.96, 8, 14).rotateX(Math.PI / 2), m.buffalo, 0, 0.98, 0);
+  addM(body, new THREE.SphereGeometry(0.49, 12, 10).scale(0.96, 0.92, 1.05), m.buffalo, 0, 1.03, -0.34);
+  addM(body, new THREE.SphereGeometry(0.45, 12, 10).scale(0.95, 0.9, 1.0), m.buffalo, 0, 0.96, 0.42);
+  addM(body, new THREE.CylinderGeometry(0.32, 0.36, 0.08, 12).scale(1.0, 1, 1.35), m.straw, 0, 1.43, 0.02);
+  addM(body, new THREE.BoxGeometry(0.56, 0.06, 0.48), m.shirtRed, 0, 1.46, 0.02);
+  // 四肢關節（可獨立擺動大腿、小腿與牛蹄）
+  const legs: THREE.Group[] = [];
+  const legCoords: [number, number, number][] = [
+    [-0.27, -0.46, 1],
+    [0.27, -0.46, -1],
+    [-0.27, 0.46, -1],
+    [0.27, 0.46, 1],
+  ];
+  for (const [lx, lz, phase] of legCoords) {
+    const leg = new THREE.Group();
+    leg.position.set(lx, 0.72, lz);
+    leg.userData.phase = phase;
+    addM(leg, new THREE.CylinderGeometry(0.12, 0.095, 0.38, 8), m.buffalo, 0, -0.18, 0);
+    addM(leg, new THREE.SphereGeometry(0.095, 8, 6), m.buffalo, 0, -0.37, 0);
+    addM(leg, new THREE.CylinderGeometry(0.085, 0.075, 0.32, 8), m.buffalo, 0, -0.52, 0);
+    addM(leg, new THREE.CylinderGeometry(0.09, 0.105, 0.1, 8), m.muzzle, 0, -0.67, 0.01);
+    g.add(leg);
+    legs.push(leg);
   }
-  addM(g, new THREE.CylinderGeometry(0.03, 0.02, 0.5, 4), m.buffalo, 0, 0.85, 0.75).rotation.x = 0.5;
+  // 頸部與精細牛頭（雙耳、眼眸、寬厚鼻吻、鼻環、彎月大牛角）
+  const head = new THREE.Group();
+  head.position.set(0, 1.08, -0.82);
+  body.add(head);
+  addM(head, new THREE.CylinderGeometry(0.28, 0.36, 0.36, 10).rotateX(Math.PI / 3), m.buffalo, 0, 0.02, 0.14);
+  addM(head, new THREE.SphereGeometry(0.28, 12, 10).scale(0.95, 0.88, 1.15), m.buffalo, 0, 0.04, -0.14);
+  addM(head, new THREE.BoxGeometry(0.36, 0.22, 0.24), m.muzzle, 0, -0.06, -0.38);
+  for (const s of [-1, 1]) {
+    addM(head, new THREE.SphereGeometry(0.035, 6, 6), m.face, s * 0.1, -0.04, -0.5);
+    addM(head, new THREE.SphereGeometry(0.042, 8, 8), m.face, s * 0.22, 0.09, -0.22);
+    const ear = addM(head, new THREE.SphereGeometry(0.08, 8, 6).scale(1.6, 0.55, 0.7), m.buffalo, s * 0.32, 0.08, -0.05);
+    ear.rotation.z = s * -0.35;
+    const horn = addM(head, new THREE.TorusGeometry(0.3, 0.055, 8, 16, Math.PI * 0.82), m.horn, s * 0.2, 0.18, -0.04);
+    horn.rotation.set(0.25, Math.PI / 2, s > 0 ? 0.18 : Math.PI - 0.18);
+  }
+  const ring = addM(head, new THREE.TorusGeometry(0.055, 0.012, 6, 12), m.straw, 0, -0.1, -0.51);
+  ring.rotation.x = 0.3;
+  // 牛尾（可搖擺）
+  const tail = new THREE.Group();
+  tail.position.set(0, 1.06, 0.82);
+  body.add(tail);
+  addM(tail, new THREE.CylinderGeometry(0.032, 0.02, 0.52, 6), m.buffalo, 0, -0.22, 0.12).rotation.x = 0.45;
+  addM(tail, new THREE.ConeGeometry(0.055, 0.18, 6), m.muzzle, 0, -0.48, 0.24).rotation.x = 2.6;
+  g.userData.body = body;
   g.userData.head = head;
+  g.userData.legs = legs;
+  g.userData.tail = tail;
   return g;
 }
 
@@ -188,12 +229,57 @@ function chicken(m: Record<string, THREE.Material>, hen: boolean) {
 
 function egret(m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
-  addM(g, new THREE.SphereGeometry(0.16, 8, 6).scale(0.8, 0.8, 1.6), m.white, 0, 0.62, 0);
-  const neck = addM(g, new THREE.CylinderGeometry(0.035, 0.045, 0.4, 5), m.white, 0, 0.86, -0.18);
-  neck.rotation.x = -0.4;
-  addM(g, new THREE.SphereGeometry(0.06, 8, 6), m.white, 0, 1.05, -0.28);
-  addM(g, new THREE.ConeGeometry(0.02, 0.2, 4).rotateX(-Math.PI / 2), m.beakYellow, 0, 1.04, -0.42);
-  for (const s of [-1, 1]) addM(g, new THREE.CylinderGeometry(0.012, 0.012, 0.5, 4), m.leg, s * 0.05, 0.25, 0.02);
+  const body = new THREE.Group();
+  g.add(body);
+  // 優雅仙鶴／白鷺身軀、黑色尾羽裝飾、修長曲頸、丹頂、長喙與雙翼雙腿
+  addM(body, new THREE.SphereGeometry(0.22, 12, 10).scale(0.88, 0.85, 1.65), m.white, 0, 0.68, 0);
+  addM(body, new THREE.ConeGeometry(0.15, 0.38, 7).rotateX(Math.PI * 0.58), m.white, 0, 0.66, 0.38);
+  addM(body, new THREE.ConeGeometry(0.13, 0.28, 6).rotateX(Math.PI * 0.64), m.leg, 0, 0.63, 0.48);
+  const head = new THREE.Group();
+  head.position.set(0, 0.78, -0.22);
+  body.add(head);
+  const neck1 = addM(head, new THREE.CylinderGeometry(0.042, 0.058, 0.34, 8), m.white, 0, 0.14, -0.06);
+  neck1.rotation.x = -0.38;
+  const neck2 = addM(head, new THREE.CylinderGeometry(0.036, 0.042, 0.28, 8), m.white, 0, 0.36, -0.14);
+  neck2.rotation.x = 0.15;
+  addM(head, new THREE.SphereGeometry(0.072, 10, 8).scale(0.92, 0.95, 1.18), m.white, 0, 0.49, -0.15);
+  addM(head, new THREE.SphereGeometry(0.046, 8, 6).scale(0.85, 0.55, 1.0), m.comb, 0, 0.54, -0.15);
+  addM(head, new THREE.ConeGeometry(0.024, 0.28, 6).rotateX(-Math.PI / 2), m.beakYellow, 0, 0.48, -0.34);
+  for (const s of [-1, 1]) addM(head, new THREE.SphereGeometry(0.016, 6, 6), m.face, s * 0.048, 0.5, -0.2);
+  // 雙翼（可展翅拍動）
+  const wings: THREE.Group[] = [];
+  for (const s of [-1, 1]) {
+    const wing = new THREE.Group();
+    wing.position.set(s * 0.16, 0.74, -0.04);
+    wing.userData.side = s;
+    const innerW = addM(wing, new THREE.BoxGeometry(0.48, 0.035, 0.36), m.white, s * 0.22, 0, 0.02);
+    innerW.rotation.y = s * -0.12;
+    const outerW = addM(wing, new THREE.BoxGeometry(0.42, 0.028, 0.26), m.white, s * 0.58, -0.01, 0.08);
+    outerW.rotation.y = s * -0.28;
+    const tipW = addM(wing, new THREE.BoxGeometry(0.18, 0.024, 0.24), m.leg, s * 0.76, -0.015, 0.13);
+    tipW.rotation.y = s * -0.32;
+    // 平常微收於身側
+    wing.rotation.z = s * -0.95;
+    wing.rotation.y = s * 0.18;
+    body.add(wing);
+    wings.push(wing);
+  }
+  // 雙腿（步行時交替邁步、飛行時向後收起）
+  const legs: THREE.Group[] = [];
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(s * 0.065, 0.54, 0.02);
+    leg.userData.phase = s;
+    addM(leg, new THREE.CylinderGeometry(0.016, 0.013, 0.28, 6), m.leg, 0, -0.14, 0);
+    addM(leg, new THREE.CylinderGeometry(0.013, 0.011, 0.28, 6), m.leg, 0, -0.4, 0.01);
+    addM(leg, new THREE.BoxGeometry(0.05, 0.015, 0.09), m.leg, 0, -0.53, -0.02);
+    g.add(leg);
+    legs.push(leg);
+  }
+  g.userData.body = body;
+  g.userData.head = head;
+  g.userData.wings = wings;
+  g.userData.legs = legs;
   return g;
 }
 
@@ -400,25 +486,104 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     return best;
   };
   if (lands.length) {
-    // 水牛（慢慢低頭吃草）
+    // 水牛（全身與四肢、尾巴、牛頭皆可隨移動與吃草自然擺動）
+    const animateBuffalo = (g: THREE.Group, ph: number) => {
+      keepApart(g);
+      const body = g.userData.body as THREE.Group;
+      const head = g.userData.head as THREE.Group;
+      const legs = (g.userData.legs || []) as THREE.Group[];
+      const tail = g.userData.tail as THREE.Group | undefined;
+      let prevX = g.position.x;
+      let prevZ = g.position.z;
+      let prevT = 0;
+      let walkPhase = ph;
+      anims.push((t) => {
+        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+        prevT = t;
+        const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
+        prevX = g.position.x;
+        prevZ = g.position.z;
+        const moving = spd > 0.08;
+        if (moving) {
+          walkPhase += dt * Math.min(11, 4.5 + spd * 2.4);
+          const s = Math.sin(walkPhase);
+          body.position.y = Math.abs(s) * 0.045;
+          body.rotation.z = Math.cos(walkPhase) * 0.03;
+          head.rotation.x = 0.08 + Math.sin(walkPhase * 2) * 0.08;
+          head.rotation.y = Math.cos(walkPhase) * 0.06;
+          for (const leg of legs) {
+            const p = (leg.userData.phase as number) || 1;
+            leg.rotation.x = Math.sin(walkPhase + (p > 0 ? 0 : Math.PI)) * 0.48;
+          }
+          if (tail) tail.rotation.z = Math.sin(walkPhase * 1.8) * 0.35;
+        } else {
+          body.position.y = Math.sin(t * 1.4 + ph) * 0.012;
+          body.rotation.z = 0;
+          head.rotation.x = 0.28 + Math.sin(t * 0.65 + ph) * 0.24;
+          head.rotation.y = Math.sin(t * 0.4 + ph) * 0.12;
+          for (const leg of legs) leg.rotation.x *= 0.85;
+          if (tail) tail.rotation.z = Math.sin(t * 1.6 + ph) * 0.22;
+        }
+      });
+    };
+    const animateEgret = (g: THREE.Group, ph: number) => {
+      keepApart(g);
+      const body = g.userData.body as THREE.Group;
+      const head = g.userData.head as THREE.Group;
+      const wings = (g.userData.wings || []) as THREE.Group[];
+      const legs = (g.userData.legs || []) as THREE.Group[];
+      let prevX = g.position.x;
+      let prevZ = g.position.z;
+      let prevT = 0;
+      let phase = ph;
+      anims.push((t) => {
+        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+        prevT = t;
+        const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
+        prevX = g.position.x;
+        prevZ = g.position.z;
+        const flying = g.position.y > 1.2 || spd > 0.1;
+        if (flying) {
+          phase += dt * (g.position.y > 3.2 ? 9.5 : 7.5);
+          const flap = Math.sin(phase);
+          body.position.y = flap * 0.06;
+          body.rotation.x = 0.14;
+          head.rotation.x = 0.18 + Math.cos(phase) * 0.06;
+          for (const w of wings) {
+            const s = (w.userData.side as number) || 1;
+            w.rotation.z = s * (flap * 0.62 + 0.08);
+            w.rotation.y = s * 0.04;
+          }
+          for (const leg of legs) {
+            const p = (leg.userData.phase as number) || 1;
+            leg.rotation.x = g.position.y > 1.3 ? 0.65 + Math.sin(phase + p) * 0.08 : Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.45;
+          }
+        } else {
+          body.position.y = Math.sin(t * 1.5 + ph) * 0.01;
+          body.rotation.x = 0;
+          head.rotation.x = Math.sin(t * 0.8 + ph) * 0.14;
+          head.rotation.y = Math.cos(t * 0.5 + ph) * 0.16;
+          for (const w of wings) {
+            const s = (w.userData.side as number) || 1;
+            w.rotation.z = s * -0.95;
+            w.rotation.y = s * 0.18;
+          }
+          for (const leg of legs) leg.rotation.x *= 0.85;
+        }
+      });
+    };
     for (let i = 0; i < 5; i++) {
       const g = buffalo(m);
       const [x, z] = spotOn(i * 3);
       g.name = `ride-buffalo-${i}`;
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
-      statics.add(g);
-      const proxy = makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' }, 0.5);
+      root.add(g);
+      const proxy = makePickProxy(1.6, 1.8, 2.5, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' }, 0.5);
       proxy.name = `${g.name}-proxy`;
       g.userData.rideProxy = proxy;
       root.add(proxy);
-      const head = g.userData.head as THREE.Object3D;
-      if (head instanceof THREE.Group) mergeByMaterial(head);
-      keepApart(head);
-      const ph = rand() * 6;
-      anims.push((t) => {
-        head.rotation.x = 0.35 + Math.sin(t * 0.6 + ph) * 0.3;
-      });
+      animateBuffalo(g, rand() * 6);
     }
     // 綿羊群
     for (let k = 0; k < 2; k++) {
@@ -448,18 +613,19 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         offGroup.add(g);
       }
     }
-    // 白鷺鷥（站在田裡）
+    // 白鷺鷥／仙鶴（站在田裡，騎乘時展翅飛翔）
     for (let i = 0; i < 8; i++) {
       const g = egret(m);
       const [x, z] = spotOn(i * 2 + 1);
       g.name = `ride-egret-${i}`;
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
-      statics.add(g);
-      const proxy = makePickProxy(1.2, 1.6, 1.2, x, z, 0, { kind: 'mount', id: g.name, rideType: 'egret' }, 0.5);
+      root.add(g);
+      const proxy = makePickProxy(1.5, 1.8, 1.6, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'egret' }, 0.5);
       proxy.name = `${g.name}-proxy`;
       g.userData.rideProxy = proxy;
       root.add(proxy);
+      animateEgret(g, rand() * 6);
     }
     // 戴斗笠鋤地的農夫
     for (let i = 0; i < 6; i++) {
@@ -510,18 +676,14 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         g.name = `ride-rim-buffalo-${ii}`;
         g.position.set(x, -0.04, z);
         g.rotation.y = tan + (rand() - 0.5) * 0.6;
-        statics.add(g);
-        const proxy = makePickProxy(1.4, 1.6, 2.4, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
+        root.add(g);
+        const proxy = makePickProxy(1.6, 1.8, 2.5, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
         proxy.name = `${g.name}-proxy`;
         g.userData.rideProxy = proxy;
-        root.add(proxy);
-        colliders.push({ id: `fauna-buffalo-${ii}`, type: 'cylinder', x, z, radius: 0.9 });
-        const head = g.userData.head as THREE.Object3D;
-        if (head instanceof THREE.Group) mergeByMaterial(head);
-        keepApart(head);
         const ph = rand() * 6;
         anims.push((t) => {
-          head.rotation.x = 0.35 + Math.sin(t * 0.6 + ph) * 0.3;
+          if (g.userData.head) g.userData.head.rotation.y = Math.sin(t * 0.8 + ph) * 0.15;
+          if (g.userData.tail) g.userData.tail.rotation.z = Math.sin(t * 2.2 + ph) * 0.25;
         });
       } else if (kind === 'sheep') {
         for (let i = 0; i < 3; i++) {

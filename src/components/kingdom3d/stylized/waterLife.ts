@@ -83,6 +83,8 @@ const ISLANDS = getGlobalWalkableZones()
   .map((z) => z as { cx: number; cz: number; rx: number; rz: number });
 
 export function landAt(x: number, z: number) {
+  const east = BASIN_LANDMARKS.eastFalls;
+  if (Math.abs(z - east.caveZ) < 6.5 && x > 92 && x < east.faceX + 24.5) return false;
   // 島（含草地外環與山崖）
   for (const e of ISLANDS) {
     const dx = (x - e.cx) / (e.rx + 9);
@@ -139,11 +141,11 @@ export function navigable(x: number, z: number, margin = 1.4) {
   const east = BASIN_LANDMARKS.eastFalls;
   // 東山水濂洞的水道從湖面穿過山壁；南、北傳送洞口也保留一段可接近水域。
   const caveChannel = (px: number, pz: number) => {
-    if (Math.abs(pz - east.caveZ) < 5.2 && px > east.faceX - 12 && px < east.faceX + 28) return true;
+    if (Math.abs(pz - east.caveZ) < 6.2 && px > 92 && px < east.faceX + 24.5) return true;
     const north = BASIN_LANDMARKS.northFalls;
     const south = BASIN_LANDMARKS.southCave;
-    if (Math.abs(px - north.x) < 5.2 && pz > north.faceZ - 4 && pz < north.faceZ + 9) return true;
-    if (Math.abs(px - south.x) < 5.2 && pz > south.faceZ - 9 && pz < south.faceZ + 4) return true;
+    if (Math.abs(px - north.x) < 5.8 && pz > north.faceZ - 5 && pz < north.faceZ + 10) return true;
+    if (Math.abs(px - south.x) < 5.8 && pz > south.faceZ - 10 && pz < south.faceZ + 5) return true;
     return false;
   };
   const solid = (px: number, pz: number) => {

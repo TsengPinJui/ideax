@@ -90,7 +90,7 @@ export class LandRideService {
 
   mySeat(id: string): number | null {
     const seat = this.rides[id]?.riders?.[this.key]?.seat;
-    return Number.isFinite(seat) ? seat : null;
+    return typeof seat === 'number' && Number.isFinite(seat) ? seat : null;
   }
 
   async leave(id: string) {
