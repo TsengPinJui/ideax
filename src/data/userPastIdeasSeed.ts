@@ -1,4 +1,4 @@
-import { Question } from '../types';
+import { Question, Category } from '../types';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 
 const daysAgo = (d: number, h = 2) =>
@@ -8,13 +8,19 @@ const daysLater = (d: number) =>
 
 interface RawUserIdea {
   id: string;
+  painId: string;
   appName: string;
   title: string;
   description: string;
   subcategory: '資通訊' | '機電運輸' | '生醫化材' | '服務文創';
   tags: string[];
-  referencedPainPoint?: string;
   targetGoal: string;
+  painTitle: string;
+  painDescription: string;
+  painCategory: Category;
+  painSubcategory: string;
+  painTags: string[];
+  painTargetGoal: string;
   daysOffset: number;
   hoursOffset: number;
 }
@@ -23,6 +29,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 實體零售與商業模式創新 ──
   {
     id: 'q-idea-user-01',
+    painId: 'q-pain-user-01',
     appName: '複合型自助租賃店',
     title: '租賃店（無人全自助 or 有人管理）：依品類彈性切換無人智取與專人檢整的複合租賃門市',
     description:
@@ -30,11 +37,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '租賃店', '無人自助', '循環經濟', '生活服務商模'],
     targetGoal: '建立標準化租賃門市SOP與押金風控機制，拓展社區與商圈實體租賃據點',
+    painTitle: '露營帳篷、派對道具跟高壓清洗機一年只用兩次，買了塞爆儲藏室、想租卻找不到附近能24小時隨時取還的店',
+    painDescription:
+      '現代都市住宅坪數小，像整套露營裝備、抓周派對佈置、地毯清洗機或高階單眼鏡頭，買下來動輒上萬元又佔掉半個衣櫃，一年卻用不到兩三次。但傳統租借行營業時間短、品項單一，下班或清晨出發前根本無處取還，押金與損壞認定也常讓人卻步。',
+    painCategory: '日常疑難',
+    painSubcategory: '家務',
+    painTags: ['痛點', '物品閒置', '收納空間不足', '裝備租借', '低頻高價物品'],
+    painTargetGoal: '希望能有結合 24 小時自助取還與專業清潔檢整的社區型複合租賃門市，不用買斷也能輕鬆使用各類裝備',
     daysOffset: 13,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-02',
+    painId: 'q-pain-user-02',
     appName: '智慧自動租賃販賣機',
     title: '自動租賃機：結合販售與計時租借歸還檢測的無人智慧機台',
     description:
@@ -42,11 +57,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '自動租賃機', '販賣機', '無人零售', '智慧硬體'],
     targetGoal: '完成模組化多格口自動租賃機硬體打樣與社區、校園場域實測',
+    painTitle: '在宿舍或社區臨時想借球拍、桌遊或五金工具組，傳統販賣機只能買斷不能租借歸還，管理室借物又要人工登記',
+    painDescription:
+      '在大學校園、運動場館或大型社區裡，臨時想打場球、玩盒桌遊或修個家具，為了用一小時去買整套新品太浪費；找管理室或學系借用又常遇到下班沒人、紙本押證件麻煩、歸還時缺件沒人清點的問題。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '臨時借物', '自動販賣機限制', '校園社區生活', '無人租借'],
+    painTargetGoal: '期望在社區與校園配置具備自動歸還檢測與消毒功能的智慧自動租賃機，刷卡或掃碼就能隨借隨還',
     daysOffset: 13,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-03',
+    painId: 'q-pain-user-03',
     appName: '四季水梨全產銷專門店',
     title: '水梨產品店：結合鮮果契作與潤喉加工品線，解決冬季非產季營收斷層',
     description:
@@ -54,11 +77,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '水梨產品店', '農產加工', '四季營運', '地方創生'],
     targetGoal: '打通產地契作與四季常溫加工產品線，實現全年穩定現金流與品牌化經營',
+    painTitle: '台灣在地水梨專賣與鮮果農產店高度依賴夏秋產季，一到冬季非產季就面臨無果可賣與店面租金空轉',
+    painDescription:
+      '台灣高接梨與山區水梨品質極佳，但鮮果採收期集中在特定月份。若開設實體專賣店，產季時忙翻天，到了冬季非產季卻因為冷藏鮮果耗損高、缺乏溫熱飲品與高附加價值加工伴手禮，導致營業額斷崖式下滑，難以支撐全年門市人事與租金成本。',
+    painCategory: '創新創業',
+    painSubcategory: '服務餐飲',
+    painTags: ['痛點', '季節性農產', '水梨非產季', '農產轉型', '門市淡旺季'],
+    painTargetGoal: '建立涵蓋鮮果、溫熱燉梨飲品與常溫潤喉伴手禮的全年度水梨產品線，消除冬季營收斷層',
     daysOffset: 13,
     hoursOffset: 3,
   },
   {
     id: 'q-idea-user-04',
+    painId: 'q-pain-user-04',
     appName: '極速標準化涼麵專門店',
     title: '涼麵店：冷鏈央廚配送搭配多風味醬料吧，打造高坪效極速出餐模式',
     description:
@@ -66,11 +97,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '涼麵店', '餐飲標準化', '高坪效外帶', '生活服務商模'],
     targetGoal: '建立無明火高坪效門市模型與冷鏈配送SOP，拓展都會區商辦外帶據點',
+    painTitle: '上班族中午買飯排隊動輒 20 分鐘，傳統涼麵攤環境悶熱衛生堪憂、口味單一且冬天生意大減',
+    painDescription:
+      '都會區商辦中午用餐時間只有一小時，一般便當與麵店現點現煮等待時間長；而能快速取餐的傳統涼麵攤常放在室溫吹風，夏天讓人擔心生菌數超標，口味又只有傳統麻醬容易吃膩，對想開餐飲店的人來說更是受限於大火油煙管線難租店面。',
+    painCategory: '創新創業',
+    painSubcategory: '服務餐飲',
+    painTags: ['痛點', '商辦午餐排隊', '涼麵食安', '無油煙餐飲', '高坪效外帶'],
+    painTargetGoal: '打造全程冷鏈保鮮、30 秒極速出餐且具備多國風味醬料與冬季熱湯搭配的現代化涼麵專門店',
     daysOffset: 13,
     hoursOffset: 4,
   },
   {
     id: 'q-idea-user-05',
+    painId: 'q-pain-user-05',
     appName: '嚴選ODM集散伴手禮店',
     title: '垂坤模式：串聯優質小廠商 ODM 代工＋大份量集散體驗＋差異化品牌包裝',
     description:
@@ -78,6 +117,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '垂坤模式', 'ODM集散', '包裝差異化', '伴手禮通路'],
     targetGoal: '串聯在地中小型食品廠建立自有品牌選品線，打造具備觀光集客力的旗艦展售據點',
+    painTitle: '台灣許多在地中小型食品廠用料實在卻沒品牌與包裝能力，單打獨鬥進不了大型通路也吸引不到觀光客專程造訪',
+    painDescription:
+      '各地有許多傳承兩代的小型肉乾、餅乾、米果與蜜餞代工廠，產品好吃但包裝老舊、品項單一，既付不起連鎖通路高昂上架費，單開小店也無法形成「讓人塞滿整台購物車」的觀光集散效應，導致好手藝只能賺微薄代工毛利。',
+    painCategory: '創新創業',
+    painSubcategory: '服務餐飲',
+    painTags: ['痛點', '中小食品廠轉型', 'ODM品牌化', '伴手禮集散', '通路門檻'],
+    painTargetGoal: '整合多家優質小廠 ODM 代工，以一致的高辨識度包裝與一站式大份量集散門市創造觀光與團購聲量',
     daysOffset: 13,
     hoursOffset: 5,
   },
@@ -85,6 +131,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 👥 共享經濟 ──
   {
     id: 'q-idea-user-06',
+    painId: 'q-pain-user-06',
     appName: '共享行動電源網路',
     title: '共享行動電源：高密度商圈與娛樂場域跨店隨借隨還充電服務',
     description:
@@ -92,11 +139,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '共享行動電源', '共享經濟', '商圈硬體', '隨借隨還'],
     targetGoal: '完善快充機櫃硬體與商家分潤後台，提升高人流場域機台覆蓋率',
+    painTitle: '出門在外手機電量只剩 5% 卻忘記帶行動電源或充電線，坐在餐廳充又不能邊走邊用，甲地借還點太少還要原店歸還',
+    painDescription:
+      '現代人連搭車、付款、查地圖都靠手機，一旦在外逛街、跑業務或看演唱會時手機沒電就像失聯一樣焦慮。向店家借插座只能把手機留在櫃檯，買新的行動電源裡面的電又不夠馬上用，且若租借站點密度不足，為了還電池還得專程繞回原店。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '手機沒電焦慮', '行動電源租借', '跨店甲借乙還', '商圈服務'],
+    painTargetGoal: '建立高密度商圈與交通節點的跨店隨借隨還快充行動電源網路，自帶線材掃碼即充',
     daysOffset: 12,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-07',
+    painId: 'q-pain-user-07',
     appName: 'B2B2C 商圈共享滑板',
     title: '共享滑板（B2B2C）：串聯大學校園與周邊合作店家消費折抵租金的短途代步網',
     description:
@@ -104,11 +159,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '共享滑板', 'B2B2C', '共享經濟', '短途微交通'],
     targetGoal: '於大學城與園區完成站點驗證，建立合作店家消費抵租導流閉環',
+    painTitle: '大型大學校區與園區內跨館趕課、去周邊買飯走路要 20 分鐘太累，騎腳踏車又常沒車位或不能帶進大樓',
+    painDescription:
+      '在腹地廣大的大學校園或科技園區，從宿舍走到系館或校外美食街動輒一兩公里，大太陽下走路滿頭大汗；共享單車體積大、尖峰時段常借不到車或滿樁還不了，而周邊店家也苦於離校門口多隔兩條街就少了很多學生客源。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '校園微交通', '最後一哩路', '商圈導流', '短途代步'],
+    painTargetGoal: '以輕巧不佔位的共享滑板樁串聯校園與周邊合作商家，到店消費即可折抵租金',
     daysOffset: 12,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-08',
+    painId: 'q-pain-user-08',
     appName: '分時雲端共享廚房',
     title: '共享廚房：符合食安法規之分時租借商用廚房與外送品牌孵化空間',
     description:
@@ -116,24 +179,39 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '共享廚房', '共享經濟', '雲端餐廳', '餐飲孵化'],
     targetGoal: '打造標準化多工位合法商用共享廚房，協助微型餐飲創業者低成本啟動',
+    painTitle: '想做外送餐盒、私廚或甜點團購創業，自家廚房不合營業食安法規，自己租店面改裝商用排煙與截油槽動輒燒掉上百萬',
+    painDescription:
+      '許多有好手藝的料理人或斜槓烘焙師想創立餐飲品牌，但家用廚房無法申請食品業者登錄與團膳外送上架；若直接簽約租店面買商用烤箱、急速冷凍櫃與靜電排煙設備，還沒驗證市場反應就先背負百萬資金壓力，且單一品牌只做午餐或晚餐時段，廚房其他時間都在閒置。',
+    painCategory: '創新創業',
+    painSubcategory: '服務餐飲',
+    painTags: ['痛點', '餐飲創業門檻', '商用廚房法規', '外送雲端廚房', '分時租借'],
+    painTargetGoal: '提供合法合規、設備齊全且可依早午晚時段分租的共享商用廚房，讓餐飲新創低風險試水溫',
     daysOffset: 12,
     hoursOffset: 3,
   },
   {
     id: 'q-idea-user-09',
+    painId: 'q-pain-user-09',
     appName: '智慧多功能共享櫃平台',
     title: '智慧多功能共享櫃：整合租借、出售、寄放、外送暫存、寄件、二手交易與快遞的社區中樞',
     description:
       '打破單一用途智取櫃限制，將「共享櫃＋線上共享平台」合而為一：同一座智慧格口櫃既能做物品計時租借、閒置品當櫃展示出售、旅客臨時寄放，也能收發快遞包裹、外送餐點保溫暫存與社區鄰里二手面交免約時間（賣家放櫃、買家付錢開櫃），讓一座機櫃發揮全天候坪效。',
     subcategory: '機電運輸',
     tags: ['創新提案', '智慧多功能共享櫃', '共享櫃', '共享經濟', '社區智取', '二手自提'],
-    referencedPainPoint: '[q-vp-pain-30] 大樓管理員晚上 6 點就下班，買生鮮冷凍宅配跟掛號信永遠領不到，放超商又常超過材積',
     targetGoal: '完成軟硬體格口權限切換系統，串聯社區大樓、捷運站與商圈建立多功能共享櫃網路',
+    painTitle: '社區二手面交要喬時間超尷尬、外送放門口怕涼掉被偷、傳統智取櫃又只能收特定電商包裹導致多數格口閒置',
+    painDescription:
+      '住同一個社區或商圈想賣二手物、借東西給鄰居，卻總要反覆私訊約面交時間；叫外送或收快遞時人還沒到家，放一樓桌上有食安與遺失風險；而市面上置物櫃、包裹櫃、取餐櫃各自獨立互不相通，既佔空間又無法支援個人間的寄售、租借與一手交錢一手開櫃。',
+    painCategory: '日常疑難',
+    painSubcategory: '家務',
+    painTags: ['痛點', '二手面交免約時間', '外送保溫暫存', '包裹代收', '多功能智慧櫃'],
+    painTargetGoal: '打造一座同時支援鄰里二手自助交易、物品計時租借、行李寄放、外送暫存與快遞收發的智慧多功能共享櫃',
     daysOffset: 12,
     hoursOffset: 4,
   },
   {
     id: 'q-idea-user-10',
+    painId: 'q-pain-user-10',
     appName: '景點隨借共享風扇',
     title: '共享風扇：針對夏季戶外樂園、動物園、夜市與排隊名店的隨借隨還降溫風扇',
     description:
@@ -141,11 +219,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '共享風扇', '共享經濟', '戶外觀光', '夏日經濟'],
     targetGoal: '與大型戶外景區、夜市自治會及音樂祭合作試行季節性租借站點',
+    painTitle: '夏天逛動物園、遊樂園或夜市排隊熱到汗流浹背快中暑，臨時買手持風扇既貴又沒充飽電，帶回家冬天又變閒置垃圾',
+    painDescription:
+      '台灣從五月到十月戶外體感溫度常破 36 度，帶小孩逛園區或在夜市排隊半小時就滿頭大汗。多數人出門忘記帶隨身風扇，景區攤販賣的廉價風扇風力小又沒電，買回家後平時通勤根本不用，造成電子垃圾與金錢浪費。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '夏日戶外防暑', '排隊降溫', '觀光景區服務', '隨借隨還'],
+    painTargetGoal: '在戶外園區與夜市出入口提供滿電強風、自動消毒的共享隨身風扇，入園借、出園還',
     daysOffset: 12,
     hoursOffset: 5,
   },
   {
     id: 'q-idea-user-11',
+    painId: 'q-pain-user-11',
     appName: '社區循環共享書櫃',
     title: '共享書籍：結合咖啡廳與社區據點的實體漂書借閱與以書換書平台',
     description:
@@ -153,11 +239,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '共享書籍', '共享經濟', '循環閱讀', '知識共享'],
     targetGoal: '建立結合RFID書籤與點數循環機制的共享書櫃網路，活化家庭閒置藏書',
+    painTitle: '買了實體書看完一次就塞滿書櫃長灰塵，賣給二手書店一本只剩十幾塊，傳統漂書站又常淪為破舊雜書堆置處',
+    painDescription:
+      '愛看書的人家裡常累積上百本只讀過一遍的新書，丟掉捨不得、拿去秤重回收又心痛；而傳統無人管理的開放式漂書架常被塞滿過期雜誌與宣傳單，真正想看的近期好書一旦被拿走就再也不會回來，缺乏雙向對等的交換激勵機制。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '閒置藏書', '以書換書', '社區閱讀', '書籍循環'],
+    painTargetGoal: '建立結合點數激勵與智慧書櫃門控的社區／咖啡廳共享書櫃，讓好書在鄰里間有序流轉',
     daysOffset: 12,
     hoursOffset: 6,
   },
   {
     id: 'q-idea-user-12',
+    painId: 'q-pain-user-12',
     appName: '景點共享自拍棒租借站',
     title: '共享自拍棒：觀光景點與打卡地標隨借隨還的藍牙腳架自拍桿服務',
     description:
@@ -165,6 +259,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '共享自拍棒', '共享經濟', '觀光景點', '旅遊服務'],
     targetGoal: '於重點觀光景區與交通節點部署輕量化租借機箱，提升旅客拍照便利度',
+    painTitle: '跟家人情侶或自己去景點旅遊想拍全身合照卻忘記帶腳架自拍棒，請路人幫忙拍常構圖歪掉或不好意思一直重拍',
+    painDescription:
+      '難得去風景區、觀景台或打卡地標旅遊，用手拿手機自拍永遠只有大頭照、背景全被擋住；想請路人幫忙拍全家福，不是拍得模糊閉眼，就是人少時根本找不到路人。但為了一趟旅行隨身揹一根長腳架既重又佔隨身包包空間。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '旅遊拍照', '忘記帶腳架', '獨旅自拍', '景點租借'],
+    painTargetGoal: '在熱門觀光景點提供含藍牙遙控器的穩固三腳架自拍棒租借服務，隨借隨拍、離場即還',
     daysOffset: 12,
     hoursOffset: 7,
   },
@@ -172,6 +273,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── ［解決都市交通］壅塞、車位 ──
   {
     id: 'q-idea-user-13',
+    painId: 'q-pain-user-13',
     appName: '都市錯峰共享車位平台',
     title: '共享車位：媒合住宅區白天閒置私家車位與商辦尖峰臨停需求的智慧地鎖系統',
     description:
@@ -179,11 +281,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '共享車位', '共享停車位', '都市交通', '錯峰停車', '智慧交通'],
     targetGoal: '串聯住商混合社區管委會與智慧車牌辨識系統，活化白天閒置私有車位',
+    painTitle: '都會商圈開車洽公繞半小時找不到半個停車位，旁邊住商大樓地下室幾百個私人車位白天卻全部空著不能停',
+    painDescription:
+      '台北市區與各大商圈平日白天公立停車場永遠滿位，近三成路上慢速繞行的車流都是在找車位；與此同時，周邊住宅大樓住戶早上八點出門上班後，地下室與騎樓私人車位整整空置十個小時，只因缺乏門禁白名單控管與準時離場保障機制而不敢外租。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '都市停車難', '交通壅塞', '閒置車位活化', '錯峰共享'],
+    painTargetGoal: '透過智慧車牌辨識授權與超時自動調度機制，安全釋放住宅區白天閒置私人車位供臨停預約',
     daysOffset: 11,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-14',
+    painId: 'q-pain-user-14',
     appName: '活動接駁車 Plus',
     title: '活動接駁車 Plus：依散場人潮與乘車方向動態湊團開線的演唱會／展演智慧接駁平台',
     description:
@@ -191,6 +301,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '活動接駁車Plus', '都市交通', '動態路線調度', '展演疏運'],
     targetGoal: '與展演場館及合法遊覽車隊合作，建立按需動態湊團的直達接駁調度系統',
+    painTitle: '萬人演唱會與球賽散場時捷運塞爆、計程車加價還叫不到車，外縣市歌迷為了趕高鐵末班車常被迫放棄安可曲提前離場',
+    painDescription:
+      '每次去巨蛋、世運主場館或大型音樂祭，散場時幾萬人同時湧向單一捷運站，排隊進站就要一小時；傳統官方接駁車只停火車站，回到轉運站還得再轉車，私下找野雞車共乘又沒有保險與安全保障。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '演唱會散場交通', '展演疏運', '跨縣市共乘接駁', '都市交通'],
+    painTargetGoal: '建立可依觀眾回程生活圈自動湊團發車的合法直達接駁專車平台，散場上車就能一路睡回家',
     daysOffset: 11,
     hoursOffset: 2,
   },
@@ -198,6 +315,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 🤖 AI自動化 ──
   {
     id: 'q-idea-user-15',
+    painId: 'q-pain-user-15',
     appName: 'AI 自動公關輿情管家',
     title: '自動公關管理：24 小時全網社群情緒監測、負評預警與公關回應草稿生成系統',
     description:
@@ -205,11 +323,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '自動公關管理', 'AI自動化', '輿情監測', '危機處理'],
     targetGoal: '打造即時台灣本土社群語意情緒預警引擎與多情境公關應對工作流',
+    painTitle: '品牌負評常在半夜或連假於 Threads、Dcard 瞬間炎上，公關團隊週一上班才發現早已錯過黃金止血時間',
+    painDescription:
+      '現在社群傳播速度極快，一則客訴或誤會貼文在半夜三小時內就可能破萬轉發並被新聞媒體引用。中小企業請不起 24 小時輪班盯盤的公關公司，加上第一時間情緒緊張容易寫出「提油救火」的硬拗聲明，導致品牌商譽一夕重創。',
+    painCategory: '專業問題',
+    painSubcategory: '企業管理',
+    painTags: ['痛點', '公關危機處理', '社群輿情監測', '負評止血', '品牌管理'],
+    painTargetGoal: '建立全天候自動偵測社群異常聲量、即時告警並提供得體止血回應草稿的 AI 公關管理系統',
     daysOffset: 10,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-16',
+    painId: 'q-pain-user-16',
     appName: 'AI+MIS 智慧企業中樞',
     title: 'AI+MIS：將自然語言 Agent 與企業進銷存、人資、財務系統深度耦合的智慧決策中樞',
     description:
@@ -217,11 +343,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', 'AI+MIS', 'AI自動化', '企業資訊系統', '智慧決策'],
     targetGoal: '完成輕量化資料庫連接器與企業權限感知 Agent 架構，協助中小企業無痛升級既有 MIS',
+    painTitle: '公司舊 ERP 與進銷存系統選單複雜得像迷宮，老闆想問一句「哪個通路毛利掉最多」還要等資訊部拉 Excel 算三天',
+    painDescription:
+      '多數傳產與中小企業雖然裝了進銷存或 ERP，但介面老舊、各模組數據不通。第一線人員每天花大量時間手動打單對帳，管理層想跨表看「庫存周轉率 × 業務折扣 × 客戶退貨原因」時，系統根本跑不出來，只能靠人工匯出好幾份 CSV 慢慢用 VLOOKUP 拼湊。',
+    painCategory: '專業問題',
+    painSubcategory: '企業管理',
+    painTags: ['痛點', '傳統MIS僵化', '跨部門數據孤島', 'ERP報表', '企業數位轉型'],
+    painTargetGoal: '不用打掉重練舊系統，直接外掛權限控管的 AI Agent，用白話文就能即時跨表查詢並預警營運異常',
     daysOffset: 10,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-17',
+    painId: 'q-pain-user-17',
     appName: 'AI 多模態視覺化工具',
     title: 'AI 視覺化工具（圖像、影音）：將抽象數據、企劃文案與產品規格一鍵轉為一致風格的圖表與動態短片',
     description:
@@ -229,11 +363,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', 'AI視覺化工具', '圖像影音生成', 'AI自動化', '多模態創作'],
     targetGoal: '建立支援品牌視覺鎖定（Style Lock）的圖文與短影音自動化生產工作台',
+    painTitle: '企劃寫了一整頁產品亮點與數據報告，但用一般 AI 生圖每次畫風跟角色長相都不連貫，根本沒辦法直接放進正式簡報與短片',
+    painDescription:
+      '團隊在做提案簡報、懶人包圖卡或產品介紹短片時，請外包設計師排期要等兩週；自己用市面上的 AI 工具生圖，第一張跟第二張的配色、字體排版和人物五官完全搭不起來，花在修圖與改 Prompt 的時間反而比手繪還久。',
+    painCategory: '創新創業',
+    painSubcategory: '資訊科技',
+    painTags: ['痛點', '視覺風格不一致', '資訊圖表製作', '商務影音生成', '內容產製瓶頸'],
+    painTargetGoal: '打造能鎖定品牌色票與角色設定的 AI 視覺化工具，將文字企劃與數據一鍵轉為風格統一的圖卡與短片',
     daysOffset: 10,
     hoursOffset: 3,
   },
   {
     id: 'q-idea-user-18',
+    painId: 'q-pain-user-18',
     appName: 'AI 自動看盤與紀律下單系統',
     title: '自動看盤、操盤下單：結合多維度盤中訊號監控、風控停損鎖定與券商 API 自動執行之量化交易助手',
     description:
@@ -241,6 +383,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '自動看盤', '操盤下單', 'AI自動化', '程式交易', '風險控管'],
     targetGoal: '打造具備嚴格風控熔斷機制的視覺化策略設定與自動化下單執行系統',
+    painTitle: '上班族盤中開個會沒法盯盤就錯過停損點，手下單又常因為恐懼或貪婪亂追高殺低，想用程式交易卻不會寫 Python',
+    painDescription:
+      '一般投資人早上有正職工作，早上九點到一點半根本無法分心盯著五檔報價；明明前一晚設定好跌破均線要停損，盤中看到急跌卻捨不得砍單變成深套。但傳統量化交易平台需要自己架伺服器寫程式串券商 API，對不會寫程式的投資人門檻太高。',
+    painCategory: '專業問題',
+    painSubcategory: '企業管理',
+    painTags: ['痛點', '沒時間盯盤', '情緒化凹單', '無程式碼自動下單', '交易紀律風控'],
+    painTargetGoal: '提供免寫程式的視覺化條件設定與嚴格停損風控鎖，自動監控盤中訊號並紀律執行進出場',
     daysOffset: 10,
     hoursOffset: 4,
   },
@@ -248,6 +397,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── ［其他AI］ ──
   {
     id: 'q-idea-user-19',
+    painId: 'q-pain-user-19',
     appName: 'AI 軟硬體動態風險保險',
     title: '人工智慧保險（軟硬體）：結合エッジ感測硬體與 AI 精算模型之動態保費與即時自動理賠服務',
     description:
@@ -255,11 +405,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '人工智慧保險', '軟硬體整合', '保險科技', 'InsurTech', '動態精算'],
     targetGoal: '驗證 IoT 感測數據接入動態精算模型與自動化理賠觸發流程',
+    painTitle: '傳統保險不管你有沒有安全駕駛或做好工廠防災都收一樣貴的保費，出險理賠還要自己跑流程附一大堆紙本證明等好幾週',
+    painDescription:
+      '現行的車險與商業火險多半只看年齡、性別或行業別來一刀切定價，平時開車溫和、按時保養機台的好客戶反而要幫忙分攤高風險者的賠率；一旦發生事故或災損，從報案、勘災、收集單據到核賠撥款往往曠日廢時，緩不濟急。',
+    painCategory: '創新創業',
+    painSubcategory: '資訊科技',
+    painTags: ['痛點', '保險費率僵化', '理賠流程繁瑣', 'InsurTech', '動態風險定價'],
+    painTargetGoal: '結合感測硬體與 AI 風險模型，讓低風險行為直接享有保費減免，並在事故確認時自動啟動快速理賠',
     daysOffset: 9,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-20',
+    painId: 'q-pain-user-20',
     appName: '分散式算力媒合平台',
     title: '算力媒合平台：媒合企業、實驗室與個人閒置 GPU 算力供給與 AI 訓練推理需求之調度市場',
     description:
@@ -267,6 +425,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '算力媒合平台', 'GPU共享', '分散式運算', 'AI基礎設施'],
     targetGoal: '建立具備容器沙盒隔離、算力基準測試與自動計費結算的 GPU 算力媒合網',
+    painTitle: '新創團隊與研究生跑 AI 模型訓練租大廠雲端 GPU 貴到燒不起，但許多設計公司與實驗室的高階顯卡半夜卻完全閒置',
+    painDescription:
+      '訓練或微調開源大模型、跑 3D 動畫渲染時，向國際公有雲租用高階 GPU 每小時費用高昂且常缺貨排隊；反觀許多大學實驗室、影視後期公司、電競場館花大錢買了 RTX 4090／A6000 工作站，下班與寒暑假期間卻只有 20% 稼動率，白白承受硬體折舊。',
+    painCategory: '創新創業',
+    painSubcategory: '資訊科技',
+    painTags: ['痛點', 'GPU算力昂貴', '閒置顯卡活化', 'AI模型訓練成本', '算力共享'],
+    painTargetGoal: '透過安全容器隔離與自動計費調度，媒合閒置 GPU 硬體供給與高性價比的 AI 運算需求',
     daysOffset: 9,
     hoursOffset: 2,
   },
@@ -274,6 +439,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 📲 App / 線上平台類 ──
   {
     id: 'q-idea-user-21',
+    painId: 'q-pain-user-21',
     appName: '考古題暨 AI 學習助理平台',
     title: '考古題暨學習助理平台：整合歷屆大考、國考、證照與大學期中考題庫，搭配 AI 弱點診斷與觀念陪讀',
     description:
@@ -281,24 +447,39 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '考古題平台', 'AI學習助理', '教育科技', '錯題診斷'],
     targetGoal: '建置結構化歷屆題庫與個人化知識圖譜弱點追蹤引擎',
+    painTitle: '準備國考、證照跟大學期中考時，歷屆考古題散落各處只有公布ABCD答案卻沒詳解，錯過的觀念換個數字考出來還是照樣錯',
+    painDescription:
+      '不管是考研究所、國家考試、金融證照還是大學專業科目，官方題庫往往只給冷冰冰的標準答案，網路上流傳的考古題 PDF 又缺頁模糊。自學者遇到不會的題目沒人可問，死背答案卻沒搞懂底層觀念，考場上題目稍微變形就全軍覆沒。',
+    painCategory: '學術探討',
+    painSubcategory: '資訊工程',
+    painTags: ['痛點', '考古題無詳解', '考試弱點診斷', '自學卡關', '錯題本整理'],
+    painTargetGoal: '建立一站式結構化考古題庫，結合 AI 逐步推導詳解、錯題知識點歸納與變形題即時檢測',
     daysOffset: 8,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-22',
+    painId: 'q-pain-user-22',
     appName: 'AI 身材建模與網搜穿搭 App',
     title: '穿搭 App（身材數據／風格 → 相機 → 網搜／AI分析）：依真實身形比例智慧試穿並全網比價搜同款',
     description:
       '解決網購衣服看模特兒穿很美、買回來卻不合身的困擾：使用者先透過手機相機建立個人身材數據（肩寬、腰臀比、身形輪廓與膚色冷暖調）與偏好風格，看到喜歡的穿搭照或街拍時，拍一下即可透過 AI 視覺網搜全網同款或平替單品，並自動模擬穿在自己身形上的合身度與搭配建議。',
     subcategory: '資通訊',
     tags: ['創新提案', '穿搭App', '身材數據建模', '以圖搜衣', 'AI穿搭分析'],
-    referencedPainPoint: '[q-vp-pain-22] 網購褲子每家 S/M/L 尺寸表都差超多，量了腰圍臀圍買回來穿還是卡大腿，退換貨等到天荒地老',
     targetGoal: '整合手機端身形比例估算、個人衣櫥管理與跨電商視覺搜圖推薦',
+    painTitle: '在街上或 IG 看到好看的穿搭不知道哪裡買，網購看模特兒穿超仙、買回來穿在自己梨形或寬肩身材上卻完全走樣',
+    painDescription:
+      '滑社群看到喜歡的衣服常找不到品牌與購買連結；好不容易在網拍找到類似款，但照片裡的模特兒都是完美衣架子，一般人不清楚自己的肩寬、腰臀比與膚色穿起來會不會顯胖顯黑，導致網購服飾退換貨率居高不下。',
+    painCategory: '日常疑難',
+    painSubcategory: '購物',
+    painTags: ['痛點', '網購尺寸踩雷', '身形比例穿搭', '以圖搜同款', '虛擬試穿'],
+    painTargetGoal: '用手機相機建立個人身形與風格檔案，拍照即可全網搜同款並預覽穿在自己身上的真實版型效果',
     daysOffset: 8,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-23',
+    painId: 'q-pain-user-23',
     appName: '二手書循環交易平台',
     title: '二手書平台：支援 ISBN 掃碼秒上架、大專系所指定用書精準媒合與批量收書的知識流轉網',
     description:
@@ -306,24 +487,39 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', '二手書平台', '校園教材傳承', 'ISBN掃碼', '循環經濟'],
     targetGoal: '建立全台大專院校系所書單對照庫與極簡掃碼上架交易流程',
+    painTitle: '大學開學買原文書一本動輒一千五，學期末想賣二手書卻要在校版一篇篇拍照PO文，常被放鳥或因為改版找不到學弟妹接手',
+    painDescription:
+      '大學四年的原文教科書買下來好幾萬元，很多通識與必修課考完期末考就再也用不到。但現有臉書社團與拍賣平台沒有按「學校＋系所＋開課老師指定版次」分類，賣一本書要自己打書名、拍書況、私訊約面交，時間成本高到許多人乾脆當廢紙回收。',
+    painCategory: '日常疑難',
+    painSubcategory: '購物',
+    painTags: ['痛點', '大學原文書昂貴', '二手書買賣麻煩', '系所課本交接', 'ISBN掃碼上架'],
+    painTargetGoal: '打造掃描 ISBN 條碼即可秒上架、並直接對應各校系課程書單的同校二手書一鍵交接平台',
     daysOffset: 8,
     hoursOffset: 3,
   },
   {
     id: 'q-idea-user-24',
+    painId: 'q-pain-user-24',
     appName: '鄰里順路代倒垃圾平台',
     title: '倒垃圾平台：媒合社區鄰里順路代倒垃圾與定點時段收運的按次互助服務',
     description:
       '針對住在無管理員老公寓、經常加班趕不上垃圾車的租屋族與雙薪家庭，打造免綁高昂月費的「單次／定期彈性代倒垃圾媒合平台」。住戶下單預約門口取件時段或鄰里順路接單，接單者完成分類投遞並拍照回傳即完成小額結算，徹底解決陽台堆垃圾與廚餘長果蠅的困擾。',
     subcategory: '服務文創',
     tags: ['創新提案', '倒垃圾平台', '社區互助', '生活服務商模', '租屋族救星'],
-    referencedPainPoint: '[q-vp-pain-16] 住沒管理員的公寓，上班族每天晚上 7 點半趕不上垃圾車，陽台堆廚餘長果蠅超崩潰',
     targetGoal: '於雙北無電梯公寓密集商圈建立高信任度的順路代收與定點清運網路',
+    painTitle: '住沒管理員的老公寓每天加班都趕不上晚上七點的垃圾車，夏天廚餘放兩天就長果蠅發臭，包月代收服務對單身租屋族又太貴',
+    painDescription:
+      '台灣雙北與各大城市有大量四五層樓的無電梯公寓沒有垃圾集中區。上班族、醫護輪班人員或暴雨天不想出門的住戶，常常一整週都遇不到垃圾車；市面上的代收公司多半要求綁定每月上千元的固定月費，對一週只產出兩袋垃圾的單身租屋族極不划算。',
+    painCategory: '日常疑難',
+    painSubcategory: '家務',
+    painTags: ['痛點', '趕不上垃圾車', '公寓租屋倒垃圾', '鄰里順路代收', '按次計費'],
+    painTargetGoal: '建立免綁月費、可單次預約同巷鄰居或專人順路到府代倒垃圾的彈性媒合平台',
     daysOffset: 8,
     hoursOffset: 4,
   },
   {
     id: 'q-idea-user-25',
+    painId: 'q-pain-user-25',
     appName: 'C2C 私家車安全共享平台',
     title: '租車平台（C2C）：結合期間車險自動綁定、手機無鑰匙解鎖與車況AI拍照存證的私家車共享網',
     description:
@@ -331,24 +527,39 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', 'C2C租車平台', '共享經濟', '私家車活化', '智慧出行'],
     targetGoal: '建立完善的租借期間責任分界、罰單自動歸戶與車況存證保障機制',
+    painTitle: '自用車一週五天停在車位白白繳稅金與折舊，想趁空檔租給別人補貼養車費，卻怕收到事後超速罰單、擦撞理賠糾紛與被當犯罪工具',
+    painDescription:
+      '在都會區養一台車每年稅金、保險、保養與車位費動輒十幾萬，但平日上班搭捷運，車子高達 90% 時間都在閒置；反觀連假與週末想租車的人卻一車難求。然而私下把車借人或租人，最怕過路費與罰單算不清、刮傷死無對證，以及車主原保單不賠營業或借用行為。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '養車成本高', '私家車閒置', 'C2C租車保障', '罰單自動歸戶'],
+    painTargetGoal: '打造內建實名良民審核、租期專屬短期車險、AI 外觀刮痕存證與罰單自動代扣的 C2C 私家車共享平台',
     daysOffset: 8,
     hoursOffset: 5,
   },
   {
     id: 'q-idea-user-26',
+    painId: 'q-pain-user-26',
     appName: 'LBS 地理空間生活情報網',
     title: '地理相關應用平台：融合多圖層開放地理數據、即時環境動態與在地生活圈探索的互動地圖工具',
     description:
       '一般地圖只解決導航，卻看不出一個街區的「真實生活機能與即時狀態」。整合政府開放地理空間資料（日照、噪音、淹水潛勢、實價登錄、垃圾車動態、施工路段與公廁無障礙設施）與群眾回報圖層，不論是租屋看房避雷、外送跑單、還是長輩親子出遊動線規劃，都能一鍵切換專屬主題地圖圖層。',
     subcategory: '資通訊',
     tags: ['創新提案', '地理相關', 'GIS空間數據', 'LBS地圖', '生活圈情報'],
-    referencedPainPoint: '[q-vp-pain-19] 租屋網照片看起來超美，請假跑去看房才發現是地下室改建、隔壁宮廟吵翻天，白跑十幾趟',
     targetGoal: '打造可自由疊加生活機能、環境避雷與即時動態的多圖層地理資訊平台',
+    painTitle: '一般導航地圖只會指路，租屋看房或帶長輩小孩出門時，根本查不到哪條巷子半夜常施工噪音、大雨會積水或哪裡有無障礙廁所',
+    painDescription:
+      '政府的淹水潛勢圖、噪音監測、嫌惡設施、垃圾車停靠點、治安熱區與無障礙設施等珍貴地理資訊，分散在十幾個不同局處的老舊網站裡。民眾在看房選址或規劃外出一日動線時，無法在同一張地圖上疊加檢視這些關鍵生活圖層，往往搬進去或到了現場才踩雷。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '生活圈避雷', '開放地理數據分散', '租屋環境評估', '多圖層地圖'],
+    painTargetGoal: '將分散的政府開放空間資料與在地群眾回報整合為一鍵切換圖層的互動生活地圖',
     daysOffset: 8,
     hoursOffset: 6,
   },
   {
     id: 'q-idea-user-27',
+    painId: 'q-pain-user-27',
     appName: 'AI 顏值骨相與氣質形象顧問',
     title: '顏值、臉部、外表、氣質 APP：透過五官比例、骨相光影與神態分析，提供個人化髮型妝容與氣質養成建議',
     description:
@@ -356,11 +567,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '顏值氣質App', '五官骨相分析', '個人色彩學', '形象管理'],
     targetGoal: '結合電腦視覺特徵點識別與專業彩妝造型師知識庫，提供可執行的個人形象升級方案',
+    painTitle: '想改變髮型、挑選眼鏡或學習化妝穿搭，照搬網紅流行款式卻總覺得跟自己的臉型骨相與個人氣質格格不入，去測個人色彩又動輒數千元',
+    painDescription:
+      '每個人五官留白、顴骨下顎線條、冷暖膚調與眼神氣質都不同，但大多數人並不清楚自己適合「濃顏明豔」還是「淡顏清冷」路線，盲目剪了流行髮型或買錯粉底色號反而暴露缺點；而找專業形象顧問做一次色彩與骨相診斷收費高昂，一般學生與上班族難以負擔。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '臉型髮型適配', '個人色彩診斷', '骨相氣質分析', '外在形象改造'],
+    painTargetGoal: '透過 AI 視覺分析三庭五眼骨相、膚色冷暖與神態氣質，給出客製化的髮型、眼鏡、妝容與穿搭具體建議',
     daysOffset: 7,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-28',
+    painId: 'q-pain-user-28',
     appName: 'AI 動態個人檔案名片夾',
     title: 'AI 個人檔案：整合多平台作品足跡、技能圖譜與可互動分身的智慧數位履歷名片',
     description:
@@ -368,23 +587,39 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', 'AI個人檔案', '數位名片', '動態履歷', '個人品牌'],
     targetGoal: '打造支援一鍵分享、作品集自動同步與 AI 禮賓問答的新世代個人檔案系統',
+    painTitle: '接案作品與專業文章散落在五六個平台，傳統紙本名片與靜態 PDF 履歷死板又常忘記更新，客戶想初步了解合作方向還要約時間重講一遍',
+    painDescription:
+      '現代斜槓工作者與專業人士的成果分散在 GitHub、Behance、Medium、社群貼文與過往專案中，每次投遞合作或商務交流都要重新改寫履歷；對方拿到名片或連結樹（Linktree）也只能看到一排冷冰冰的網址，無法快速針對特定專案經驗提問或確認近期可接案檔期。',
+    painCategory: '日常疑難',
+    painSubcategory: '職場',
+    painTags: ['痛點', '作品集分散', '靜態履歷過時', '數位名片互動', '個人品牌經營'],
+    painTargetGoal: '建立能自動彙整跨平台作品足跡、並附帶可回答合作問題之個人 AI 禮賓分身的智慧動態個人檔案',
     daysOffset: 7,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-29',
+    painId: 'q-pain-user-29',
     appName: 'AI 聊天記錄記憶庫與關係助手',
     title: 'AI 聊天記錄：將長篇對話整理成可搜尋的事件時間軸、待辦承諾清單與人脈偏好備忘錄',
     description:
-      '商務洽談、客戶經營或重要人際互動中，重要資訊常淹沒在幾萬句聊天訊息裡（例如客戶提過的忌口、上次答應寄出的報價細項、對方生日或關注話題）。使用者可匯入授權的對話紀錄，由本地端／加密 AI 自動提煉出「關鍵決議、待辦事項、人物喜好卡片与溝通頻率提醒」，讓每一次聯繫都倍感貼心且絕不漏事。',
+      '商務洽談、客戶經營或重要人際互動中，重要資訊常淹沒在幾萬句聊天訊息裡（例如客戶提過的忌口、上次答應寄出的報價細項、對方生日或關注話題）。使用者可匯入授權的對話紀錄，由本地端／加密 AI 自動提煉出「關鍵決議、待辦事項、人物喜好卡片與溝通頻率提醒」，讓每一次聯繫都倍感貼心且絕不漏事。',
     subcategory: '資通訊',
     tags: ['創新提案', 'AI聊天記錄', '對話記憶庫', '人脈CRM', '隱私優先'],
     targetGoal: '建立端到端加密的對話結構化摘要、承諾追蹤與人脈洞察工具',
+    painTitle: '跟客戶或重要朋友聊了幾千句 LINE 訊息，要找半年前隨口提過的合作細節、飲食禁忌或口頭答應的待辦事項時，用關鍵字根本翻不到',
+    painDescription:
+      '不論是業務經營客戶還是維繫重要人脈，許多關鍵細節（例如對方小孩幾歲、對什麼過敏、上個月通話口頭答應下季再聯繫）都夾雜在冗長的日常閒聊與語音訊息裡。事後想回頭查找時，通訊軟體內建搜尋只要字眼稍微不同就搜不到，常因忘記曾聊過的細節而錯失商機或顯得不夠用心。',
+    painCategory: '日常疑難',
+    painSubcategory: '職場',
+    painTags: ['痛點', '聊天紀錄難搜尋', '口頭承諾遺忘', '人脈關係維護', '對話摘要整理'],
+    painTargetGoal: '將雜亂的長篇聊天記錄自動提煉為可語意檢索的事件時間軸、承諾待辦清單與個人化偏好備忘錄',
     daysOffset: 7,
     hoursOffset: 3,
   },
   {
     id: 'q-idea-user-30',
+    painId: 'q-pain-user-30',
     appName: 'AI 小說開放世界共闖交友',
     title: 'AI 小說式開放世界匹配共同闖關式交友軟體：不看照片先入局，在共同解謎與劇情抉擇中自然破冰',
     description:
@@ -392,11 +627,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '交友軟體', 'AI開放世界', '共同闖關破冰', '互動小說社交'],
     targetGoal: '打造結合雙人協作劇情引擎與價值觀共鳴分析的沉浸式社交平台',
+    painTitle: '傳統交友軟體只看照片左滑右滑，配對成功後永遠卡在「安安、住哪、做什麼工作」的身家調查式尬聊，聊不到十句就放置無疾而終',
+    painDescription:
+      '現在的交友 App 高度外貌焦慮且同質化嚴重，兩個人在完全沒有共同話題與共同經歷的狀態下硬聊，不是像面試一樣問一答一，就是遇到罐頭詐騙訊息；真正重視三觀契合、幽默感與處事默契的人，根本無法從幾張精修照片看出對方遇到事情時的真實反應。',
+    painCategory: '日常疑難',
+    painSubcategory: '感情',
+    painTags: ['痛點', '交友軟體尬聊', '外貌焦慮', '破冰話題缺乏', '三觀默契配對'],
+    painTargetGoal: '以 AI 互動小說開放世界雙人共同闖關取代傳統乾聊，在劇情抉擇與合作解謎中自然破冰並觀察真實默契',
     daysOffset: 7,
     hoursOffset: 4,
   },
   {
     id: 'q-idea-user-31',
+    painId: 'q-pain-user-31',
     appName: 'AI 沉浸式人格任務報酬平台',
     title: '任務報酬平台（問卷、測試）→ 任務 × AI × 沉浸 × 人格：把枯燥市調問卷與產品測試變成角色扮演探索任務',
     description:
@@ -404,11 +647,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '任務報酬平台', '市調問卷', '產品測試', 'AI人格畫像', '遊戲化任務'],
     targetGoal: '建立高信度人格標籤媒合引擎，為企業提供零廢卷的深度用戶測試與市調回饋',
+    painTitle: '企業發市調問卷與產品測試常收到一堆為了領點數 10 秒鐘亂勾的無效廢卷，一般人填傳統百題量表又枯燥到想直接關掉',
+    painDescription:
+      '新創團隊、研究生與品牌方在做市場調查或 App 體驗測試時，花錢買問卷樣本卻常拿到一整排全選「非常同意」的機器人或敷衍填答，無法獲得真實的用戶痛點；而對受測者而言，傳統條列式問卷既冗長無聊又無法精準派發給真正符合該生活型態的目標受眾。',
+    painCategory: '創新創業',
+    painSubcategory: '資訊科技',
+    painTags: ['痛點', '市調問卷無效樣本', '產品封測招募', '遊戲化任務設計', '受眾精準配對'],
+    painTargetGoal: '結合 AI 沉浸式情境對話與真實人格畫像養成，讓受測者在有趣的探索任務中提供高價值的真實回饋',
     daysOffset: 7,
     hoursOffset: 5,
   },
   {
     id: 'q-idea-user-32',
+    painId: 'q-pain-user-32',
     appName: '生成式 AI 潮流藝術品牌',
     title: 'AI 藝術品牌：結合人類策展美學與生成式演算法，打造具獨特世界觀的限量潮流家飾與穿戴藝術',
     description:
@@ -416,11 +667,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '服務文創',
     tags: ['創新提案', 'AI藝術品牌', '文創IP設計', '生成式美學', '實體策展衍生品'],
     targetGoal: '完成首季原創世界觀視覺母題設計與高品質實體工藝聯名產品線打樣',
+    painTitle: '市面上的 AI 生圖作品多半只停留在螢幕桌布或廉價印T恤，缺乏一致的品牌美學世界觀與值得收藏的高質感實體工藝載體',
+    painDescription:
+      '生成式 AI 讓圖片產出變得極為容易，但也因此充斥大量毫無敘事脈絡的速食圖案；創作者想把數位視覺轉化為具有收藏價值的潮流品牌時，常卡在缺乏策展主題定調、特殊材質印刷打樣門檻高，以及無法讓消費者感受到每件單品背後的工藝溫度與獨特性。',
+    painCategory: '創新創業',
+    painSubcategory: '文創工藝',
+    painTags: ['痛點', 'AI創作缺乏品牌感', '數位藝術實體化', '文創IP策展', '潮流家飾工藝'],
+    painTargetGoal: '結合人類策展敘事、生成式視覺母題與高品質實體材質工藝，打造具收藏價值的原創 AI 藝術品牌',
     daysOffset: 6,
     hoursOffset: 1,
   },
   {
     id: 'q-idea-user-33',
+    painId: 'q-pain-user-33',
     appName: 'AI 深度行銷教學與 MIS 庫存連動系統',
     title: 'AI 廣告行銷全鏈路平台：整套行銷方案＋實戰教學 → 工具套接 → Agent 一站生成 → 本土通路投放與 MIS 庫存連動優化',
     description:
@@ -428,11 +687,19 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', 'AI廣告行銷', 'MIS庫存連動', '本土化通路投放', 'Agent工作流', '深度行銷教學'],
     targetGoal: '完成行銷 Agent 與企業進銷存庫存水位即時連動的動態投放優化引擎',
+    painTitle: '中小企業買了一堆 AI 文案生圖工具卻還是不會排整體行銷漏斗，更常發生「廣告還在燒錢推爆品、倉庫早就斷貨或即期品堆滿倉」的產銷脫節',
+    painDescription:
+      '市面上多數 AI 行銷工具只解決「生出一張圖或一段貼文」，傳統中小企業主缺乏專業行銷知識，不知道怎麼把工具套接成完整的本土通路（LINE 官方帳號、FB/IG、團購分潤）投放策略；更嚴重的是行銷投放跟公司內部的進銷存 MIS 完全脫鉤，常出現缺貨商品還在花大錢投廣告、而高庫存滞銷品卻沒人推的虧損狀況。',
+    painCategory: '創新創業',
+    painSubcategory: '資訊科技',
+    painTags: ['痛點', 'AI行銷工具碎片化', '廣告與庫存脫節', '本土通路投放', 'MIS連動優化'],
+    painTargetGoal: '建立從行銷策略教學、Agent 工具鏈一站生成投放，到深度綁定企業 MIS 庫存水位自動加減碼的全鏈路系統',
     daysOffset: 6,
     hoursOffset: 2,
   },
   {
     id: 'q-idea-user-34',
+    painId: 'q-pain-user-34',
     appName: '實體店面智慧選址評估工具',
     title: '店面選址評估工具：整合時段人流輪廓、競品飽和度、租金坪效與外送半徑的開店風險試算系統',
     description:
@@ -440,6 +707,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '店面選址評估工具', '商圈數據分析', '開店試算', '智慧零售'],
     targetGoal: '串聯全台重點商圈人流、競品分布與租金資料庫，提供視覺化選址診斷報告',
+    painTitle: '實體開店簽下三年租約前只能聽房仲吹噓「人潮多」，自己去路口站兩小時算人頭根本看不出平假日落差、競品倒閉率與真實回本門檻',
+    painDescription:
+      '第一次開餐廳、咖啡廳或零售店的人，往往看到某個時段街上人很多就衝動付押金簽長約、砸兩百萬裝潢；開幕後才發現那些人只是趕搭捷運根本不消費（陰陽街效應），或是方圓五百公尺內同品類早已過度飽和、店租佔營業額超過三成，撐不到一年就慘賠頂讓。',
+    painCategory: '創新創業',
+    painSubcategory: '服務餐飲',
+    painTags: ['痛點', '開店選址踩雷', '商圈人流評估', '店面租金坪效', '損益兩平試算'],
+    painTargetGoal: '提供整合分時段真實人流、周邊同業存活率、外送覆蓋人口與租金回本試算的店面選址評估工具',
     daysOffset: 6,
     hoursOffset: 3,
   },
@@ -447,6 +721,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 🛠️ APP小工具 ──
   {
     id: 'q-idea-user-35',
+    painId: 'q-pain-user-35',
     appName: '組織七大控制閥與架構診斷工具',
     title: '組織管理工具：結合「組織七大控制閥」指標盤點、互動式組織結構圖推演與 AI 管理改善建議',
     description:
@@ -454,6 +729,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '資通訊',
     tags: ['創新提案', '組織管理工具', '組織七大控制閥', '組織結構診斷', '企業管理'],
     targetGoal: '將組織管理理論轉化為直覺的互動式架構沙盤與量化健康度檢測工具',
+    painTitle: '公司從十幾人成長到五十人時常陷入「老闆凡事親批累死、一放權又跨部門推諉失控」，卻沒有直覺工具能診斷組織結構哪個控制閥出了問題',
+    painDescription:
+      '許多技術或業務背景出身的創辦人與部門主管，在團隊規模擴張時只會畫簡單的樹狀組織圖，卻忽略了匯報跨度、權責對等、資訊流與績效控制閥的配置；結果不是一個主管同時帶十五個人無暇顧及，就是多頭馬車沒人對最終結果負責，請外部管理顧問做一次組織診斷又動輒數十萬元。',
+    painCategory: '專業問題',
+    painSubcategory: '企業管理',
+    painTags: ['痛點', '組織擴張失控', '跨部門權責不清', '組織七大控制閥', '管理架構診斷'],
+    painTargetGoal: '打造結合「組織七大控制閥」健檢與互動式架構沙盤推演的輕量組織管理工具，即時給出結構調整建議',
     daysOffset: 5,
     hoursOffset: 1,
   },
@@ -461,6 +743,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── 🔧 實體工具 ──
   {
     id: 'q-idea-user-36',
+    painId: 'q-pain-user-36',
     appName: '無粉塵負壓集塵電鑽',
     title: '集塵電鑽：內建環形負壓吸附罩與微型集塵盒，居家與裝修鑽孔從此零粉塵不弄髒牆面',
     description:
@@ -468,6 +751,13 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '集塵電鑽', '實體工具', '無塵施工', '五金機構設計'],
     targetGoal: '完成同軸負壓密封集塵罩機構設計與可拆洗HEPA微型集塵盒工程樣機',
+    painTitle: '在家裡牆壁鑽兩個洞裝層架或冷氣，水泥粉塵直接噴滿整個床單、沙發跟地板，在鑽孔下貼便利貼或一手拿吸塵器接粉既危險又接不乾淨',
+    painDescription:
+      '不管是自己在家 DIY 鎖壁掛架，還是請師傅到已經入住的屋內鑽孔施工，電鑽一轉下去細微的磚牆水泥粉就會順著氣流飄散到家具縫隙裡，鑽完兩個洞要花一小時擦地吸塵；傳統外掛式集塵袋笨重又會擋住鑽孔視線，一個人站在梯子上根本無法同時拿電鑽又扶著吸塵器管子。',
+    painCategory: '日常疑難',
+    painSubcategory: '家務',
+    painTags: ['痛點', '鑽孔水泥粉塵', '居家DIY清潔', '無塵裝修施工', '電動工具改良'],
+    painTargetGoal: '設計內建同軸負壓密封集塵罩與透明快拆集塵盒的一體化集塵電鑽，單手鑽孔即可把粉塵瞬間吸淨',
     daysOffset: 5,
     hoursOffset: 2,
   },
@@ -475,6 +765,7 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
   // ── [產品] ──
   {
     id: 'q-idea-user-37',
+    painId: 'q-pain-user-37',
     appName: '智慧溫控飲水追蹤智能杯',
     title: '智能杯：結合長效恆溫控制、每日飲水量自動感測紀錄與久坐補水呼吸燈提醒的隨行杯',
     description:
@@ -482,10 +773,51 @@ const RAW_USER_IDEAS: RawUserIdea[] = [
     subcategory: '機電運輸',
     tags: ['創新提案', '智能杯', '智慧硬體產品', '飲水健康追蹤', '溫控隨行杯'],
     targetGoal: '完成低功耗防水感測底座、無接點磁吸充電與輕量化保溫杯體工業設計',
+    painTitle: '上班坐在電腦前忙起來一整天喝不到兩杯水，一般保溫瓶剛裝熱水燙嘴、放久又涼掉，用喝水 App 還要每次手動輸入毫升數撐不過三天就放棄',
+    painDescription:
+      '許多上班族與工程師直到下午頭痛或健檢出現結石紅字，才發現自己每天喝水量遠低於標準；雖然下載過喝水提醒 App，但每次喝一口水都要打開手機手動記錄實在太麻煩；而傳統保溫杯看不出裡面水溫是 85 度燙口還是已經冷掉，底座不防水的初代電子杯又常在洗杯子時壞掉。',
+    painCategory: '日常疑難',
+    painSubcategory: '其他',
+    painTags: ['痛點', '久坐忘記喝水', '飲水量自動記錄', '保溫杯防燙溫控', '健康管理產品'],
+    painTargetGoal: '打造全機可水洗、能自動感測實際飲水量並以柔和光環顯示水溫與補水提醒的智慧溫控隨行杯',
     daysOffset: 5,
     hoursOffset: 3,
   },
 ];
+
+export const USER_PAST_PAIN_POINTS: Question[] = RAW_USER_IDEAS.map((item) => ({
+  id: item.painId,
+  title: item.painTitle,
+  description: item.painDescription,
+  category: item.painCategory,
+  subcategory: item.painSubcategory,
+  subcategories: [item.painSubcategory],
+  tags: item.painTags,
+  level: 'L0',
+  bounty: 0,
+  status: 'open',
+  authorId: 'u-vc-ideax',
+  authorName: 'IdeaX創點子團隊',
+  authorAvatar: '/logo-bulb.png',
+  authorTitle: 'IdeaX創點子團隊',
+  createdAt: daysAgo(item.daysOffset, item.hoursOffset + 1),
+  deadline: daysLater(90),
+  views: 0,
+  viewsCount: 0,
+  likes: 0,
+  secondedCount: 0,
+  sameQuestionCount: 0,
+  supportPoints: 0,
+  supporterCount: 0,
+  tippersCount: 0,
+  tipsHistory: [],
+  answersCount: 0,
+  postType: 'pain_point',
+  specialZone: 'pain_points',
+  isCompetitionJoined: false,
+  isSimulated: false,
+  targetGoal: item.painTargetGoal,
+}));
 
 export const USER_PAST_INNOVATION_PROPOSALS: Question[] = RAW_USER_IDEAS.map((item) => ({
   id: item.id,
@@ -520,11 +852,16 @@ export const USER_PAST_INNOVATION_PROPOSALS: Question[] = RAW_USER_IDEAS.map((it
   proposalProgressStage: 'concept',
   isCompetitionJoined: false,
   isSimulated: false,
-  ...(item.referencedPainPoint ? { referencedPainPoint: item.referencedPainPoint } : {}),
+  referencedPainPoint: `[${item.painId}] ${item.painTitle}`,
   targetGoal: item.targetGoal,
 }));
 
+export const USER_PAST_ALL_POSTS: Question[] = [
+  ...USER_PAST_INNOVATION_PROPOSALS,
+  ...USER_PAST_PAIN_POINTS,
+];
+
 export const isUserPastIdeaProposalId = (id?: string | null): boolean => {
   if (!id) return false;
-  return id.startsWith('q-idea-user-');
+  return id.startsWith('q-idea-user-') || id.startsWith('q-pain-user-');
 };

@@ -76,6 +76,9 @@ import {
   ALL_VIRTUAL_ANSWERS_SEED,
   VIRTUAL_PERSONA_USERS,
   USER_PAST_INNOVATION_PROPOSALS,
+  USER_PAST_PAIN_POINTS,
+  USER_PAST_ALL_POSTS,
+  isUserPastIdeaProposalId,
   SIMULATED_BATCH_ID,
   enrichQuestionWithSimulatedData,
   reduceSimulatedProposalLikes,
@@ -1540,7 +1543,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = Date.now();
 
     const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
-    const activeVirtualSeeds = isPurged ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
+    const activeVirtualSeeds = isPurged ? USER_PAST_ALL_POSTS : ALL_VIRTUAL_PROPOSALS_SEED;
     const virtualSeedMap = new Map(
       [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((vq) => [vq.id, vq])
     );
@@ -1693,7 +1696,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
     // 測試環境 (TEST / DEMO)：加回所有題目與虛擬創作者提案，嚴格過濾黑名單（永久刪除與過期下架）
-    const combinedSeeds = isPurged ? USER_PAST_INNOVATION_PROPOSALS : [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
+    const combinedSeeds = isPurged ? USER_PAST_ALL_POSTS : [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
@@ -3012,7 +3015,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const isPurgedPull = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
         const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
-        const seedSourceForPull = isPurgedPull ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
+        const seedSourceForPull = isPurgedPull ? USER_PAST_ALL_POSTS : ALL_VIRTUAL_PROPOSALS_SEED;
         const missingVirtualForCloud = seedSourceForPull.filter((vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id));
         if (missingVirtualForCloud.length > 0) {
           syncQuestionsToFirestore(missingVirtualForCloud);
@@ -3361,11 +3364,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'q-vp-idea-stallmatch',
             'q-vp-vibe-stallmatch',
           ]);
-          const seedSourceForBoot = isPurgedBoot ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
+          const isUserPastPainMigrated = localStorage.getItem(`${STORAGE_KEY_PREFIX}user_past_pain_v1`) === 'true';
+          const seedSourceForBoot = isPurgedBoot ? USER_PAST_ALL_POSTS : ALL_VIRTUAL_PROPOSALS_SEED;
           const missingVirtualForCloud = seedSourceForBoot.filter(
             (vq) =>
               !currentDeleted.has(vq.id) &&
-              (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
+              (!existingCloudQIds.has(vq.id) ||
+                (!isSeedMigratedV8 && priorityIds.has(vq.id)) ||
+                (!isUserPastPainMigrated && isUserPastIdeaProposalId(vq.id)))
           );
           if (connected) {
             if (missingVirtualForCloud.length > 0) {
@@ -3380,6 +3386,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}user_past_pain_v1`, 'true');
             } catch {}
           }
           const mergedById = new Map<string, Question>();

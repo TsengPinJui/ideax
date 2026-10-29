@@ -5,8 +5,8 @@ import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 import { SEED_THREADS } from './seedThreads';
 import { AGENT_PERSONAS, AGENT_PAIN_POINTS, AGENT_INNOVATION_PROPOSALS, AGENT_L0_DISCUSSIONS } from './agentPersonaSeed';
-import { USER_PAST_INNOVATION_PROPOSALS, isUserPastIdeaProposalId } from './userPastIdeasSeed';
-export { USER_PAST_INNOVATION_PROPOSALS, isUserPastIdeaProposalId };
+import { USER_PAST_INNOVATION_PROPOSALS, USER_PAST_PAIN_POINTS, USER_PAST_ALL_POSTS, isUserPastIdeaProposalId } from './userPastIdeasSeed';
+export { USER_PAST_INNOVATION_PROPOSALS, USER_PAST_PAIN_POINTS, USER_PAST_ALL_POSTS, isUserPastIdeaProposalId };
 
 export interface VirtualPersona {
   id: string;
@@ -3961,7 +3961,7 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
 }
 
 // 原創 IP 角色發的痛點、提案與日常討論
-SEED_PAIN_POINTS.push(...AGENT_PAIN_POINTS);
+SEED_PAIN_POINTS.push(...AGENT_PAIN_POINTS, ...USER_PAST_PAIN_POINTS);
 SEED_INNOVATION_PROPOSALS.push(...AGENT_INNOVATION_PROPOSALS, ...USER_PAST_INNOVATION_PROPOSALS);
 SEED_L0_DISCUSSIONS.push(...AGENT_L0_DISCUSSIONS);
 
