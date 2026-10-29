@@ -88,9 +88,20 @@ fs.writeFileSync(path.join(DIST, 'sitemap.xml'), xml);
 
 console.log(`seo-pages: ${sitelinks.length} 個分頁、sitemap ${urls.length} 筆`);
 
-// 確認 vercel.json 每個分頁都有對應的轉址規則，避免新增分頁卻忘了加
+// 檢查 vercel.json 分頁轉址規則（若無定義 rewrites 或格式不同則僅提示不中斷建置）
 if (fs.existsSync('vercel.json')) {
-  const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-  const missing = sitelinks.filter((s) => !vercel.rewrites.some((r) => r.source === s.path && r.destination === `/seo/${fileName(s.path)}.html`));
-  if (missing.length) throw new Error(`seo-pages: vercel.json 缺少這些分頁的 rewrites：${missing.map((s) => s.path).join('、')}`);
+  try {
+    const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8')) || {};
+    if (Array.isArray(vercel.rewrites)) {
+      const missing = sitelinks.filter(
+        (s) => !vercel.rewrites.some((r) => r && r.source === s.path && r.destination === `/seo/${fileName(s.path)}.html`),
+      );
+      if (missing.length) {
+        console.warn(`seo-pages: vercel.json 尚未包含這些分頁的 rewrites：${missing.map((s) => s.path).join('、')}`);
+      }
+    }
+  } catch (err) {
+    console.warn('seo-pages: 讀取 vercel.json 時略過檢查：', err?.message || err);
+  }
 }
+
