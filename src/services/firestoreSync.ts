@@ -2034,20 +2034,33 @@ export async function saveHomeShowcaseConfig(config: Record<string, any>): Promi
   }
 }
 
-export async function touchUserLastActive(userId?: string): Promise<void> {
+export async function touchUserLastActive(userId?: string, force = false): Promise<void> {
   if (!userId || userId === 'user-guest') return;
   const key = `ideax_last_active_touch_${userId}`;
   try {
-    const last = Number(localStorage.getItem(key) || 0);
-    if (Date.now() - last < 10 * 60 * 1000) return;
-    localStorage.setItem(key, String(Date.now()));
+    if (!force) {
+      const last = Number(localStorage.getItem(key) || 0);
+      if (Date.now() - last < 10 * 60 * 1000) return;
+    }
   } catch {}
+  const nowIso = new Date().toISOString();
   try {
     const { getAuthHeaders } = await import('./authHeader');
     const headers = await getAuthHeaders();
-    if (!headers.Authorization) return;
-    await fetch('/api/me/active', { method: 'POST', headers, body: JSON.stringify({ userId }) });
+    if (headers.Authorization) {
+      const r = await fetch('/api/me/active', { method: 'POST', headers, body: JSON.stringify({ userId }) });
+      if (r.ok) {
+        try { localStorage.setItem(key, String(Date.now())); } catch {}
+        return;
+      }
+    }
+  } catch {}
+  // 備援：若後端 API 未就緒或尚未取得 Token，直接寫入 Firestore user_activity
+  try {
+    await setDoc(doc(db, 'user_activity', userId), { lastActiveAt: nowIso }, { merge: true });
+    try { localStorage.setItem(key, String(Date.now())); } catch {}
   } catch {
     try { localStorage.removeItem(key); } catch {}
   }
 }
+

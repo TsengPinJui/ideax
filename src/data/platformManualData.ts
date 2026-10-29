@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#271',
+    version: 'v4.7.0',
+    releaseDate: '2026.10.29',
+    releaseTime: '22:42',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修復管理後台會員「最近上線」顯示為「尚無紀錄」的問題',
+    changes: [
+      '開放 Firestore 針對 `/user_activity/{userId}` 集合的讀取與安全寫入規則，並支援後端 API 與前端雲端雙通道備援同步。',
+      '修復 `touchUserLastActive` 在剛載入尚未取得 Auth Token 時提早鎖定 10 分鐘冷卻時間的問題，並補齊所有既有真實會員的最近上線與活動時間戳記。',
+      '強化 `resolveUserLatestSeenMs`：同步比對 `user.id`、`user.authUid` 與真實會員既有活動紀錄，解決管理後台與個人資訊頁顯示「尚無紀錄」的問題。',
+    ],
+  },
+  {
     seqNumber: '#270',
     version: 'v4.6.9',
     releaseDate: '2026.10.29',

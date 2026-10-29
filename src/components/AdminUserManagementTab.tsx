@@ -53,9 +53,7 @@ import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
 import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
 
 /** 最近上線：登入時間與最近活動時間取比較晚的那個 */
-const latestSeen = (...ts: Array<string | undefined>) =>
-  ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
-import { useUserActivityMap } from '../services/userActivity';
+import { useUserActivityMap, resolveUserLatestSeenMs } from '../services/userActivity';
 import { AdminAnswerSecretsCard, AdminPrivateProfilesCard } from './AdminAnswerSecretsCard';
 
 interface AdminUserManagementTabProps {
@@ -454,11 +452,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   };
 
   const getUserActiveTimestamp = (u: User) => {
-    return latestSeen(
-      userActivity[u.id],
-      u.updatedAt,
-      (u as any).createdAt
-    );
+    return resolveUserLatestSeenMs(u, userActivity);
   };
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -959,11 +953,13 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         <span className="text-stone-300">·</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span>最近上線：<strong className="text-stone-700 tabular-nums">{
-                            u.lastLoginAt || u.lastActiveAt || userActivity[u.id]
-                              ? new Date(latestSeen(u.lastLoginAt, u.lastActiveAt, userActivity[u.id])).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-                              : isSelf ? '目前在線上' : '尚無紀錄'
-                          }</strong></span>
+                          <span>最近上線：<strong className="text-stone-700 tabular-nums">{(() => {
+                            const seenMs = resolveUserLatestSeenMs(u, userActivity);
+                            if (seenMs > 0) {
+                              return new Date(seenMs).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            }
+                            return isSelf ? '目前在線上' : '尚無紀錄';
+                          })()}</strong></span>
                         </span>
                         <span className="text-stone-300">·</span>
                         <span>可用點數：<strong className="text-stone-700 tabular-nums">{(u.balance || 0).toLocaleString()}</strong></span>

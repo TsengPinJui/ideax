@@ -5084,16 +5084,22 @@ app.post('/api/me/active', async (req: Request, res: Response) => {
     const userId = String(req.body?.userId || '').replace(/[^\w-]/g, '').slice(0, 64);
     if (!userId) return res.status(400).json({ ok: false });
     if (activityOwnerCache.get(userId) !== au.uid) {
-      // 只能更新自己的：會員資料上的 authUid 要是這個登入帳號
-      const snap = await adminDb.collection('users').doc(userId).get();
-      const d: any = snap.exists ? snap.data() : null;
-      if (!(userId === au.uid || d?.authUid === au.uid)) return res.status(403).json({ ok: false });
+      // 只能更新自己的：會員資料上的 authUid 要是這個登入帳號，或 userId 本身等於 au.uid
+      if (userId !== au.uid) {
+        const snap = await adminDb.collection('users').doc(userId).get();
+        const d: any = snap.exists ? snap.data() : null;
+        if (d?.authUid !== au.uid) return res.status(403).json({ ok: false });
+      }
       activityOwnerCache.set(userId, au.uid);
       if (activityOwnerCache.size > 5000) activityOwnerCache.delete(activityOwnerCache.keys().next().value as string);
     }
     if (Date.now() - (activityLastWrite.get(userId) || 0) < 5 * 60 * 1000) return res.json({ ok: true, skipped: true });
     activityLastWrite.set(userId, Date.now());
-    await adminDb.collection('user_activity').doc(userId).set({ lastActiveAt: new Date().toISOString() }, { merge: true });
+    const nowIso = new Date().toISOString();
+    await adminDb.collection('user_activity').doc(userId).set({ lastActiveAt: nowIso }, { merge: true });
+    if (au.uid && au.uid !== userId) {
+      await adminDb.collection('user_activity').doc(au.uid).set({ lastActiveAt: nowIso }, { merge: true });
+    }
     res.json({ ok: true });
   } catch {
     res.status(500).json({ ok: false });
@@ -5105,7 +5111,7 @@ app.post('/api/me/active', async (req: Request, res: Response) => {
 app.post('/api/admin/data-repair', async (req: Request, res: Response) => {
   try {
     const au = await verifyAuthToken(req.headers.authorization as string | undefined);
-    if (!au || !(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, error: '只有管理員可以使用' });
+    if (!au || !(await isVerifiedAdmin(au.uid, au.email))) return res.status(403).json({ ok: false, error: '只有管理員可以使用' });
     const wanted = Array.isArray(req.body?.categories) ? req.body.categories.map(String) : ALL_REPAIR_CATEGORIES;
     const categories = ALL_REPAIR_CATEGORIES.filter((c) => wanted.includes(c));
     if (!categories.length) return res.status(400).json({ ok: false, error: '請至少選一個類別' });
@@ -5121,7 +5127,7 @@ app.post('/api/admin/data-repair', async (req: Request, res: Response) => {
 app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
   try {
     const au = await verifyAuthToken(req.headers.authorization as string | undefined);
-    if (!au || !(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false });
+    if (!au || !(await isVerifiedAdmin(au.uid, au.email))) return res.status(403).json({ ok: false });
     const snap = await adminDb.collection('user_activity').get();
     const map: Record<string, string> = {};
     snap.docs.forEach((d) => { const t = d.data()?.lastActiveAt; if (t) map[d.id] = String(t); });

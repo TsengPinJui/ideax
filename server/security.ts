@@ -53,7 +53,7 @@ export async function requireAdminMiddleware(req: Request, res: Response, next: 
           : '未授權：沒有登入憑證，請以管理員 Email 登入（不能用本機帳號切換）',
       });
     }
-    if (!(await isVerifiedAdmin(authUser.uid))) {
+    if (!(await isVerifiedAdmin(authUser.uid, authUser.email))) {
       return res.status(403).json({
         success: false,
         error: `未授權：${authUser.email || authUser.uid} 不在管理員名單。請確認 Vercel 的 ADMIN_EMAILS 包含此 Email 且已完成 Email 驗證，或在 Firestore 的 admins 建立文件 ${authUser.uid}`,

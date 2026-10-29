@@ -856,9 +856,13 @@ function getAdminEmailAllowlist(): string[] {
   return Array.from(new Set([...envEmails, ...defaults]));
 }
 
-export async function isVerifiedAdmin(uid: string): Promise<boolean> {
+export async function isVerifiedAdmin(uid: string, tokenEmail?: string): Promise<boolean> {
   if (!uid) return false;
   if (uid === 'ZRXZWS8iiPg91CUV6vQrehK6ZW62' || uid === '3uFheztxFGUlsLy2hbVHNVFduTK2') return true;
+  if (tokenEmail && getAdminEmailAllowlist().includes(tokenEmail.trim().toLowerCase())) {
+    adminCheckCache.set(uid, { ok: true, at: Date.now() });
+    return true;
+  }
   const cached = adminCheckCache.get(uid);
   if (cached && Date.now() - cached.at < ADMIN_CHECK_TTL_MS) return cached.ok;
 
@@ -892,14 +896,21 @@ export async function isVerifiedAdmin(uid: string): Promise<boolean> {
     if (email && getAdminEmailAllowlist().includes(email)) return remember(true);
   } catch {}
 
-  // 3. 檢查 users 集合：若明確具有 role: 'admin' 或 Email 在白名單
+  // 3. 檢查 users 與 user_private 集合：若明確具有 role: 'admin' / isInitialAdmin 或 Email 在白名單
   try {
     const userDoc = await adminDb.collection('users').doc(uid).get();
     if (userDoc.exists) {
       const uData = userDoc.data();
       const uEmail = (uData?.email || '').toLowerCase();
       if (uEmail && getAdminEmailAllowlist().includes(uEmail)) return remember(true);
-      if (uData?.role === 'admin') return remember(true);
+      if (uData?.role === 'admin' || uData?.accountType === 'admin' || uData?.isInitialAdmin === true) return remember(true);
+    }
+    const byAuthSnap = await adminDb.collection('users').where('authUid', '==', uid).limit(1).get();
+    if (!byAuthSnap.empty) {
+      const uData = byAuthSnap.docs[0].data();
+      const uEmail = (uData?.email || '').toLowerCase();
+      if (uEmail && getAdminEmailAllowlist().includes(uEmail)) return remember(true);
+      if (uData?.role === 'admin' || uData?.accountType === 'admin' || uData?.isInitialAdmin === true) return remember(true);
     }
   } catch {}
 

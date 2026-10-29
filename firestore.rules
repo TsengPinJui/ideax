@@ -388,6 +388,13 @@ service cloud.firestore {
 
     // 其他集合（創星季提案、功能使用統計、上線紀錄、在線人數等）：
     // 一律由伺服器服務帳戶寫入；前端只保留公開提案與連線測試的讀取，其餘只有管理員
+    // 會員最近上線時間（僅存 lastActiveAt 時間戳記，不含個資）
+    match /user_activity/{userId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['lastActiveAt', 'updatedAt', 'userId', 'authUid']) &&
+        request.resource.data.get('lastActiveAt', '') is string;
+      allow delete: if isAdmin();
+    }
     match /competition_proposals/{id} {
       allow read: if true;
       allow write: if isAdmin();

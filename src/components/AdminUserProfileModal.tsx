@@ -40,12 +40,8 @@ import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { CopyableUserId } from './CopyableUserId';
 
-import { useUserActivityMap } from '../services/userActivity';
+import { useUserActivityMap, resolveUserLatestSeenMs } from '../services/userActivity';
 import { getAdminSiteBadgeClass, getAdminSiteLabel, isInitialAdmin } from '../utils/adminPermissions';
-
-/** 最近上線：登入時間與最近活動時間取比較晚的那個 */
-const latestSeen = (...ts: Array<string | undefined>) =>
-  ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
 
 interface AdminUserProfileModalProps {
   user: User;
@@ -489,7 +485,12 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                     <span className="text-stone-400 block text-[11px]">最近上線時間</span>
                     <span className="font-bold text-stone-900 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>{user.lastLoginAt || user.lastActiveAt || userActivity[user.id] ? new Date(latestSeen(user.lastLoginAt, user.lastActiveAt, userActivity[user.id])).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '尚無紀錄'}</span>
+                      <span>{(() => {
+                        const seenMs = resolveUserLatestSeenMs(user, userActivity);
+                        return seenMs > 0
+                          ? new Date(seenMs).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                          : '尚無紀錄';
+                      })()}</span>
                     </span>
                   </div>
 
