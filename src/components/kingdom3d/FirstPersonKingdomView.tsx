@@ -43,6 +43,7 @@ import { DevStatsPanel } from './DevStatsPanel';
 import { painForFloor } from './PainFloorModal';
 import { getStoryLayout, levelColliders, upTrigger, downTrigger, toLocal, toWorld, FLOOR_H, StoryLayout } from './stylized/multiStory';
 import { RING, ringLevelColliders, ringStair, insideRing } from './stylized/tulou';
+import { IslandLoadingOverlay } from '../island/IslandLoadingOverlay';
 import {
   HALL_BUILDINGS,
   HALL_ZONES,
@@ -3839,23 +3840,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         className="absolute inset-0 w-full h-full touch-none cursor-grab active:cursor-grabbing"
       />
 
-      {/* 載入畫面（水墨風，支援載入期間直接切換 3D地圖 或 實境漫遊） */}
-      {(regionStatus === 'loading' || (!warmDone && regionStatus !== 'error')) && (
-        <div className="kx-root absolute inset-0 z-40 flex flex-col items-center justify-center p-6" style={{ background: 'radial-gradient(ellipse at center, #2b1a10 0%, #120a06 75%)' }}>
-          <svg viewBox="0 0 120 70" className="w-40 h-24 mb-3 opacity-90" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <path key={i} d={`M ${48 + i * 2} ${54 - i * 9} L ${72 - i * 2} ${54 - i * 9} L ${68 - i * 2} ${50 - i * 9} L ${52 + i * 2} ${50 - i * 9} Z`} fill="#b3261e" stroke="#e2b85a" strokeWidth="0.8" />
-            ))}
-            <path d="M 0 66 Q 30 50 60 62 T 120 60 L 120 70 L 0 70 Z" fill="rgba(226,184,90,0.18)" />
-          </svg>
-          <div className="kx-title text-xl sm:text-2xl">創點源・五島</div>
-          <div className="kx-sub text-[13px] mt-1">{regionStatus === 'loading' ? '正在搭起樓閣、點亮燈籠…' : '最後整理一下，讓畫面更順暢…'}</div>
-          <div className="w-60 h-1.5 mt-5 rounded-full overflow-hidden" style={{ background: 'rgba(226,184,90,0.18)' }}>
-            <div className="h-full transition-all duration-200" style={{ width: `${Math.max(8, loadProgress)}%`, background: 'linear-gradient(90deg,#b3261e,#e2b85a)' }} />
-          </div>
-          <div className="kx-sub text-[12px] mt-2 tabular-nums">{regionStatus === 'loading' ? loadProgress : 100}%</div>
-        </div>
-      )}
+      {/* 載入畫面（水墨風，支援載入期間直接切換 3D地圖 或 實境漫遊，並提供微動進度條與探索錦囊） */}
+      <IslandLoadingOverlay
+        mode="roam"
+        isLoading={regionStatus === 'loading' || (!warmDone && regionStatus !== 'error')}
+        externalProgress={loadProgress}
+        loadingHint={regionStatus === 'loading' ? '正在搭起樓閣、點亮燈籠、編譯江南水鄉材質…' : '正在完成最後水墨暖機，讓漫遊視野更順暢…'}
+        onQuickEnter={() => {
+          setWarmDone(true);
+        }}
+        onSwitchMode={() => {
+          if (onSwitchToIslandMap) {
+            onSwitchToIslandMap();
+          } else {
+            handleExit();
+          }
+        }}
+      />
 
       {/* 載入失敗：重試或回到原本的島 */}
       {regionStatus === 'error' && (

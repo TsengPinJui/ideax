@@ -107,11 +107,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isRendered, setIsRendered] = useState(true);
-  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  // 隨機初始技巧與狀態訊息，確保每次進站都有全新發現，不再千篇一律
+  const [currentTipIndex, setCurrentTipIndex] = useState<number>(() =>
+    Math.floor(Math.random() * PLATFORM_TIPS.length)
+  );
   const [isTipFading, setIsTipFading] = useState(false);
   const [bulbSparkleActive, setBulbSparkleActive] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
-  const [statusMessageIndex, setStatusMessageIndex] = useState(0);
+  const [statusMessageIndex, setStatusMessageIndex] = useState<number>(() =>
+    Math.floor(Math.random() * (DYNAMIC_STATUS_MESSAGES.length - 1))
+  );
 
   // 平滑持續微動進度條：避免網路稍慢時進度條完全停滯，給使用者生動流暢的視覺反饋
   const [displayProgress, setDisplayProgress] = useState<number>(() => {

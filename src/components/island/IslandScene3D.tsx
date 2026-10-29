@@ -5,6 +5,7 @@ import { playTempleBell } from '../../utils/templeBell';
 import { nextBulbVerse } from './easterEggBook';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { IslandLoadingOverlay } from './IslandLoadingOverlay';
 
 export type TimeOfDayPhase = 'morning' | 'noon' | 'dusk' | 'night';
 export type TimeOfDayMode = 'auto' | TimeOfDayPhase;
@@ -11667,102 +11668,24 @@ export const IslandScene3D: React.FC<IslandScene3DProps> = ({
         </div>
       )}
 
-      {/* 3D 地圖載入中提示與轉圈圈動畫（支援在載入畫面直接選擇進入 3D地圖 或 實境漫遊） */}
-      <div
-        className={`island-ui-interactive absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-500 ${
-          isSceneLoading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        style={{ touchAction: 'manipulation' }}
-        aria-live="polite"
-        aria-busy={isSceneLoading}
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
-        <div
-          className="island-ui-interactive flex flex-col items-center gap-4 rounded-3xl border border-amber-200/60 bg-stone-900/80 px-6 sm:px-8 py-6 text-center shadow-2xl backdrop-blur-md max-w-[92vw]"
-          style={{ touchAction: 'manipulation' }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {/* 雙環轉圈圈動畫 */}
-          <div className="relative flex h-14 w-14 items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-4 border-amber-200/20" />
-            <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-amber-400 border-r-amber-300" />
-            <div
-              className="h-8 w-8 animate-spin rounded-full border-2 border-transparent border-b-teal-300 border-l-teal-400"
-              style={{ animationDirection: 'reverse', animationDuration: '1.4s' }}
-            />
-            <div className="h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_10px_#fcd34d]" />
-          </div>
-
-          <div className="space-y-1">
-            <div className="text-base font-black tracking-wider text-amber-100">
-              正在載入創點源 3D 地圖...
-            </div>
-            <div className="text-xs font-medium text-stone-300">{loadingHint}</div>
-          </div>
-
-          {/* 動態進度光條 */}
-          <div className="h-1.5 w-48 overflow-hidden rounded-full bg-stone-700/80">
-            <div className="h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-teal-400 via-amber-300 to-amber-500" />
-          </div>
-
-          {/* 載入畫面直接選擇：3D地圖 ⇄ 實境漫遊 */}
-          <div className="pt-1 flex flex-col items-center gap-2 w-full">
-            <span className="text-[11px] text-amber-200/85 font-semibold tracking-wide">
-              可隨時選擇您要進入的探索模式：
-            </span>
-            <div
-              className="inline-flex items-center p-1 rounded-full bg-stone-950/75 border border-amber-300/45 shadow-inner gap-1"
-              role="group"
-              aria-label="載入期間選擇探索模式"
-            >
-              <button
-                type="button"
-                style={{ touchAction: 'manipulation' }}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  startBootNowRef.current?.();
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startBootNowRef.current?.();
-                }}
-                className="px-4 py-1.5 rounded-full text-xs sm:text-sm font-black text-amber-50 bg-gradient-to-b from-[#b3261e] to-[#7d1a16] border border-amber-300/70 shadow-sm cursor-pointer transition-transform active:scale-95"
-              >
-                3D地圖（載入中）
-              </button>
-              <button
-                type="button"
-                style={{ touchAction: 'manipulation' }}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  cancelBootRef.current?.();
-                  if (onSwitchToKingdom3D) onSwitchToKingdom3D();
-                  else {
-                    window.dispatchEvent(
-                      new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } })
-                    );
-                  }
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cancelBootRef.current?.();
-                  if (onSwitchToKingdom3D) onSwitchToKingdom3D();
-                  else {
-                    window.dispatchEvent(
-                      new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } })
-                    );
-                  }
-                }}
-                className="px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold text-amber-100/90 hover:text-amber-50 hover:bg-amber-500/25 border border-transparent hover:border-amber-300/40 cursor-pointer transition-all active:scale-95"
-              >
-                進入實境漫遊 →
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* 3D 地圖載入中提示與轉圈圈動畫（支援在載入畫面直接選擇進入 3D地圖 或 實境漫遊，並提供微動進度條與探索錦囊） */}
+      <IslandLoadingOverlay
+        mode="map3d"
+        isLoading={isSceneLoading}
+        loadingHint={loadingHint}
+        onQuickEnter={() => {
+          startBootNowRef.current?.();
+        }}
+        onSwitchMode={() => {
+          cancelBootRef.current?.();
+          if (onSwitchToKingdom3D) onSwitchToKingdom3D();
+          else {
+            window.dispatchEvent(
+              new CustomEvent('ideax_open_kingdom3d', { detail: { from: 'island' } })
+            );
+          }
+        }}
+      />
 
       {/* 3D World-Projected Floating Callout Badges (分級顯示：<75% 一級島名，>=75% 只顯示二級，>=100% 顯示三級) */}
       <div
