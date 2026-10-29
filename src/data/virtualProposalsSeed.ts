@@ -5,6 +5,8 @@ import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 import { SEED_THREADS } from './seedThreads';
 import { AGENT_PERSONAS, AGENT_PAIN_POINTS, AGENT_INNOVATION_PROPOSALS, AGENT_L0_DISCUSSIONS } from './agentPersonaSeed';
+import { USER_PAST_INNOVATION_PROPOSALS, isUserPastIdeaProposalId } from './userPastIdeasSeed';
+export { USER_PAST_INNOVATION_PROPOSALS, isUserPastIdeaProposalId };
 
 export interface VirtualPersona {
   id: string;
@@ -128,6 +130,7 @@ export function isSimulatedUser(userOrId?: Partial<User> | string | null): boole
 export function isSimulatedQuestion(qOrId?: Partial<Question> | string | null): boolean {
   if (!qOrId) return false;
   const id = typeof qOrId === 'string' ? qOrId : qOrId.id || '';
+  if (isUserPastIdeaProposalId(id)) return false;
   const obj = typeof qOrId === 'object' ? qOrId : null;
   if (obj?.isSimulated || obj?.simulatedBatchId === SIMULATED_BATCH_ID) return true;
   if (
@@ -3959,7 +3962,7 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
 
 // 原創 IP 角色發的痛點、提案與日常討論
 SEED_PAIN_POINTS.push(...AGENT_PAIN_POINTS);
-SEED_INNOVATION_PROPOSALS.push(...AGENT_INNOVATION_PROPOSALS);
+SEED_INNOVATION_PROPOSALS.push(...AGENT_INNOVATION_PROPOSALS, ...USER_PAST_INNOVATION_PROPOSALS);
 SEED_L0_DISCUSSIONS.push(...AGENT_L0_DISCUSSIONS);
 
 const RAW_VIRTUAL_PROPOSALS_SEED: Question[] = [
@@ -4055,7 +4058,7 @@ export const ALL_VIRTUAL_PROPOSALS_SEED: Question[] = RAW_VIRTUAL_PROPOSALS_SEED
  * 供創星季 / 創點子提案詳情彈窗取得模擬留言討論（當後端尚無真實留言時自動補齊差異化討論串）
  */
 export function getSimulatedProposalComments(proposalId: string, proposalTitleOrPurged?: string | boolean): ProposalComment[] {
-  if (proposalTitleOrPurged === true) return [];
+  if (proposalTitleOrPurged === true || isUserPastIdeaProposalId(proposalId)) return [];
   const proposalTitle = typeof proposalTitleOrPurged === 'string' ? proposalTitleOrPurged : undefined;
   const matchedAns = ALL_VIRTUAL_ANSWERS_SEED.filter((a) => a.questionId === proposalId && a.type === 'discussion');
   

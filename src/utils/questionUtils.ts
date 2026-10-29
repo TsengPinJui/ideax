@@ -1,5 +1,6 @@
 import { Question } from '../types';
 import { deriveInnovationProposalName } from './titleFormat';
+import { generateTitleCover } from './proposalImageUtils';
 
 /**
  * 1. 判斷該提問是否屬於「提出痛點」(pain_point)
@@ -81,7 +82,15 @@ export const isSeekSolutionQuestion = (question?: Partial<Question> | null): boo
 export const questionToStarSeasonProposal = (q: Question): import('../types/competition').StarSeasonProposal => {
   let track: import('../types/competition').StarSeasonTrack = 'ict';
   const text = `${q.category} ${q.subcategory || ''} ${(q.tags || []).join(' ')} ${q.title}`;
-  if (
+  if (q.subcategory === '生醫化材') {
+    track = 'biomedical';
+  } else if (q.subcategory === '機電運輸') {
+    track = 'mechanical_transport';
+  } else if (q.subcategory === '服務文創') {
+    track = 'cultural_services';
+  } else if (q.subcategory === '資通訊') {
+    track = 'ict';
+  } else if (
     text.includes('醫療') ||
     text.includes('生技') ||
     text.includes('健康') ||
@@ -124,29 +133,6 @@ export const questionToStarSeasonProposal = (q: Question): import('../types/comp
     track = 'ict';
   }
 
-  const fallbackImagePool: string[] = [
-    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80',
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < q.id.length; i++) {
-    hash = (hash * 31 + q.id.charCodeAt(i)) >>> 0;
-  }
   const resolvedCover = q.coverImage || (q as any).vibeCodingData?.coverImageUrl;
   const resolvedGallery = q.galleryImages || q.screenshots || (q as any).vibeCodingData?.screenshots || [];
 
@@ -157,7 +143,7 @@ export const questionToStarSeasonProposal = (q: Question): import('../types/comp
   const imgs =
     combinedImgs.length > 0
       ? combinedImgs
-      : [fallbackImagePool[hash % fallbackImagePool.length]];
+      : [generateTitleCover(q.id, q.appName || q.title)];
 
   return {
     id: q.id,

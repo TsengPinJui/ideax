@@ -164,6 +164,9 @@ export const isFakeProposal = (p: any): boolean => {
   }
   const id = String(p.id || '');
   const authorId = String(p.authorId || '');
+  if (p.isCompetitionJoined === false || id.startsWith('q-idea-user-')) {
+    return true;
+  }
   return (
     id.startsWith('demo-') ||
     id.startsWith('test-') ||

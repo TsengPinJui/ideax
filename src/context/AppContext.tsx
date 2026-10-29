@@ -75,6 +75,7 @@ import {
   ALL_VIRTUAL_PROPOSALS_SEED,
   ALL_VIRTUAL_ANSWERS_SEED,
   VIRTUAL_PERSONA_USERS,
+  USER_PAST_INNOVATION_PROPOSALS,
   SIMULATED_BATCH_ID,
   enrichQuestionWithSimulatedData,
   reduceSimulatedProposalLikes,
@@ -1539,7 +1540,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = Date.now();
 
     const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
-    const activeVirtualSeeds = isPurged ? [] : ALL_VIRTUAL_PROPOSALS_SEED;
+    const activeVirtualSeeds = isPurged ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
     const virtualSeedMap = new Map(
       [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((vq) => [vq.id, vq])
     );
@@ -1692,7 +1693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
     // 測試環境 (TEST / DEMO)：加回所有題目與虛擬創作者提案，嚴格過濾黑名單（永久刪除與過期下架）
-    const combinedSeeds = isPurged ? [] : [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
+    const combinedSeeds = isPurged ? USER_PAST_INNOVATION_PROPOSALS : [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
@@ -3011,9 +3012,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const isPurgedPull = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
         const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
-        const missingVirtualForCloud = isPurgedPull
-          ? []
-          : ALL_VIRTUAL_PROPOSALS_SEED.filter((vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id));
+        const seedSourceForPull = isPurgedPull ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
+        const missingVirtualForCloud = seedSourceForPull.filter((vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id));
         if (missingVirtualForCloud.length > 0) {
           syncQuestionsToFirestore(missingVirtualForCloud);
         }
@@ -3361,13 +3361,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'q-vp-idea-stallmatch',
             'q-vp-vibe-stallmatch',
           ]);
-          const missingVirtualForCloud = isPurgedBoot
-            ? []
-            : ALL_VIRTUAL_PROPOSALS_SEED.filter(
-                (vq) =>
-                  !currentDeleted.has(vq.id) &&
-                  (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
-              );
+          const seedSourceForBoot = isPurgedBoot ? USER_PAST_INNOVATION_PROPOSALS : ALL_VIRTUAL_PROPOSALS_SEED;
+          const missingVirtualForCloud = seedSourceForBoot.filter(
+            (vq) =>
+              !currentDeleted.has(vq.id) &&
+              (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
+          );
           if (connected) {
             if (missingVirtualForCloud.length > 0) {
               syncQuestionsToFirestore(missingVirtualForCloud);
