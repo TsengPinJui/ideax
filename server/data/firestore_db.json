@@ -2187,10 +2187,10 @@
       "category": "網站程式",
       "subcategory": "效率工具",
       "tags": [
-        "VibeCoding",
+        "擴充功能",
+        "網站程式",
         "Chrome插件",
-        "學術研究",
-        "知識管理"
+        "學術研究"
       ],
       "level": "L0",
       "bounty": 0,
@@ -2276,7 +2276,8 @@
       ],
       "updatedAt": "2026-10-22T22:36:21.696Z",
       "viewsCount": 553,
-      "previewMode": "embed"
+      "previewMode": "embed",
+      "isComingSoon": false
     },
     "q-vp-vibe-14": {
       "id": "q-vp-vibe-14",
@@ -2286,7 +2287,8 @@
       "category": "網站程式",
       "subcategory": "健康生活",
       "tags": [
-        "VibeCoding",
+        "網站程式",
+        "實用工具",
         "睡眠健康",
         "正念呼吸",
         "白噪音PWA"
@@ -2359,7 +2361,8 @@
       "subcategories": [
         "網站程式"
       ],
-      "tertiaryCategory": "實用工具"
+      "tertiaryCategory": "實用工具",
+      "isComingSoon": false
     },
     "q-vp-idea-ideax": {
       "id": "q-vp-idea-ideax",

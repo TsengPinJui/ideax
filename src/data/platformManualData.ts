@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#272',
+    version: 'v4.7.1',
+    releaseDate: '2026.10.29',
+    releaseTime: '23:32',
+    author: 'IdeaX 核心工程團隊',
+    summary: '將原位於「即將上架」的兩個提案（CiteLens、BreatheWave）移回「正式上架」',
+    changes: [
+      '將 `q-vp-vibe-13`（CiteLens）與 `q-vp-vibe-14`（BreatheWave）的 `isComingSoon` 設為 `false` 並移除 `即將上架` 標籤，同步更新雲端 Firestore 與本地資料庫。',
+      '強化前端種子同步機制，確保無手動覆寫紀錄之種子提案正確同步 `isComingSoon` 狀態。',
+    ],
+  },
+  {
     seqNumber: '#271',
     version: 'v4.7.0',
     releaseDate: '2026.10.29',
