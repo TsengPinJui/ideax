@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#270',
+    version: 'v4.6.9',
+    releaseDate: '2026.10.29',
+    releaseTime: '20:07',
+    author: 'IdeaX 核心工程團隊',
+    summary: '移除開屏載入畫面卡片上方的「點我換下一則」按鈕',
+    changes: [
+      '移除開屏載入畫面（SplashScreen）開站靈感漫遊卡片右上角的「點我換下一則」按鈕（保留點擊卡片本體與下方圓點切換）',
+    ],
+  },
+  {
     seqNumber: '#269',
     version: 'v4.6.8',
     releaseDate: '2026.10.29',

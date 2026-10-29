@@ -288,16 +288,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               ({currentTipIndex + 1}/{PLATFORM_TIPS.length})
             </span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleNextTip}
-            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
-            title="點擊換下一個小知識"
-          >
-            <span>點我換下一則</span>
-            <ChevronRight className="w-3 h-3" />
-          </button>
         </div>
 
         {/* 互動式知識/叮嚀主卡片 */}
