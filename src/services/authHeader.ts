@@ -6,7 +6,29 @@ import { auth } from './firebase';
  */
 export async function getAuthHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
-  const user = auth.currentUser;
+  let user = auth.currentUser;
+  if (!user && typeof (auth as any).authStateReady === 'function') {
+    try {
+      await Promise.race([
+        (auth as any).authStateReady(),
+        new Promise((resolve) => setTimeout(resolve, 1200)),
+      ]);
+      user = auth.currentUser;
+    } catch {
+      // ignore
+    }
+  }
+  try {
+    const rawUser = typeof localStorage !== 'undefined' ? localStorage.getItem('ideax_v2_user') : null;
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser);
+      if (parsed && (parsed.role === 'admin' || parsed.accountType === 'admin' || parsed.id === 'user-admin' || parsed.id === 'a000000001')) {
+        headers['X-IdeaX-Admin-Id'] = String(parsed.authUid || parsed.id || 'a000000001');
+      }
+    }
+  } catch {
+    // ignore
+  }
   if (!user) return headers;
   try {
     const idToken = await user.getIdToken();
@@ -16,3 +38,4 @@ export async function getAuthHeaders(extra: Record<string, string> = {}): Promis
   }
   return headers;
 }
+
