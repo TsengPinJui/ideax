@@ -8,6 +8,7 @@ import { AgentSprite, SPRITES } from './agentSprites';
 const wrapA = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 import { BEAR_LOCAL } from './craftStreet';
 import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
+import { animateModelMotion } from '../modelAssets';
 
 /**
  * 五島的生活感（照 /island）：
@@ -508,6 +509,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         prevX = g.position.x;
         prevZ = g.position.z;
         const moving = spd > 0.08;
+        animateModelMotion(g, t, spd, 'animal');
         if (moving) {
           walkPhase += dt * Math.min(11, 4.5 + spd * 2.4);
           const s = Math.sin(walkPhase);
@@ -547,6 +549,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         prevX = g.position.x;
         prevZ = g.position.z;
         const flying = g.position.y > 1.2 || spd > 0.1;
+        animateModelMotion(g, t, spd + Math.max(0, g.position.y - 1.2), 'animal');
         if (flying) {
           phase += dt * (g.position.y > 3.2 ? 9.5 : 7.5);
           const flap = Math.sin(phase);

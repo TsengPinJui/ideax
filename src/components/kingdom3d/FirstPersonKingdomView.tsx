@@ -70,7 +70,7 @@ import { GARDEN_ARCH_BRIDGE } from './stylized/careerGarden';
 import { reportXp } from '../../services/xpService';
 import { XP_ISLANDS, XP_VENUES } from '../../data/xpRules';
 import { BASIN_LANDMARKS } from './stylized/basinLayout';
-import { hydrateSceneModels, loadModelInto } from './modelAssets';
+import { animateModelMotion, hydrateSceneModels, loadModelInto } from './modelAssets';
 
 const LIBRARY_ID = 'discussion-library';
 // 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
@@ -1684,6 +1684,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const makeHorseCart = (id: string, x: number, z: number, yaw: number) => {
       const cart = new THREE.Group();
       cart.name = id;
+      cart.userData.modelAsset = 'horseCart';
+      cart.userData.modelSize = [3.5, 3.2, 5.0];
       const wood = new THREE.MeshStandardMaterial({ color: 0x6e4226, roughness: 0.78 });
       const darkWood = new THREE.MeshStandardMaterial({ color: 0x3d2313, roughness: 0.84 });
       const trim = new THREE.MeshStandardMaterial({ color: 0xd4a24c, roughness: 0.42, metalness: 0.35 });
@@ -1740,8 +1742,6 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       add(carriage, new THREE.CylinderGeometry(0.065, 0.065, 2.16, 8), dark, 0, 0.64, 0.35, 0, 0, Math.PI / 2);
       // 前方拉車駿馬（位於 z = -1.95，朝 -Z）
       const pullHorse = buildArticulatedHorse(0x5c3a24, 0x241811, 0x8c2d1f, false);
-      pullHorse.hGroup.userData.modelAsset = 'cartHorse';
-      pullHorse.hGroup.userData.modelSize = [1.8, 2.15, 2.15];
       pullHorse.hGroup.position.set(0, 0, -1.95);
       cart.add(pullHorse.hGroup);
 
@@ -1755,6 +1755,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         const spd = Math.hypot(cart.position.x - prevX, cart.position.z - prevZ) / dt;
         prevX = cart.position.x;
         prevZ = cart.position.z;
+        animateModelMotion(cart, t, spd, 'cart');
         if (spd > 0.06) {
           phase += dt * Math.min(14, 5.2 + spd * 2.2);
           for (const w of wheels) w.rotation.x -= dt * spd * 1.75;
@@ -1805,6 +1806,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         prevZ = horse.position.z;
         if (spd > 0.06) {
           phase += dt * Math.min(16, 6.0 + spd * 2.1);
+          animateModelMotion(built.hGroup, t, spd, 'animal');
           built.body.position.y = Math.abs(Math.sin(phase)) * 0.06;
           built.body.rotation.x = Math.cos(phase) * 0.04;
           built.neck.rotation.x = 0.08 + Math.sin(phase * 2) * 0.1;
@@ -1815,6 +1817,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
             leg.rotation.x = Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.62;
           }
         } else {
+          animateModelMotion(built.hGroup, t, 0, 'animal');
           built.body.position.y = Math.sin(t * 1.6 + phase) * 0.012;
           built.body.rotation.x = 0;
           built.neck.rotation.x = Math.sin(t * 0.8 + phase) * 0.08;
@@ -1900,6 +1903,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         const spd = Math.hypot(crane.position.x - prevX, crane.position.z - prevZ) / dt;
         prevX = crane.position.x;
         prevZ = crane.position.z;
+        animateModelMotion(crane, t, spd + Math.max(0, crane.position.y - 1.2), 'animal');
         const airborne = crane.position.y > 0.65 || spd > 0.15;
         if (airborne) {
           phase += dt * (4.6 + Math.min(4.5, spd * 0.45));
@@ -2631,6 +2635,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         dy = Math.atan2(Math.sin(dy), Math.cos(dy));
         g.rotation.y += dy * k;
         g.position.y = -0.3 + Math.sin(performance.now() / 700 + sl.index) * 0.04;
+        const open = g.userData.open as THREE.Object3D;
+        const roofed = g.userData.roofed as THREE.Object3D;
+        const speed = Math.hypot(sl.x - g.position.x, sl.z - g.position.z) / Math.max(delta, 0.001);
+        animateModelMotion(open, performance.now() / 1000 + sl.index, speed, 'boat');
+        animateModelMotion(roofed, performance.now() / 1000 + sl.index, speed, 'boat');
       }
       for (const [i, g] of remoteBoats) {
         if (!seen.has(i)) {
@@ -2721,6 +2730,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         myBoat.position.set(ride.x, -0.3 + Math.sin(performance.now() / 700) * 0.04, ride.z);
         myBoat.rotation.y = ride.yaw;
         myBoat.rotation.z = Math.sin(performance.now() / 900) * 0.02;
+        const myBoatOpen = myBoat.userData.open as THREE.Object3D;
+        const myBoatRoof = myBoat.userData.roofed as THREE.Object3D;
+        animateModelMotion(myBoatOpen, performance.now() / 1000, ride.speed, 'boat');
+        animateModelMotion(myBoatRoof, performance.now() / 1000, ride.speed, 'boat');
       } else {
         const sl = boating.slots.find((x) => x.index === ride.slot);
         if (!sl || (boating.online && sl.p !== boating.myKey)) {
