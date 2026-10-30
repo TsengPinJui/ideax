@@ -8,7 +8,7 @@ import { AgentSprite, SPRITES } from './agentSprites';
 const wrapA = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 import { BEAR_LOCAL } from './craftStreet';
 import { REGION_CONFIGS, localToWorldXZ } from '../regionConfigs';
-import { animateModelMotion } from '../modelAssets';
+import { animateModelMotion, loadModelInto } from '../modelAssets';
 
 /**
  * 五島的生活感（照 /island）：
@@ -136,64 +136,13 @@ function addM(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mate
 
 /* ---------------- 田園動物 ---------------- */
 
-function buffalo(m: Record<string, THREE.Material>) {
+function buffalo(_m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
+  g.userData.noMerge = true;
   g.userData.modelAsset = 'buffalo';
-  g.userData.modelSize = [2.25, 1.85, 2.6];
-  const body = new THREE.Group();
-  g.add(body);
-  // 圓潤飽滿的水牛軀幹、肩峰、胸腹與背部草編坐墊
-  addM(body, new THREE.CapsuleGeometry(0.46, 0.96, 8, 14).rotateX(Math.PI / 2), m.buffalo, 0, 0.98, 0);
-  addM(body, new THREE.SphereGeometry(0.49, 12, 10).scale(0.96, 0.92, 1.05), m.buffalo, 0, 1.03, -0.34);
-  addM(body, new THREE.SphereGeometry(0.45, 12, 10).scale(0.95, 0.9, 1.0), m.buffalo, 0, 0.96, 0.42);
-  addM(body, new THREE.CylinderGeometry(0.32, 0.36, 0.08, 12).scale(1.0, 1, 1.35), m.straw, 0, 1.43, 0.02);
-  addM(body, new THREE.BoxGeometry(0.56, 0.06, 0.48), m.shirtRed, 0, 1.46, 0.02);
-  // 四肢關節（可獨立擺動大腿、小腿與牛蹄）
-  const legs: THREE.Group[] = [];
-  const legCoords: [number, number, number][] = [
-    [-0.27, -0.46, 1],
-    [0.27, -0.46, -1],
-    [-0.27, 0.46, -1],
-    [0.27, 0.46, 1],
-  ];
-  for (const [lx, lz, phase] of legCoords) {
-    const leg = new THREE.Group();
-    leg.position.set(lx, 0.72, lz);
-    leg.userData.phase = phase;
-    addM(leg, new THREE.CylinderGeometry(0.12, 0.095, 0.38, 8), m.buffalo, 0, -0.18, 0);
-    addM(leg, new THREE.SphereGeometry(0.095, 8, 6), m.buffalo, 0, -0.37, 0);
-    addM(leg, new THREE.CylinderGeometry(0.085, 0.075, 0.32, 8), m.buffalo, 0, -0.52, 0);
-    addM(leg, new THREE.CylinderGeometry(0.09, 0.105, 0.1, 8), m.muzzle, 0, -0.67, 0.01);
-    g.add(leg);
-    legs.push(leg);
-  }
-  // 頸部與精細牛頭（雙耳、眼眸、寬厚鼻吻、鼻環、彎月大牛角）
-  const head = new THREE.Group();
-  head.position.set(0, 1.08, -0.82);
-  body.add(head);
-  addM(head, new THREE.CylinderGeometry(0.28, 0.36, 0.36, 10).rotateX(Math.PI / 3), m.buffalo, 0, 0.02, 0.14);
-  addM(head, new THREE.SphereGeometry(0.28, 12, 10).scale(0.95, 0.88, 1.15), m.buffalo, 0, 0.04, -0.14);
-  addM(head, new THREE.BoxGeometry(0.36, 0.22, 0.24), m.muzzle, 0, -0.06, -0.38);
-  for (const s of [-1, 1]) {
-    addM(head, new THREE.SphereGeometry(0.035, 6, 6), m.face, s * 0.1, -0.04, -0.5);
-    addM(head, new THREE.SphereGeometry(0.042, 8, 8), m.face, s * 0.22, 0.09, -0.22);
-    const ear = addM(head, new THREE.SphereGeometry(0.08, 8, 6).scale(1.6, 0.55, 0.7), m.buffalo, s * 0.32, 0.08, -0.05);
-    ear.rotation.z = s * -0.35;
-    const horn = addM(head, new THREE.TorusGeometry(0.3, 0.055, 8, 16, Math.PI * 0.82), m.horn, s * 0.2, 0.18, -0.04);
-    horn.rotation.set(0.25, Math.PI / 2, s > 0 ? 0.18 : Math.PI - 0.18);
-  }
-  const ring = addM(head, new THREE.TorusGeometry(0.055, 0.012, 6, 12), m.straw, 0, -0.1, -0.51);
-  ring.rotation.x = 0.3;
-  // 牛尾（可搖擺）
-  const tail = new THREE.Group();
-  tail.position.set(0, 1.06, 0.82);
-  body.add(tail);
-  addM(tail, new THREE.CylinderGeometry(0.032, 0.02, 0.52, 6), m.buffalo, 0, -0.22, 0.12).rotation.x = 0.45;
-  addM(tail, new THREE.ConeGeometry(0.055, 0.18, 6), m.muzzle, 0, -0.48, 0.24).rotation.x = 2.6;
-  g.userData.body = body;
-  g.userData.head = head;
-  g.userData.legs = legs;
-  g.userData.tail = tail;
+  g.userData.modelSize = [1.65, 1.65, 2.35];
+  g.userData.modelYaw = -Math.PI / 2;
+  void loadModelInto(g, 'buffalo');
   return g;
 }
 
@@ -230,61 +179,24 @@ function chicken(m: Record<string, THREE.Material>, hen: boolean) {
   return g;
 }
 
-function egret(m: Record<string, THREE.Material>) {
+function egret(_m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
+  g.userData.noMerge = true;
   g.userData.modelAsset = 'crane';
-  g.userData.modelSize = [1.45, 2.45, 1.5];
-  const body = new THREE.Group();
-  g.add(body);
-  // 優雅仙鶴／白鷺身軀、黑色尾羽裝飾、修長曲頸、丹頂、長喙與雙翼雙腿
-  addM(body, new THREE.SphereGeometry(0.22, 12, 10).scale(0.88, 0.85, 1.65), m.white, 0, 0.68, 0);
-  addM(body, new THREE.ConeGeometry(0.15, 0.38, 7).rotateX(Math.PI * 0.58), m.white, 0, 0.66, 0.38);
-  addM(body, new THREE.ConeGeometry(0.13, 0.28, 6).rotateX(Math.PI * 0.64), m.leg, 0, 0.63, 0.48);
-  const head = new THREE.Group();
-  head.position.set(0, 0.78, -0.22);
-  body.add(head);
-  const neck1 = addM(head, new THREE.CylinderGeometry(0.042, 0.058, 0.34, 8), m.white, 0, 0.14, -0.06);
-  neck1.rotation.x = -0.38;
-  const neck2 = addM(head, new THREE.CylinderGeometry(0.036, 0.042, 0.28, 8), m.white, 0, 0.36, -0.14);
-  neck2.rotation.x = 0.15;
-  addM(head, new THREE.SphereGeometry(0.072, 10, 8).scale(0.92, 0.95, 1.18), m.white, 0, 0.49, -0.15);
-  addM(head, new THREE.SphereGeometry(0.046, 8, 6).scale(0.85, 0.55, 1.0), m.comb, 0, 0.54, -0.15);
-  addM(head, new THREE.ConeGeometry(0.024, 0.28, 6).rotateX(-Math.PI / 2), m.beakYellow, 0, 0.48, -0.34);
-  for (const s of [-1, 1]) addM(head, new THREE.SphereGeometry(0.016, 6, 6), m.face, s * 0.048, 0.5, -0.2);
-  // 雙翼（可展翅拍動）
-  const wings: THREE.Group[] = [];
-  for (const s of [-1, 1]) {
-    const wing = new THREE.Group();
-    wing.position.set(s * 0.16, 0.74, -0.04);
-    wing.userData.side = s;
-    const innerW = addM(wing, new THREE.BoxGeometry(0.48, 0.035, 0.36), m.white, s * 0.22, 0, 0.02);
-    innerW.rotation.y = s * -0.12;
-    const outerW = addM(wing, new THREE.BoxGeometry(0.42, 0.028, 0.26), m.white, s * 0.58, -0.01, 0.08);
-    outerW.rotation.y = s * -0.28;
-    const tipW = addM(wing, new THREE.BoxGeometry(0.18, 0.024, 0.24), m.leg, s * 0.76, -0.015, 0.13);
-    tipW.rotation.y = s * -0.32;
-    // 平常微收於身側
-    wing.rotation.z = s * -0.95;
-    wing.rotation.y = s * 0.18;
-    body.add(wing);
-    wings.push(wing);
-  }
-  // 雙腿（步行時交替邁步、飛行時向後收起）
-  const legs: THREE.Group[] = [];
-  for (const s of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(s * 0.065, 0.54, 0.02);
-    leg.userData.phase = s;
-    addM(leg, new THREE.CylinderGeometry(0.016, 0.013, 0.28, 6), m.leg, 0, -0.14, 0);
-    addM(leg, new THREE.CylinderGeometry(0.013, 0.011, 0.28, 6), m.leg, 0, -0.4, 0.01);
-    addM(leg, new THREE.BoxGeometry(0.05, 0.015, 0.09), m.leg, 0, -0.53, -0.02);
-    g.add(leg);
-    legs.push(leg);
-  }
-  g.userData.body = body;
-  g.userData.head = head;
-  g.userData.wings = wings;
-  g.userData.legs = legs;
+  g.userData.modelSize = [1.55, 2.15, 1.65];
+  g.userData.modelYaw = Math.PI / 2;
+  void loadModelInto(g, 'crane');
+  return g;
+}
+
+function createPlazaDog() {
+  const g = new THREE.Group();
+  g.name = 'plaza-dog';
+  g.userData.noMerge = true;
+  g.userData.modelAsset = 'dog';
+  g.userData.modelSize = [0.65, 0.72, 0.95];
+  g.userData.modelYaw = Math.PI;
+  void loadModelInto(g, 'dog');
   return g;
 }
 
@@ -490,93 +402,71 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
     }
     return best;
   };
-  if (lands.length) {
-    // 水牛（全身與四肢、尾巴、牛頭皆可隨移動與吃草自然擺動）
-    const animateBuffalo = (g: THREE.Group, ph: number) => {
-      keepApart(g);
-      const body = g.userData.body as THREE.Group;
-      const head = g.userData.head as THREE.Group;
-      const legs = (g.userData.legs || []) as THREE.Group[];
-      const tail = g.userData.tail as THREE.Group | undefined;
-      let prevX = g.position.x;
-      let prevZ = g.position.z;
-      let prevT = 0;
-      let walkPhase = ph;
-      anims.push((t) => {
-        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
-        prevT = t;
-        const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
-        prevX = g.position.x;
-        prevZ = g.position.z;
-        const moving = spd > 0.08;
-        animateModelMotion(g, t, spd, 'animal');
-        if (moving) {
-          walkPhase += dt * Math.min(11, 4.5 + spd * 2.4);
-          const s = Math.sin(walkPhase);
-          body.position.y = Math.abs(s) * 0.045;
-          body.rotation.z = Math.cos(walkPhase) * 0.03;
-          head.rotation.x = 0.08 + Math.sin(walkPhase * 2) * 0.08;
-          head.rotation.y = Math.cos(walkPhase) * 0.06;
-          for (const leg of legs) {
-            const p = (leg.userData.phase as number) || 1;
-            leg.rotation.x = Math.sin(walkPhase + (p > 0 ? 0 : Math.PI)) * 0.48;
-          }
-          if (tail) tail.rotation.z = Math.sin(walkPhase * 1.8) * 0.35;
+  const animateBuffalo = (g: THREE.Group, ph: number, roam = true) => {
+    keepApart(g);
+    const homeX = g.position.x;
+    const homeZ = g.position.z;
+    const homeYaw = g.rotation.y;
+    let prevX = g.position.x;
+    let prevZ = g.position.z;
+    let prevT = 0;
+    let wasRidden = false;
+    anims.push((t) => {
+      const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+      prevT = t;
+      if (g.userData.isRidden) {
+        wasRidden = true;
+      } else if (roam && !wasRidden) {
+        // 未被騎乘時在田間緩步來回踱步吃草，展現自然水牛行走姿態
+        const cyc = (t + ph * 3.7) % 18;
+        const walkDur = 5.5;
+        const dirX = -Math.sin(homeYaw);
+        const dirZ = -Math.cos(homeYaw);
+        let offset = 0;
+        let facing = homeYaw;
+        if (cyc < walkDur) {
+          offset = (cyc / walkDur) * 2.2;
+          facing = homeYaw;
+        } else if (cyc < 9) {
+          offset = 2.2;
+          facing = homeYaw;
+        } else if (cyc < 9 + walkDur) {
+          offset = (1 - (cyc - 9) / walkDur) * 2.2;
+          facing = homeYaw + Math.PI;
         } else {
-          body.position.y = Math.sin(t * 1.4 + ph) * 0.012;
-          body.rotation.z = 0;
-          head.rotation.x = 0.28 + Math.sin(t * 0.65 + ph) * 0.24;
-          head.rotation.y = Math.sin(t * 0.4 + ph) * 0.12;
-          for (const leg of legs) leg.rotation.x *= 0.85;
-          if (tail) tail.rotation.z = Math.sin(t * 1.6 + ph) * 0.22;
+          offset = 0;
+          facing = homeYaw + Math.PI;
         }
-      });
-    };
+        g.position.x = homeX + dirX * offset;
+        g.position.z = homeZ + dirZ * offset;
+        g.rotation.y += wrapA(facing - g.rotation.y) * Math.min(1, dt * 4.5);
+        const proxy = g.userData.rideProxy as THREE.Object3D | undefined;
+        if (proxy) {
+          proxy.position.x = g.position.x;
+          proxy.position.z = g.position.z;
+          proxy.rotation.y = g.rotation.y;
+        }
+      }
+      const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
+      prevX = g.position.x;
+      prevZ = g.position.z;
+      animateModelMotion(g, t + ph, spd, 'animal');
+    });
+  };
+  if (lands.length) {
+    // 水牛與丹頂鶴（直接驅動 GLB 3D 模型動態）
     const animateEgret = (g: THREE.Group, ph: number) => {
       keepApart(g);
-      const body = g.userData.body as THREE.Group;
-      const head = g.userData.head as THREE.Group;
-      const wings = (g.userData.wings || []) as THREE.Group[];
-      const legs = (g.userData.legs || []) as THREE.Group[];
       let prevX = g.position.x;
       let prevZ = g.position.z;
       let prevT = 0;
-      let phase = ph;
       anims.push((t) => {
         const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
         prevT = t;
         const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
         prevX = g.position.x;
         prevZ = g.position.z;
-        const flying = g.position.y > 1.2 || spd > 0.1;
-        animateModelMotion(g, t, spd + Math.max(0, g.position.y - 1.2), 'animal');
-        if (flying) {
-          phase += dt * (g.position.y > 3.2 ? 9.5 : 7.5);
-          const flap = Math.sin(phase);
-          body.position.y = flap * 0.06;
-          body.rotation.x = 0.14;
-          head.rotation.x = 0.18 + Math.cos(phase) * 0.06;
-          for (const w of wings) {
-            const s = (w.userData.side as number) || 1;
-            w.rotation.z = s * (flap * 0.62 + 0.08);
-            w.rotation.y = s * 0.04;
-          }
-          for (const leg of legs) {
-            const p = (leg.userData.phase as number) || 1;
-            leg.rotation.x = g.position.y > 1.3 ? 0.65 + Math.sin(phase + p) * 0.08 : Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.45;
-          }
-        } else {
-          body.position.y = Math.sin(t * 1.5 + ph) * 0.01;
-          body.rotation.x = 0;
-          head.rotation.x = Math.sin(t * 0.8 + ph) * 0.14;
-          head.rotation.y = Math.cos(t * 0.5 + ph) * 0.16;
-          for (const w of wings) {
-            const s = (w.userData.side as number) || 1;
-            w.rotation.z = s * -0.95;
-            w.rotation.y = s * 0.18;
-          }
-          for (const leg of legs) leg.rotation.x *= 0.85;
-        }
+        animateModelMotion(g, t + ph, spd + Math.max(0, g.position.y - 1.2), 'animal');
       });
     };
     for (let i = 0; i < 5; i++) {
@@ -590,7 +480,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       proxy.name = `${g.name}-proxy`;
       g.userData.rideProxy = proxy;
       root.add(proxy);
-      animateBuffalo(g, rand() * 6);
+      animateBuffalo(g, rand() * 6, true);
     }
     // 綿羊群
     for (let k = 0; k < 2; k++) {
@@ -687,11 +577,8 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         const proxy = makePickProxy(1.6, 1.8, 2.5, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
         proxy.name = `${g.name}-proxy`;
         g.userData.rideProxy = proxy;
-        const ph = rand() * 6;
-        anims.push((t) => {
-          if (g.userData.head) g.userData.head.rotation.y = Math.sin(t * 0.8 + ph) * 0.15;
-          if (g.userData.tail) g.userData.tail.rotation.z = Math.sin(t * 2.2 + ph) * 0.25;
-        });
+        root.add(proxy);
+        animateBuffalo(g, rand() * 6, false);
       } else if (kind === 'sheep') {
         for (let i = 0; i < 3; i++) {
           const g = sheep(m);
@@ -725,16 +612,20 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         }
       }
     }
-    // 水邊的白鷺鷥
+    // 水邊的丹頂鶴／白鷺鷥（加入 root 並載入 red-crowned-crane.glb）
     for (let i = 0; i < 2; i++) {
       const sp = rimSpot(isl, 5.1, 0.6);
       if (!sp) continue;
       const g = egret(m);
-      g.name = 'rim-egret';
+      g.name = `rim-egret-${ii}-${i}`;
       g.position.set(sp[0], -0.04, sp[1]);
       g.rotation.y = sp[2] + (rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
-      statics.add(g);
-      root.add(makePickProxy(0.9, 1.3, 0.9, sp[0], sp[1], 0, { kind: 'egg', egg: 'egret', maxDist: 40 }));
+      root.add(g);
+      const ph = rand() * 6;
+      anims.push((t) => {
+        animateModelMotion(g, t + ph, 0, 'animal');
+      });
+      root.add(makePickProxy(1.2, 1.8, 1.2, sp[0], sp[1], 0, { kind: 'egg', egg: 'egret', maxDist: 40 }));
     }
   });
 
@@ -938,6 +829,49 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       sp.facing += wrapA(want - sp.facing) * 0.06;
       sp.pose = d < 8 && t % 6 < 1.6 ? 'wave' : null;
       sp.hop = sp.pose ? Math.abs(Math.sin(t * 6)) * 0.08 : Math.abs(Math.sin(t * 1.6)) * 0.02;
+    });
+  }
+  // 主島中央廣場閒晃的小狗（使用 dog.glb 模型）
+  {
+    const dog = createPlazaDog();
+    root.add(dog);
+    // 環繞主島中央廣場大燈泡雕像四周的散步路線（避開中央底座與建築）
+    const DOG_WP: [number, number][] = [
+      [-5.2, -6.4],
+      [4.8, -6.8],
+      [7.4, -1.5],
+      [5.6, 5.4],
+      [-0.8, 7.2],
+      [-6.8, 4.6],
+      [-7.6, -1.8],
+    ];
+    let wpIdx = 0;
+    let dx = DOG_WP[0][0];
+    let dz = DOG_WP[0][1];
+    let dyaw = 0;
+    let lastDogT = 0;
+    dog.position.set(dx, 0, dz);
+    anims.push((t) => {
+      const dt = Math.max(0.001, Math.min(0.1, lastDogT ? t - lastDogT : 0.016));
+      lastDogT = t;
+
+      const [tx, tz] = DOG_WP[wpIdx];
+      const rx = tx - dx;
+      const rz = tz - dz;
+      const dist = Math.hypot(rx, rz);
+      const spd = 1.35;
+      if (dist < 0.35) {
+        wpIdx = (wpIdx + 1) % DOG_WP.length;
+      } else {
+        const step = Math.min(dist, spd * dt);
+        dx += (rx / dist) * step;
+        dz += (rz / dist) * step;
+        const targetYaw = Math.atan2(-rx, -rz);
+        dyaw += wrapA(targetYaw - dyaw) * Math.min(1, dt * 7.5);
+        dog.position.set(dx, 0, dz);
+        dog.rotation.y = dyaw;
+      }
+      animateModelMotion(dog, t, spd, 'animal');
     });
   }
   // 007：坐在翰林院一層屋簷上吹風看平板（面向庭院）

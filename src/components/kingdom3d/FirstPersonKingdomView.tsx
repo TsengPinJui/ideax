@@ -1606,149 +1606,19 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const tickers: ((t: number) => void)[] = [];
     const hallGroups = new Map<string, THREE.Object3D>();
     const lobbyPits: THREE.Object3D[] = [];
-    // 大熊匠鋪後方靠近水邊那側的雙人馬車（本地 -Z 為車頭與馬頭前進方向，包含精細木造車廂、輻條車輪、車轅、燈籠與四肢可動駿馬）
-    const buildArticulatedHorse = (coatHex: number, maneHex: number, saddleHex: number, withSaddle: boolean) => {
-      const hGroup = new THREE.Group();
-      const coat = new THREE.MeshStandardMaterial({ color: coatHex, roughness: 0.82 });
-      const mane = new THREE.MeshStandardMaterial({ color: maneHex, roughness: 0.92 });
-      const saddle = new THREE.MeshStandardMaterial({ color: saddleHex, roughness: 0.78 });
-      const gold = new THREE.MeshStandardMaterial({ color: 0xd4a64a, roughness: 0.38, metalness: 0.55 });
-      const addP = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(px, py, pz);
-        mesh.rotation.set(rx, ry, rz);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData.noMerge = true;
-        parent.add(mesh);
-        return mesh;
-      };
-      const body = new THREE.Group();
-      hGroup.add(body);
-      // 駿馬軀幹、胸肌與臀部（沿本地 Z 軸，-Z 朝前）
-      addP(body, new THREE.CapsuleGeometry(0.39, 0.92, 8, 14), coat, 0, 1.15, 0, Math.PI / 2, 0, 0);
-      addP(body, new THREE.SphereGeometry(0.41, 12, 10).scale(0.92, 0.96, 1.05), coat, 0, 1.18, -0.42);
-      addP(body, new THREE.SphereGeometry(0.39, 12, 10).scale(0.94, 0.95, 1.02), coat, 0, 1.16, 0.44);
-      if (withSaddle) {
-        addP(body, new THREE.BoxGeometry(0.68, 0.1, 0.72), saddle, 0, 1.54, 0.02);
-        addP(body, new THREE.BoxGeometry(0.72, 0.36, 0.58), saddle, 0, 1.34, 0.02);
-        addP(body, new THREE.CylinderGeometry(0.06, 0.08, 0.56, 8), saddle, 0, 1.61, -0.28, 0, 0, Math.PI / 2);
-        addP(body, new THREE.CylinderGeometry(0.07, 0.09, 0.58, 8), saddle, 0, 1.62, 0.32, 0, 0, Math.PI / 2);
-        for (const s of [-1, 1]) {
-          addP(body, new THREE.BoxGeometry(0.03, 0.42, 0.05), mane, s * 0.38, 1.18, -0.02);
-          addP(body, new THREE.TorusGeometry(0.065, 0.014, 6, 12), gold, s * 0.39, 0.94, -0.02, 0, Math.PI / 2, 0);
-        }
-      }
-      // 馬頸與馬頭（含雙耳、鬃毛、眼眸、鼻吻與韁繩）
-      const neck = new THREE.Group();
-      neck.position.set(0, 1.32, -0.52);
-      body.add(neck);
-      addP(neck, new THREE.CylinderGeometry(0.18, 0.27, 0.66, 10), coat, 0, 0.24, -0.14, 0.55, 0, 0);
-      for (let k = 0; k < 5; k++) {
-        addP(neck, new THREE.BoxGeometry(0.07, 0.16, 0.14), mane, 0, 0.08 + k * 0.11, 0.02 - k * 0.06, 0.55, 0, 0);
-      }
-      addP(neck, new THREE.SphereGeometry(0.21, 12, 10).scale(0.85, 0.92, 1.15), coat, 0, 0.54, -0.32);
-      addP(neck, new THREE.CylinderGeometry(0.11, 0.16, 0.34, 10), coat, 0, 0.44, -0.54, 1.18, 0, 0);
-      addP(neck, new THREE.TorusGeometry(0.13, 0.018, 6, 14), gold, 0, 0.44, -0.52, 0.35, 0, 0);
-      for (const s of [-1, 1]) {
-        addP(neck, new THREE.ConeGeometry(0.065, 0.2, 6), coat, s * 0.11, 0.74, -0.26, -0.2, 0, s * -0.18);
-        addP(neck, new THREE.SphereGeometry(0.032, 8, 8), mane, s * 0.16, 0.56, -0.38);
-      }
-      // 飄逸馬尾
-      const tail = new THREE.Group();
-      tail.position.set(0, 1.32, 0.72);
-      body.add(tail);
-      addP(tail, new THREE.CapsuleGeometry(0.075, 0.52, 5, 8), mane, 0, -0.24, 0.16, -0.5, 0, 0);
-      // 四條可動馬腿（含膝關節與馬蹄）
-      const legs: THREE.Group[] = [];
-      const legCoords: [number, number, number][] = [
-        [-0.22, -0.45, 1],
-        [0.22, -0.45, -1],
-        [-0.22, 0.45, -1],
-        [0.22, 0.45, 1],
-      ];
-      for (const [lx, lz, phase] of legCoords) {
-        const leg = new THREE.Group();
-        leg.position.set(lx, 0.88, lz);
-        leg.userData.phase = phase;
-        addP(leg, new THREE.CylinderGeometry(0.095, 0.072, 0.44, 8), coat, 0, -0.2, 0);
-        addP(leg, new THREE.SphereGeometry(0.072, 8, 6), coat, 0, -0.42, 0);
-        addP(leg, new THREE.CylinderGeometry(0.066, 0.055, 0.4, 8), coat, 0, -0.62, 0);
-        addP(leg, new THREE.CylinderGeometry(0.068, 0.082, 0.11, 8), mane, 0, -0.83, 0.01);
-        hGroup.add(leg);
-        legs.push(leg);
-      }
-      return { hGroup, body, neck, tail, legs };
-    };
-
+    // 大熊匠鋪後方靠近水邊那側的雙人馬車（直接載入 horse-cart.glb 貼皮模型，本地 -Z 為馬頭拉車前進方向）
     const makeHorseCart = (id: string, x: number, z: number, yaw: number) => {
       const cart = new THREE.Group();
       cart.name = id;
+      cart.userData.noMerge = true;
       cart.userData.modelAsset = 'horseCart';
-      cart.userData.modelSize = [3.5, 3.2, 5.0];
-      const wood = new THREE.MeshStandardMaterial({ color: 0x6e4226, roughness: 0.78 });
-      const darkWood = new THREE.MeshStandardMaterial({ color: 0x3d2313, roughness: 0.84 });
-      const trim = new THREE.MeshStandardMaterial({ color: 0xd4a24c, roughness: 0.42, metalness: 0.35 });
-      const cushion = new THREE.MeshStandardMaterial({ color: 0x9e2a22, roughness: 0.75 });
-      const canopyMat = new THREE.MeshStandardMaterial({ color: 0x7c2820, roughness: 0.72 });
-      const dark = new THREE.MeshStandardMaterial({ color: 0x241d19, roughness: 0.88 });
-      const lanternGlow = new THREE.MeshStandardMaterial({ color: 0xffe4a8, emissive: 0xffb84d, emissiveIntensity: 1.2, roughness: 0.4 });
-      const add = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(px, py, pz);
-        mesh.rotation.set(rx, ry, rz);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData.noMerge = true;
-        parent.add(mesh);
-        return mesh;
-      };
-      const carriage = new THREE.Group();
-      cart.add(carriage);
-      // 車廂底盤、雕花圍欄、雙人軟墊長椅、靠背與古風頂篷（本地 -Z 為前方）
-      add(carriage, new THREE.BoxGeometry(1.78, 0.24, 2.15), darkWood, 0, 0.78, 0.35);
-      add(carriage, new THREE.BoxGeometry(1.86, 0.1, 2.24), trim, 0, 0.92, 0.35);
-      for (const s of [-1, 1]) {
-        add(carriage, new THREE.BoxGeometry(0.1, 0.52, 2.12), wood, s * 0.86, 1.2, 0.35);
-        add(carriage, new THREE.BoxGeometry(0.13, 0.08, 2.18), trim, s * 0.86, 1.48, 0.35);
-        // 兩側車轅連接前方駿馬
-        add(carriage, new THREE.CylinderGeometry(0.045, 0.05, 2.25, 8), darkWood, s * 0.42, 0.95, -1.45, Math.PI / 2, 0, 0);
-        // 車頭迎風宮燈
-        add(carriage, new THREE.SphereGeometry(0.12, 10, 8).scale(0.85, 1.2, 0.85), lanternGlow, s * 0.92, 1.62, -0.68);
-      }
-      add(carriage, new THREE.BoxGeometry(1.66, 0.62, 0.12), wood, 0, 1.25, 1.38);
-      add(carriage, new THREE.BoxGeometry(1.62, 0.16, 0.78), cushion, 0, 1.06, 0.55);
-      add(carriage, new THREE.BoxGeometry(1.62, 0.48, 0.14), cushion, 0, 1.34, 0.92);
-      // 四柱飛簷車篷
-      for (const [px, pz] of [[-0.8, -0.55], [0.8, -0.55], [-0.8, 1.25], [0.8, 1.25]]) {
-        add(carriage, new THREE.CylinderGeometry(0.04, 0.045, 1.32, 8), darkWood, px, 2.1, pz);
-      }
-      add(carriage, new THREE.BoxGeometry(1.96, 0.12, 2.16), canopyMat, 0, 2.78, 0.35);
-      add(carriage, new THREE.BoxGeometry(2.04, 0.06, 2.24), trim, 0, 2.71, 0.35);
-      // 兩側大輻條木輪（隨車速轉動）
-      const wheels: THREE.Group[] = [];
-      for (const s of [-1, 1]) {
-        const wGroup = new THREE.Group();
-        wGroup.position.set(s * 1.02, 0.64, 0.35);
-        add(wGroup, new THREE.TorusGeometry(0.58, 0.065, 10, 24), dark, 0, 0, 0, 0, Math.PI / 2, 0);
-        add(wGroup, new THREE.TorusGeometry(0.51, 0.045, 8, 24), wood, 0, 0, 0, 0, Math.PI / 2, 0);
-        add(wGroup, new THREE.CylinderGeometry(0.14, 0.14, 0.22, 10), trim, 0, 0, 0, 0, 0, Math.PI / 2);
-        for (let k = 0; k < 6; k++) {
-          add(wGroup, new THREE.CylinderGeometry(0.025, 0.025, 1.08, 6), wood, 0, 0, 0, (k * Math.PI) / 6, 0, 0);
-        }
-        cart.add(wGroup);
-        wheels.push(wGroup);
-      }
-      add(carriage, new THREE.CylinderGeometry(0.065, 0.065, 2.16, 8), dark, 0, 0.64, 0.35, 0, 0, Math.PI / 2);
-      // 前方拉車駿馬（位於 z = -1.95，朝 -Z）
-      const pullHorse = buildArticulatedHorse(0x5c3a24, 0x241811, 0x8c2d1f, false);
-      pullHorse.hGroup.position.set(0, 0, -1.95);
-      cart.add(pullHorse.hGroup);
+      cart.userData.modelSize = [2.4, 2.85, 4.95];
+      cart.userData.modelYaw = Math.PI;
+      void loadModelInto(cart, 'horseCart');
 
       let prevX = x;
       let prevZ = z;
       let prevT = 0;
-      let phase = 0;
       cart.userData.tick = (t: number) => {
         const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
         prevT = t;
@@ -1756,30 +1626,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         prevX = cart.position.x;
         prevZ = cart.position.z;
         animateModelMotion(cart, t, spd, 'cart');
-        if (spd > 0.06) {
-          phase += dt * Math.min(14, 5.2 + spd * 2.2);
-          for (const w of wheels) w.rotation.x -= dt * spd * 1.75;
-          carriage.position.y = Math.abs(Math.sin(phase * 2)) * 0.025;
-          pullHorse.body.position.y = Math.abs(Math.sin(phase)) * 0.045;
-          pullHorse.neck.rotation.x = Math.sin(phase * 2) * 0.08;
-          pullHorse.tail.rotation.z = Math.sin(phase * 1.7) * 0.28;
-          for (const leg of pullHorse.legs) {
-            const p = (leg.userData.phase as number) || 1;
-            leg.rotation.x = Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.55;
-          }
-        } else {
-          carriage.position.y = 0;
-          pullHorse.body.position.y = Math.sin(t * 1.5) * 0.01;
-          pullHorse.neck.rotation.x = Math.sin(t * 0.9) * 0.06;
-          pullHorse.tail.rotation.z = Math.sin(t * 1.4) * 0.15;
-          for (const leg of pullHorse.legs) leg.rotation.x *= 0.85;
-        }
       };
 
       cart.position.set(x, 0, z);
       cart.rotation.y = yaw;
       scene.add(cart);
-      const proxy = makePickProxy(3.2, 2.8, 4.8, x, z, yaw, { kind: 'mount', id, rideType: 'horseCart' }, 0);
+      const proxy = makePickProxy(2.6, 2.8, 4.9, x, z, yaw, { kind: 'mount', id, rideType: 'horseCart' }, 0);
       proxy.name = `${id}-proxy`;
       scene.add(proxy);
       return cart;
@@ -1787,148 +1639,65 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     // 移到大熊匠鋪（x=93.6, z=-43.6, 朝西）後方靠近水邊那側（x=101.2, z=-43.6）
     makeHorseCart('ride-horse-cart-1', 101.2, -43.6, 0);
 
-    const makeRideableHorse = (id: string, x: number, z: number, coatHex = 0x805234) => {
+    const makeRideableHorse = (id: string, x: number, z: number) => {
       const horse = new THREE.Group();
       horse.name = id;
-      const built = buildArticulatedHorse(coatHex, 0x2c1e16, 0x9c3d27, true);
-      built.hGroup.userData.modelAsset = 'horse';
-      built.hGroup.userData.modelSize = [1.65, 2.1, 2.05];
-      horse.add(built.hGroup);
+      horse.userData.noMerge = true;
+      horse.userData.modelAsset = 'horse';
+      horse.userData.modelSize = [1.45, 2.05, 2.55];
+      horse.userData.modelYaw = Math.PI;
+      void loadModelInto(horse, 'horse');
+
       let prevX = x;
       let prevZ = z;
       let prevT = 0;
-      let phase = Math.random() * 6;
+      const phase = Math.random() * 6;
       horse.userData.tick = (t: number) => {
         const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
         prevT = t;
         const spd = Math.hypot(horse.position.x - prevX, horse.position.z - prevZ) / dt;
         prevX = horse.position.x;
         prevZ = horse.position.z;
-        if (spd > 0.06) {
-          phase += dt * Math.min(16, 6.0 + spd * 2.1);
-          animateModelMotion(built.hGroup, t, spd, 'animal');
-          built.body.position.y = Math.abs(Math.sin(phase)) * 0.06;
-          built.body.rotation.x = Math.cos(phase) * 0.04;
-          built.neck.rotation.x = 0.08 + Math.sin(phase * 2) * 0.1;
-          built.tail.rotation.x = -0.25 + Math.sin(phase * 2) * 0.18;
-          built.tail.rotation.z = Math.cos(phase) * 0.25;
-          for (const leg of built.legs) {
-            const p = (leg.userData.phase as number) || 1;
-            leg.rotation.x = Math.sin(phase + (p > 0 ? 0 : Math.PI)) * 0.62;
-          }
-        } else {
-          animateModelMotion(built.hGroup, t, 0, 'animal');
-          built.body.position.y = Math.sin(t * 1.6 + phase) * 0.012;
-          built.body.rotation.x = 0;
-          built.neck.rotation.x = Math.sin(t * 0.8 + phase) * 0.08;
-          built.neck.rotation.y = Math.cos(t * 0.5 + phase) * 0.08;
-          built.tail.rotation.x = 0;
-          built.tail.rotation.z = Math.sin(t * 1.5 + phase) * 0.18;
-          for (const leg of built.legs) leg.rotation.x *= 0.85;
-        }
+        animateModelMotion(horse, t + phase, spd, 'animal');
       };
       horse.position.set(x, 0, z);
       horse.rotation.y = 0;
       scene.add(horse);
-      const proxy = makePickProxy(2.2, 2.3, 3.0, x, z, horse.rotation.y, { kind: 'mount', id, rideType: 'horse' }, 0);
+      const proxy = makePickProxy(1.8, 2.2, 2.6, x, z, horse.rotation.y, { kind: 'mount', id, rideType: 'horse' }, 0);
       proxy.name = `${id}-proxy`;
       scene.add(proxy);
     };
-    makeRideableHorse('ride-horse-home-island', -15.5, 14.2, 0x805234);
-    makeRideableHorse('ride-horse-pain-island', -95.5, -48, 0x805234);
-    makeRideableHorse('ride-horse-creative-island', -68, 22.5, 0x6b4228);
-    makeRideableHorse('ride-horse-career-island', 98.2, 48, 0x8f5b38);
+    makeRideableHorse('ride-horse-home-island', -15.5, 14.2);
+    makeRideableHorse('ride-horse-pain-island', -95.5, -48);
+    makeRideableHorse('ride-horse-creative-island', -68, 22.5);
+    makeRideableHorse('ride-horse-career-island', 98.2, 48);
 
-    // 仙鶴騎乘（分置於湖心亭北側與主島南岸，可長按或按 C 駕鶴，支援升空飛行並嚴格限高 16.5m）
+    // 仙鶴騎乘（直接載入 red-crowned-crane.glb 貼皮模型，分置於湖心亭北側與主島南岸）
     const makeRideableEgret = (id: string, x: number, z: number, yaw = 0) => {
       const crane = new THREE.Group();
       crane.name = id;
+      crane.userData.noMerge = true;
       crane.userData.modelAsset = 'crane';
-      crane.userData.modelSize = [1.5, 2.55, 1.6];
-      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.55 });
-      const blackMat = new THREE.MeshStandardMaterial({ color: 0x1e1d22, roughness: 0.72 });
-      const redCrownMat = new THREE.MeshStandardMaterial({ color: 0xc92a22, roughness: 0.45, emissive: 0x5c0f0b, emissiveIntensity: 0.35 });
-      const beakMat = new THREE.MeshStandardMaterial({ color: 0xd4a246, roughness: 0.48 });
-      const addPart = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number, rx = 0, ry = 0, rz = 0) => {
-        const m = new THREE.Mesh(geo, mat);
-        m.position.set(px, py, pz);
-        m.rotation.set(rx, ry, rz);
-        m.castShadow = true;
-        m.receiveShadow = true;
-        m.userData.noMerge = true;
-        parent.add(m);
-        return m;
-      };
-      const body = new THREE.Group();
-      crane.add(body);
-      // 仙鶴修長身軀與黑羽尾翼（本地 -Z 為鶴首朝向）
-      addPart(body, new THREE.SphereGeometry(0.46, 14, 12).scale(0.88, 0.82, 1.48), whiteMat, 0, 1.32, 0);
-      addPart(body, new THREE.ConeGeometry(0.36, 0.72, 10).scale(0.95, 1, 0.55), blackMat, 0, 1.28, 0.74, -Math.PI * 0.42, 0, 0);
-      // 鶴頸、丹頂鶴冠與長喙
-      const neck = new THREE.Group();
-      neck.position.set(0, 1.52, -0.52);
-      body.add(neck);
-      addPart(neck, new THREE.CylinderGeometry(0.085, 0.13, 0.88, 10), whiteMat, 0, 0.36, -0.14, 0.35, 0, 0);
-      addPart(neck, new THREE.CylinderGeometry(0.082, 0.095, 0.32, 10), blackMat, 0, 0.52, -0.2, 0.35, 0, 0);
-      addPart(neck, new THREE.SphereGeometry(0.14, 12, 10).scale(0.9, 0.92, 1.15), whiteMat, 0, 0.82, -0.32);
-      addPart(neck, new THREE.SphereGeometry(0.09, 10, 8).scale(0.85, 0.55, 0.95), redCrownMat, 0, 0.92, -0.31);
-      addPart(neck, new THREE.ConeGeometry(0.048, 0.44, 8), beakMat, 0, 0.8, -0.62, -Math.PI / 2 + 0.08, 0, 0);
-      // 左右展翅（雙段羽翼，飛行時振翅）
-      const wings: THREE.Group[] = [];
-      for (const s of [-1, 1]) {
-        const w = new THREE.Group();
-        w.position.set(s * 0.34, 1.42, -0.06);
-        w.userData.side = s;
-        addPart(w, new THREE.BoxGeometry(1.18, 0.05, 0.68), whiteMat, s * 0.56, 0, 0.04, 0, s * -0.12, 0);
-        addPart(w, new THREE.BoxGeometry(0.68, 0.045, 0.54), blackMat, s * 1.28, -0.02, 0.12, 0, s * -0.24, 0);
-        body.add(w);
-        wings.push(w);
-      }
-      // 雙足（停駐時直立、飛行時向後收起）
-      const legs: THREE.Group[] = [];
-      for (const s of [-1, 1]) {
-        const leg = new THREE.Group();
-        leg.position.set(s * 0.15, 0.98, 0.06);
-        addPart(leg, new THREE.CylinderGeometry(0.028, 0.024, 0.96, 8), blackMat, 0, -0.48, 0);
-        crane.add(leg);
-        legs.push(leg);
-      }
+      crane.userData.modelSize = [1.55, 2.15, 1.65];
+      crane.userData.modelYaw = Math.PI / 2;
+      void loadModelInto(crane, 'crane');
+
       let prevX = x;
       let prevZ = z;
       let prevT = 0;
-      let phase = Math.random() * 6;
+      const phase = Math.random() * 6;
       crane.userData.tick = (t: number) => {
         const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
         prevT = t;
         const spd = Math.hypot(crane.position.x - prevX, crane.position.z - prevZ) / dt;
         prevX = crane.position.x;
         prevZ = crane.position.z;
-        animateModelMotion(crane, t, spd + Math.max(0, crane.position.y - 1.2), 'animal');
-        const airborne = crane.position.y > 0.65 || spd > 0.15;
-        if (airborne) {
-          phase += dt * (4.6 + Math.min(4.5, spd * 0.45));
-          const flap = Math.sin(phase);
-          body.position.y = flap * 0.09;
-          neck.rotation.x = 0.28 + Math.cos(phase) * 0.06;
-          for (const w of wings) {
-            const s = (w.userData.side as number) || 1;
-            w.rotation.z = s * (flap * 0.56 + 0.08);
-          }
-          for (const leg of legs) leg.rotation.x = -1.05;
-        } else {
-          body.position.y = Math.sin(t * 1.8 + phase) * 0.02;
-          neck.rotation.x = Math.sin(t * 1.1 + phase) * 0.06;
-          for (const w of wings) {
-            const s = (w.userData.side as number) || 1;
-            w.rotation.z = s * -0.52;
-          }
-          for (const leg of legs) leg.rotation.x = 0;
-        }
+        animateModelMotion(crane, t + phase, spd + Math.max(0, crane.position.y - 1.2), 'animal');
       };
       crane.position.set(x, 0.3, z);
       crane.rotation.y = yaw;
       scene.add(crane);
-      const proxy = makePickProxy(2.8, 2.8, 2.8, x, z, yaw, { kind: 'mount', id, rideType: 'egret' }, 0);
+      const proxy = makePickProxy(2.2, 2.4, 2.2, x, z, yaw, { kind: 'mount', id, rideType: 'egret' }, 0);
       proxy.name = `${id}-proxy`;
       scene.add(proxy);
     };
@@ -1970,6 +1739,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         yaw: group.rotation.y,
         speed: 0,
       };
+      group.userData.isRidden = true;
       landRideRef.current = ride;
       setLandRiding({ kind: ride.kind, seat: ride.seat });
       if (ride.kind === 'egret') {
@@ -1981,9 +1751,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (ride.kind === 'buffalo' || ride.kind === 'egret') triggerEggRef.current(ride.kind);
       setDrawer(null);
       controls.yaw = ride.yaw;
-      controls.pitch = -0.08;
-      const eye = ride.kind === 'horseCart' ? 2.55 : ride.kind === 'egret' ? 2.5 : ride.kind === 'horse' ? 2.3 : 2.2;
-      controls.setSpawn(new THREE.Vector3(ride.x, ride.y + eye, ride.z), ride.yaw);
+      controls.pitch = -0.06;
+      const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.26 : 0.26) : 0;
+      const seatBack = ride.kind === 'horseCart' ? 0.05 : 0;
+      const eyeHeight = ride.kind === 'horseCart' ? 1.56 : ride.kind === 'egret' ? 2.05 : ride.kind === 'horse' ? 2.05 : 1.92;
+      controls.setSpawn(
+        new THREE.Vector3(
+          ride.x + Math.cos(ride.yaw) * seatOffset + Math.sin(ride.yaw) * seatBack,
+          ride.y + eyeHeight - PhysicsController.EYE_HEIGHT,
+          ride.z - Math.sin(ride.yaw) * seatOffset + Math.cos(ride.yaw) * seatBack
+        ),
+        ride.yaw
+      );
       controls.updateCameraTransform(0);
       playSoundEffect('portal');
     };
@@ -1991,6 +1770,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const performDismount = (exitX: number, exitY: number, exitZ: number, yaw: number) => {
       const ride = landRideRef.current;
       if (!ride) return;
+      ride.group.userData.isRidden = false;
       landRideRef.current = null;
       void landRidesRef.current.leave(ride.group.name);
       setLandRiding(null);
@@ -2493,16 +2273,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const g = new THREE.Group();
       const open = sampanBoat(bMats);
       const roofed = pleasureBoat(bMats);
-      open.userData.modelAsset = 'openBoat';
-      open.userData.modelSize = [2.35, 1.35, 4.1];
-      roofed.userData.modelAsset = 'roofedBoat';
-      roofed.userData.modelSize = [2.5, 2.45, 4.2];
       g.add(open, roofed);
       g.userData.open = open;
       g.userData.roofed = roofed;
       scene.add(g);
-      void loadModelInto(open, 'openBoat');
-      void loadModelInto(roofed, 'roofedBoat');
       return g;
     };
     const styleBoat = (g: THREE.Group, slot: number) => {
@@ -2891,14 +2665,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const pagodaRoofs: THREE.Object3D[] = [];
     let pagodaRoofHidden = false;
 
-    let lastModelScan = 0;
+    let lastModelScan = -10;
+    hydrateSceneModels(scene, camera.position);
     const animate = () => {
       rafIdRef.current = requestAnimationFrame(animate);
 
       const delta = Math.min(clock.getDelta(), 0.08);
       if (clock.elapsedTime - lastModelScan > 1.4) {
         lastModelScan = clock.elapsedTime;
-        hydrateSceneModels(scene, camera.position, 62);
+        hydrateSceneModels(scene, camera.position);
       }
 
       const story = storyRef.current;
@@ -2944,19 +2719,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
         const desired = controls.getDesiredVelocity();
         const requested = Math.hypot(desired.x, desired.z);
-        const MAX_CRANE_ALTITUDE = 16.5;
+        const isSprinting = isFastWalkRef.current || controls.keys.sprint;
         const maxSpeed =
           ride.kind === 'buffalo'
-            ? 3.8
+            ? isSprinting
+              ? 6.5
+              : 4.0
             : ride.kind === 'egret'
-            ? isFastWalkRef.current
-              ? 12.8
-              : 7.2
+            ? isSprinting
+              ? 16.0
+              : 8.2
             : ride.kind === 'horse'
-            ? isFastWalkRef.current
-              ? 14.5
-              : 7.2
-            : 5.4;
+            ? isSprinting
+              ? 26.5
+              : 10.5
+            : isSprinting
+            ? 15.5
+            : 7.2;
         const speed = ride.seat === 0 && requested > 0.05 ? maxSpeed : 0;
         if (ride.seat === 0 && requested > 0.05) {
           // 所有載具皆以本地 -Z 為車頭／獸首前方，移動時平滑轉向並避免視角反轉卡死
@@ -3055,13 +2834,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           proxy.position.set(ride.x, ride.y + 1.3, ride.z);
           proxy.rotation.y = ride.yaw;
         }
-        const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.32 : 0.32) : 0;
-        const seatBack = ride.kind === 'horseCart' ? 0.55 : 0;
-        // 新馬車 GLB 比舊程序車篷高；視線落在車廂內雙人座，而非套用舊車篷高度站到頂上。
-        const eyeHeight = ride.kind === 'horseCart' ? 1.72 : ride.kind === 'egret' ? 2.2 : ride.kind === 'horse' ? 2.35 : 2.2;
+        const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.26 : 0.26) : 0;
+        const seatBack = ride.kind === 'horseCart' ? 0.05 : 0;
+        // FirstPersonControls.updateCameraTransform 會自動加上 PhysicsController.EYE_HEIGHT (1.70m)，
+        // 因此設定 controls.position.y 時需扣除 EYE_HEIGHT，讓相機真正位在車廂前排座椅高度 (1.56m) 而非車頂上方。
+        const eyeHeight = ride.kind === 'horseCart' ? 1.56 : ride.kind === 'egret' ? 2.05 : ride.kind === 'horse' ? 2.05 : 1.92;
         controls.position.set(
           ride.x + Math.cos(ride.yaw) * seatOffset + Math.sin(ride.yaw) * seatBack,
-          ride.y + eyeHeight,
+          ride.y + eyeHeight - PhysicsController.EYE_HEIGHT,
           ride.z - Math.sin(ride.yaw) * seatOffset + Math.cos(ride.yaw) * seatBack
         );
         controls.updateCameraTransform(delta);

@@ -37,6 +37,7 @@ import { hallOf, createHallStairEntrance, isFloorsHall } from './exhibitHall';
 import { createHallLobby, lobbyPit } from './hallLobby';
 import type { BuildingInteractable, Collider } from '../types';
 import { drawPainBoardTexture, deskPaperTexture, MAIN_BOARD, SIDE_BOARD, PainBoardLayout } from './painBoard';
+import { loadModelInto } from '../modelAssets';
 
 /* =====================================================================
  * 共用材質（整個世界共用一份；晝夜切換時調整燈籠、窗紙的亮度）
@@ -1141,7 +1142,6 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const sn = Math.sin(b.facingYaw);
     return [b.position.x + lx * c + lz * sn, b.position.z - lx * sn + lz * c];
   };
-  const lionGeo = getLionGeometry();
   for (const sx of [-1, 1]) {
     const lx = sx * (doorW / 2 + 1.15);
     const lz = d / 2 + 1.3;
@@ -1150,10 +1150,10 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     lion.position.set(lx, 0, lz);
     lion.rotation.y = sx * 0.25;
     lion.userData.modelAsset = 'stoneLion';
-    lion.userData.modelSize = [1.1, 2.0, 1.35];
+    lion.userData.modelSize = [1.25, 1.95, 1.45];
     lion.userData.noMerge = true;
-    addMesh(lion, lionGeo, mats.sculpt).userData.noMerge = true;
     body.add(lion);
+    void loadModelInto(lion, 'stoneLion');
     root.add(makePickProxy(1.25, 2.1, 1.35, lx, lz, sx * 0.25, { kind: 'egg', egg: 'stoneLion', maxDist: 28 }));
     const [wx, wz] = toWorld(lx, lz);
     extraColliders.push({ id: `${b.id}-lion-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.6 });

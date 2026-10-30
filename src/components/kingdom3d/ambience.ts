@@ -94,8 +94,8 @@ class KingdomAmbience {
     lfoGain.gain.value = 260;
     lfo.connect(lfoGain).connect(w.f.frequency);
     lfo.start();
-    // 風：帶通、頻率慢慢飄
-    const wi = loop('bandpass', 380, 0.6);
+    // 風：帶通、頻率慢慢飄（音量調輕柔）
+    const wi = loop('bandpass', 280, 0.9);
     this.wind = wi.g;
     this.windFilter = wi.f;
     // 雨：高通的沙沙聲
@@ -188,8 +188,8 @@ class KingdomAmbience {
     const set = (g: GainNode | null, v: number, tc = 0.8) => g && g.gain.setTargetAtTime(v, now, tc);
     set(this.water, s.water * 0.5 * indoor);
     const high = Math.min(1, Math.max(0, (s.height - 4) / 30));
-    set(this.wind, (0.05 + high * 0.35 + (rain ? 0.1 : 0)) * indoor, 1.5);
-    if (this.windFilter) this.windFilter.frequency.setTargetAtTime(300 + Math.sin(now * 0.13) * 120 + high * 200, now, 2);
+    set(this.wind, (0.012 + high * 0.08 + (rain ? 0.03 : 0)) * indoor, 1.5);
+    if (this.windFilter) this.windFilter.frequency.setTargetAtTime(260 + Math.sin(now * 0.13) * 70 + high * 110, now, 2);
     set(this.rain, rain ? 0.55 * (s.indoor ? 0.35 : 1) : 0, 1.2);
     if (this.muted || s.indoor) return;
     // 鳥鳴（白天多、黃昏少）

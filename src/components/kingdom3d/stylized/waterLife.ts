@@ -6,6 +6,7 @@ import { REGION_CONFIGS } from '../regionConfigs';
 import { STREET_PROPS } from './streets';
 import { TULOU_RADIUS, RING } from './tulou';
 import { glowTexture } from './textures';
+import { animateModelMotion, loadModelInto } from '../modelAssets';
 
 /** 判斷座標 (x, y, z) 是否在建築屋頂下方、室內、土樓迴廊或店鋪遮簷內（屋內不可淋雨） */
 export function isUnderRoof(x: number, y: number, z: number): boolean {
@@ -281,116 +282,108 @@ function addM(g: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material,
   return m;
 }
 
-/** 白天：烏篷漁船（竹編拱棚、船尾搖櫓的漁夫） */
+/** 船尾戴斗笠搖櫓划船的船夫（設定 keepOnModelSwap 以便與 GLB 船身共存） */
+function addSternBoatman(g: THREE.Group, m: BoatMats, sternZ: number, deckY: number) {
+  const man = new THREE.Group();
+  man.position.set(0, deckY, sternZ);
+  man.userData.keepOnModelSwap = true;
+  man.userData.noMerge = true;
+
+  // 下半身雙腿站立於船尾甲板
+  for (const sx of [-0.08, 0.08]) {
+    addM(man, new THREE.CylinderGeometry(0.055, 0.05, 0.42, 8), m.hullTrim, sx, 0.21, 0);
+  }
+
+  // 上半身與手臂（隨搖櫓微微前後俯仰）
+  const torso = new THREE.Group();
+  torso.position.set(0, 0.42, 0);
+  man.add(torso);
+
+  // 蓑衣／布衫軀幹
+  addM(torso, new THREE.CylinderGeometry(0.15, 0.25, 0.56, 10), m.robe, 0, 0.26, 0);
+  // 頭部
+  addM(torso, new THREE.SphereGeometry(0.14, 12, 10), m.skin, 0, 0.66, 0);
+  // 斗笠（竹編圓錐笠帽＋帽簷圈）
+  addM(torso, new THREE.ConeGeometry(0.38, 0.2, 16), m.straw, 0, 0.8, 0);
+  const brim = addM(torso, new THREE.TorusGeometry(0.37, 0.018, 6, 18), m.hullTrim, 0, 0.71, 0);
+  brim.rotation.x = Math.PI / 2;
+
+  // 雙手前伸握櫓
+  for (const sx of [-1, 1]) {
+    const arm = addM(torso, new THREE.CylinderGeometry(0.042, 0.038, 0.38, 8), m.robe, sx * 0.18, 0.36, 0.12);
+    arm.rotation.x = 1.05;
+    arm.rotation.z = sx * -0.25;
+  }
+
+  // 船尾長木櫓（斜伸入後方水中划水）
+  const oarPivot = new THREE.Group();
+  oarPivot.position.set(0.24, 0.52, 0.18);
+  oarPivot.rotation.x = 0.92;
+  man.add(oarPivot);
+  addM(oarPivot, new THREE.CylinderGeometry(0.026, 0.024, 2.35, 8), m.hullTrim, 0, -0.35, 0);
+  const blade = addM(oarPivot, new THREE.BoxGeometry(0.13, 0.68, 0.028), m.hull, 0, -1.35, 0);
+  blade.rotation.y = 0.25;
+
+  man.traverse((o) => {
+    o.userData.keepOnModelSwap = true;
+    o.userData.noMerge = true;
+  });
+  g.add(man);
+  g.userData.oar = oarPivot;
+  g.userData.boatmanTorso = torso;
+}
+
+/** 白天：烏篷漁船（直接載入貼皮 GLB 模型＋船尾戴斗笠船夫划船） */
 export function fishingBoat(m: BoatMats) {
   const g = new THREE.Group();
-  addM(g, hullGeometry(5.2, 1.5, 0.55), m.hull, 0, 0, 0);
-  addM(g, new THREE.BoxGeometry(1.25, 0.06, 4.0), m.hullTrim, 0, 0.32, 0);
-  const canopy = addM(g, new THREE.CylinderGeometry(0.62, 0.62, 1.9, 14, 1, true, -Math.PI / 2, Math.PI), m.canopy, 0, 0.36, 0.1);
-  canopy.rotation.x = Math.PI / 2;
-  (canopy.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
-  // 船頭竹魚簍
-  addM(g, new THREE.CylinderGeometry(0.2, 0.15, 0.32, 10), m.straw, 0.15, 0.5, -1.7);
-  // 漁夫（斗笠、蓑衣）與櫓
-  const man = new THREE.Group();
-  man.position.set(0, 0.32, 1.85);
-  addM(man, new THREE.CylinderGeometry(0.16, 0.28, 0.85, 10), m.robe, 0, 0.43, 0);
-  addM(man, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 1.0, 0);
-  addM(man, new THREE.ConeGeometry(0.36, 0.2, 14), m.straw, 0, 1.14, 0);
-  const oar = addM(man, new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6), m.hullTrim, 0.3, 0.5, 0.55);
-  oar.rotation.x = 0.9;
-  g.add(man);
-  g.userData.oar = oar;
+  g.userData.noMerge = true;
+  g.userData.modelAsset = 'openBoat';
+  g.userData.modelSize = [2.35, 1.45, 4.4];
+  g.userData.modelYaw = -Math.PI / 2;
+  g.userData.lamps = [];
+  addSternBoatman(g, m, 1.62, 0.28);
+  void loadModelInto(g, 'openBoat');
   return g;
 }
 
-/** 沒屋頂的小舟（照參考照片）：細長木舟、兩頭微翹、中間一座低矮的拱形竹篷，船尾船夫搖櫓、船頭坐著一位客人；船尾掛一盞小燈 */
+/** 沒屋頂的小舟（直接載入 open-boat.glb 貼皮模型，船尾戴斗笠船夫搖櫓＋夜間小燈） */
 export function sampanBoat(m: BoatMats) {
   const g = new THREE.Group();
-  const hull = new THREE.MeshStandardMaterial({ color: 0x2e2620, roughness: 0.8 });
-  addM(g, hullGeometry(6.6, 1.35, 0.5), hull, 0, 0, 0);
-  addM(g, new THREE.BoxGeometry(1.05, 0.06, 5.2), m.hullTrim, 0, 0.3, 0);
-  // 兩頭微翹的船首、船尾
-  for (const sz of [-1, 1]) {
-    const post = addM(g, new THREE.BoxGeometry(0.12, 0.08, 1.2), hull, 0, 0.42, sz * 3.15);
-    post.rotation.x = sz * 0.42;
-    const tip = addM(g, new THREE.BoxGeometry(0.06, 0.5, 0.06), m.hullTrim, 0, 0.72, sz * 3.66);
-    tip.rotation.x = sz * 0.5;
-  }
-  // 低矮的拱形竹篷（篷口暗暗的）
-  const canopy = addM(g, new THREE.CylinderGeometry(0.6, 0.6, 2.3, 16, 1, true, -Math.PI / 2, Math.PI), m.canopy, 0, 0.36, -0.2);
-  canopy.rotation.x = Math.PI / 2;
-  (canopy.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
-  for (const zz of [-1.35, -0.6, 0.15, 0.9]) {
-    const rib = addM(g, new THREE.TorusGeometry(0.61, 0.025, 4, 12, Math.PI), m.straw, 0, 0.36, zz);
-    void rib;
-  }
-  const mouth = addM(g, new THREE.CircleGeometry(0.58, 14, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x120e0a, side: THREE.DoubleSide }), 0, 0.37, -1.33);
-  void mouth;
-  // 篷頂上一捲藍布
-  const roll = addM(g, new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x2f4f8a, roughness: 0.8 }), 0, 0.98, 0.3);
-  roll.rotation.x = Math.PI / 2;
-  // 船夫（站在船尾搖櫓）
-  const man = new THREE.Group();
-  man.position.set(0, 0.32, 2.3);
-  addM(man, new THREE.CylinderGeometry(0.15, 0.26, 0.85, 10), m.robe, 0, 0.43, 0);
-  addM(man, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 1.0, 0);
-  const oar = addM(man, new THREE.CylinderGeometry(0.03, 0.03, 2.6, 6), m.hullTrim, 0.3, 0.45, 0.6);
-  oar.rotation.x = 0.95;
-  g.add(man);
-  g.userData.oar = oar;
-  // 船頭坐著的客人
-  const guest = new THREE.Group();
-  guest.position.set(0.1, 0.32, -2.1);
-  addM(guest, new THREE.CylinderGeometry(0.15, 0.26, 0.5, 10), new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.8 }), 0, 0.25, 0);
-  addM(guest, new THREE.SphereGeometry(0.14, 12, 10), m.skin, 0, 0.62, 0);
-  g.add(guest);
-  // 船尾小燈（晚上亮）
-  const lamp = addM(g, new THREE.SphereGeometry(0.12, 10, 8), m.lantern, 0, 1.15, 3.05);
-  addM(g, new THREE.CylinderGeometry(0.02, 0.02, 0.9, 4), m.hullTrim, 0, 0.75, 3.05);
+  g.userData.noMerge = true;
+  g.userData.modelAsset = 'openBoat';
+  g.userData.modelSize = [2.35, 1.45, 4.4];
+  g.userData.modelYaw = -Math.PI / 2;
+  addSternBoatman(g, m, 1.62, 0.28);
+  const lamp = addM(g, new THREE.SphereGeometry(0.11, 10, 8), m.lantern, -0.22, 1.05, 1.95);
+  lamp.userData.keepOnModelSwap = true;
+  lamp.userData.noMerge = true;
   g.userData.lamps = [lamp];
+  void loadModelInto(g, 'openBoat');
   return g;
 }
 
 /** 五艘裡面有一艘是有屋頂的畫舫，其餘是沒屋頂的小舟 */
 export const boatHasRoof = (index: number) => index % 5 === 4;
 
-/** 晚上：畫舫遊船（朱紅廊柱、黛瓦攢尖頂、四角宮燈） */
+/** 有屋頂的畫舫遊船（直接載入 roofed-boat.glb 貼皮模型，船尾戴斗笠船夫搖櫓＋四角夜間宮燈） */
 export function pleasureBoat(m: BoatMats) {
   const g = new THREE.Group();
-  addM(g, hullGeometry(6.4, 2.1, 0.6), m.red, 0, 0, 0);
-  addM(g, new THREE.BoxGeometry(1.8, 0.08, 5.0), m.hullTrim, 0, 0.34, 0);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) addM(g, new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), m.red, sx * 0.72, 1.1, sz * 1.05);
-  addM(g, new THREE.BoxGeometry(1.7, 0.08, 2.3), m.gold, 0, 1.86, 0);
-  const roof = addM(g, new THREE.ConeGeometry(1.55, 0.75, 4, 1), m.roof, 0, 2.25, 0);
-  roof.rotation.y = Math.PI / 4;
-  roof.scale.set(1, 1, 1.35);
-  addM(g, new THREE.SphereGeometry(0.1, 8, 6), m.gold, 0, 2.66, 0);
-  // 欄杆
-  for (const sx of [-1, 1]) addM(g, new THREE.BoxGeometry(0.05, 0.05, 2.2), m.red, sx * 0.72, 0.62, 0);
-  // 四角宮燈
+  g.userData.noMerge = true;
+  g.userData.modelAsset = 'roofedBoat';
+  g.userData.modelSize = [2.65, 2.4, 4.8];
+  g.userData.modelYaw = -Math.PI / 2;
+  addSternBoatman(g, m, 1.82, 0.32);
   const lamps: THREE.Mesh[] = [];
-  for (const sx of [-1, 1])
+  for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      lamps.push(addM(g, new THREE.CylinderGeometry(0.12, 0.12, 0.26, 8), m.lantern, sx * 0.86, 1.6, sz * 1.2));
+      const lamp = addM(g, new THREE.CylinderGeometry(0.1, 0.1, 0.22, 8), m.lantern, sx * 0.82, 1.55, sz * 1.15);
+      lamp.userData.keepOnModelSwap = true;
+      lamp.userData.noMerge = true;
+      lamps.push(lamp);
     }
-  // 船頭、船尾的燈
-  lamps.push(addM(g, new THREE.SphereGeometry(0.14, 10, 8), m.lantern, 0, 0.75, -2.6));
-  lamps.push(addM(g, new THREE.SphereGeometry(0.14, 10, 8), m.lantern, 0, 0.75, 2.6));
-  // 賞景的人
-  const man = new THREE.Group();
-  man.position.set(0.25, 0.32, 0.2);
-  addM(man, new THREE.CylinderGeometry(0.16, 0.3, 0.7, 10), new THREE.MeshStandardMaterial({ color: 0x7a2c2c, roughness: 0.8 }), 0, 0.35, 0);
-  addM(man, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 0.85, 0);
-  g.add(man);
-  // 船夫
-  const boatman = new THREE.Group();
-  boatman.position.set(0, 0.34, 2.4);
-  addM(boatman, new THREE.CylinderGeometry(0.15, 0.26, 0.85, 10), m.robe, 0, 0.43, 0);
-  addM(boatman, new THREE.SphereGeometry(0.15, 12, 10), m.skin, 0, 1.0, 0);
-  addM(boatman, new THREE.ConeGeometry(0.34, 0.18, 14), m.straw, 0, 1.13, 0);
-  g.add(boatman);
+  }
   g.userData.lamps = lamps;
+  void loadModelInto(g, 'roofedBoat');
   return g;
 }
 
@@ -588,8 +581,7 @@ export class WaterLife {
         dy = Math.atan2(Math.sin(dy), Math.cos(dy));
         b.group.rotation.y += dy * Math.min(1, dt * 0.8);
         b.group.rotation.z = Math.sin(t * 0.9 + b.phase) * 0.025;
-        const oar = b.day.userData.oar as THREE.Mesh | undefined;
-        if (oar) oar.rotation.z = Math.sin(t * 1.6 + b.phase) * 0.35;
+        animateModelMotion(b.day, t + b.phase, b.speed, 'boat');
       }
       if (this.tod === 'night') {
         for (const l of this.waterLanterns.children) {

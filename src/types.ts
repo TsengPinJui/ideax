@@ -1014,6 +1014,7 @@ export interface Question {
   aiPreliminaryReport?: AIPreliminaryReport;
   exclusiveChallengeUrl?: string; // 創星季參賽網站專案連結
   isStarSeason?: boolean;
+  isCompetitionJoined?: boolean;
   starSeasonProposalId?: string;
   supportPoints?: number; // 獲得讀者支持打賞總點數
   supportPointsWithdrawn?: number; // 該作品/提案累積已提領之打賞金額（已提領者不計入轉移後新受讓者之可提領賞金）

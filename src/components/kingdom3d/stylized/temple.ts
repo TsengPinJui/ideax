@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import type { BuildingInteractable, Collider } from '../types';
-import { getStyleMaterials, mergeByMaterial, buildRoofTier, getLionGeometry } from './architecture';
+import { getStyleMaterials, mergeByMaterial, buildRoofTier } from './architecture';
 import { drawJobScrollTexture, JOB_SCROLLS } from './jobScroll';
 import { createSosoNpc } from './npcs';
 import { makePickProxy } from '../picking';
+import { loadModelInto } from '../modelAssets';
 
 /**
  * 求職廟（外殿重簷青瓦飛簷＋殿內朱紅神社大殿）：
@@ -787,7 +788,6 @@ export function createTempleExtras(b: BuildingInteractable): { group: THREE.Grou
   }
 
   // 台階兩側石獅（保留石獅彩蛋與動態）與矮石燈
-  const lionGeo = getLionGeometry();
   for (const side of [-1, 1]) {
     const lz = porchZ + 2.15;
     const lion = new THREE.Group();
@@ -798,11 +798,9 @@ export function createTempleExtras(b: BuildingInteractable): { group: THREE.Grou
     const pose = new THREE.Group();
     pose.userData.noMerge = true;
     pose.userData.modelAsset = 'stoneLion';
-    pose.userData.modelSize = [1.35, 2.0, 1.55];
+    pose.userData.modelSize = [1.3, 2.0, 1.5];
     lion.add(pose);
-    const lionMesh = add(lionGeo, mats.sculpt, 0, 0, 0, pose);
-    lionMesh.userData.noMerge = true;
-    lionMesh.userData.pick = { kind: 'egg', egg: 'stoneLion', maxDist: 28 };
+    void loadModelInto(pose, 'stoneLion');
     const lionPick = makePickProxy(1.5, 2.2, 1.6, 0, 0.95, 0, { kind: 'egg', egg: 'stoneLion', maxDist: 28 });
     lionPick.userData.keepOnModelSwap = true;
     pose.add(lionPick);
