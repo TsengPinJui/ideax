@@ -1146,7 +1146,14 @@ export function createStyledBuilding(b: StyledBuildingInput): THREE.Group {
     const lx = sx * (doorW / 2 + 1.15);
     const lz = d / 2 + 1.3;
     if (Math.abs(lx) + 0.5 > w / 2 + 1.5 || em) continue;
-    addMesh(body, lionGeo, mats.sculpt, lx, 0, lz, sx * 0.25);
+    const lion = new THREE.Group();
+    lion.position.set(lx, 0, lz);
+    lion.rotation.y = sx * 0.25;
+    lion.userData.modelAsset = 'stoneLion';
+    lion.userData.modelSize = [1.1, 2.0, 1.35];
+    lion.userData.noMerge = true;
+    addMesh(lion, lionGeo, mats.sculpt).userData.noMerge = true;
+    body.add(lion);
     root.add(makePickProxy(1.25, 2.1, 1.35, lx, lz, sx * 0.25, { kind: 'egg', egg: 'stoneLion', maxDist: 28 }));
     const [wx, wz] = toWorld(lx, lz);
     extraColliders.push({ id: `${b.id}-lion-${sx}`, type: 'cylinder', x: wx, z: wz, radius: 0.6 });

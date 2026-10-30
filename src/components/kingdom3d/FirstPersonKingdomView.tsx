@@ -70,6 +70,7 @@ import { GARDEN_ARCH_BRIDGE } from './stylized/careerGarden';
 import { reportXp } from '../../services/xpService';
 import { XP_ISLANDS, XP_VENUES } from '../../data/xpRules';
 import { BASIN_LANDMARKS } from './stylized/basinLayout';
+import { hydrateSceneModels, loadModelInto } from './modelAssets';
 
 const LIBRARY_ID = 'discussion-library';
 // 走路用的拱橋高度：五座大拱橋＋徵才島庭園的石拱橋
@@ -1739,6 +1740,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       add(carriage, new THREE.CylinderGeometry(0.065, 0.065, 2.16, 8), dark, 0, 0.64, 0.35, 0, 0, Math.PI / 2);
       // 前方拉車駿馬（位於 z = -1.95，朝 -Z）
       const pullHorse = buildArticulatedHorse(0x5c3a24, 0x241811, 0x8c2d1f, false);
+      pullHorse.hGroup.userData.modelAsset = 'cartHorse';
+      pullHorse.hGroup.userData.modelSize = [1.8, 2.15, 2.15];
       pullHorse.hGroup.position.set(0, 0, -1.95);
       cart.add(pullHorse.hGroup);
 
@@ -1787,6 +1790,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const horse = new THREE.Group();
       horse.name = id;
       const built = buildArticulatedHorse(coatHex, 0x2c1e16, 0x9c3d27, true);
+      built.hGroup.userData.modelAsset = 'horse';
+      built.hGroup.userData.modelSize = [1.65, 2.1, 2.05];
       horse.add(built.hGroup);
       let prevX = x;
       let prevZ = z;
@@ -1835,6 +1840,8 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const makeRideableEgret = (id: string, x: number, z: number, yaw = 0) => {
       const crane = new THREE.Group();
       crane.name = id;
+      crane.userData.modelAsset = 'crane';
+      crane.userData.modelSize = [1.5, 2.55, 1.6];
       const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.55 });
       const blackMat = new THREE.MeshStandardMaterial({ color: 0x1e1d22, roughness: 0.72 });
       const redCrownMat = new THREE.MeshStandardMaterial({ color: 0xc92a22, roughness: 0.45, emissive: 0x5c0f0b, emissiveIntensity: 0.35 });
@@ -2482,10 +2489,16 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const g = new THREE.Group();
       const open = sampanBoat(bMats);
       const roofed = pleasureBoat(bMats);
+      open.userData.modelAsset = 'openBoat';
+      open.userData.modelSize = [2.35, 1.35, 4.1];
+      roofed.userData.modelAsset = 'roofedBoat';
+      roofed.userData.modelSize = [2.5, 2.45, 4.2];
       g.add(open, roofed);
       g.userData.open = open;
       g.userData.roofed = roofed;
       scene.add(g);
+      void loadModelInto(open, 'openBoat');
+      void loadModelInto(roofed, 'roofedBoat');
       return g;
     };
     const styleBoat = (g: THREE.Group, slot: number) => {
@@ -2865,10 +2878,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
     const pagodaRoofs: THREE.Object3D[] = [];
     let pagodaRoofHidden = false;
 
+    let lastModelScan = 0;
     const animate = () => {
       rafIdRef.current = requestAnimationFrame(animate);
 
       const delta = Math.min(clock.getDelta(), 0.08);
+      if (clock.elapsedTime - lastModelScan > 1.4) {
+        lastModelScan = clock.elapsedTime;
+        hydrateSceneModels(scene, camera.position, 62);
+      }
 
       const story = storyRef.current;
       updateBoats(delta);
@@ -3588,6 +3606,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }));
     };
 
+    hydrateSceneModels(scene, camera.position, 62);
     rafIdRef.current = requestAnimationFrame(animate);
 
     // 本機開發用：截圖與測試時可直接移動視角、切換時段（正式站不提供）

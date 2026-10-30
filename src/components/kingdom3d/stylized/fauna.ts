@@ -137,6 +137,8 @@ function addM(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mate
 
 function buffalo(m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
+  g.userData.modelAsset = 'buffalo';
+  g.userData.modelSize = [2.25, 1.85, 2.6];
   const body = new THREE.Group();
   g.add(body);
   // 圓潤飽滿的水牛軀幹、肩峰、胸腹與背部草編坐墊
@@ -229,6 +231,8 @@ function chicken(m: Record<string, THREE.Material>, hen: boolean) {
 
 function egret(m: Record<string, THREE.Material>) {
   const g = new THREE.Group();
+  g.userData.modelAsset = 'crane';
+  g.userData.modelSize = [1.45, 2.45, 1.5];
   const body = new THREE.Group();
   g.add(body);
   // 優雅仙鶴／白鷺身軀、黑色尾羽裝飾、修長曲頸、丹頂、長喙與雙翼雙腿

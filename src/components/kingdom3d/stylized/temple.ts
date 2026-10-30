@@ -797,10 +797,15 @@ export function createTempleExtras(b: BuildingInteractable): { group: THREE.Grou
     root.add(lion);
     const pose = new THREE.Group();
     pose.userData.noMerge = true;
+    pose.userData.modelAsset = 'stoneLion';
+    pose.userData.modelSize = [1.35, 2.0, 1.55];
     lion.add(pose);
     const lionMesh = add(lionGeo, mats.sculpt, 0, 0, 0, pose);
     lionMesh.userData.noMerge = true;
     lionMesh.userData.pick = { kind: 'egg', egg: 'stoneLion', maxDist: 28 };
+    const lionPick = makePickProxy(1.5, 2.2, 1.6, 0, 0.95, 0, { kind: 'egg', egg: 'stoneLion', maxDist: 28 });
+    lionPick.userData.keepOnModelSwap = true;
+    pose.add(lionPick);
     lion.userData.tick = (t: number) => {
       const phase = (t + (side < 0 ? 0 : 10.5)) % 27;
       let stretch = 0;
