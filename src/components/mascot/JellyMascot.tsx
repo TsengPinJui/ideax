@@ -20,6 +20,13 @@ const IDLE_SESSION_MS = 20000;
 
 interface ChatMsg { id: number; who: 'me' | 'bot'; text: string; tag?: string; reveal?: number; actions?: MascotAction[] }
 
+const SUGGESTED_PROMPTS = [
+  { icon: '💡', text: '平台有哪些核心功能？' },
+  { icon: '💰', text: '點數與懸賞機制怎麼運作？' },
+  { icon: '🧑‍💻', text: '如何接案或找專家合作？' },
+  { icon: '🔐', text: '帳號與客服支援' },
+];
+
 const readLS = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const writeLS = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
 
@@ -444,9 +451,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     writeLS(COLLAPSED_KEY, '0');
   };
 
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = input.trim();
+  const submitQuery = async (queryText: string) => {
+    const q = queryText.trim();
     if (!q || sendingRef.current) return;
     sendingRef.current = true;
     markActive();
@@ -535,6 +541,11 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     }
   };
 
+  const send = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitQuery(input);
+  };
+
 
   if (collapsed) {
     return (
@@ -585,22 +596,37 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
         role="button"
         tabIndex={0}
         hidden={chatOpen}
-        aria-label={config.chatEnabled ? '打開提問視窗' : '和燈泡吉祥物互動'}
+        aria-label={config.chatEnabled ? '點擊與小燈泡對話提問' : '和燈泡吉祥物互動'}
+        title={config.chatEnabled ? '點擊此處可開啟對話框，與小燈泡對話提問' : '和小燈泡互動'}
         style={{ transform: 'translate(-400px, -400px)' }}
         onClick={onBubbleClick}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBubbleClick(); } }}
       >
-        <span ref={bubbleTextRef} className="ixm-bubble-text" aria-live="polite" />
-        <button
-          type="button"
-          className="ixm-x ixm-dance"
-          onClick={(e) => { e.stopPropagation(); markActive(); engineRef.current?.waveDance('～♪ 看我跳波浪舞！～♬', 6000); }}
-          aria-label="讓小燈泡跳波浪舞"
-          title="跳波浪舞"
-        >
-          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6.5" cy="18" r="2.6" fill="currentColor" /><circle cx="17.5" cy="16" r="2.6" fill="currentColor" /></svg>
-        </button>
-        <button type="button" className="ixm-x" onClick={collapse} aria-label="收起吉祥物">×</button>
+        <div className="ixm-bubble-main">
+          <span ref={bubbleTextRef} className="ixm-bubble-text" aria-live="polite" />
+          {config.chatEnabled && (
+            <div className="ixm-bubble-badge" title="點擊直接提問對話">
+              <span className="ixm-bubble-badge-dot" aria-hidden="true" />
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>點我對話 💬</span>
+              <span className="ixm-bubble-badge-arrow" aria-hidden="true">→</span>
+            </div>
+          )}
+        </div>
+        <div className="ixm-bubble-side">
+          <button
+            type="button"
+            className="ixm-x ixm-dance"
+            onClick={(e) => { e.stopPropagation(); markActive(); engineRef.current?.waveDance('～♪ 看我跳波浪舞！～♬', 6000); }}
+            aria-label="讓小燈泡跳波浪舞"
+            title="跳波浪舞"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6.5" cy="18" r="2.6" fill="currentColor" /><circle cx="17.5" cy="16" r="2.6" fill="currentColor" /></svg>
+          </button>
+          <button type="button" className="ixm-x" onClick={collapse} aria-label="收起吉祥物" title="收起吉祥物">×</button>
+        </div>
       </div>
       {grips.map((g, i) => <GripGlove key={`${g.dir}-${i}`} {...g} />)}
       {chatOpen && (
@@ -623,13 +649,35 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
                 )}
               </div>
             ))}
+            {msgs.length <= 1 && (
+              <div className="ixm-prompts-card" role="region" aria-label="推薦問題">
+                <div className="ixm-prompts-label">
+                  <span className="ixm-prompts-icon" aria-hidden="true">💡</span>
+                  <span>常見問題快速點選：</span>
+                </div>
+                <div className="ixm-prompts-grid">
+                  {SUGGESTED_PROMPTS.map((p) => (
+                    <button
+                      key={p.text}
+                      type="button"
+                      disabled={sending}
+                      className="ixm-prompt-btn"
+                      onClick={() => submitQuery(p.text)}
+                    >
+                      <span className="ixm-prompt-emoji" aria-hidden="true">{p.icon}</span>
+                      <span className="ixm-prompt-label">{p.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {sending && status && <div className="ixm-typing" role="status">{status}</div>}
             <div className="ixm-sr" aria-live="polite">{liveText}</div>
           </div>
           <form onSubmit={send}>
             <label htmlFor="ixm-input" className="ixm-sr">輸入問題</label>
             <input id="ixm-input" ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); touchChat(); }} maxLength={500} autoComplete="off" readOnly={sending} aria-busy={sending}
-              placeholder={sending ? '小燈泡回覆中，請稍等…' : '例如：忘記密碼怎麼辦？'} />
+              placeholder={sending ? '小燈泡回覆中，請稍等…' : '輸入問題或點上方提示，按 Enter 發送…'} />
             <button type="submit" disabled={sending || !input.trim()}>送出</button>
           </form>
         </section>

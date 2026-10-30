@@ -16,10 +16,23 @@
   background: radial-gradient(closest-side, rgba(255, 196, 40, .55), rgba(255, 210, 90, .22) 55%, rgba(255, 210, 90, 0)); }
 .ixm-puddle { position: fixed; left: 0; top: 0; width: 130px; height: 20px; border-radius: 50%; z-index: 34; pointer-events: none; opacity: 0;
   background: radial-gradient(closest-side, rgba(150, 205, 245, .85), rgba(150, 205, 245, .45) 65%, rgba(150, 205, 245, 0)); }
-.ixm-bubble { position: fixed; left: 0; top: 0; z-index: 36; max-width: 240px; padding: 9px 8px 9px 13px; background: #fff; color: #1c1917; border: 1px solid #e7e5e4; border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(30, 20, 0, .12); font-size: 13.5px; line-height: 1.5; font-weight: 600; cursor: pointer; display: flex; align-items: flex-start; gap: 4px; }
+.ixm-bubble { position: fixed; left: 0; top: 0; z-index: 36; max-width: 250px; padding: 9px 8px 9px 13px; background: #fff; color: #1c1917; border: 1.5px solid #fde68a; border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, .14), 0 2px 8px rgba(0, 0, 0, .05); font-size: 13.5px; line-height: 1.5; font-weight: 600; cursor: pointer; display: flex; align-items: flex-start; gap: 6px;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
+.ixm-bubble::after { content: ''; position: absolute; right: 22px; bottom: -6px; width: 10px; height: 10px; background: inherit; border-right: 1.5px solid #fde68a; border-bottom: 1.5px solid #fde68a; transform: rotate(45deg); border-bottom-right-radius: 2px; transition: border-color .18s ease; pointer-events: none; }
+.ixm-bubble:hover { border-color: #f59e0b; background: #fffdf5; box-shadow: 0 10px 28px rgba(245, 158, 11, .25), 0 3px 10px rgba(0, 0, 0, .08); }
+.ixm-bubble:hover::after { border-color: #f59e0b; }
 .ixm-bubble:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
-.ixm-bubble-text { flex: 1; }
+.ixm-bubble-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ixm-bubble-text { word-break: break-word; }
+.ixm-bubble-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 2px 7px; font-size: 11px; font-weight: 800; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; border-radius: 999px; width: fit-content; user-select: none; transition: all .16s ease; }
+.ixm-bubble:hover .ixm-bubble-badge { background: #fde68a; color: #92400e; border-color: #f59e0b; }
+.ixm-bubble-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: ixm-bubble-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.ixm-bubble-badge-arrow { font-size: 10px; transition: transform .16s ease; }
+.ixm-bubble:hover .ixm-bubble-badge-arrow { transform: translateX(2px); }
+@keyframes ixm-bubble-ping { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.4); } }
+@media (prefers-reduced-motion: reduce) { .ixm-bubble-badge-dot { animation: none; } }
+.ixm-bubble-side { display: flex; align-items: center; gap: 1px; }
 .ixm-x { font: inherit; border: 0; background: transparent; color: #78716c; cursor: pointer; padding: 0; font-size: 17px; line-height: 1; min-width: 26px; min-height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 .ixm-x:hover { background: #f5f5f4; color: #1c1917; }
 .ixm-peek { position: fixed; right: 0; z-index: 36; width: 40px; height: 56px; border: 1px solid #e7e5e4; border-right: 0; border-radius: 28px 0 0 28px; background: #fff; cursor: pointer; padding: 0;
@@ -74,3 +87,16 @@
 /* 訊息框裡的跳舞鍵 */
 .ixm-dance { color: #d97706; }
 .ixm-dance:hover { background: #fef3c7; color: #b45309; }
+
+/* 推薦提問卡片與按鈕 */
+.ixm-prompts-card { margin: 6px 0 8px 0; padding: 10px 12px; background: #fffbeb; border: 1px dashed #fcd34d; border-radius: 14px; display: flex; flex-direction: column; gap: 8px; animation: ixm-fade-in .2s ease-out; }
+@keyframes ixm-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.ixm-prompts-label { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; color: #92400e; }
+.ixm-prompts-icon { font-size: 13px; }
+.ixm-prompts-grid { display: flex; flex-direction: column; gap: 6px; }
+.ixm-prompt-btn { display: flex; align-items: center; gap: 8px; padding: 7px 11px; background: #ffffff; border: 1px solid #fde68a; border-radius: 10px; font: inherit; font-size: 12.5px; font-weight: 700; color: #78350f; text-align: left; cursor: pointer; transition: all .15s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, .03); }
+.ixm-prompt-btn:hover { background: #fef3c7; border-color: #f59e0b; color: #451a03; transform: translateX(3px); box-shadow: 0 2px 6px rgba(245, 158, 11, .15); }
+.ixm-prompt-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.ixm-prompt-emoji { font-size: 13px; line-height: 1; }
+.ixm-prompt-label { flex: 1; }
+
