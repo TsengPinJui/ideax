@@ -3057,9 +3057,11 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         }
         const seatOffset = ride.kind === 'horseCart' ? (ride.seat === 0 ? -0.32 : 0.32) : 0;
         const seatBack = ride.kind === 'horseCart' ? 0.55 : 0;
+        // 新馬車 GLB 比舊程序車篷高；視線落在車廂內雙人座，而非套用舊車篷高度站到頂上。
+        const eyeHeight = ride.kind === 'horseCart' ? 1.72 : ride.kind === 'egret' ? 2.2 : ride.kind === 'horse' ? 2.35 : 2.2;
         controls.position.set(
           ride.x + Math.cos(ride.yaw) * seatOffset + Math.sin(ride.yaw) * seatBack,
-          ride.y + (ride.kind === 'horseCart' ? 2.45 : ride.kind === 'egret' ? 2.2 : ride.kind === 'horse' ? 2.35 : 2.2),
+          ride.y + eyeHeight,
           ride.z - Math.sin(ride.yaw) * seatOffset + Math.cos(ride.yaw) * seatBack
         );
         controls.updateCameraTransform(delta);

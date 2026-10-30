@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#275',
+    version: 'v4.7.4',
+    releaseDate: '2026.10.30',
+    releaseTime: '14:42',
+    author: 'IdeaX 核心工程團隊',
+    summary: '將雙人馬車乘坐視點調低至車廂內，修正新馬車模型上的乘坐位置',
+    changes: [
+      '依新馬車 GLB 的車廂比例調低駕駛與乘客視點，保留左右雙人座及原有驅車控制，避免視點落在車頂。',
+    ],
+  },
+  {
     seqNumber: '#274',
     version: 'v4.7.3',
     releaseDate: '2026.10.30',
@@ -3340,7 +3351,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
     color: 'amber',
     moduleCount: 7,
     createdAt: '2026.10.01',
-    updatedAt: '2026.10.30 14:35',
+    updatedAt: '2026.10.30 14:42',
     modules: [
       {
         id: 'm-00-1',
@@ -3348,10 +3359,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前專案版本號、增量序號、最後更新時間與部署狀態。',
         content: `### 當前專案版本與序號規格
 
-* **版本號碼**：v4.7.3
-* **遞增序號**：#274（從 #001 依序遞增）
+* **版本號碼**：v4.7.4
+* **遞增序號**：#275（從 #001 依序遞增）
 * **最後更新日期**：2026.10.30
-* **最後更新時間**：14:35 (UTC+8)（依發布戳記靜態留存，不隨時鐘跳動）
+* **最後更新時間**：14:42 (UTC+8)（依發布戳記靜態留存，不隨時鐘跳動）
 * **發布狀態**：已推送至 GitHub main
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -3410,6 +3421,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#275** | **v4.7.4** | 2026.10.30 | 14:42 | IdeaX 創點子核心 | 依新的馬車 GLB 調低雙人座乘坐視點，讓駕駛與乘客位於車廂內 |
 | **#274** | **v4.7.3** | 2026.10.30 | 14:35 | IdeaX 創點子核心 | 重新套用馬車、馬、黃牛、丹頂鶴與有頂／無頂舟 GLB；調整尺寸並加入載具移動起伏、步態／展翼微動與船身搖曳，模型輕量化且近距離載入 |
 | **#273** | **v4.7.2** | 2026.10.30 | 13:51 | IdeaX 創點子核心 | 以提供的 GLB 模型更新實境漫遊中的石獅、黃牛、馬匹、丹頂鶴與遊船；模型輕量化並改為靠近時載入，原有互動與備援模型保留 |
 | **#266** | **v4.6.5** | 2026.10.29 | 16:50 | IdeaX 創點子核心 | 優化島嶼載入探索錦囊切換極致流暢度：重設自動輪播計時器防碰撞、防重疊觸發防抖機制、卡片高度固定防重排抖動、全面支援 touch-manipulation 即時響應 |
