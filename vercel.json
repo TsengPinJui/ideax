@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.mjs" },
+    { "source": "/explore", "destination": "/seo/explore.html" },
+    { "source": "/create", "destination": "/seo/create.html" },
+    { "source": "/painpoints", "destination": "/seo/painpoints.html" },
+    { "source": "/l0-discussion", "destination": "/seo/l0-discussion.html" },
+    { "source": "/solvers", "destination": "/seo/solvers.html" },
+    { "source": "/jobs", "destination": "/seo/jobs.html" },
+    { "source": "/agents", "destination": "/seo/agents.html" },
+    { "source": "/membership", "destination": "/seo/membership.html" },
+    { "source": "/topup", "destination": "/seo/topup.html" },
+    { "source": "/vibecoding", "destination": "/seo/vibecoding.html" },
+    { "source": "/vibecoding/publish", "destination": "/seo/vibecoding__publish.html" },
+    { "source": "/my-projects", "destination": "/seo/my-projects.html" },
+    { "source": "/challenge", "destination": "/seo/challenge.html" },
+    { "source": "/challenge/join", "destination": "/seo/challenge__join.html" },
+    { "source": "/challenge/expert", "destination": "/seo/challenge__expert.html" },
+    { "source": "/challenge/proposals", "destination": "/seo/challenge__proposals.html" },
+    { "source": "/challenge/rules", "destination": "/seo/challenge__rules.html" }
+  ]
+}
