@@ -125,11 +125,8 @@ const LAND_RIDE_PAVED_YARD: WalkableZone[] = [
   { type: 'rect', minX: 86, maxX: 106, minZ: 38, maxZ: 58 },
   ...WORLD_BRIDGES.map((b) => ({ type: 'corridor' as const, x1: b.x1, z1: b.z1, x2: b.x2, z2: b.z2, halfWidth: b.halfWidth + 0.6 })),
 ];
-function canExitLandRide(ride: { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; x: number; y: number; z: number }) {
-  if (ride.kind === 'horseCart' || ride.kind === 'horse' || ride.kind === 'egret') return true;
-  const landZones = getGlobalWalkableZones().map((z) => (z.type === 'ellipse' ? { ...z, rx: z.rx + 6.5, rz: z.rz + 6.5 } : z));
-  if (PhysicsController.isInsideWalkableZones(ride.x, ride.z, landZones)) return true;
-  return DOCKS.some((dock) => Math.hypot(dock.landX - ride.x, dock.landZ - ride.z) <= 10);
+function canExitLandRide(_ride: { kind: 'buffalo' | 'horseCart' | 'horse' | 'egret'; x: number; y: number; z: number }) {
+  return true;
 }
 import './kingdomUi.css';
 import {
@@ -1832,10 +1829,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       }
       let exitX = ride.x - Math.cos(ride.yaw) * 1.8;
       let exitZ = ride.z + Math.sin(ride.yaw) * 1.8;
-      if (ride.kind === 'buffalo' && !PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones())) {
-        const dock = nearestDock(ride.x, ride.z);
-        exitX = dock.landX;
-        exitZ = dock.landZ;
+      if (!PhysicsController.isInsideWalkableZones(exitX, exitZ, getGlobalWalkableZones())) {
+        const safe = nearestReachable(ride.x, ride.z);
+        exitX = safe.x;
+        exitZ = safe.z;
       }
       performDismount(exitX, Math.max(0, ride.y), exitZ, ride.yaw);
     };
@@ -1907,9 +1904,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               const mx = targetGrp ? targetGrp.position.x : obj.position.x;
               const mz = targetGrp ? targetGrp.position.z : obj.position.z;
               const d = Math.hypot(mx - px, mz - pz);
-              if (d < 6.5 && (!bestMount || d < bestMount.dist)) {
+              if (d < 10.5 && (!bestMount || d < bestMount.dist)) {
                 bestMount = { id: pk.id, rideType: pk.rideType, dist: d };
               }
+            }
+          }
+          if (!bestMount) {
+            const aimed = pickAt(null, null);
+            if (aimed && aimed.kind === 'mount') {
+              bestMount = { id: aimed.id, rideType: aimed.rideType, dist: 0 };
             }
           }
           if (bestMount) {
@@ -2073,9 +2076,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       if (!t) return false;
       playSoundEffect('interact');
       if (t.kind === 'mount') {
-        const label = t.rideType === 'horse' ? '上馬' : t.rideType === 'buffalo' ? '騎牛' : t.rideType === 'egret' ? '駕鶴' : '乘車';
-        setLandRideHint(`請長按載具，或點右下角按鈕（C）即可${label}`);
-        window.setTimeout(() => setLandRideHint(''), 2200);
+        void mountLandRideRef.current(t);
       } else {
         openForTarget(t);
       }
@@ -2158,9 +2159,15 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           const mx = targetGrp ? targetGrp.position.x : obj.position.x;
           const mz = targetGrp ? targetGrp.position.z : obj.position.z;
           const d = Math.hypot(mx - px, mz - pz);
-          if (d < 6.5 && (!bestMount || d < bestMount.dist)) {
+          if (d < 10.5 && (!bestMount || d < bestMount.dist)) {
             bestMount = { id: pk.id, rideType: pk.rideType, dist: d };
           }
+        }
+      }
+      if (!bestMount) {
+        const aimed = pickAt(null, null);
+        if (aimed && aimed.kind === 'mount') {
+          bestMount = { id: aimed.id, rideType: aimed.rideType, dist: 0 };
         }
       }
       if (bestMount) {
@@ -3037,7 +3044,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         if (!boatRideRef.current && !landRideRef.current && story.level === 0) {
           const px = controls.position.x;
           const pz = controls.position.z;
-          let bestDist = 6.5;
+          let bestDist = 10.5;
           for (const obj of pickables) {
             const pk = obj.userData?.pick;
             if (pk?.kind === 'mount' && pk.id && pk.rideType) {
@@ -3049,6 +3056,12 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
                 bestDist = d;
                 nextNearMount = pk.rideType;
               }
+            }
+          }
+          if (!nextNearMount) {
+            const aimed = pickAt(null, null);
+            if (aimed && aimed.kind === 'mount') {
+              nextNearMount = aimed.rideType;
             }
           }
           if (!nextNearMount && closestDock) {

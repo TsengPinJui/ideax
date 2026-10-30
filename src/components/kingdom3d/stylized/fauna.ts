@@ -447,28 +447,38 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
           proxy.rotation.y = g.rotation.y;
         }
       }
+      const proxy = g.userData.rideProxy as THREE.Object3D | undefined;
+      if (proxy) {
+        proxy.position.set(g.position.x, g.position.y + 1.2, g.position.z);
+        proxy.rotation.y = g.rotation.y;
+      }
       const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
       prevX = g.position.x;
       prevZ = g.position.z;
       animateModelMotion(g, t + ph, spd, 'animal');
     });
   };
+  const animateEgret = (g: THREE.Group, ph: number) => {
+    keepApart(g);
+    let prevX = g.position.x;
+    let prevZ = g.position.z;
+    let prevT = 0;
+    anims.push((t) => {
+      const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
+      prevT = t;
+      const proxy = g.userData.rideProxy as THREE.Object3D | undefined;
+      if (proxy) {
+        proxy.position.set(g.position.x, g.position.y + 1.3, g.position.z);
+        proxy.rotation.y = g.rotation.y;
+      }
+      const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
+      prevX = g.position.x;
+      prevZ = g.position.z;
+      animateModelMotion(g, t + ph, spd + Math.max(0, g.position.y - 1.2), 'animal');
+    });
+  };
   if (lands.length) {
-    // 水牛與丹頂鶴（直接驅動 GLB 3D 模型動態）
-    const animateEgret = (g: THREE.Group, ph: number) => {
-      keepApart(g);
-      let prevX = g.position.x;
-      let prevZ = g.position.z;
-      let prevT = 0;
-      anims.push((t) => {
-        const dt = Math.max(0.001, Math.min(0.1, prevT ? t - prevT : 0.016));
-        prevT = t;
-        const spd = Math.hypot(g.position.x - prevX, g.position.z - prevZ) / dt;
-        prevX = g.position.x;
-        prevZ = g.position.z;
-        animateModelMotion(g, t + ph, spd + Math.max(0, g.position.y - 1.2), 'animal');
-      });
-    };
+    // 水牛與丹頂鶴（直接驅動 GLB 3D 模型動態，所有水牛與鶴皆可騎乘駕駛）
     for (let i = 0; i < 5; i++) {
       const g = buffalo(m);
       const [x, z] = spotOn(i * 3);
@@ -476,7 +486,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       root.add(g);
-      const proxy = makePickProxy(1.6, 1.8, 2.5, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' }, 0.5);
+      const proxy = makePickProxy(2.4, 2.4, 3.0, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' }, 0.5);
       proxy.name = `${g.name}-proxy`;
       g.userData.rideProxy = proxy;
       root.add(proxy);
@@ -518,7 +528,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
       g.position.set(x, 0.5, z);
       g.rotation.y = rand() * Math.PI * 2;
       root.add(g);
-      const proxy = makePickProxy(1.5, 1.8, 1.6, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'egret' }, 0.5);
+      const proxy = makePickProxy(2.4, 2.6, 2.4, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'egret' }, 0.5);
       proxy.name = `${g.name}-proxy`;
       g.userData.rideProxy = proxy;
       root.add(proxy);
@@ -574,7 +584,7 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         g.position.set(x, -0.04, z);
         g.rotation.y = tan + (rand() - 0.5) * 0.6;
         root.add(g);
-        const proxy = makePickProxy(1.6, 1.8, 2.5, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
+        const proxy = makePickProxy(2.4, 2.4, 3.0, x, z, g.rotation.y, { kind: 'mount', id: g.name, rideType: 'buffalo' });
         proxy.name = `${g.name}-proxy`;
         g.userData.rideProxy = proxy;
         root.add(proxy);
@@ -612,20 +622,20 @@ export function createFauna(opts: FaunaOptions): { group: THREE.Group; colliders
         }
       }
     }
-    // 水邊的丹頂鶴／白鷺鷥（加入 root 並載入 red-crowned-crane.glb）
+    // 水邊的丹頂鶴／白鷺鷥（加入 root 並載入 red-crowned-crane.glb，同樣設定為可騎乘飛行的仙鶴載具）
     for (let i = 0; i < 2; i++) {
       const sp = rimSpot(isl, 5.1, 0.6);
       if (!sp) continue;
       const g = egret(m);
-      g.name = `rim-egret-${ii}-${i}`;
+      g.name = `ride-rim-egret-${ii}-${i}`;
       g.position.set(sp[0], -0.04, sp[1]);
       g.rotation.y = sp[2] + (rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
       root.add(g);
-      const ph = rand() * 6;
-      anims.push((t) => {
-        animateModelMotion(g, t + ph, 0, 'animal');
-      });
-      root.add(makePickProxy(1.2, 1.8, 1.2, sp[0], sp[1], 0, { kind: 'egg', egg: 'egret', maxDist: 40 }));
+      const proxy = makePickProxy(2.4, 2.6, 2.4, sp[0], sp[1], g.rotation.y, { kind: 'mount', id: g.name, rideType: 'egret' });
+      proxy.name = `${g.name}-proxy`;
+      g.userData.rideProxy = proxy;
+      root.add(proxy);
+      animateEgret(g, rand() * 6);
     }
   });
 
