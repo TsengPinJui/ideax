@@ -27,7 +27,7 @@ import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompas
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
-import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion, matchesSubcategoryQuery } from './utils/questionUtils';
 import { isGameQuestion } from './utils/gameClassification';
 import { isComingSoonWork } from './utils/experienceRating';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem, getQuestionShareUrl } from './services/seoService';
@@ -2000,7 +2000,7 @@ function MainContent() {
     return baseQuestions.filter(
       (q) =>
         q.category === selectedCategory &&
-        (q.subcategory === selectedSubcategory || q.tags.includes(selectedSubcategory)) &&
+        matchesSubcategoryQuery(q, selectedSubcategory) &&
         isQuestionSavedByUser(q.id)
     ).length;
   }, [baseQuestions, selectedCategory, selectedSubcategory, bookmarkedQuestionIds, likedQuestionIds, secondedQuestionIds, sameQuestionIds]);
@@ -2023,8 +2023,7 @@ function MainContent() {
         const matchesCategory = selectedCategory === '全部' || q.category === selectedCategory;
         const matchesSubcategory =
           selectedSubcategory === '全部' ||
-          q.subcategory === selectedSubcategory ||
-          q.tags.includes(selectedSubcategory);
+          matchesSubcategoryQuery(q, selectedSubcategory);
         const matchesLevel = selectedLevel === '全部' || q.level === selectedLevel;
 
         // Special zone filtering (此二分類與看板類型不衝突，痛點特性 > L0，優先歸屬創點子/痛點集)

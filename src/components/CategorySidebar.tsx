@@ -4,7 +4,7 @@ import { Category, CATEGORY_HIERARCHY, Question, QuestionSortOption, SpecialZone
 import { useApp } from '../context/AppContext';
 import { isMockQuestionId } from '../data/mockData';
 import { isQuestionExpired } from '../services/recommendationService';
-import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from '../utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion, isInnovationProposalQuestion, matchesSubcategoryQuery } from '../utils/questionUtils';
 import { DEFAULT_DEMO_PROPOSALS } from '../data/competitionProposals';
 import {
   X,
@@ -81,10 +81,22 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   } = useApp();
 
   const validQuestions = useMemo(() => {
+    const seenIds = new Set<string>();
     return (isDemoMode
       ? questions
       : questions.filter((q) => Boolean(q && q.id) && !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => Boolean(q && q.id && q.title) && q.status !== 'delisted' && !isQuestionExpired(q.deadline));
+    ).filter((q) => {
+      if (!q || typeof q.id !== 'string' || !q.id.trim() || typeof q.title !== 'string' || !q.title.trim()) {
+        return false;
+      }
+      if (seenIds.has(q.id)) return false;
+      seenIds.add(q.id);
+      if (q.status === 'delisted') return false;
+      if (!isDemoMode && !isMockQuestionId(q.id, q.authorId) && isQuestionExpired(q.deadline)) {
+        return false;
+      }
+      return true;
+    });
   }, [questions, isDemoMode]);
 
   // Close on Escape key press
@@ -118,15 +130,15 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   const getSubcategoryCount = (cat: Category, sub: string) => {
-    return validQuestions.filter((q) => q.category === cat && (q.subcategory === sub || (Array.isArray(q.tags) && q.tags.includes(sub)))).length;
+    return validQuestions.filter((q) => q.category === cat && matchesSubcategoryQuery(q, sub)).length;
   };
 
   // 專區數量統計
   // 1. 創點子/痛點集：透過提出痛點提出的問題與標註痛點的問題 (痛點優先歸類)
   const painPointsCount = validQuestions.filter(isPainPointQuestion).length;
 
-  // 創點子 (創新提案) 專區提案數量
-  const createIdeasCount = DEFAULT_DEMO_PROPOSALS.length;
+  // 創點子 (創新提案) 專區提案數量：依平台真實創新提案 Question 計算
+  const createIdeasCount = validQuestions.filter(isInnovationProposalQuestion).length;
 
   // 2. L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區
   const l0DiscussionCount = validQuestions.filter(isL0DiscussionQuestion).length;
@@ -165,6 +177,9 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   const handleSelectCategory = (cat: Category | '全部', sub: string | '全部' = '全部') => {
+    if (onSelectSpecialZone) {
+      onSelectSpecialZone('all');
+    }
     onSelectCategory(cat, sub);
     onClose();
     setTimeout(() => {
@@ -396,7 +411,18 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 全部問題
               </span>
             </div>
-            <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
+                  selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
+                    ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                    : 'bg-stone-100 text-stone-700 border border-stone-200'
+                }`}
+              >
+                {validQuestions.length} 則
+              </span>
+              <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+            </div>
           </button>
 
           {/* 2. 主題專區（固定順序：軟體網站作品牆、創星季、痛點許願池、創點子、L0討論區） */}

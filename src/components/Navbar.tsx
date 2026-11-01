@@ -449,6 +449,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleSidebarSelectCategory = (cat: Category | '全部', sub: string | '全部' = '全部') => {
     if (setSelectedCategory) setSelectedCategory(cat);
     if (setSelectedSubcategory) setSelectedSubcategory(sub);
+    if (setSpecialZone) setSpecialZone('all');
     setActiveTab('explore');
     setSelectedQuestion(null);
     setSelectedSolver(null);
