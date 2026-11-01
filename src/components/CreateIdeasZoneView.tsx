@@ -749,13 +749,34 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
         {/* 點擊 ? 展開之專區介紹與刊登規範 */}
         {showZoneHelp && (
-          <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2 animate-in fade-in duration-150">
+          <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2.5 animate-in fade-in duration-150">
             <p className="text-xs font-medium text-stone-700 leading-relaxed">
               匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，點擊 ❤️ Like 即自動加入您的個人清單。
             </p>
             <div className="flex items-center gap-2 text-[11px] text-amber-900 font-bold bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 rounded-xl w-fit">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
               <span>刊登規範：所有提案預設為『永久刊登』。提案者可隨時手動下架或自訂刊登期限。</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+              <div className="flex items-start gap-2 text-amber-950 font-bold bg-white/95 border border-amber-200/90 p-2.5 rounded-xl shadow-2xs">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-black text-amber-900">🛡️ 怕點子被偷？平台幫你留下第一原創鐵證</div>
+                  <div className="text-stone-600 font-normal leading-relaxed">
+                    提案發布即永久留存不可竄改之發表時間戳記與數位指紋，在《著作權法》上構成優先創作與公開發表之法定存證；核心技術與商業秘密建議採分層披露，待與專家或投資人洽談時另立保密協議交付，兼顧曝光與法益防護。
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-amber-950 font-bold bg-white/95 border border-amber-200/90 p-2.5 rounded-xl shadow-2xs">
+                <Coins className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-black text-amber-900">💰 點子能變現！打賞直接領現金、還能找投資人</div>
+                  <div className="text-stone-600 font-normal leading-relaxed">
+                    讀者與支持者之創星幣與點數打賞屬實質著作分潤與贈與債權，可依平台規範申請新台幣電匯撥款提現（依所得稅法申報扣繳憑單）。同時享有直通創星季競賽審查、創投機構股權投資媒合與跨領域專家落地輔導之完整資源。
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

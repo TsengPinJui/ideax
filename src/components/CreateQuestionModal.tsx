@@ -1777,6 +1777,30 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         )}
 
+        {/* 創新提案專屬：原創智財保護與發布安全指引 */}
+        {postType === 'innovation_proposal' && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-100/40 to-orange-50/60 border border-amber-300/90 shadow-2xs space-y-2">
+            <div className="flex items-center gap-2 text-xs font-black text-amber-950">
+              <ShieldCheck className="w-4.5 h-4.5 text-amber-600 shrink-0" />
+              <span>🛡️ 放心發布！提案原創保護與安全守則</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] leading-relaxed text-stone-700">
+              <div className="bg-white/95 p-2.5 rounded-xl border border-amber-200/80 space-y-1">
+                <span className="font-black text-amber-900 flex items-center gap-1">
+                  ⏱️ 怕點子被偷？平台幫你留下第一原創鐵證
+                </span>
+                <p>發布即刻由系統鑄造不可竄改之 SHA-256 數位時間戳記與作者識別碼。依《著作權法》創作完成主義與舉證責任分配，此時間戳具備法律推定之「優先公開發表與著作完成時點存證」，能有效防範他人事後剽竊或反向誣告。</p>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-xl border border-amber-200/80 space-y-1">
+                <span className="font-black text-amber-900 flex items-center gap-1">
+                  🔒 商業機密自己留一手！核心技術等簽了約再給
+                </span>
+                <p>依《著作權法》第 10 條之 1，著作權保護「具體表達」而不及於抽象思想。請於公開內文著重描述「痛點背景與解決效果」；核心原始碼、未申請專利之演算法與商業機密，應依《營業秘密法》採取合理保密措施，待後續與投資人或專家簽署保密協議後再行交付。</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 創新提案：要求勾選完程度（必填） */}
         {postType === 'innovation_proposal' && (
           <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/90 space-y-2.5">
