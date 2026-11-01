@@ -2837,24 +2837,33 @@ function MainContent() {
                         </h1>
                       </div>
 
-                      {/* 第二列：說明按鈕 (左) + 提出痛點 / 解方提案按鈕 (置右) */}
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowPainPointHelp(!showPainPointHelp)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-                            showPainPointHelp
-                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                              : 'bg-white/90 hover:bg-white text-rose-900 border-rose-300'
-                          }`}
-                          title="點擊展開/收合專區說明"
-                        >
-                          <HelpCircle className="w-3.5 h-3.5" />
-                          <span>說明</span>
-                          {showPainPointHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
+                      {/* 第二列：說明按鈕 (左) + 痛點激勵標語 (中) + 提出痛點 / 解方提案按鈕 (置右) */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setShowPainPointHelp(!showPainPointHelp)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border shrink-0 ${
+                              showPainPointHelp
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                                : 'bg-white/90 hover:bg-white text-rose-900 border-rose-300'
+                            }`}
+                            title="點擊展開/收合專區說明"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            <span>說明</span>
+                            {showPainPointHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
 
-                        <div className="flex items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-rose-100/90 border border-rose-300/80 text-rose-950 text-xs sm:text-[13px] font-bold shadow-2xs">
+                            <Sparkles className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <span>
+                              提出痛點獲得打賞<span className="text-rose-800 font-extrabold">(💲可提現)</span>，還有機會獲得專業解答、提案！
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                           <button
                             type="button"
                             onClick={() => {
@@ -3092,31 +3101,41 @@ function MainContent() {
                         </h1>
                       </div>
 
-                      {/* 第二列：說明按鈕 (左) + 發起討論按鈕 (置右) */}
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowL0Help(!showL0Help)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-                            showL0Help
-                              ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                              : 'bg-white/90 hover:bg-white text-sky-900 border-sky-300'
-                          }`}
-                          title="點擊展開/收合專區說明"
-                        >
-                          <HelpCircle className="w-3.5 h-3.5" />
-                          <span>說明</span>
-                          {showL0Help ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
+                      {/* 第二列：說明按鈕 (左) + 討論交流標語 (中) + 發起討論按鈕 (置右) */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setShowL0Help(!showL0Help)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border shrink-0 ${
+                              showL0Help
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                                : 'bg-white/90 hover:bg-white text-sky-900 border-sky-300'
+                            }`}
+                            title="點擊展開/收合專區說明"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            <span>說明</span>
+                            {showL0Help ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCreateWithType('chat_discussion')}
-                          className="ml-auto px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-sky-600 bg-white text-sky-700 hover:bg-sky-600 hover:text-white active:bg-sky-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>發起討論</span>
-                        </button>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-sky-100/90 border border-sky-300/80 text-sky-950 text-xs sm:text-[13px] font-bold shadow-2xs">
+                            <span>
+                              ✨ 創新創業、專業問題、學術探討、日常疑難，隨意交流！或許也能在這裡找到志同道合的夥伴唷！🤝
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreateWithType('chat_discussion')}
+                            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-sky-600 bg-white text-sky-700 hover:bg-sky-600 hover:text-white active:bg-sky-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>發起討論</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 

@@ -706,24 +706,33 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             </h2>
           </div>
 
-          {/* 第二列：說明按鈕 (左) + 發布創新提案按鈕 (置右) */}
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowZoneHelp(!showZoneHelp)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-                showZoneHelp
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                  : 'bg-white/90 hover:bg-white text-amber-900 border-amber-300'
-              }`}
-              title="點擊展開/收合專區說明與刊登規範"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>說明</span>
-              {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
+          {/* 第二列：說明按鈕 (左) + 激勵標語 (中) + 發布創新提案按鈕 (置右) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowZoneHelp(!showZoneHelp)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border shrink-0 ${
+                  showZoneHelp
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                    : 'bg-white/90 hover:bg-white text-amber-900 border-amber-300'
+                }`}
+                title="點擊展開/收合專區說明與刊登規範"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>說明</span>
+                {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
 
-            <div className="ml-auto flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-amber-200/60 border border-amber-300/90 text-amber-950 text-xs sm:text-[13px] font-bold shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>
+                  提出創新提案獲得打賞<span className="text-amber-800 font-extrabold">(💲可提現)</span>，更有機會獲得投資、專家洽談！
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               {onOpenCreateProposal && (
                 <button
                   type="button"
