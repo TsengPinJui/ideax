@@ -589,6 +589,19 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <Layers className="w-4 h-4 text-purple-600" />
                 <span>運作說明</span>
               </button>
+
+              {/* 6. 隨時啟動新手引導 */}
+              {onStartOnboarding && (
+                <button
+                  type="button"
+                  onClick={onStartOnboarding}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-2xs"
+                  title="隨時查看各專區逐步新手引導教學"
+                >
+                  <Compass className="w-4 h-4 text-stone-950" />
+                  <span>新手引導</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

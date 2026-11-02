@@ -1606,7 +1606,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 title="痛點發布機制"
                 content={
                   isRaceMode
-                    ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與共創解方。'
+                    ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與提出創新解方。'
                     : '發布生活或產業痛點無須懸賞，各領域人才可在下方提交落地解決方案，提問者或其他人需透過第三方支付解鎖後查閱。'
                 }
               />
@@ -2971,7 +2971,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   title={isRaceMode ? '痛點發布說明' : '痛點與討論發布說明'}
                   content={
                     isRaceMode
-                      ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與共創解方。'
+                      ? '匯集生活與產業真實痛點，開放給創星季參賽團隊作為解題題目與提出創新解方。'
                       : '無門檻發布痛點或討論，各領域人才可在下方提交落地方案！'
                   }
                 />
@@ -3227,7 +3227,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               </span>
             ) : (
               <span>
-                {isRaceMode ? '痛點提出後，開放給創星季參賽團隊作為解題題目與共創解方。' : '痛點提出無門檻發布，各領域人才提供落地解法，您可自由評估後付費解鎖。'}
+                {isRaceMode ? '痛點提出後，開放給創星季參賽團隊作為解題題目與提出創新解方。' : '痛點提出無門檻發布，各領域人才提供落地解法，您可自由評估後付費解鎖。'}
               </span>
             )}
           </div>

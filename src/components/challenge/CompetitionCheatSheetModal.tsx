@@ -502,7 +502,7 @@ export const CompetitionCheatSheetModal: React.FC<CompetitionCheatSheetModalProp
                   <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80">
                     <h4 className="font-black text-amber-950 text-sm mb-1">🎯 競賽宗旨與特色</h4>
                     <p className="text-stone-700">
-                      IdeaX 創星季是全台首創結合「痛點許願」與「解方共創」的全國創新提案挑戰賽。透過全民提出日常生活與產業痛點，引導青年創客與專業團隊提出落地解法；並搭配「創星幣模擬募資」與「產學智庫評選」，打造最具實戰意義的創新孵化舞台。
+                      IdeaX 創星季是全台首創結合「痛點許願」與「創新解方」的全國創新提案挑戰賽。透過全民提出日常生活與產業痛點，引導青年創客與專業團隊提出落地解法；並搭配「創星幣模擬募資」與「產學智庫評選」，打造最具實戰意義的創新孵化舞台。
                     </p>
                   </div>
 

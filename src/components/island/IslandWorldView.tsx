@@ -97,6 +97,7 @@ interface IslandWorldViewProps {
   onAction: (action: IslandAction) => void;
   onBack?: () => void;
   onSwitchToKingdom3D?: () => void;
+  onStartOnboarding?: () => void;
 }
 
 export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
@@ -105,6 +106,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
   onAction,
   onBack,
   onSwitchToKingdom3D,
+  onStartOnboarding,
 }) => {
   const { currentUser, publicMetricsConfig, solvers, setSelectedSolver } = useApp();
   const isAdmin = currentUser?.role === 'admin';
@@ -1034,11 +1036,12 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             <ArrowLeft size={20} strokeWidth={2.2} />
           </button>
           {!isMapSceneLoading && (
-            <div className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
+            <div id="island-mode-switcher" className="island-mode-switcher" role="group" aria-label="3D島覽模式切換">
               <span className="island-mode-pill is-active" aria-current="page">
                 3D地圖
               </span>
               <button
+                id="island-enter-roaming-btn"
                 type="button"
                 onClick={() => {
                   if (onSwitchToKingdom3D) onSwitchToKingdom3D();
@@ -1294,6 +1297,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
             )}
 
             <button
+              id="island-easter-book-btn"
               type="button"
               onClick={() => setShowEasterEggBook((prev) => !prev)}
               className="island-easter-book-btn"
@@ -1334,6 +1338,7 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
           ============================================================ */}
       <aside className={`island-right-atlas ${isRightAtlasOpen ? 'is-open' : ''} ${isMapSceneLoading ? 'is-loading' : ''}`}>
         <button
+          id="island-right-atlas-btn"
           type="button"
           onClick={() => setIsRightAtlasOpen(!isRightAtlasOpen)}
           className="island-right-atlas-toggle"
@@ -3143,6 +3148,20 @@ export const IslandWorldView: React.FC<IslandWorldViewProps> = ({
                 </span>
               </div>
               <div className="guide-modal-top-actions">
+                {onStartOnboarding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGuideModal(false);
+                      onStartOnboarding();
+                    }}
+                    className="guide-modal-video-replay-btn"
+                    title="啟動步驟式新手引導教學"
+                  >
+                    <Compass size={14} />
+                    <span>新手引導</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

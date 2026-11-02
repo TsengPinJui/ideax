@@ -31,6 +31,7 @@ import {
   Globe,
   ExternalLink,
   LayoutGrid,
+  Compass,
 } from 'lucide-react';
 import { StarSeasonProposal, STAR_SEASON_TRACKS, OFFICIAL_COMPETITION_TRACKS } from '../types/competition';
 import { deriveInnovationProposalName, stripAppNameFromTitle } from '../utils/titleFormat';
@@ -100,6 +101,7 @@ interface CreateIdeasZoneViewProps {
   detailProposalId?: string | null;
   /** 從提案頁返回創點子列表的搜尋區 */
   onBackFromDetail?: () => void;
+  onStartOnboarding?: () => void;
 }
 
 export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
@@ -114,6 +116,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   onSwitchZone,
   detailProposalId,
   onBackFromDetail,
+  onStartOnboarding,
 }) => {
   const {
     currentUser,
@@ -735,6 +738,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               {onOpenCreateProposal && (
                 <button
+                  id="create-ideas-publish-btn"
                   type="button"
                   onClick={onOpenCreateProposal}
                   className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-stone-950 font-black text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -750,30 +754,51 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         {/* 點擊 ? 展開之專區介紹與刊登規範 */}
         {showZoneHelp && (
           <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2.5 animate-in fade-in duration-150">
-            <p className="text-xs font-medium text-stone-700 leading-relaxed">
-              匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，點擊 ❤️ Like 即自動加入您的個人清單。
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，點擊 ❤️ Like 即自動加入您的個人清單。
+              </p>
+              {onStartOnboarding && (
+                <button
+                  type="button"
+                  onClick={onStartOnboarding}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs transition-all cursor-pointer shrink-0 w-fit"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>查看新手引導</span>
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-2 text-[11px] text-amber-900 font-bold bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 rounded-xl w-fit">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
               <span>刊登規範：所有提案預設為『永久刊登』。提案者可隨時手動下架或自訂刊登期限。</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+              <div className="flex items-start gap-2 text-amber-950 font-bold bg-white/95 border border-amber-200/90 p-2.5 rounded-xl shadow-2xs">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-black text-amber-900">📊 提案五階段完程度分級制度</div>
+                  <div className="text-stone-600 font-normal leading-relaxed">
+                    依發展成熟度分為五級：<strong>初步構想(0~2)</strong>、<strong>正在計畫(3~6)</strong>、<strong>實行中(7~9)</strong>、<strong>已完成(10)</strong>、<strong>成功驗證,持續精進(11+)</strong>，各階段點子都能發表！
+                  </div>
+                </div>
+              </div>
               <div className="flex items-start gap-2 text-amber-950 font-bold bg-white/95 border border-amber-200/90 p-2.5 rounded-xl shadow-2xs">
                 <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <div className="font-black text-amber-900">🛡️ 怕點子被偷？平台幫你留下第一原創鐵證</div>
+                  <div className="font-black text-amber-900">🛡️ 怕點子被偷？系統自動記錄發布時間</div>
                   <div className="text-stone-600 font-normal leading-relaxed">
-                    提案發布即永久留存不可竄改之發表時間戳記與數位指紋，在《著作權法》上構成優先創作與公開發表之法定存證；核心技術與商業秘密建議採分層披露，待與專家或投資人洽談時另立保密協議交付，兼顧曝光與法益防護。
+                    提案一發布就會自動記錄發布時間，幫你留下最直接的原創證明。公開頁建議先寫概念與亮點，核心技術細節等私下與專家或投資人洽談時再提供。
                   </div>
                 </div>
               </div>
               <div className="flex items-start gap-2 text-amber-950 font-bold bg-white/95 border border-amber-200/90 p-2.5 rounded-xl shadow-2xs">
                 <Coins className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <div className="font-black text-amber-900">💰 點子能變現！打賞直接領現金、還能找投資人</div>
+                  <div className="font-black text-amber-900">💰 點子能換現金！打賞直接提領、還能找投資</div>
                   <div className="text-stone-600 font-normal leading-relaxed">
-                    讀者與支持者之創星幣與點數打賞屬實質著作分潤與贈與債權，可依平台規範申請新台幣電匯撥款提現（依所得稅法申報扣繳憑單）。同時享有直通創星季競賽審查、創投機構股權投資媒合與跨領域專家落地輔導之完整資源。
+                    大家給你的點數打賞可以申請提領成新台幣現金匯入銀行帳戶。優秀點子還有機會參加創星季競賽拿獎金，或吸引投資人與跨領域專家主動找你合作。
                   </div>
                 </div>
               </div>
@@ -782,7 +807,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         )}
 
         {/* 篩選分類、我的收藏、搜尋與排序控制區 */}
-        <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2">
+        <div id="create-ideas-filter-bar" className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2">
           {/* 上排：選擇分類下拉選單 (含全部分類) + 我的 Like 收藏 */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
             <div className="relative">
@@ -908,6 +933,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       </div>
 
       {/* 提案卡片清單列表 */}
+      <div id="create-ideas-cards-list">
       {finalFilteredProposals.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-stone-200 shadow-2xs space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center font-bold">
@@ -1435,6 +1461,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           );
         })()
       )}
+      </div>
 
       {/* 編輯刊登時間/下架時間彈窗 (刊登時間即下架時間，預設永久刊登) */}
       {editingProposalForTime && (

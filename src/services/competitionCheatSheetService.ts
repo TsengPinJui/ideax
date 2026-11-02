@@ -292,7 +292,7 @@ function renderSlideToCanvas(
 
     ctx.fillStyle = '#b45309';
     ctx.font = '900 48px "Microsoft JhengHei", "PingFang TC", sans-serif';
-    ctx.fillText('全國創新提案與痛點共創挑戰賽', 80, 300);
+    ctx.fillText('全國創新提案與痛點解題挑戰賽', 80, 300);
 
     ctx.strokeStyle = '#d97706';
     ctx.lineWidth = 4;
@@ -302,7 +302,7 @@ function renderSlideToCanvas(
     ctx.stroke();
 
     const cards = [
-      { title: '💡 痛點許願共創', desc: '全民提出切身痛點\n過審送200點，採用拿$1,500' },
+      { title: '💡 痛點許願池', desc: '全民提出切身痛點\n過審送200點，採用拿$1,500' },
       { title: '🪙 創星幣模擬募資', desc: '大眾注資投票驗證市場\n募資前 20 名直通決選' },
       { title: '🏆 專家智庫決選', desc: '產學專家專業評審\n冠軍總值 $30,000 (現金2萬)' },
     ];

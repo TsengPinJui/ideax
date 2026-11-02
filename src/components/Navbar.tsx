@@ -60,6 +60,7 @@ import {
   Mail,
   Copy,
   ClipboardList,
+  Compass,
   Map as MapIcon,
 } from 'lucide-react';
 import { IdeaIslandIcon } from './island/IdeaIslandIcon';
@@ -1132,6 +1133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 創點源•3D島覽合併入口：手機版導覽列僅留下地圖圖示入口，電腦版顯示「3D島覽」 */}
           {publicMetricsConfig.showIslandMap !== false && (
             <button
+              id="navbar-3d-island-btn"
               type="button"
               onClick={() => {
                 setActiveTab('island_explorer');
@@ -1615,15 +1617,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     </div>
 
-                    {/* 分類 4: ⚙️ 帳號 */}
+                    {/* 分類 4: ⚙️ 帳號與引導 */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
                       <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1">
                           <Settings className="w-3 h-3 text-stone-500" />
-                          <span>帳號</span>
+                          <span>帳號與引導</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">2 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">3 項</span>
                       </p>
+
+                      {/* 新手引導教學 */}
+                      {onStartOnboarding && (
+                        <button
+                          data-search="新手引導 導覽 教學 使用教學 onboarding guide"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            onStartOnboarding();
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
+                              <Compass className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <span className="block font-black text-stone-900">新手引導</span>
+                              <span className="text-[10px] text-stone-500 font-normal">隨時查看核心功能逐步教學</span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                        </button>
+                      )}
 
                       {/* 13. 管理員帳號設定 */}
                       <button
@@ -1939,12 +1964,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setIsUserMenuOpen(false);
                           onStartOnboarding();
                         }}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                          <HelpCircle className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Compass className="w-3.5 h-3.5" />
+                          </div>
+                          <span>新手引導</span>
                         </div>
-                        <span>使用教學</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                          隨時查看
+                        </span>
                       </button>
                     )}
                     <button

@@ -15,10 +15,16 @@ import {
   User,
   CheckCircle2,
   Lightbulb,
+  Flame,
+  MessageCircle,
+  Landmark,
+  Compass,
 } from 'lucide-react';
 import { AppTab, MarketViewMode } from '../types';
 
 export const ONBOARDING_STORAGE_KEY = 'ideax_app_onboarding_completed_v1';
+
+export type TourTrack = 'general' | 'create_ideas' | 'pain_points' | 'l0_discussion' | 'kingdom_3d';
 
 export interface OnboardingStepConfig {
   id: number;
@@ -57,7 +63,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
     icon: Sparkles,
     targetTab: 'explore',
     actionType: 'close_sidebar',
-    summary: '包含 L0 免費探討與 L1~L4 懸賞題目，獎金由平台金流安全託管保障。',
+    summary: '分為 L0（無懸賞）公開交流與 L1～L4 分級懸賞題目，懸賞獎金由平台金流安全託管保障。',
   },
   {
     id: 4,
@@ -94,7 +100,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
     icon: Lightbulb,
     targetTab: 'explore',
     actionType: 'open_sidebar',
-    summary: '「痛點許願池」彙整大眾痛點找靈感；「L0討論區」供免懸賞自由交流。',
+    summary: '「痛點許願池」可提出難題（預設 L0 無懸賞，亦可設 L1～L4 懸賞）；「L0討論區」都是 L0（無懸賞），輕鬆無壓力交流。',
   },
   {
     id: 8,
@@ -107,12 +113,12 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 9,
-    title: '9. 導覽列「+」發布提問',
+    title: '9. 導覽列「+」發布提問或提案',
     targetId: 'onboarding-step-9-create',
     icon: Plus,
     targetTab: 'explore',
     actionType: 'close_sidebar',
-    summary: '提問分三種：「徵求完整解方(懸賞)」、「創點子痛點(免懸賞)」、「閒聊討論(免懸賞)」。',
+    summary: '可發布「創新提案（五階段完程度分級）」、「提出痛點（L0 無懸賞／L1～L4 分級懸賞）」或「交流討論（L0 無懸賞輕鬆聊）」。',
   },
   {
     id: 10,
@@ -125,9 +131,128 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
 ];
 
+const TRACK_STEPS_MAP: Record<TourTrack, OnboardingStepConfig[]> = {
+  create_ideas: [
+    {
+      id: 1,
+      title: '1. 發布創新提案與分級制度',
+      targetId: 'create-ideas-publish-btn',
+      icon: Lightbulb,
+      summary: '點此發表點子或作品！提案依完程度分為五級（初步構想、正在計畫、實行中、已完成、成功驗證），系統並自動記錄發布時間保障原創。',
+    },
+    {
+      id: 2,
+      title: '2. 分類篩選與收藏',
+      targetId: 'create-ideas-filter-bar',
+      icon: Sparkles,
+      summary: '可依主題分類、關鍵字搜尋提案，或切換卡片排列方式；點選愛心即可收藏。',
+    },
+    {
+      id: 3,
+      title: '3. 瀏覽提案與打賞支持',
+      targetId: 'create-ideas-cards-list',
+      icon: FileText,
+      summary: '點選任一提案卡片可查看完整內容與留言，也能贈送點數支持作者（作者可申請提領現金）。',
+    },
+    {
+      id: 4,
+      title: '4. 隨時切換其他專區',
+      targetId: 'special-zones-top-bar',
+      icon: Layers,
+      summary: '上方專區列可隨時切換至「痛點許願池」、「L0討論區」、「軟體遊戲」或「創星季」。',
+    },
+  ],
+  pain_points: [
+    {
+      id: 1,
+      title: '1. 提出痛點與分級制度',
+      targetId: 'pain-points-create-btn',
+      icon: Flame,
+      summary: '把生活或工作難題寫出來！預設為 L0（無懸賞）公開許願，也可依問題難度自訂 L1～L4 分級懸賞加速徵求深度解答，還能獲得打賞提現。',
+    },
+    {
+      id: 2,
+      title: '2. 篩選痛點與查看附議',
+      targetId: 'pain-points-filter-bar',
+      icon: Sparkles,
+      summary: '可依分類或熱度排序痛點，也能一鍵查看自己按過「+1 附議」的痛點清單。',
+    },
+    {
+      id: 3,
+      title: '3. 點選痛點附議或提交解答',
+      targetId: 'onboarding-step-5-cards',
+      icon: FileText,
+      summary: '看到有共鳴的痛點可按「+1」附議或打賞支持；若您有好辦法，也能點進卡片提交解答。',
+    },
+    {
+      id: 4,
+      title: '4. 隨時切換其他專區',
+      targetId: 'special-zones-top-bar',
+      icon: Layers,
+      summary: '上方專區列可隨時切換至「創點子」、「L0討論區」或「軟體遊戲」展場。',
+    },
+  ],
+  l0_discussion: [
+    {
+      id: 1,
+      title: '1. 發起 L0 交流討論',
+      targetId: 'l0-create-btn',
+      icon: MessageCircle,
+      summary: '這裡的討論都是 L0（無懸賞），輕鬆無壓力交流！不管是創業想法、專業問題或日常話題，都能點此隨時發起。',
+    },
+    {
+      id: 2,
+      title: '2. 搜尋與排序話題',
+      targetId: 'l0-filter-bar',
+      icon: Sparkles,
+      summary: '可依領域篩選或搜尋關鍵字，快速找到感興趣的討論串與查看按讚紀錄。',
+    },
+    {
+      id: 3,
+      title: '3. 點進話題留言互動',
+      targetId: 'onboarding-step-5-cards',
+      icon: FileText,
+      summary: '點選任一討論卡片即可參與回覆、交換意見，在輕鬆交流中認識志同道合的新夥伴。',
+    },
+  ],
+  kingdom_3d: [
+    {
+      id: 1,
+      title: '1. 切換 3D 地圖與實境漫遊',
+      targetId: 'island-mode-switcher',
+      icon: Landmark,
+      summary: '上方可隨時切換「3D地圖」俯瞰全島，或進入「實境漫遊」以第一人稱走進水鄉街道。',
+    },
+    {
+      id: 2,
+      title: '2. 展開右側島覽目錄',
+      targetId: 'island-right-atlas-btn',
+      icon: Layers,
+      summary: '點擊右側「島覽」可展開五大島嶼目錄，快速跳島、查看攤位內容或直接發布貼文。',
+    },
+    {
+      id: 3,
+      title: '3. 尋找隱藏彩蛋',
+      targetId: 'island-easter-book-btn',
+      icon: Sparkles,
+      summary: '點擊島上發光物件或建築可解鎖詩句彩蛋，收集進度都會記錄在左下角收集冊。',
+    },
+    {
+      id: 4,
+      title: '4. 實境漫遊、邀請好友同遊與雙人羈絆任務',
+      targetId: 'island-enter-roaming-btn',
+      icon: Compass,
+      summary: '點此走進 3D 水鄉划船遊湖、騎仙鶴！還能邀請好友同遊，在漫遊中點擊夥伴綁定羈絆，一起解「雙人羈絆任務」（同船遊湖、登聚雲塔等）。',
+    },
+  ],
+  general: ONBOARDING_STEPS,
+};
+
 interface AppOnboardingGuideProps {
   isOpen: boolean;
+  tourTrack?: TourTrack;
   onClose: (completedAll?: boolean) => void;
+  onOpenGuideSelector?: () => void;
   onNavigateTab: (tab: AppTab) => void;
   onOpenSidebar: () => void;
   onCloseSidebar: () => void;
@@ -140,7 +265,9 @@ interface AppOnboardingGuideProps {
 
 export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
   isOpen,
+  tourTrack = 'general',
   onClose,
+  onOpenGuideSelector,
   onNavigateTab,
   onOpenSidebar,
   onCloseSidebar,
@@ -150,8 +277,14 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
   onOpenUserDashboard,
   isFromAboutUs = false,
 }) => {
+  const activeSteps = TRACK_STEPS_MAP[tourTrack] || ONBOARDING_STEPS;
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  // 當 tourTrack 改變或重新打開時重置步驟索引
+  useEffect(() => {
+    setCurrentStepIndex(0);
+  }, [tourTrack, isOpen]);
 
   // Store action callbacks in refs to avoid useEffect dependency churn and infinite loops
   const callbacksRef = useRef({
@@ -175,11 +308,11 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
     onClose,
   };
 
-  const currentStep = ONBOARDING_STEPS[currentStepIndex] || ONBOARDING_STEPS[0];
+  const currentStep = activeSteps[currentStepIndex] || activeSteps[0];
   const lastExecutedStepIndexRef = useRef<number | null>(null);
 
   // Update target rect on step change or resize (Strictly scoped to current step ONLY)
-  const updateTargetRect = useCallback((stepId: string, shouldScroll = false) => {
+  const updateTargetRect = useCallback((stepId: string, shouldScroll = false, retryCount = 0) => {
     const el =
       document.getElementById(stepId) ||
       document.getElementById(`${stepId}-content`) ||
@@ -210,7 +343,11 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
         return rect;
       });
     } else {
-      setTargetRect(null);
+      if (retryCount < 5) {
+        setTimeout(() => updateTargetRect(stepId, shouldScroll, retryCount + 1), 120);
+      } else {
+        setTargetRect(null);
+      }
     }
   }, []);
 
@@ -226,14 +363,14 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
 
   const handleNext = useCallback(() => {
     setCurrentStepIndex((prev) => {
-      if (prev < ONBOARDING_STEPS.length - 1) {
+      if (prev < activeSteps.length - 1) {
         return prev + 1;
       } else {
         handleFinish();
         return prev;
       }
     });
-  }, [handleFinish]);
+  }, [activeSteps.length, handleFinish]);
 
   const handlePrev = useCallback(() => {
     setCurrentStepIndex((prev) => {
@@ -262,7 +399,7 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
       return;
     }
 
-    const step = ONBOARDING_STEPS[currentStepIndex];
+    const step = activeSteps[currentStepIndex];
     if (!step) return;
 
     if (lastExecutedStepIndexRef.current !== currentStepIndex) {
@@ -313,7 +450,7 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
       window.removeEventListener('resize', handleUpdateOnly);
       window.removeEventListener('scroll', handleUpdateOnly, true);
     };
-  }, [isOpen, currentStepIndex, updateTargetRect]);
+  }, [isOpen, currentStepIndex, activeSteps, updateTargetRect]);
 
   if (!isOpen) return null;
 
@@ -356,7 +493,12 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-black uppercase text-amber-300 bg-amber-950 px-1.5 py-0.2 rounded border border-amber-500/40">
-                    {currentStepIndex + 1}/{ONBOARDING_STEPS.length}
+                    {tourTrack !== 'general' && (
+                      <span className="mr-1 text-amber-400">
+                        {tourTrack === 'create_ideas' ? '創新提案' : tourTrack === 'pain_points' ? '提出痛點' : tourTrack === 'l0_discussion' ? '交流討論' : '3D島覽'} •
+                      </span>
+                    )}
+                    {currentStepIndex + 1}/{activeSteps.length}
                   </span>
                   <h4 className="text-xs sm:text-sm font-black text-amber-100 truncate">
                     {currentStep.title}
@@ -365,15 +507,31 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="text-stone-400 hover:text-white px-2 py-1 rounded-lg text-[11px] font-bold hover:bg-stone-800 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
-              title="略過所有教學"
-            >
-              <span>略過</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {onOpenGuideSelector && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    callbacksRef.current.onCloseSidebar();
+                    onOpenGuideSelector();
+                  }}
+                  className="text-amber-300 hover:text-amber-200 px-2 py-1 rounded-lg text-[11px] font-bold hover:bg-stone-800 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                  title="切換查看其他功能教學"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>其他教學</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="text-stone-400 hover:text-white px-2 py-1 rounded-lg text-[11px] font-bold hover:bg-stone-800 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                title="關閉教學"
+              >
+                <span>略過</span>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Concise Summary Text */}
@@ -408,7 +566,7 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-800">
             {/* Dots */}
             <div className="flex items-center gap-1">
-              {ONBOARDING_STEPS.map((s, idx) => (
+              {activeSteps.map((s, idx) => (
                 <button
                   key={s.id}
                   type="button"
@@ -441,7 +599,7 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
                 <span>上一步</span>
               </button>
 
-              {currentStepIndex < ONBOARDING_STEPS.length - 1 ? (
+              {currentStepIndex < activeSteps.length - 1 ? (
                 <button
                   type="button"
                   onClick={handleNext}
@@ -450,24 +608,30 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
                   <span>下一步</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-              ) : isFromAboutUs ? (
-                <button
-                  type="button"
-                  onClick={handleFinish}
-                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-stone-950 text-xs font-black shadow-md flex items-center gap-1 transition-all cursor-pointer"
-                >
-                  <span>下一步：聊天室教學</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleFinish}
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 text-xs font-black shadow-sm flex items-center gap-1 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>完成教學</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {onOpenGuideSelector && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        callbacksRef.current.onCloseSidebar();
+                        onOpenGuideSelector();
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-amber-400/60 text-amber-300 text-xs font-black flex items-center gap-1 transition-all cursor-pointer"
+                    >
+                      <Compass className="w-3.5 h-3.5" />
+                      <span>查看其他教學</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleFinish}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 text-xs font-black shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>完成教學</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

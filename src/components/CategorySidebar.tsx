@@ -377,6 +377,35 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
             </button>
+
+            {onStartOnboarding && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onStartOnboarding();
+                }}
+                className="w-full p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-amber-50/70 hover:bg-amber-100/70 border-amber-200/80"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    <Compass className="w-4 h-4 text-stone-950" />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-800 transition-colors flex items-center gap-1.5">
+                      <span>新手引導教學</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-white text-amber-900 border border-amber-300">
+                        隨時查看
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">
+                      自由選擇各專區逐步引導與操作說明
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-amber-600 transition-colors shrink-0" />
+              </button>
+            )}
           </div>
 
           {/* 1. 全部問題入口 (白色/淺灰模塊，淺灰細框) */}

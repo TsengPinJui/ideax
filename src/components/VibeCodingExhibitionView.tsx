@@ -31,6 +31,7 @@ import {
   Flame,
   ArrowRight,
   Layers,
+  Compass,
 } from 'lucide-react';
 import {
   isGuestUser,
@@ -64,6 +65,7 @@ interface VibeCodingExhibitionViewProps {
   onTogglePin?: () => void;
   isPinned?: boolean;
   onSwitchZone?: (zone: SpecialZone) => void;
+  onStartOnboarding?: () => void;
 }
 
 import { SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
@@ -111,6 +113,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   onTogglePin,
   isPinned = false,
   onSwitchZone,
+  onStartOnboarding,
 }) => {
   const {
     currentUser,
@@ -1153,10 +1156,22 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
         {/* 點擊 ? 展開之專區介紹 */}
         {showZoneHelp && (
-          <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-1.5 animate-in fade-in duration-150">
-            <p className="text-xs font-medium text-stone-700 leading-relaxed">
-              收錄網站程式、AI工具、遊戲、自動化與擴充功能，歡迎直接試玩體驗、留言回饋交流或給予開發者點數支持。
-            </p>
+          <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-2 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                收錄網站程式、AI工具、遊戲、自動化與擴充功能，歡迎直接試玩體驗、留言回饋交流或給予開發者點數支持。
+              </p>
+              {onStartOnboarding && (
+                <button
+                  type="button"
+                  onClick={onStartOnboarding}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-2xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+                >
+                  <Compass className="w-3.5 h-3.5 text-amber-300" />
+                  <span>查看新手引導</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 

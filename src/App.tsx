@@ -80,6 +80,8 @@ const CustomerServiceModal = lazyNamed<typeof import('./components/CustomerServi
 const PwaInstallModal = lazyNamed<typeof import('./components/PwaInstallModal').PwaInstallModal>(() => import('./components/PwaInstallModal'), 'PwaInstallModal', { fallback: null });
 const RatingModal = lazyNamed<typeof import('./components/RatingModal').RatingModal>(() => import('./components/RatingModal'), 'RatingModal', { fallback: null });
 const AppOnboardingGuide = lazyNamed<typeof import('./components/AppOnboardingGuide').AppOnboardingGuide>(() => import('./components/AppOnboardingGuide'), 'AppOnboardingGuide', { fallback: null });
+import { FirstVisitFeatureSelectorModal, FIRST_VISIT_STORAGE_KEY, OnboardingTrackType } from './components/FirstVisitFeatureSelectorModal';
+import type { TourTrack } from './components/AppOnboardingGuide';
 const GoogleSitelinksModal = lazyNamed<typeof import('./components/GoogleSitelinksModal').GoogleSitelinksModal>(() => import('./components/GoogleSitelinksModal'), 'GoogleSitelinksModal', { fallback: null });
 const MascotHost = lazyNamed<typeof import('./components/mascot/MascotHost').MascotHost>(() => import('./components/mascot/MascotHost'), 'MascotHost', { fallback: null });
 const DuohuiPeek = lazyNamed<typeof import('./components/agents/DuohuiPeek').DuohuiPeek>(() => import('./components/agents/DuohuiPeek'), 'DuohuiPeek', { fallback: null });
@@ -774,6 +776,63 @@ function MainContent() {
   });
   const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
+
+  // 首次進入時的功能探索選擇彈窗狀態（新用戶開站載入完成後自動彈出，亦可手動重啟）
+  const [isFirstVisitModalOpen, setIsFirstVisitModalOpen] = useState(false);
+  const [tourTrack, setTourTrack] = useState<TourTrack>('general');
+
+  // 開站載入完成後自動檢查是否為首次進入，若尚未探索則彈出「歡迎與首選功能引導」
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const hasSelected = localStorage.getItem(FIRST_VISIT_STORAGE_KEY);
+        // 若為直接帶參網址或深層分享連結，不干擾用戶
+        const params = new URLSearchParams(window.location.search);
+        const isDeepLink = params.has('idea') || params.has('q') || params.has('search') || window.location.pathname.startsWith('/ideas/');
+        if (!hasSelected && !isDeepLink && !isOnboardingOpen) {
+          const timer = setTimeout(() => {
+            setIsFirstVisitModalOpen(true);
+          }, 1800);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleSelectFirstVisitFeature = (track: OnboardingTrackType) => {
+    try {
+      localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'true');
+    } catch {}
+    setIsFirstVisitModalOpen(false);
+    setTourTrack(track);
+
+    // 自動切換至該功能頁面
+    if (track === 'create_ideas') {
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      setActiveTab('explore');
+      setSpecialZone('create_ideas');
+    } else if (track === 'pain_points') {
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      setActiveTab('explore');
+      setSpecialZone('pain_points');
+    } else if (track === 'l0_discussion') {
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      setActiveTab('explore');
+      setSpecialZone('l0_discussion');
+    } else if (track === 'kingdom_3d') {
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      setActiveTab('island_explorer');
+    }
+
+    // 延遲 350ms 等待目標專區畫面與 DOM 節點完全掛載後展開高亮教學氣泡
+    setTimeout(() => {
+      setIsOnboardingOpen(true);
+    }, 350);
+  };
 
   // 問題市場版面檢視模式（使用者沒自己選過時的預設）：
   // 軟體網站作品牆默認小卡片 (grid)；電腦其他看板預設大卡片；手機版痛點許願池與 L0 討論區用條列式
@@ -2470,7 +2529,18 @@ function MainContent() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      {!inKingdomPanel && <SplashScreen minDurationMs={1400} />}
+      {!inKingdomPanel && (
+        <SplashScreen
+          minDurationMs={1400}
+          onDismiss={() => {
+            try {
+              if (typeof window !== 'undefined' && !localStorage.getItem(FIRST_VISIT_STORAGE_KEY) && !isOnboardingOpen) {
+                setTimeout(() => setIsFirstVisitModalOpen(true), 250);
+              }
+            } catch {}
+          }}
+        />
+      )}
 
       {/* Navigation (在創星季獨立網站與創點島全螢幕地圖時隱藏導覽列，保持沉浸體驗) */}
       {/* 在實境漫遊左側欄內嵌時不顯示導覽列（側欄自己有標題列，避免又從裡面開一層 3D） */}
@@ -2510,7 +2580,7 @@ function MainContent() {
           isCategorySidebarOpen={isCategorySidebarOpen}
           setIsCategorySidebarOpen={setIsCategorySidebarOpen}
           onReturnFromIsland={handleReturnFromIsland}
-          onStartOnboarding={() => setIsOnboardingOpen(true)}
+          onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
           onNavigateToAbout={(section) => {
             setAboutPageSection(section || 'others');
             setActiveTab('about');
@@ -2676,6 +2746,7 @@ function MainContent() {
               setSelectedSolver(null);
               setActiveTab('kingdom_fp');
             }}
+            onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
           />
         )}
 
@@ -2692,6 +2763,7 @@ function MainContent() {
                 handleOpenCreateWithType('innovation_proposal');
               }}
               onOpenAuth={() => openAuthModal('login')}
+              onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
             />
           </div>
         )}
@@ -2746,7 +2818,7 @@ function MainContent() {
               <div className="space-y-3 sm:space-y-6">
                 {/* 頂部特定主題專區切換列 (常駐置頂，手機版與電腦版皆完美適配無裁切，隨時切換) */}
                 {/* 市場顧問白喵在專區框上緣走來走去 */}
-                <div className="relative">
+                <div id="special-zones-top-bar" className="relative">
                 <BaiMiaoZoneWalker />
                 <SpecialZonesTopBar
                   currentZone={specialZone}
@@ -2778,6 +2850,7 @@ function MainContent() {
                     onTogglePin={() => handleTogglePin('special_zone', 'vibecoding')}
                     isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'vibecoding'}
                     onSwitchZone={handleSelectSpecialZone}
+                    onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
                   />
                 )}
                 {specialZone === 'create_ideas' && (
@@ -2791,6 +2864,7 @@ function MainContent() {
                     isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'create_ideas'}
                     onOpenAuth={() => openAuthModal('login')}
                     onSwitchZone={handleSelectSpecialZone}
+                    onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
                   />
                 )}
 
@@ -2884,6 +2958,7 @@ function MainContent() {
                           </button>
 
                           <button
+                            id="pain-points-create-btn"
                             type="button"
                             onClick={() => handleOpenCreateWithType('pain_point')}
                             className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-rose-600 bg-white text-rose-700 hover:bg-rose-600 hover:text-white active:bg-rose-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -2897,30 +2972,44 @@ function MainContent() {
 
                     {/* 點擊展開之專區介紹 */}
                     {showPainPointHelp && (
-                      <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-1.5 animate-in fade-in duration-150">
-                        <p className="text-xs font-medium text-stone-700 leading-relaxed">
-                          {isRaceMode
-                            ? "匯集真實生活與產業未解痛點，開放給創星季參賽團隊作為解題題目與共創解方。"
-                            : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"}
-                        </p>
-                        <div className="flex items-center gap-2 text-[11px] text-rose-800 font-bold pt-0.5">
-                          <span>生活產業痛點 · 創新孵化起點</span>
+                      <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-2 animate-in fade-in duration-150">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                              {isRaceMode
+                                ? "收集大家在生活與工作遇到的真實困擾，開放給參賽團隊與跨領域好手提出創新解方。"
+                                : "把生活或工作遇到的困擾寫下來，讓大家一起按讚附議，並吸引跨領域專家針對痛點提出解方。"}
+                            </p>
+                            <p className="text-[11px] font-medium text-rose-900 bg-white/80 border border-rose-200/80 px-2.5 py-1.5 rounded-lg leading-relaxed">
+                              <strong>📊 痛點分級制度：</strong>預設為 <strong>L0（無懸賞）</strong>公開許願，專家也可主動提出自訂解鎖方案；若希望加速徵求深度解答，可依難度設定 <strong>L1～L4 分級懸賞</strong>（L1 基礎 100~300點、L2 進階 301~899點、L3 高階 900~2,999點、L4 資深顧問 3,000點以上）。
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-rose-800 font-bold pt-0.5">
+                              <span>L0 無懸賞許願 / L1～L4 分級懸賞 · 徵求實用解方</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAboutPageSection('other_2');
+                                  setActiveTab('about');
+                                }}
+                                className="underline hover:text-rose-950 cursor-pointer"
+                              >
+                                查看詳細說明 →
+                              </button>
+                            </div>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              setAboutPageSection('other_2');
-                              setActiveTab('about');
-                            }}
-                            className="underline hover:text-rose-950 cursor-pointer"
+                            onClick={() => setIsFirstVisitModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-2xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
                           >
-                            查閱完整痛點機制 →
+                            <span>查看新手引導</span>
                           </button>
                         </div>
                       </div>
                     )}
 
                     {/* 篩選分類、我的按讚收藏、搜尋、排序與檢視切換 (與創點子 / VibeCoding 統一形式) */}
-                    <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-2">
+                    <div id="pain-points-filter-bar" className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-2">
                       {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
                       <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                         <div className="relative">
@@ -3128,6 +3217,7 @@ function MainContent() {
 
                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                           <button
+                            id="l0-create-btn"
                             type="button"
                             onClick={() => handleOpenCreateWithType('chat_discussion')}
                             className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-sky-600 bg-white text-sky-700 hover:bg-sky-600 hover:text-white active:bg-sky-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -3141,25 +3231,36 @@ function MainContent() {
 
                     {/* 點擊展開之專區介紹 */}
                     {showL0Help && (
-                      <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-1.5 animate-in fade-in duration-150">
-                        <p className="text-xs font-medium text-stone-700 leading-relaxed">
-                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助，適合社群激盪與早期方向探索。
-                        </p>
-                        <div className="flex items-center gap-2 text-[11px] text-sky-800 font-bold pt-0.5">
-                          <span>0 門檻自由交流 · 社群觀點激盪</span>
+                      <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-2 animate-in fade-in duration-150">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                              這裡的討論都是 <strong>L0（無懸賞）</strong>，輕鬆無壓力交流！無論是日常疑問、創業想法或專業經驗，都能直接發起話題或留言互動。
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-sky-800 font-bold pt-0.5">
+                              <span>都是 L0（無懸賞） · 輕鬆無壓力交流 · 認識新夥伴</span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('about')}
+                                className="underline hover:text-sky-950 cursor-pointer"
+                              >
+                                查看平台說明 →
+                              </button>
+                            </div>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => setActiveTab('about')}
-                            className="underline hover:text-sky-950 cursor-pointer"
+                            onClick={() => setIsFirstVisitModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-black shadow-2xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
                           >
-                            查閱平台服務規範 →
+                            <span>查看新手引導</span>
                           </button>
                         </div>
                       </div>
                     )}
 
                     {/* 篩選分類、我的按讚收藏、搜尋、排序與檢視切換 (與創點子 / VibeCoding 統一形式) */}
-                    <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-2">
+                    <div id="l0-filter-bar" className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-2">
                       {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
                       <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                         <div className="relative">
@@ -3753,9 +3854,7 @@ function MainContent() {
               onBack={() => setActiveTab('explore')}
               initialSection="finance"
               onStartOnboarding={() => {
-                setIsOnboardingFromAbout(true);
-                setActiveTab('explore');
-                setIsOnboardingOpen(true);
+                setIsFirstVisitModalOpen(true);
               }}
               onNavigateToStarSeason={() => setActiveTab('star_season')}
             />
@@ -3795,9 +3894,7 @@ function MainContent() {
               syncUrl
               onBack={() => setActiveTab('explore')}
               onStartOnboarding={() => {
-                setIsOnboardingFromAbout(true);
-                setActiveTab('explore');
-                setIsOnboardingOpen(true);
+                setIsFirstVisitModalOpen(true);
               }}
             />
           </div>
@@ -3976,9 +4073,7 @@ function MainContent() {
               }
             }}
             onStartOnboarding={() => {
-              setIsOnboardingFromAbout(true);
-              setActiveTab('explore');
-              setIsOnboardingOpen(true);
+              setIsFirstVisitModalOpen(true);
             }}
             onNavigateToSitelink={handleNavigateToSitelink}
             onOpenChat={() => setActiveTab('chat')}
@@ -4075,6 +4170,7 @@ function MainContent() {
           isOpen={isAboutModalOpen}
           onClose={closeAboutModal}
           initialSection={aboutModalInitialSection}
+          onStartOnboarding={() => setIsFirstVisitModalOpen(true)}
         />
       )}
 
@@ -4154,11 +4250,7 @@ function MainContent() {
       <FloatingOnboardingCompass
         isVisible={!inKingdomPanel && !isOnboardingOpen && activeTab !== 'star_season' && activeTab !== 'island_explorer' && activeTab !== 'kingdom_fp'}
         onStartOnboarding={() => {
-          setIsOnboardingFromAbout(true);
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          setActiveTab('explore');
-          setIsOnboardingOpen(true);
+          setIsFirstVisitModalOpen(true);
         }}
       />
 
@@ -4176,9 +4268,7 @@ function MainContent() {
           onPostClick={() => setActiveTab('create_question')}
           onSearchTag={(tag) => setSearchQuery(tag)}
           onStartOnboarding={() => {
-            setIsOnboardingFromAbout(true);
-            setActiveTab('explore');
-            setIsOnboardingOpen(true);
+            setIsFirstVisitModalOpen(true);
           }}
         />
       )}
@@ -4246,11 +4336,23 @@ function MainContent() {
         />
       )}
 
+      {/* 首次進入之核心功能探索選擇引導彈窗 */}
+      <FirstVisitFeatureSelectorModal
+        isOpen={isFirstVisitModalOpen}
+        onClose={() => setIsFirstVisitModalOpen(false)}
+        onSelectFeature={handleSelectFirstVisitFeature}
+      />
+
       {/* 首次使用步驟式跟隨引導教學（下載一次教學一次，同裝置不同帳號不重複） */}
       {isOnboardingOpen && (
         <AppOnboardingGuide
           isOpen={isOnboardingOpen}
+          tourTrack={tourTrack}
           isFromAboutUs={isOnboardingFromAbout}
+          onOpenGuideSelector={() => {
+            setIsOnboardingOpen(false);
+            setIsFirstVisitModalOpen(true);
+          }}
           onClose={(completedAll) => {
             setIsOnboardingOpen(false);
             if (completedAll && isOnboardingFromAbout) {

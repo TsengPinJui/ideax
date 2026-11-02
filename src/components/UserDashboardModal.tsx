@@ -2182,7 +2182,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         },
         { key: 'about', label: '平台資訊與下載 App', icon: Info, onSelect: openTab('about_and_support'), active: activeTab === 'about_and_support' },
         ...(onStartOnboarding
-          ? [{ key: 'tutorial', label: '使用教學', icon: BookOpen, onSelect: () => { onStartOnboarding(); setMobileMenuOpen(false); onClose(); } } as UserNavItem]
+          ? [{ key: 'tutorial', label: '新手引導', icon: Compass, onSelect: () => { onStartOnboarding(); setMobileMenuOpen(false); onClose(); } } as UserNavItem]
           : []),
         { key: 'support', label: '客服與回報', icon: Headphones, onSelect: () => { openCustomerService({ subject: '來自個人中心之客服與回報' }); setMobileMenuOpen(false); } },
       ],
@@ -2247,6 +2247,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           dot: displayBadgeCount > 0,
         },
         { key: 'about', label: '關於 IdeaX', icon: Info, onSelect: openTab('about_and_support'), active: activeTab === 'about_and_support' },
+        ...(onStartOnboarding
+          ? [{ key: 'tutorial', label: '新手引導', icon: Compass, onSelect: () => { onStartOnboarding(); setMobileMenuOpen(false); onClose(); } } as UserNavItem]
+          : []),
       ],
     },
     {
