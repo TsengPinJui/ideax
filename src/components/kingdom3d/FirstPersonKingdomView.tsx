@@ -577,7 +577,7 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
   const startCraneLandingRef = useRef<() => void>(() => {});
   const adjustCraneAltitude = useCallback((deltaH: number) => {
     if (landRideRef.current?.kind !== 'egret' || isCraneLanding) return;
-    craneAltitudeRef.current = THREE.MathUtils.clamp(craneAltitudeRef.current + deltaH, 0.6, 26.0);
+    craneAltitudeRef.current = THREE.MathUtils.clamp(craneAltitudeRef.current + deltaH, 0.25, 55.0);
     setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
   }, [isCraneLanding]);
   const boatingRef = useRef<BoatingService>(new BoatingService());
@@ -1740,8 +1740,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       landRideRef.current = ride;
       setLandRiding({ kind: ride.kind, seat: ride.seat });
       if (ride.kind === 'egret') {
-        craneAltitudeRef.current = 4.5;
-        setCraneAltitude(4.5);
+        const initAlt = Math.max(2.5, ride.y);
+        craneAltitudeRef.current = initAlt;
+        setCraneAltitude(Math.round(initAlt * 10) / 10);
         setIsCraneLanding(false);
         craneLandingRef.current = null;
       }
@@ -1796,7 +1797,10 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         targetX = safe.x;
         targetZ = safe.z;
       }
-      const targetGroundY = Math.max(0, PhysicsController.getGroundHeight(targetX, targetZ, MOVE_BRIDGES, 0));
+      const wp = BASIN_LANDMARKS.westPlateau;
+      const distPlat = Math.hypot(targetX - wp.x, targetZ - wp.z);
+      const isOnPlateau = distPlat < wp.r * 1.15;
+      const targetGroundY = isOnPlateau ? 30.0 : Math.max(0, PhysicsController.getGroundHeight(targetX, targetZ, MOVE_BRIDGES, 0));
       craneLandingRef.current = {
         targetX,
         targetZ,
@@ -1812,11 +1816,14 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
       const ride = landRideRef.current;
       if (!ride) return;
       if (ride.kind === 'egret') {
-        const curGround = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
-        const onLand = PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones());
-        // 若已經在地面附近且在可行走陸地，直接下來；否則啟動自動平穩降落至地面再離開
+        const wp = BASIN_LANDMARKS.westPlateau;
+        const distPlat = Math.hypot(ride.x - wp.x, ride.z - wp.z);
+        const isOnPlateau = distPlat < wp.r * 1.15;
+        const curGround = isOnPlateau ? 30.0 : PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+        const onLand = isOnPlateau || PhysicsController.isInsideWalkableZones(ride.x, ride.z, getGlobalWalkableZones());
+        // 若已經在地面附近且在陸地，直接下來；否則啟動自動平穩降落至地面再離開
         if (ride.y <= curGround + 0.65 && onLand) {
-          performDismount(ride.x, Math.max(0, ride.y), ride.z, ride.yaw);
+          performDismount(ride.x, Math.max(curGround, ride.y), ride.z, ride.yaw);
           return;
         }
         startCraneLanding();
@@ -2774,10 +2781,18 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
           const targetY = bridgeH > 0.01 ? bridgeH : onLand ? 0.0 : -0.25;
           ride.y = THREE.MathUtils.clamp(ride.y + (targetY - ride.y) * Math.min(1, delta * 6.5), -1, 4.5);
         } else if (ride.seat === 0) {
-          // 仙鶴：支援自行升降調整高度（Space/E/PageUp 升空，Q/PageDown/X 降低），點擊降落直接平穩下降回到平面並下鶴離開
-          const MAX_CRANE_ALTITUDE = 26.0;
-          const MIN_CRANE_ALTITUDE = 0.5;
+          // 仙鶴：自由升降調整高度（Space/E/PageUp 升空，Q/PageDown/X 降低），低至地面 (0.25m 掠地掠水)，高至聚雲塔頂 (55m 遠眺五島)
+          const MAX_CRANE_ALTITUDE = 55.0;
+          const MIN_CRANE_ALTITUDE = 0.25;
           const bridgeH = PhysicsController.getGroundHeight(ride.x, ride.z, MOVE_BRIDGES, 0);
+          const wp = BASIN_LANDMARKS.westPlateau;
+          const distToPlateau = Math.hypot(ride.x - wp.x, ride.z - wp.z);
+          let mountainH = 0;
+          if (distToPlateau < wp.r * 1.35) {
+            const t = Math.max(0, 1 - distToPlateau / (wp.r * 1.35));
+            mountainH = Math.min(30.0, 30.0 * Math.pow(t, 0.7) * 1.35);
+          }
+          const baseGroundH = Math.max(bridgeH, mountainH);
 
           if (craneLandingRef.current) {
             // 正在降落中：平滑朝著目標降落點 X/Z 與地面 Y 推進
@@ -2797,18 +2812,23 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
               return;
             }
           } else {
-            // 正常巡遊／飛行：鍵盤即時升降控制
+            // 正常巡遊／飛行：鍵盤即時升降控制（長按平滑升降；Shift/疾馳時升降加倍）
+            const vertSpeed = (controls.keys.sprint || isFastWalk) ? 14.0 : 8.5;
             if (controls.keys.ascend) {
-              craneAltitudeRef.current = Math.min(MAX_CRANE_ALTITUDE, craneAltitudeRef.current + delta * 6.5);
+              craneAltitudeRef.current = Math.min(MAX_CRANE_ALTITUDE, craneAltitudeRef.current + delta * vertSpeed);
               setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
             } else if (controls.keys.descend) {
-              craneAltitudeRef.current = Math.max(MIN_CRANE_ALTITUDE, craneAltitudeRef.current - delta * 6.5);
+              craneAltitudeRef.current = Math.max(MIN_CRANE_ALTITUDE, craneAltitudeRef.current - delta * vertSpeed);
               setCraneAltitude(Math.round(craneAltitudeRef.current * 10) / 10);
             }
             ride.x = THREE.MathUtils.clamp(nx, -168, 175);
             ride.z = THREE.MathUtils.clamp(nz, -155, 155);
-            const targetFlightY = Math.max(bridgeH + 0.3, craneAltitudeRef.current);
-            ride.y = THREE.MathUtils.clamp(ride.y + (targetFlightY - ride.y) * Math.min(1, delta * 4.2), MIN_CRANE_ALTITUDE, MAX_CRANE_ALTITUDE);
+            const targetFlightY = Math.max(baseGroundH + 0.25, craneAltitudeRef.current);
+            ride.y = THREE.MathUtils.clamp(
+              ride.y + (targetFlightY - ride.y) * Math.min(1, delta * 5.0),
+              MIN_CRANE_ALTITUDE,
+              MAX_CRANE_ALTITUDE
+            );
           }
         }
         // 騎乘載具（如騎鶴、騎牛）進入北山飛瀑、南山洞口、東山水濂洞時同樣觸發彩蛋
@@ -3929,6 +3949,9 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
         landRideMode={landRiding?.kind || null}
         nearMountType={nearMountType}
         onDescendPagoda={storyTowerId === PLATEAU_ID && floorLevel >= 2 ? () => goTrailRef.current?.('down-top') : undefined}
+        onCraneAscend={() => adjustCraneAltitude(3.5)}
+        onCraneDescend={() => adjustCraneAltitude(-3.5)}
+        craneAltitude={craneAltitude}
       />
       {landRiding && (
         <div data-ui-panel="true" className="kx-root absolute left-1/2 -translate-x-1/2 top-16 sm:top-5 z-30 pointer-events-auto">
@@ -3944,26 +3967,48 @@ export const FirstPersonKingdomView: React.FC<FirstPersonKingdomViewProps> = ({
                   : '騎馬・輕快小跑'
                 : isCraneLanding
                 ? '駕鶴・自動緩降著陸中…'
-                : `駕鶴凌空・高度 ${craneAltitude.toFixed(1)}m`}
+                : `駕鶴凌空・高度 ${craneAltitude.toFixed(1)}m ${craneAltitude >= 44 ? '⛩️ 聚雲塔景觀' : craneAltitude <= 1.0 ? '🌱 貼近地面' : ''}`}
             </span>
             {landRiding.kind === 'horseCart' && <span className="kx-sub">僅限人工鋪面與拱橋</span>}
             {landRiding.kind === 'egret' && !isCraneLanding && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => adjustCraneAltitude(2.2)}
-                  className="kx-btn-ghost px-2 py-0.5 text-[11.5px] rounded-full cursor-pointer"
-                  title="拉高飛行高度 (空白鍵 / E)"
+                  onClick={() => adjustCraneAltitude(3.5)}
+                  className="kx-btn-ghost px-2.5 py-0.5 text-[11.5px] rounded-full cursor-pointer hover:bg-white/20 active:scale-95"
+                  title="拉高飛行高度 (空白鍵 / E / ▲)"
                 >
-                  ▲ 爬升
+                  ▲ 升空
                 </button>
                 <button
                   type="button"
-                  onClick={() => adjustCraneAltitude(-2.2)}
-                  className="kx-btn-ghost px-2 py-0.5 text-[11.5px] rounded-full cursor-pointer"
-                  title="降低飛行高度 (Q / X)"
+                  onClick={() => adjustCraneAltitude(-3.5)}
+                  className="kx-btn-ghost px-2.5 py-0.5 text-[11.5px] rounded-full cursor-pointer hover:bg-white/20 active:scale-95"
+                  title="降低飛行高度 (Q / X / ▼)"
                 >
-                  ▼ 下降
+                  ▼ 降下
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    craneAltitudeRef.current = 50.0;
+                    setCraneAltitude(50.0);
+                  }}
+                  className="kx-btn-ghost px-2.5 py-0.5 text-[11px] rounded-full cursor-pointer hover:bg-white/20 active:scale-95 text-amber-200"
+                  title="直升聚雲塔頂 (50m 俯瞰全景)"
+                >
+                  ⛩️ 聚雲塔高空 (50m)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    craneAltitudeRef.current = 0.25;
+                    setCraneAltitude(0.25);
+                  }}
+                  className="kx-btn-ghost px-2.5 py-0.5 text-[11px] rounded-full cursor-pointer hover:bg-white/20 active:scale-95 text-emerald-200"
+                  title="降至地面掠水飛行 (0.25m)"
+                >
+                  🌱 貼地面 (0.25m)
                 </button>
               </div>
             )}

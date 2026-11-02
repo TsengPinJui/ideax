@@ -25,6 +25,8 @@ import {
   Armchair,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Lock,
   ZoomIn,
 } from 'lucide-react';
@@ -78,6 +80,10 @@ interface MobileControlsOverlayProps {
   onLongPressScreen?: (clientX: number, clientY: number) => boolean;
   /** 聚雲塔頂下塔按鍵回呼（放在螢幕兩側避開中央風景） */
   onDescendPagoda?: () => void;
+  /** 仙鶴飛行高度即時控制（升空 / 降下） */
+  onCraneAscend?: () => void;
+  onCraneDescend?: () => void;
+  craneAltitude?: number;
   /** 數字變動時打開全島地圖（左側面板的「打開全島地圖」） */
   openMapSignal?: number;
   bgmMuted?: boolean;
@@ -183,6 +189,9 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
   onTapScreen,
   onLongPressScreen,
   onDescendPagoda,
+  onCraneAscend,
+  onCraneDescend,
+  craneAltitude,
   openMapSignal,
   bgmMuted,
   onToggleBgm,
@@ -1153,6 +1162,31 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
               </span>
             </button>
           )}
+          {/* 仙鶴專屬升降按鍵：手機/觸控螢幕隨時爬升或降下 */}
+          {landRideMode === 'egret' && onCraneAscend && (
+            <button
+              type="button"
+              onClick={onCraneAscend}
+              className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg bg-amber-500/25 border border-amber-300/60 text-amber-200 active:scale-95"
+              title="向上升空（可高至聚雲塔 55m）"
+              aria-label="仙鶴升空"
+            >
+              <ChevronUp className="w-6 h-6 sm:w-7 sm:h-7" />
+              <span className="text-[10px] sm:text-[10.5px] font-bold tracking-wider leading-none">升空</span>
+            </button>
+          )}
+          {landRideMode === 'egret' && onCraneDescend && (
+            <button
+              type="button"
+              onClick={onCraneDescend}
+              className="kx-round w-14 h-14 sm:w-16 sm:h-16 flex-col gap-0.5 shadow-lg bg-emerald-500/25 border border-emerald-300/60 text-emerald-200 active:scale-95"
+              title="向下俯衝（低至地面掠地掠水 0.25m）"
+              aria-label="仙鶴降下"
+            >
+              <ChevronDown className="w-6 h-6 sm:w-7 sm:h-7" />
+              <span className="text-[10px] sm:text-[10.5px] font-bold tracking-wider leading-none">降下</span>
+            </button>
+          )}
           {/* 照明鍵：呼喚小燈泡拿在手上 */}
           {onToggleBulb && (
             <button
@@ -1184,8 +1218,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                   : '策馬疾馳（點擊換快速）'
                 : landRideMode === 'egret'
                 ? isFastWalk
-                  ? '騰空高飛中（限高 16.5m，點擊降落）'
-                  : '駕鶴起飛（點擊升空）'
+                  ? `仙鶴疾飛中（高度 ${craneAltitude ? craneAltitude.toFixed(1) : '4.5'}m，點擊換巡航）`
+                  : `仙鶴巡航中（高度 ${craneAltitude ? craneAltitude.toFixed(1) : '4.5'}m，點擊換疾飛）`
                 : isOnBoat
                 ? isFastWalk
                   ? '疾駛中（點一下恢復遊船速度，或按住 Shift）'
@@ -1209,8 +1243,8 @@ export const MobileControlsOverlay: React.FC<MobileControlsOverlayProps> = ({
                   : '騎馬'
                 : landRideMode === 'egret'
                 ? isFastWalk
-                  ? '降落'
-                  : '起飛'
+                  ? '疾飛'
+                  : '巡航'
                 : isOnBoat
                 ? isFastWalk || shiftHeld
                   ? '疾駛中'
