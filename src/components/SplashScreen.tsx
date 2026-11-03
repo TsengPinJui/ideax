@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sparkles, CheckCircle2, ChevronRight, Lightbulb, Compass, Zap, ArrowRight, ShieldCheck, Trophy, MessageSquare } from 'lucide-react';
+import { Sparkles, CheckCircle2, Lightbulb, Compass, ArrowRight } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { useApp } from '../context/AppContext';
 import { APP_VERSION } from '../data/versionData';
@@ -177,7 +177,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   );
   const [isTipFading, setIsTipFading] = useState(false);
   const [bulbSparkleActive, setBulbSparkleActive] = useState(false);
-  const [showSkipButton, setShowSkipButton] = useState(false);
   const [statusMessageIndex, setStatusMessageIndex] = useState<number>(() =>
     Math.floor(Math.random() * (DYNAMIC_STATUS_MESSAGES.length - 1))
   );
@@ -207,13 +206,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }, 280);
   }, [isFadingOut, isRendered, onDismiss]);
 
-  // 3 秒後顯示快速跳過按鈕（若使用者不想等待，可立即進入）
+  // 當到達安全進入門檻時（原本顯示「點此進入」的時機），直接自動進入首頁，免去手動點擊
   useEffect(() => {
-    const skipTimer = setTimeout(() => {
-      setShowSkipButton(true);
-    }, 2600);
-    return () => clearTimeout(skipTimer);
-  }, []);
+    const autoEnterTimer = setTimeout(() => {
+      handleDismiss();
+    }, 2400);
+    return () => clearTimeout(autoEnterTimer);
+  }, [handleDismiss]);
 
   // 技巧卡片自動輪播 (每 3.8 秒換一則)
   useEffect(() => {
@@ -441,20 +440,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <span className="tracking-wide line-clamp-1">{activeStatusText}</span>
         </div>
 
-        {/* 友善跳過按鈕：避免網路延遲讓用戶乾等 */}
-        <div className="mt-3 flex items-center gap-3">
-          {showSkipButton && (
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="text-[11px] font-bold text-amber-900 hover:text-amber-950 bg-white hover:bg-amber-100 border border-amber-300 px-3 py-1 rounded-full shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95 animate-in fade-in duration-300"
-              title="若不想等待，可立即進入探索"
-            >
-              <Zap className="w-3 h-3 text-amber-600" />
-              <span>點此直接進入首頁</span>
-            </button>
-          )}
-
+        {/* 底部版本資訊與在線狀態（原手動按鍵已移除，由系統自動推進進入） */}
+        <div className="mt-3 flex items-center justify-center">
           <span className="text-[11px] font-medium text-stone-400">
             v{APP_VERSION} • {Math.max(1, onlineUsersCount || 1).toLocaleString()}
           </span>
