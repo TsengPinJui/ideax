@@ -56,53 +56,17 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
 
   if (!isOpen) return null;
 
-  const cardAccents = isProposalMode
-    ? [
-        {
-          badge: '💡 精選提案 #1',
-          bgGlow: 'from-sky-500/10 via-indigo-500/5 to-transparent',
-          border: 'border-sky-300 hover:border-sky-400',
-          badgeBg: 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white',
-          btnBg: 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white shadow-sky-200',
-        },
-        {
-          badge: '🚀 熱門創新 #2',
-          bgGlow: 'from-indigo-500/10 via-purple-500/5 to-transparent',
-          border: 'border-indigo-300 hover:border-indigo-400',
-          badgeBg: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white',
-          btnBg: 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-indigo-200',
-        },
-        {
-          badge: '✨ 潛力佳作 #3',
-          bgGlow: 'from-amber-500/10 via-orange-500/5 to-transparent',
-          border: 'border-amber-300 hover:border-amber-400',
-          badgeBg: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
-          btnBg: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-200',
-        },
-      ]
-    : [
-        {
-          badge: '👑 今日必玩 #1',
-          bgGlow: 'from-amber-500/10 via-orange-500/5 to-transparent',
-          border: 'border-amber-300 hover:border-amber-400',
-          badgeBg: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
-          btnBg: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-200',
-        },
-        {
-          badge: '🔥 療癒解壓 #2',
-          bgGlow: 'from-rose-500/10 via-orange-500/5 to-transparent',
-          border: 'border-rose-300 hover:border-rose-400',
-          badgeBg: 'bg-gradient-to-r from-rose-500 to-orange-500 text-white',
-          btnBg: 'bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white shadow-rose-200',
-        },
-        {
-          badge: '✨ 驚喜黑馬 #3',
-          bgGlow: 'from-purple-500/10 via-amber-500/5 to-transparent',
-          border: 'border-purple-300 hover:border-purple-400',
-          badgeBg: 'bg-gradient-to-r from-purple-600 to-pink-500 text-white',
-          btnBg: 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-purple-200',
-        },
-      ];
+  const unifiedCardStyle = isProposalMode
+    ? {
+        border: 'border-sky-300 hover:border-sky-400',
+        btnBg:
+          'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white shadow-sky-200',
+      }
+    : {
+        border: 'border-amber-300 hover:border-amber-400',
+        btnBg:
+          'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-200',
+      };
 
   return (
     <div
@@ -198,7 +162,6 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
               {drawnGames.map((game, idx) => {
-                const accent = cardAccents[idx % cardAccents.length];
                 const cover =
                   game.coverImage ||
                   (game as any).vibeCodingData?.coverImageUrl ||
@@ -216,9 +179,9 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
                 return (
                   <div
                     key={`drawn-item-${game.id}-${idx}`}
-                    className={`group relative flex flex-col rounded-2xl bg-white border ${accent.border} shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden text-left`}
+                    className={`group relative flex flex-col rounded-2xl bg-white border ${unifiedCardStyle.border} shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden text-left`}
                   >
-                    {/* 頂部徽章 */}
+                    {/* 頂部封面圖 */}
                     <div className="relative aspect-[16/10] bg-stone-100 overflow-hidden">
                       <img
                         src={cover}
@@ -231,15 +194,6 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-
-                      {/* 幸運抽卡標籤 */}
-                      <div className="absolute top-2.5 left-2.5">
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs ${accent.badgeBg}`}
-                        >
-                          {accent.badge}
-                        </span>
-                      </div>
 
                       {/* 底部浮動標題 */}
                       <div className="absolute bottom-2.5 left-2.5 right-2.5">
@@ -286,7 +240,7 @@ export const RandomGameDrawModal: React.FC<RandomGameDrawModalProps> = ({
                             onClose();
                             onSelectGame(game);
                           }}
-                          className={`w-full py-2 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer ${accent.btnBg}`}
+                          className={`w-full py-2 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer ${unifiedCardStyle.btnBg}`}
                         >
                           {isProposalMode ? (
                             <>

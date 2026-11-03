@@ -229,10 +229,6 @@
 
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; max-width: 440px; margin: 14px 0;">
           <div style="width: 100%; padding: 16px; border-radius: 18px; background: #ffffff; border: 1px solid rgba(253, 230, 138, 0.9); box-shadow: 0 2px 6px rgba(0,0,0,0.04); text-align: left;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <span style="font-size: 11px; font-weight: 800; background: #fef3c7; color: #78350f; padding: 2px 8px; border-radius: 9999px; border: 1px solid #fde68a;">✦ 開站靈感</span>
-              <span id="ideax-boot-tip-label" style="font-size: 11px; color: #a8a29e; font-weight: 600;">知識載入中</span>
-            </div>
             <div id="ideax-boot-tip-title" style="font-size: 13px; font-weight: 800; color: #1c1917; margin-bottom: 4px;">
               生活中遇到的繁瑣困擾，都能發布在「痛點許願池」
             </div>
@@ -268,11 +264,20 @@
           var tipDesc = document.getElementById('ideax-boot-tip-desc');
           var tips = [
             { t: '生活中遇到的繁瑣困擾，都能發布在「痛點許願池」', d: '不論是租屋倒垃圾、二手書流轉或停車難題，痛點就是新商機的起點，吸引全站創作者為你打造專屬解方！' },
+            { t: '痛點與提案 L0～L5 分級制度，公開分享或高價懸賞任你選', d: 'L0 為公開無懸賞交流，L1～L5 依需求難易度設定不同點數門檻與懸賞回饋，小問題到大專案都能找到對的人。' },
             { t: '青年創新提案挑戰賽現正熱烈徵件中', d: '將腦中靈感具現化！支援圖文提案、規格說明與互動原型展示，角逐賽事大獎、榮譽徽章與落地資源。' },
             { t: '想散心找靈感？點擊右上角「創點源」進入 3D 江南水鄉', d: '支援 3D 地圖與實境漫遊雙模式切換，還能在茶藝街清茗茶莊入座品茶交流！' },
-            { t: 'L0 自由討論區：零懸賞門檻、隨時發起交流', d: '適合日常觀點激盪、技術探討與跨界請益，所有會員皆可無負擔留言討論與共同研討。' }
+            { t: '邀請好友同遊 3D 創點源，一起解鎖雙人羈絆任務', d: '在島上不僅能單人漫步，還能與好友並肩逛街、同桌品茶聊天，攜手完成專屬雙人互動與羈絆任務拿獎勵！' },
+            { t: 'L0 自由討論區：無懸賞門檻，輕鬆無壓力交流', d: '討論區皆為 L0（無懸賞），適合日常觀點激盪、技術探討與跨界請益，所有會員都能隨時留言互動與按讚支持。' },
+            { t: '不知道先看哪個？試試「隨機看 3 個提案」與「隨機抽 3 款遊戲」', d: '首頁展演台支援一鍵隨機抽取全站精選創新提案、軟體作品與熱門網頁小遊戲，每次點擊都有意想不到的驚喜！' },
+            { t: '精選互動網頁小遊戲，免下載直接全螢幕線上試玩', d: '匯集創作者打造的休閒解壓、益智闖關與創意互動遊戲，手機與電腦皆可一鍵開啟全螢幕暢玩並給予評分鼓勵。' },
+            { t: '懸賞提案三階段驗收：雙向權益安心保障', d: '提問方懸賞點數由官方安全保管，解答方依進度驗收交付撥款，保障每一分努力與每一分點數。' },
+            { t: '匯職缺跨國智能檢索：一鍵整理履歷亮點與全球機會', d: '結合 AI 條件分析與多平台職缺搜尋，無論找海內外正職、遠端工作或專案合作，都能快速鎖定理想目標。' },
+            { t: '隨時可在「個人功能列」重新開啟新手引導教學', d: '想快速了解發痛點、提解方、發討論或 3D 島玩法？打開右上角個人選單點擊「新手引導」，15 秒輕鬆上手！' }
           ];
-          var tipIdx = 0;
+          var tipIdx = Math.floor(Math.random() * tips.length);
+          if (tipTitle) tipTitle.textContent = tips[tipIdx].t;
+          if (tipDesc) tipDesc.textContent = tips[tipIdx].d;
           setInterval(function() {
             tipIdx = (tipIdx + 1) % tips.length;
             if (tipTitle) tipTitle.textContent = tips[tipIdx].t;

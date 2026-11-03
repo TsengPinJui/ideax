@@ -447,7 +447,7 @@ export function parseConditionTags(brief: string, intakeData?: any): ConditionTa
   }
 
   const tags: ConditionTag[] = [];
-  const text = `${brief || ''} ${intakeData?.reply || ''}`.trim();
+  const text = `${brief || ''} ${intakeData?.clarificationQuestion || ''}`.trim();
 
   // 1. 工作型態
   // 可以有好幾個（「正職、兼職」「正職兼職都可以」）：只看「工作型態：」後面到下一個「xx：」之前的字
@@ -2652,7 +2652,7 @@ export const JobExplorerView: React.FC = () => {
                               </div>
                             )}
 
-                            {/* 模糊條件追問選項（含「跳過」選項，加上上方補充提示） */}
+                            {/* 模糊條件追問選項（含「跳過」選項，加上上方補充提示與直接搜尋按鈕） */}
                             {m.role === 'bot' &&
                               isLatestBot &&
                               !m.confirmed &&
@@ -2660,6 +2660,11 @@ export const JobExplorerView: React.FC = () => {
                               m.suggestedChips &&
                               m.suggestedChips.length > 0 && (
                                 <div className="mt-2.5 pt-2 border-t border-amber-200/80 space-y-2">
+                                  {m.conditionTags && m.conditionTags.length > 0 && m.dimensionGroups?.[0]?.question && (
+                                    <div className="text-xs font-bold text-stone-800">
+                                      {m.dimensionGroups[0].question}
+                                    </div>
+                                  )}
                                   <div className="flex flex-wrap gap-1.5">
                                     {m.suggestedChips.map((chip, idx) => {
                                       const isSkip =
@@ -2680,6 +2685,17 @@ export const JobExplorerView: React.FC = () => {
                                         </button>
                                       );
                                     })}
+                                    {(!m.conditionTags || m.conditionTags.length === 0) && m.pendingBrief && (
+                                      <button
+                                        type="button"
+                                        disabled={isSearching || isRegulating}
+                                        onClick={() => void handleForwardToExplorerAgent(m.pendingBrief, m.id)}
+                                        className="px-3 py-1.5 rounded-lg bg-[#1e3a8a] hover:bg-[#1e40af] disabled:opacity-50 text-white text-[11px] font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                      >
+                                        <Check className="w-3.5 h-3.5 text-emerald-300 stroke-[3]" />
+                                        <span>直接以此條件搜尋</span>
+                                      </button>
+                                    )}
                                   </div>
                                   <p className="text-[11px] text-stone-500 font-medium">
                                     提示：如果沒看到想要的條件，可以於上方對話框/搜尋框補充

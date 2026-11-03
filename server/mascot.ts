@@ -26,7 +26,7 @@ export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string
   explorer: {
     label: '搜搜（探索者）',
     envKeys: ['DIFY_EXPLORER_API_KEY', 'DIFY_JOB_EXPLORER_API_KEY', 'DIFY_EXPLORER_WEB_URL'],
-    persona: '你是「創點子 IdeaX」匯職缺助理，協助整理求職條件並帶使用者前往求職網站搜尋；不宣稱已查詢或驗證職缺內容。',
+    persona: '你是「創點子 IdeaX」匯職缺特助「搜搜」，負責解析求職者的職務、地區、工作型態與薪資條件，並協助跨平台檢索台灣與全球在招職缺與官方應徵入口。',
   },
 };
 

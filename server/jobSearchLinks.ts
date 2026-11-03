@@ -67,16 +67,23 @@ function safeTerms(query: string, filters: Record<string, unknown>): string {
     const normalized = String(value || '').trim();
     return /^(全部|不限|不拘|無)$/i.test(normalized) ? '' : normalized;
   };
+  const cleanQuery = useful(query)
+    .replace(/(?:工作型態|地區|工作範圍|國家|職務(?:（複選）)?|目標公司|限定公司|指定公司|學歷|經歷|年資|薪資|薪水|班別工時|工作環境|工作方式|福利|技能證照|個人背景|其他偏好|產業|類別)[：:]\s*/g, ' ')
+    .replace(/（(?:台灣|臺灣|不限縣市|依[月年時日]薪判斷)）/g, ' ')
+    .replace(/\b(?:月薪|年薪|時薪|日薪)?\s*[\d,]+\s*(?:元|萬|k|twd|usd)?\s*以上\b/gi, ' ')
+    .replace(/(?:經歷|學歷|薪資|待遇|地區|地點|公司)?不拘|正職兼職皆可|最新在招職缺|最新招募職缺/g, ' ')
+    .replace(/[、,，。；;]+/g, ' ');
+
   const parts = [
     useful(filters.keyword),
-    useful(query),
+    useful(filters.company),
+    cleanQuery,
     useful(filters.city),
     useful(filters.category),
     useful(filters.jobType),
-    Number(filters.minSalary) > 0 ? `薪資 ${Number(filters.minSalary)}` : '',
   ].filter(Boolean);
 
-  let value = Array.from(new Set(parts)).join(' ');
+  let value = Array.from(new Set(parts.join(' ').split(/\s+/).filter(Boolean))).join(' ');
   value = value
     .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, ' ')
     .replace(/\b[A-Z][12]\d{8}\b/gi, ' ')
@@ -84,7 +91,7 @@ function safeTerms(query: string, filters: Record<string, unknown>): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return (value || '最新職缺').slice(0, 220);
+  return (value || '最新職缺').slice(0, 120);
 }
 
 function safeId(value: string): string {

@@ -190,7 +190,10 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
   const sanitizedUser = (params.user || `ideax_web_${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
 
   // 強制注入品牌正名（IdeaX創點子，嚴禁出現大獵場 Talent Hunt）與跳過讀取本地檔案保護
-  const effectiveQuery = `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
+  const isExplorer = params.agentType === 'explorer_agent' || params.inputs?.entry === 'job_explorer' || params.inputs?.entry === 'job_explorer_search';
+  const effectiveQuery = isExplorer
+    ? `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟；若為職缺檢索或結構化條件解析，請完整輸出職缺清單或結構化求職條件，切勿因精簡而省略職缺結果！】`
+    : `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答，以避免超過最大迭代上限！】`;
 
   try {
     const res = await fetch(endpoint, {

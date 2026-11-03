@@ -1487,10 +1487,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           dim: 'parameters',
                           badge: '跨平台來源',
                           badgeColor: 'bg-fuchsia-100 text-fuchsia-800 border-stone-200',
-                          label: ' 跨平台搜尋入口（Yes123 / Cake / 1111 / 104 / 518）',
-                          desc: '整理求職條件並提供多個來源網站搜尋入口，不收集職缺明細',
+                          label: ' 跨平台職缺檢索（Yes123 / Cake / 1111 / 104 / 518）',
+                          desc: '整理求職條件並跨平台檢索在招職缺與官方應徵入口',
                           query: '找新北市或台北市的數位行銷企劃或專案經理 PM，優先看 Yes123、Cake、Yourator、1111、104。',
-                          paramsTag: '多站來源 / 搜尋入口 / 不擷取明細',
+                          paramsTag: '多站來源 / 在招職缺 / 應徵入口',
                         },
                         {
                           dim: 'parameters',
@@ -1570,10 +1570,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
                     <div className="space-y-0.5">
                       <span className="text-xs font-semibold text-blue-950 flex items-center gap-1.5">
-                        <span>來源網站搜尋入口模式</span>
+                        <span>跨平台條件解析與在招職缺檢索模式</span>
                       </span>
                       <p className="text-[11px] text-stone-600 leading-tight">
-                        只依條件產生求職網站搜尋連結，不請求來源網站頁面、不收集或保存職缺明細。
+                        支援第一階段求職條件結構化拆解（職務、地區、型態、薪資）與第二階段跨平台在招職缺清單及來源入口檢索。
                       </p>
                     </div>
                   </div>
@@ -2161,7 +2161,51 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           </div>
                         )}
 
-                        {/* 匯職缺測試：只顯示來源搜尋入口 */}
+                        {/* 匯職缺測試：職缺清單 (parsed.jobs 或陣列格式) */}
+                        {parsed && (() => {
+                          const jobList = Array.isArray(parsed.jobs) ? parsed.jobs : (Array.isArray(parsed) && parsed[0]?.title && parsed[0]?.company ? parsed : []);
+                          if (jobList.length === 0) return null;
+                          return (
+                            <div className="space-y-3.5">
+                              <div className="border-b border-stone-800 pb-3 flex items-center justify-between">
+                                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                                  <Briefcase className="w-4 h-4 text-amber-400" />
+                                  <span>檢索職缺結果（共 {jobList.length} 筆）</span>
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {jobList.map((job: any, jIdx: number) => (
+                                  <div key={job.id || jIdx} className="rounded-xl border border-stone-800 bg-stone-900 p-3.5 space-y-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <div className="text-xs font-bold text-stone-100">{job.title}</div>
+                                        <div className="text-[11px] text-stone-400 mt-0.5">{job.company} · {job.district || job.city || '台灣'}</div>
+                                      </div>
+                                      {job.aiScore && (
+                                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold shrink-0">
+                                          契合度 {job.aiScore}%
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs font-semibold text-emerald-400">
+                                      {job.salaryText || (job.salaryMin ? `月薪 ${Number(job.salaryMin).toLocaleString()} 元以上` : '待遇面議')}
+                                    </div>
+                                    {job.aiReason && (
+                                      <p className="text-[11px] text-stone-300 leading-relaxed line-clamp-2">{job.aiReason}</p>
+                                    )}
+                                    {job.url && (
+                                      <a href={job.url} target="_blank" rel="noopener noreferrer" className="inline-block text-[11px] font-bold text-amber-300 hover:underline">
+                                        前往 {job.sourceSite || '來源網站'} 查看職缺 →
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 匯職缺測試：顯示來源搜尋入口 */}
                         {parsed && Array.isArray(parsed.sources) && parsed.sources.length > 0 && (
                           <div className="space-y-3.5">
                             <div className="border-b border-stone-800 pb-3">
@@ -2169,7 +2213,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                 <Briefcase className="w-4 h-4 text-amber-400" />
                                 <span>來源網站搜尋入口（{parsed.sources.length} 個）</span>
                               </span>
-                              <p className="mt-1 text-[11px] text-stone-400">點選後前往來源網站查看最新職缺；IdeaX 不收集或保存職缺明細。</p>
+                              <p className="mt-1 text-[11px] text-stone-400">點選後前往來源網站查看最新職缺。</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                               {parsed.sources.map((source: any) => (

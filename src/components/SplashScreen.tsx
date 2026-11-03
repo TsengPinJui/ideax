@@ -28,6 +28,14 @@ const PLATFORM_TIPS: PlatformTip[] = [
     highlight: '「提痛點、聚附議、引專家」一站搞定',
   },
   {
+    tag: '分級制度',
+    tagColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    icon: '📊',
+    title: '痛點與提案 L0～L5 分級制度，公開分享或高價懸賞任你選',
+    desc: 'L0 為公開無懸賞交流，L1～L5 依需求難易度設定不同點數門檻與懸賞回饋，小問題到大專案都能找到對的人。',
+    highlight: '從 L0 免費交流到 L5 深度專案彈性配置',
+  },
+  {
     tag: '創星季挑戰賽',
     tagColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     icon: '🚀',
@@ -36,7 +44,7 @@ const PLATFORM_TIPS: PlatformTip[] = [
     highlight: '角逐百萬資源與官方認證榮譽',
   },
   {
-    tag: '3D 創點源漫遊',
+    tag: '3D 創點源',
     tagColor: 'bg-amber-100 text-amber-900 border-amber-300',
     icon: '🏮',
     title: '想散心找靈感？點擊右上角「創點源」進入 3D 江南水鄉',
@@ -44,12 +52,36 @@ const PLATFORM_TIPS: PlatformTip[] = [
     highlight: '茶藝街主館全新增設茶桌，隨時入座交流',
   },
   {
+    tag: '好友同遊',
+    tagColor: 'bg-pink-100 text-pink-800 border-pink-200',
+    icon: '🤝',
+    title: '邀請好友同遊 3D 創點源，一起解鎖雙人羈絆任務',
+    desc: '在島上不僅能單人漫步，還能與好友並肩逛街、同桌品茶聊天，攜手完成專屬雙人互動與羈絆任務拿獎勵！',
+    highlight: '雙人互動任務與專屬羈絆獎勵等你解鎖',
+  },
+  {
     tag: '自由交流',
     tagColor: 'bg-sky-100 text-sky-800 border-sky-200',
     icon: '💬',
-    title: 'L0 自由討論區：零懸賞門檻、隨時發起交流',
-    desc: '適合日常觀點激盪、技術探討與跨界請益，所有會員皆可無負擔留言討論、按讚支持與共同研討。',
-    highlight: '免花費點數，自由發表您的第一篇交流帖',
+    title: 'L0 自由討論區：無懸賞門檻，輕鬆無壓力交流',
+    desc: '討論區皆為 L0（無懸賞），適合日常觀點激盪、技術探討與跨界請益，所有會員都能隨時留言互動與按讚支持。',
+    highlight: '輕鬆開啟話題，匯聚跨領域多元觀點',
+  },
+  {
+    tag: '隨機探索',
+    tagColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: '🎲',
+    title: '不知道先看哪個？試試「隨機看 3 個提案」與「隨機抽 3 款遊戲」',
+    desc: '首頁展演台支援一鍵隨機抽取全站精選創新提案、軟體作品與熱門網頁小遊戲，每次點擊都有意想不到的驚喜！',
+    highlight: '一鍵洗牌抽取，隨時發掘全站寶藏作品',
+  },
+  {
+    tag: '即點即玩',
+    tagColor: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: '🎮',
+    title: '精選互動網頁小遊戲，免下載直接全螢幕線上試玩',
+    desc: '匯集創作者打造的休閒解壓、益智闖關與創意互動遊戲，手機與電腦皆可一鍵開啟全螢幕暢玩並給予評分鼓勵。',
+    highlight: '免安裝隨點即玩，工作學習之餘輕鬆充電',
   },
   {
     tag: '安全保障',
@@ -63,17 +95,17 @@ const PLATFORM_TIPS: PlatformTip[] = [
     tag: 'AI 智慧助理',
     tagColor: 'bg-yellow-100 text-yellow-900 border-yellow-300',
     icon: '🤖',
-    title: '市場顧問白喵與 AICRM 巡航特助隨時待命',
-    desc: 'AI 即時為問題拆解三大痛點維度、產出初步分析報告，並根據專長與履約評價精準媒合智庫專家！',
-    highlight: '智慧自動貼標與雙向握手精準媒合',
+    title: '市場顧問白喵與小星智慧導覽隨時待命',
+    desc: 'AI 即時為問題拆解痛點維度、產出初步分析報告，並根據專長與履約評價精準媒合適合的專家與資源！',
+    highlight: '智慧自動貼標與雙向精準媒合',
   },
   {
-    tag: 'PWA 行動體驗',
-    tagColor: 'bg-stone-100 text-stone-800 border-stone-200',
-    icon: '📱',
-    title: '支援一鍵安裝至手機或桌面，享有原生 App 體驗',
-    desc: '點擊選單「下載／安裝 App」，即刻享受全螢幕視野、離線快取、快速喚醒與即時手機原生推播通知。',
-    highlight: '離線快取、快速啟動與鎖定畫面推播',
+    tag: '職缺探索',
+    tagColor: 'bg-teal-100 text-teal-800 border-teal-200',
+    icon: '💼',
+    title: '匯職缺跨國智能檢索：一鍵整理履歷亮點與全球機會',
+    desc: '結合 AI 條件分析與多平台職缺搜尋，無論找海內外正職、遠端工作或專案合作，都能快速鎖定理想目標。',
+    highlight: '支援履歷文件解析與海內外職缺智慧比對',
   },
   {
     tag: '知識變現',
@@ -82,6 +114,38 @@ const PLATFORM_TIPS: PlatformTip[] = [
     title: '實名認證成為智庫專家，將專業經驗轉為實質收入',
     desc: '入駐水電、室內裝修、法律智財、財稅會計或企管百工坊，承接企業難題與個人諮詢，享有每週結算保障。',
     highlight: '累積履約好評，成為專屬領域首席顧問',
+  },
+  {
+    tag: '百工坊媒合',
+    tagColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    icon: '🛠️',
+    title: '遇到專業難題？直接逛逛「找專家」名錄預約對談',
+    desc: '瀏覽各領域認證專家的實戰經歷、擅長技能與過往評價，主動發起問題邀請或私訊洽談合作細節。',
+    highlight: '公開透明的專家履歷與真實評價參考',
+  },
+  {
+    tag: '榮譽排行',
+    tagColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    icon: '🏆',
+    title: '即時熱度與積分排行榜，見證人氣提案與頂尖解題者',
+    desc: '透過全站熱度榜、附議榜與專家積分榜，一眼掌握近期最受關注的生活痛點、高人氣軟體作品與活躍達人。',
+    highlight: '每日參與互動領 XP，升等解鎖專屬頭銜',
+  },
+  {
+    tag: '新手引導',
+    tagColor: 'bg-lime-100 text-lime-800 border-lime-200',
+    icon: '🧭',
+    title: '隨時可在「個人功能列」重新開啟新手引導教學',
+    desc: '想快速了解發痛點、提解方、發討論或 3D 島玩法？打開右上角個人選單點擊「新手引導」，15 秒輕鬆上手！',
+    highlight: '四大核心玩法分軌教學，隨時切換查看',
+  },
+  {
+    tag: 'PWA 行動體驗',
+    tagColor: 'bg-stone-100 text-stone-800 border-stone-200',
+    icon: '📱',
+    title: '支援一鍵安裝至手機或桌面，享有原生 App 體驗',
+    desc: '點擊選單「下載／安裝 App」，即刻享受全螢幕視野、離線快取、快速喚醒與即時手機原生推播通知。',
+    highlight: '離線快取、快速啟動與鎖定畫面推播',
   },
 ];
 
@@ -279,17 +343,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
       {/* 2. 中間互動式輪播卡片（教學、叮嚀、資訊） */}
       <div className="w-full max-w-md my-4 sm:my-6 flex flex-col items-center">
-        {/* 小卡片頂部操作提示列 */}
-        <div className="w-full flex items-center justify-between px-1 mb-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-stone-600">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-            <span>開站靈感漫遊</span>
-            <span className="text-stone-400 font-mono text-[10px]">
-              ({currentTipIndex + 1}/{PLATFORM_TIPS.length})
-            </span>
-          </div>
-        </div>
-
         {/* 互動式知識/叮嚀主卡片 */}
         <div
           onClick={handleNextTip}
@@ -311,8 +364,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 <span>{currentTip.tag}</span>
               </span>
 
-              <span className="text-[10px] text-stone-400 font-semibold group-hover:text-amber-700 transition-colors flex items-center gap-0.5">
-                <span>點擊換題</span>
+              <span className="text-[10px] text-stone-400 font-semibold group-hover:text-amber-700 transition-colors flex items-center gap-1">
+                <span className="font-mono text-[10px]">
+                  {currentTipIndex + 1}/{PLATFORM_TIPS.length}
+                </span>
+                <span>• 點擊換題</span>
                 <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
               </span>
             </div>
@@ -336,7 +392,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
 
         {/* 底部小圓點導航 */}
-        <div className="flex items-center gap-1.5 mt-2.5">
+        <div className="flex items-center flex-wrap justify-center gap-1.5 mt-2.5">
           {PLATFORM_TIPS.map((_, idx) => (
             <button
               key={idx}

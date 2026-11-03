@@ -407,7 +407,13 @@ export async function callDifyStreamingAgent(params: {
   try {
     const udifyCode = extractUdifyAppCode(apiKey);
     let res: globalThis.Response;
-    const enhancedQuery = `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
+    const entryType = String(params.inputs?.entry || '');
+    const enhancedQuery =
+      entryType === 'job_explorer'
+        ? `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟。3. 目前為「第一階段：求職條件解析與整理」，請專注萃取使用者的職務、地區、工作型態、薪資與偏好條件，切勿宣稱無法查詢職缺或拒絕協助！】`
+        : entryType === 'job_explorer_search'
+        ? `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟。3. 目前為「第二階段：跨平台職缺檢索」，請完整輸出符合條件之在招職缺清單，切勿因精簡而省略職缺結果！】`
+        : `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答，以避免超過最大迭代上限！】`;
 
     if (udifyCode) {
       const passportRes = await fetch('https://udify.app/api/passport', {
@@ -4882,7 +4888,7 @@ async function parseJobIntakeWithGemini(params: {
 轉換規則：
 - preferences 的 value 寫「轉換後的具體條件」，必要時在括號附上原話，例如「早班或 15:30 前下班（要接小孩）」。
 - 能落到標準欄位的就放進標準欄位（薪資 → minSalary／salaryText、全職兼職 → jobType、新鮮人 → experienceYears 0）。
-- confirmedBrief 要寫成可以直接拿去搜尋的條件句，例如「台北市、行政助理、正職、月薪 32,000 以上、早班或 15:30 前下班、不需接待客人」，不要放口語原話。
+- confirmedBrief 要寫成包含明確欄位前綴、可以直接拿去搜尋與解析的條件句，例如「工作型態：正職、職務：行政助理、地區：台北市、薪資：月薪 32,000 TWD 以上、班別工時：早班或 15:30 前下班、工作環境：不需接待客人」，不要放口語原話。
 - 轉換時不可以加入使用者沒有表達過的條件；真的看不出意思時，用 clarificationQuestion 問清楚，不要亂猜。
 
 【核心語意理解與實體抽取要求（務必深刻洞察，絕不可粗暴字面拆詞！）】：
@@ -4978,21 +4984,8 @@ async function parseJobIntakeWithGemini(params: {
 }
 `;
 
-  /** AI 回來的結果補齊摘要、把誤放進職務的條件移出來 */
+  /** AI 回來的結果補齊摘要、把誤放進職務的條件移出來，並確保 conditionTags 與 confirmedBrief 結構一致 */
   const finalizeIntake = (parsed: any) => {
-    // 少了條列摘要也沒關係：用抽出來的欄位自己補
-    if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
-      const lines: string[] = [];
-      if (parsed.jobType) lines.push(`工作型態：${parsed.jobType}`);
-      if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`職務：${parsed.roles.join('、')}`);
-      if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`目標公司：${parsed.companies.join('、')}`);
-      if (parsed.location) lines.push(`地區：${parsed.location}`);
-      if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
-      if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
-      if (parsed.education) lines.push(`學歷：${parsed.education}`);
-      for (const pf of cleanIntakePreferences(parsed.preferences)) lines.push(`${pf.label}：${pf.value}`);
-      parsed.summaryLines = lines;
-    }
     // 保險：把被誤放進職務的「條件」移到其他面向（例如週休二日、員工餐、離家近）
     if (Array.isArray(parsed.roles)) {
       const moved: string[] = [];
@@ -5003,6 +4996,71 @@ async function parseJobIntakeWithGemini(params: {
       if (moved.length) parsed.preferences = [...(Array.isArray(parsed.preferences) ? parsed.preferences : []), { dimension: 'other', label: '其他偏好', value: moved.join('、') }];
     }
     parsed.preferences = cleanIntakePreferences(parsed.preferences);
+
+    // 少了條列摘要也沒關係：用抽出來的欄位自己補
+    if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
+      const lines: string[] = [];
+      if (parsed.jobType) lines.push(`工作型態：${parsed.jobType}`);
+      if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`職務：${parsed.roles.join('、')}`);
+      if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`目標公司：${parsed.companies.join('、')}`);
+      if (parsed.location) lines.push(`地區：${parsed.location}`);
+      if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
+      if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
+      if (parsed.education) lines.push(`學歷：${parsed.education}`);
+      for (const pf of parsed.preferences) lines.push(`${pf.label}：${pf.value}`);
+      parsed.summaryLines = lines;
+    }
+
+    // 確保 conditionTags 完整包含抽出的結構化條件，避免前端 parseConditionTags 漏抓
+    const tags: any[] = [];
+    if (parsed.jobType) {
+      tags.push({ id: 'tag-jobType', type: 'jobType', label: '工作型態', value: String(parsed.jobType) });
+    }
+    if (Array.isArray(parsed.roles) && parsed.roles.length > 0) {
+      tags.push({ id: 'tag-role', type: 'role', label: '職務', value: parsed.roles.join('、') });
+    }
+    if (Array.isArray(parsed.companies) && parsed.companies.length > 0) {
+      tags.push({ id: 'tag-company', type: 'company', label: '限定公司', value: parsed.companies.join('、') });
+    }
+    if (parsed.location) {
+      tags.push({ id: 'tag-location', type: 'location', label: '地區', value: String(parsed.location) });
+    }
+    if (Number(parsed.minSalary) > 0 || parsed.salaryText) {
+      const curr = parsed.salaryCurrency || 'TWD';
+      const period = parsed.salaryPeriod || '月薪';
+      const numVal = Number(parsed.minSalary) || 0;
+      tags.push({
+        id: 'tag-salary',
+        type: 'salary',
+        label: '薪資',
+        value: parsed.salaryText || (numVal > 0 ? `${period} ${numVal.toLocaleString('en-US')} ${curr} 以上` : '薪資不拘'),
+        numValue: numVal,
+        salaryCurrency: curr,
+        salaryPeriod: period,
+      });
+    }
+    if (parsed.experience) {
+      tags.push({
+        id: 'tag-experience',
+        type: 'experience',
+        label: '年資',
+        value: String(parsed.experience),
+        numValue: Number(parsed.experienceYears) || 0,
+        experienceYears: Number(parsed.experienceYears) || 0,
+      });
+    }
+    if (parsed.education) {
+      tags.push({ id: 'tag-education', type: 'education', label: '學歷', value: String(parsed.education) });
+    }
+    if (tags.length > 0) {
+      parsed.conditionTags = tags;
+    }
+    if (Array.isArray(parsed.summaryLines) && parsed.summaryLines.length > 0) {
+      const structuredBrief = parsed.summaryLines.join('、');
+      if (!parsed.confirmedBrief || !/職務[：:]|地區[：:]|工作型態[：:]/.test(String(parsed.confirmedBrief))) {
+        parsed.confirmedBrief = structuredBrief;
+      }
+    }
   };
 
   const notes: string[] = [];
@@ -5018,7 +5076,10 @@ async function parseJobIntakeWithGemini(params: {
     }
     notes.push(`${MODEL_OF[active]}: ${getLastProviderError(active) || '回覆不是 JSON'}`);
   }
-  if (!ai) { lastIntakeAiNote = [...notes, '伺服器沒有設定 Gemini 金鑰'].join('；'); return null; }
+  if (!ai || isGeminiAuthDisabled) {
+    lastIntakeAiNote = [...notes, isGeminiAuthDisabled ? 'Gemini 金鑰服務帳戶已停用' : '伺服器沒有設定 Gemini 金鑰'].join('；');
+    return null;
+  }
 
   // flash-lite 先試；不行再用 3.8-flash（思考程度調低，回得比較快）
   const modelsToTry: Array<{ model: string; timeoutMs: number; thinking?: any }> = [
@@ -5031,7 +5092,6 @@ async function parseJobIntakeWithGemini(params: {
         model,
         contents: prompt,
         config: {
-          temperature: 0.1,
           responseMimeType: 'application/json',
           ...(thinking ? { thinkingConfig: thinking } : {}),
         },
@@ -5048,6 +5108,13 @@ async function parseJobIntakeWithGemini(params: {
       }
       notes.push(`${model}: 回覆不是 JSON`);
     } catch (err: any) {
+      if (isGeminiAuthError(err)) {
+        isGeminiAuthDisabled = true;
+        lastGeminiError = 'Gemini 金鑰無效或已被停用（401），重新部署前不會再嘗試';
+        lastGeminiErrorAt = new Date().toISOString();
+        notes.push(`${model}: Gemini 金鑰服務帳戶已停用`);
+        break;
+      }
       const msg = String(err?.message || err).slice(0, 160);
       notes.push(`${model}: ${msg}`);
       noteGeminiError(model, err);
@@ -5375,24 +5442,33 @@ app.post(
 
       let parsed: any = null;
       const notes: string[] = [];
-      for (const { model, timeoutMs } of [
-        { model: 'gemini-3.8-flash', timeoutMs: 40000 },
-        { model: 'gemini-3.1-flash-lite', timeoutMs: 30000 },
-      ]) {
-        try {
-          const call = ai.models.generateContent({
-            model,
-            contents,
-            config: { temperature: 0.1, responseMimeType: 'application/json', ...(await geminiThinkingFor(model)) },
-          });
-          const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs));
-          const r = await Promise.race([call, timeout]);
-          parsed = extractJsonFromText(String(r.text || ''));
-          if (parsed && typeof parsed === 'object') break;
-          notes.push(`${model}: 回覆不是 JSON`);
-        } catch (err: any) {
-          notes.push(`${model}: ${String(err?.message || err).slice(0, 120)}`);
-          noteGeminiError(model, err);
+      if (!isGeminiAuthDisabled) {
+        for (const { model, timeoutMs } of [
+          { model: 'gemini-3.8-flash', timeoutMs: 40000 },
+          { model: 'gemini-3.1-flash-lite', timeoutMs: 30000 },
+        ]) {
+          try {
+            const call = ai.models.generateContent({
+              model,
+              contents,
+              config: { responseMimeType: 'application/json', ...(await geminiThinkingFor(model)) },
+            });
+            const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs));
+            const r = await Promise.race([call, timeout]);
+            parsed = extractJsonFromText(String(r.text || ''));
+            if (parsed && typeof parsed === 'object') break;
+            notes.push(`${model}: 回覆不是 JSON`);
+          } catch (err: any) {
+            if (isGeminiAuthError(err)) {
+              isGeminiAuthDisabled = true;
+              lastGeminiError = 'Gemini 金鑰無效或已被停用（401），重新部署前不會再嘗試';
+              lastGeminiErrorAt = new Date().toISOString();
+              notes.push(`${model}: Gemini 金鑰服務帳戶已停用`);
+              break;
+            }
+            notes.push(`${model}: ${String(err?.message || err).slice(0, 120)}`);
+            noteGeminiError(model, err);
+          }
         }
       }
       if (!parsed) {
@@ -5468,6 +5544,9 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       }
     }
 
+    // ─── 若 Dify 回傳了結構化 JSON，提取其條件供後續合併（避免 Dify 與本機狀態分裂） ───
+    const difyParsed = difyOutputText ? extractJsonFromText(difyOutputText) : null;
+
     // ─── 優先使用 Gemini 進行深度語意理解與實體抽取 ───
     const geminiIntake = await parseJobIntakeWithGemini({
       rawMessage,
@@ -5519,9 +5598,22 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
         intakeEngine: difyOutputText ? 'dify' : (geminiIntake.__engine || 'ai'),
         difyConversationId: difyConvId || undefined,
         difyMessageId: difyMsgId || undefined,
-        reply: difyOutputText || resolvedReply,
+        reply: resolvedReply,
+        difyRawReply: difyOutputText || undefined,
         confirmedBrief,
         searchBriefIfSkipped: confirmedBrief,
+        conditionTags: Array.isArray(geminiIntake.conditionTags) ? geminiIntake.conditionTags : [],
+        roles: Array.isArray(geminiIntake.roles) ? geminiIntake.roles : [],
+        companies: Array.isArray(geminiIntake.companies) ? geminiIntake.companies : [],
+        location: geminiIntake.location || null,
+        jobType: geminiIntake.jobType || null,
+        salaryText: geminiIntake.salaryText || null,
+        salaryCurrency: geminiIntake.salaryCurrency || 'TWD',
+        salaryPeriod: geminiIntake.salaryPeriod || '月薪',
+        minSalary: Number(geminiIntake.minSalary) || 0,
+        education: geminiIntake.education || null,
+        experience: geminiIntake.experience || null,
+        experienceYears: Number(geminiIntake.experienceYears) || 0,
         isAmbiguous: isAmb,
         hasMoreQuestions: isAmb,
         currentDimension: geminiIntake.missingDimension || null,
@@ -5849,15 +5941,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     let extractedMinSalary = Number(filters.minSalary) || 0;
     if (salaryInfo && salaryInfo.period === 'month') extractedMinSalary = salaryInfo.amount;
 
-    // ─── 生成清晰回覆（不預先預設台灣，當用戶並未特別說要國外或是某個台灣以外的國家時才在送出搜尋時預設台灣） ───
-    const briefExtras = [
-      inferredJobType ? `工作型態：${inferredJobType}` : '',
-      campusLandmark ? `地區：${campusLandmark.label}` : '',
-      isTaiwanWide ? '地區：台灣（不限縣市）' : '',
-    ].filter(Boolean);
-    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? '' : '最新在招職缺'), ...briefExtras].filter(Boolean).join('、');
-    let resolvedReply = '';
-    // 結構化整理已確定的條件（已確定的不再追問）
+    // ─── 生成清晰回覆與結構化標籤（確保規則備援時也能產出完整 conditionTags 與欄位前綴，與前端 parseConditionTags 完全對齊） ───
     const summaryLines = buildJobConditionSummary(fullText, {
       inferredJobType,
       inferredFrom,
@@ -5867,6 +5951,64 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       campusLandmark,
     });
     const summaryText = summaryLines.length ? summaryLines.map((l) => `• ${l}`).join('\n') : '';
+
+    // 從 summaryLines 與 fullText 抽取結構化欄位與 conditionTags
+    const extractedRolesList = Array.from(
+      new Set([
+        ...(Array.isArray(difyParsed?.roles) ? difyParsed.roles : []),
+        ...extractRolesFromText(fullText),
+      ].map((r) => String(r || '').trim()).filter(Boolean))
+    );
+    const roleSummaryLine = summaryLines.find((l) => l.startsWith('職務：'));
+    if (extractedRolesList.length === 0 && roleSummaryLine) {
+      const rVal = roleSummaryLine.replace(/^職務：/, '').trim();
+      if (rVal && rVal !== '不拘') extractedRolesList.push(...rVal.split(/[、,，]+/).map((s) => s.trim()).filter(Boolean));
+    }
+
+    const jobTypeSummaryLine = summaryLines.find((l) => l.startsWith('工作型態：'));
+    const extractedJobType = jobTypeSummaryLine
+      ? jobTypeSummaryLine.replace(/^工作型態：/, '').replace(/（.*?）/g, '').trim()
+      : (difyParsed?.jobType || inferredJobType || null);
+
+    const locSummaryLine = summaryLines.find((l) => l.startsWith('地區：'));
+    const extractedLocation = locSummaryLine
+      ? locSummaryLine.replace(/^地區：/, '').trim()
+      : (difyParsed?.location || (extractedCity !== '全部' ? extractedCity : null));
+
+    const ruleConditionTags: any[] = [];
+    if (extractedJobType) {
+      ruleConditionTags.push({ id: `tag-jobType-${Date.now()}`, type: 'jobType', label: '工作型態', value: extractedJobType });
+    }
+    if (extractedRolesList.length > 0) {
+      ruleConditionTags.push({ id: `tag-role-${Date.now()}`, type: 'role', label: '職務', value: extractedRolesList.join('、') });
+    }
+    if (extractedLocation) {
+      ruleConditionTags.push({ id: `tag-location-${Date.now()}`, type: 'location', label: '地區', value: extractedLocation });
+    }
+    if (extractedMinSalary > 0 || salaryInfo) {
+      const sPeriod = salaryInfo?.period === 'hour' ? '時薪' : salaryInfo?.period === 'year' ? '年薪' : '月薪';
+      const sCurr = (salaryInfo as any)?.currency || 'TWD';
+      const sAmt = salaryInfo?.amount || extractedMinSalary;
+      ruleConditionTags.push({
+        id: `tag-salary-${Date.now()}`,
+        type: 'salary',
+        label: '薪資',
+        value: `${sPeriod} ${sAmt.toLocaleString('en-US')} ${sCurr} 以上`,
+        numValue: sAmt,
+        salaryCurrency: sCurr,
+        salaryPeriod: sPeriod,
+      });
+    }
+
+    const structuredBriefFromSummary = summaryLines.length > 0 ? summaryLines.join('、') : '';
+    const briefExtras = [
+      inferredJobType ? `工作型態：${inferredJobType}` : '',
+      campusLandmark ? `地區：${campusLandmark.label}` : '',
+      isTaiwanWide ? '地區：台灣（不限縣市）' : '',
+    ].filter(Boolean);
+    const finalBrief = structuredBriefFromSummary || [accumulatedConcreteBrief || (briefExtras.length ? '' : '最新在招職缺'), ...briefExtras].filter(Boolean).join('、');
+
+    let resolvedReply = '';
     if (activeGroup) {
       resolvedReply = summaryText
         ? `已記錄：\n${summaryText}\n${activeGroup.question}`
@@ -5886,21 +6028,28 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       difyMessageId: difyMsgId || undefined,
       aiNote: lastIntakeAiNote || undefined,
       preferences: extractPreferencesFromText(fullText),
-      reply: difyOutputText || resolvedReply,
-      confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
+      reply: resolvedReply,
+      difyRawReply: difyOutputText || undefined,
+      confirmedBrief: finalBrief,
       searchBriefIfSkipped: finalBrief,
+      conditionTags: ruleConditionTags,
+      roles: extractedRolesList,
+      companies: Array.isArray(difyParsed?.companies) ? difyParsed.companies : [],
+      location: extractedLocation,
+      jobType: extractedJobType,
+      minSalary: extractedMinSalary,
       isAmbiguous: isCoreAmbiguous,
       hasMoreQuestions: isCoreAmbiguous,
       currentDimension: activeGroup ? activeGroup.dimension : null,
       missingDimensions: ambiguousGroups.map((g) => g.dimension),
       dimensionGroups: activeGroup ? [activeGroup] : [],
       ambiguousTypes: ambiguousGroups.map((g) => g.dimension),
-      clarificationQuestion: resolvedReply,
+      clarificationQuestion: activeGroup ? activeGroup.question : resolvedReply,
       suggestedChips: dynamicChips,
       skippedDimensions: Array.from(skippedDims),
       completedConditionKeys,
       extractedFilters: {
-        keyword: filters.keyword || '',
+        keyword: filters.keyword || extractedRolesList.join(' '),
         city: extractedCity,
         category: filters.category || '全部',
         minSalary: extractedMinSalary,
