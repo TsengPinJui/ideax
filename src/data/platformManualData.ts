@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#284',
+    version: 'v4.8.8',
+    releaseDate: '2026.11.04',
+    releaseTime: '13:20',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正 Google／Facebook 登入轉圈很久卻登不進去：補回網站的登入處理頁轉送與單頁網址設定',
+    changes: [
+      '補回 /__/auth、/__/firebase 轉送到 Firebase 登入處理頁：Google、Facebook 登入視窗與手機整頁跳轉都能正常完成',
+      '補回其他網址（如 /auth/facebook-callback、/question/:id）一律開啟網站本體，手機 Facebook 授權回來不再顯示找不到頁面',
+      '補回 sw.js 不快取、靜態檔長期快取等標頭，避免舊版網頁卡在瀏覽器裡；補回每 5 分鐘的小助手排程',
+    ],
+  },
+  {
     seqNumber: '#283',
     version: 'v4.8.7',
     releaseDate: '2026.11.03',
@@ -3528,6 +3541,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#284** | **v4.8.8** | 2026.11.04 | 13:20 | IdeaX 創點子核心 | 修正 Google／Facebook 登入轉圈很久卻登不進去：補回網站的登入處理頁轉送與單頁網址設定 |
 | **#283** | **v4.8.7** | 2026.11.03 | 14:20 | IdeaX 創點子核心 | 優化開站載入頁面進入體驗：到達可進入狀態時自動推進進入首頁，並移除手動「點此直接進入首頁」按鍵 |
 | **#282** | **v4.8.6** | 2026.11.03 | 12:54 | IdeaX 創點子核心 | 匯職缺（搜搜 Agent）Dify 雙階段條件整理與職缺檢索規則對齊、移除矛盾提示詞與支援結構化職缺解析 |
 | **#281** | **v4.8.5** | 2026.11.03 | 12:30 | IdeaX 創點子核心 | 開站載入畫面精簡文案、擴充題庫並支援與隨機抽三款遊戲盲盒一致之點擊彈出視窗看詳情與解答 |
