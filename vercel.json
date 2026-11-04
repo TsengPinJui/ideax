@@ -1,5 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
+  "trailingSlash": false,
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
@@ -7,23 +9,124 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.mjs" },
-    { "source": "/explore", "destination": "/seo/explore.html" },
-    { "source": "/create", "destination": "/seo/create.html" },
-    { "source": "/painpoints", "destination": "/seo/painpoints.html" },
-    { "source": "/l0-discussion", "destination": "/seo/l0-discussion.html" },
-    { "source": "/solvers", "destination": "/seo/solvers.html" },
-    { "source": "/jobs", "destination": "/seo/jobs.html" },
-    { "source": "/agents", "destination": "/seo/agents.html" },
-    { "source": "/membership", "destination": "/seo/membership.html" },
-    { "source": "/topup", "destination": "/seo/topup.html" },
-    { "source": "/vibecoding", "destination": "/seo/vibecoding.html" },
-    { "source": "/vibecoding/publish", "destination": "/seo/vibecoding__publish.html" },
-    { "source": "/my-projects", "destination": "/seo/my-projects.html" },
-    { "source": "/challenge", "destination": "/seo/challenge.html" },
-    { "source": "/challenge/join", "destination": "/seo/challenge__join.html" },
-    { "source": "/challenge/expert", "destination": "/seo/challenge__expert.html" },
-    { "source": "/challenge/proposals", "destination": "/seo/challenge__proposals.html" },
-    { "source": "/challenge/rules", "destination": "/seo/challenge__rules.html" }
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://ideax-2af9c.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/__/firebase/:path*",
+      "destination": "https://ideax-2af9c.firebaseapp.com/__/firebase/:path*"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.mjs"
+    },
+    {
+      "source": "/explore",
+      "destination": "/seo/explore.html"
+    },
+    {
+      "source": "/create",
+      "destination": "/seo/create.html"
+    },
+    {
+      "source": "/painpoints",
+      "destination": "/seo/painpoints.html"
+    },
+    {
+      "source": "/l0-discussion",
+      "destination": "/seo/l0-discussion.html"
+    },
+    {
+      "source": "/solvers",
+      "destination": "/seo/solvers.html"
+    },
+    {
+      "source": "/jobs",
+      "destination": "/seo/jobs.html"
+    },
+    {
+      "source": "/agents",
+      "destination": "/seo/agents.html"
+    },
+    {
+      "source": "/membership",
+      "destination": "/seo/membership.html"
+    },
+    {
+      "source": "/topup",
+      "destination": "/seo/topup.html"
+    },
+    {
+      "source": "/vibecoding",
+      "destination": "/seo/vibecoding.html"
+    },
+    {
+      "source": "/vibecoding/publish",
+      "destination": "/seo/vibecoding__publish.html"
+    },
+    {
+      "source": "/my-projects",
+      "destination": "/seo/my-projects.html"
+    },
+    {
+      "source": "/challenge",
+      "destination": "/seo/challenge.html"
+    },
+    {
+      "source": "/challenge/join",
+      "destination": "/seo/challenge__join.html"
+    },
+    {
+      "source": "/challenge/expert",
+      "destination": "/seo/challenge__expert.html"
+    },
+    {
+      "source": "/challenge/proposals",
+      "destination": "/seo/challenge__proposals.html"
+    },
+    {
+      "source": "/challenge/rules",
+      "destination": "/seo/challenge__rules.html"
+    },
+    {
+      "source": "/((?!api/|assets/|sw\\.js|manifest\\.json|robots\\.txt|sitemap\\.xml|favicon.*|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|woff2?|ttf|eot|json|xml|txt)).*)",
+      "destination": "/app.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/assistant",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }
