@@ -89,7 +89,7 @@ export const FeaturedGamesBoard: React.FC<{
       </div>
 
       {/* 列表清單（10 款精選，塞不下自動以 ... 截斷） */}
-      <div className="flex-1 flex flex-col justify-between divide-y divide-stone-100/70 text-left overflow-hidden">
+      <div className={`flex-1 flex flex-col ${featuredList.length >= 8 ? 'justify-between' : 'justify-start'} divide-y divide-stone-100/70 text-left overflow-hidden`}>
         {featuredList.map(({ question, rank }) => {
           const isTop3 = rank <= 3;
           const displayTitle =
