@@ -1152,7 +1152,13 @@ function MainContent() {
   // 記錄前一次的分頁，僅在主要分頁切換時回到頁面最頂部（如 explore 切換至 star_season 或 solvers）
   // 在首頁內部選擇看板、切換主題專區 (specialZone) 或分類時，絕對不回滾至頁面最頂端，維持視角平順
   const prevActiveTabRef = useRef(activeTab);
+  // 網址同步用：記下上一次的分頁與專區，判斷是不是「從別的分頁返回」
+  const urlSyncPrevRef = useRef<{ tab: AppTab; zone: typeof specialZone } | null>(null);
   useEffect(() => {
+    const urlPrev = urlSyncPrevRef.current;
+    urlSyncPrevRef.current = { tab: activeTab, zone: specialZone };
+    // 剛開站時（第一次）不算返回：分享連結、深層網址照原樣保留
+    const returnedFromOtherPage = !!urlPrev && (urlPrev.tab !== activeTab || urlPrev.zone !== specialZone);
     if (prevActiveTabRef.current !== activeTab) {
       const shouldRestoreQuestionList = activeTab !== 'question_detail' && questionReturnScrollRef.current !== null;
       const savedQuestionListScroll = questionReturnScrollRef.current;
@@ -1274,7 +1280,9 @@ function MainContent() {
             updateSEOForSubpage('explore');
           } else if (
             specialZone === 'all' &&
-            (curPath === '/painpoints' ||
+            // 從任何分頁（儲值、會員、匯職缺、聊天、3D、貼文詳情…）返回首頁時，網址一律回到首頁；提案獨立頁除外
+            ((returnedFromOtherPage && curPath !== '/' && curPath !== '' && !curPath.startsWith('/ideas/')) ||
+              curPath === '/painpoints' ||
               curPath === '/l0-discussion' ||
               curPath === '/l0_discussion' ||
               curPath === '/l0' ||
@@ -1297,6 +1305,20 @@ function MainContent() {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
           }
+        } else if (
+          returnedFromOtherPage &&
+          urlPrev.tab !== activeTab &&
+          (activeTab === 'user_dashboard' ||
+            activeTab === 'leaderboard' ||
+            activeTab === 'mechanism' ||
+            activeTab === 'solver_profile' ||
+            activeTab === 'ai_crm' ||
+            activeTab === 'admin_dashboard') &&
+          curPath !== '/'
+        ) {
+          // 這些頁面沒有自己的網址：從有網址的分頁切過來時，不要停在上一個分頁的網址（重新整理才不會跳回去）
+          window.history.pushState({ tab: activeTab }, '', '/');
+          resetSEOToDefault();
         }
       }
     } catch {}

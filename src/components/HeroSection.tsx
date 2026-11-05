@@ -7,7 +7,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
 import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
-import { HomeShowcasePlayer, useCombinedShowcaseSlides } from './HomeShowcasePlayer';
+import { HomeShowcasePlayer, useCombinedShowcaseSlides, useShowcaseSlides } from './HomeShowcasePlayer';
 import { FeaturedGamesBoard, HotGamesRankingBoard } from './HomeHeroSideBoards';
 import { RandomGameDrawModal } from './RandomGameDrawModal';
 import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
@@ -66,6 +66,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   // 首頁創點子播放區：同時輪播「精選榜」與「熱度榜」（依當前選擇分類「創新與軟體」或「遊戲」交替展示）
   const showcaseSlides = useCombinedShowcaseSlides(showcaseCategory);
+  // 精選榜只列後台設定的精選內容（自選／付費推播／優秀作品），不混入熱度榜
+  const featuredSlides = useShowcaseSlides(showcaseCategory);
 
   // 今日不重複訪客（瀏覽統計更新時跟著變）
   const utc8Today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -385,7 +387,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <div className="hidden lg:block w-[130px] xl:w-[145px] shrink-0 h-[380px] text-left">
                 <FeaturedGamesBoard
                   questions={questions}
-                  carouselQuestions={showcaseSlides.map((s) => s.q)}
+                  carouselQuestions={featuredSlides.map((s) => s.q)}
                   onSelectGame={handleGameClick}
                   category={showcaseCategory}
                 />
@@ -469,7 +471,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               {mobileGameTab === 'featured' ? (
                 <FeaturedGamesBoard
                   questions={questions}
-                  carouselQuestions={showcaseSlides.map((s) => s.q)}
+                  carouselQuestions={featuredSlides.map((s) => s.q)}
                   onSelectGame={handleGameClick}
                   category={showcaseCategory}
                 />
