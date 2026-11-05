@@ -1969,7 +1969,13 @@ export async function incrementProposalView(proposalId: string): Promise<{ succe
   try {
     const snap = await ref.get();
     if (!snap.exists) {
-      return { success: false, viewsCount: 0 };
+      // 不是創星季提案：一般卡片（問題、痛點、討論、軟體作品）存在 questions，瀏覽次數記在那裡
+      const qRef = adminDb.collection('questions').doc(proposalId);
+      const qSnap = await qRef.get();
+      if (!qSnap.exists) return { success: false, viewsCount: 0 };
+      await qRef.update({ views: FieldValue.increment(1) });
+      const qUpdated = await qRef.get();
+      return { success: true, viewsCount: Number(qUpdated.data()?.views) || 1 };
     }
     await ref.update({
       viewsCount: FieldValue.increment(1),

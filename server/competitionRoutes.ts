@@ -207,9 +207,22 @@ router.get('/proposals/:id', async (req: Request, res: Response) => {
 });
 
 // 3.1 記錄提案瀏覽數（原子累加，持久化至雲端資料庫，避免更新重置）
+// 同一個人（IP）同一張卡片 10 秒內只算一次：避免連按重新整理灌數字；登入與否都計入
+const recentViewHits = new Map<string, number>();
 router.post('/proposals/:id/view', async (req: Request, res: Response) => {
   try {
-    const result = await incrementProposalView(req.params.id);
+    const id = String(req.params.id || '').slice(0, 120);
+    if (!/^[\w-]{1,120}$/.test(id)) return res.status(400).json({ success: false, viewsCount: 0 });
+    const ip = String((req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0] || req.ip || '').trim();
+    const key = `${ip}|${id}`;
+    const now = Date.now();
+    const last = recentViewHits.get(key) || 0;
+    if (now - last < 10_000) return res.json({ success: true, throttled: true });
+    recentViewHits.set(key, now);
+    if (recentViewHits.size > 20000) {
+      for (const [k, t] of recentViewHits) if (now - t > 60_000) recentViewHits.delete(k);
+    }
+    const result = await incrementProposalView(id);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

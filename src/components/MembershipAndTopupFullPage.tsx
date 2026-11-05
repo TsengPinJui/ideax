@@ -20,6 +20,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { PointsGuideModal } from './PointsGuideModal';
+import { TopupPlansShowcase } from './TopupPlansShowcase';
 
 interface MembershipAndTopupFullPageProps {
   initialTab?: 'membership' | 'topup';
@@ -223,6 +224,15 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
   const finalRechargePrice = selectedPackage.price;
   const finalRechargePoints = selectedPackage.totalPoints;
 
+  // 私訊客服購買點數：開客服工單（金流類別），帶入所選方案，由專人提供匯款資訊並協助入帳
+  const contactToBuyPoints = (topic: string) =>
+    openCustomerService({
+      tab: 'ticket',
+      category: 'payment',
+      subject: topic,
+      ticketMessage: `${topic}\n${currentUser.id && currentUser.id !== 'user-guest' ? `帳號：${currentUser.name}（${currentUser.id}）\n` : ''}請提供匯款資訊，謝謝！`,
+    });
+
   // 執行儲值購買動作（目前暫不支援外部金流）
   const handleExecuteTopup = () => {
     setTopupResultMsg({
@@ -236,6 +246,29 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
   // ----------------------------------------------------
   // 非管理員時：鎖定頁面，顯示「尚未開放」全頁畫面
   // ----------------------------------------------------
+  // 點數儲值頁：一般用戶也看得到方案，目前採人工匯款（私訊客服購買）
+  if (!isAdmin && activeSubTab === 'topup') {
+    return (
+      <div className="w-full min-h-screen bg-stone-950 text-stone-100 pt-16 pb-28 font-sans">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-5">
+          <button
+            type="button"
+            onClick={onBack || (() => (window.location.href = '/'))}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-400 hover:text-amber-400 transition-colors cursor-pointer bg-stone-800/80 px-3 py-1.5 rounded-xl border border-stone-700/80 hover:border-amber-500/50"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>返回平台主頁</span>
+          </button>
+          <TopupPlansShowcase onContact={contactToBuyPoints} />
+          <p className="text-center text-xs text-stone-400">
+            帳戶目前餘額：<strong className="text-amber-400 font-mono">{(currentUser.balance || 0).toLocaleString()} 點</strong>
+            ，點數用於發布懸賞與解鎖專家方案。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <div className="w-full min-h-screen bg-stone-950 text-stone-100 pt-16 pb-28 font-sans selection:bg-amber-500 selection:text-stone-950 flex items-center justify-center px-4 sm:px-6">
@@ -735,6 +768,8 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
         {/* ========================================================= */}
         {activeSubTab === 'topup' && (
           <div className="space-y-8 animate-in fade-in duration-200">
+            {/* 一般用戶看到的方案（人工匯款） */}
+            <TopupPlansShowcase onContact={contactToBuyPoints} />
             {/* 訊息反饋通知 */}
             {topupResultMsg && (
               <div

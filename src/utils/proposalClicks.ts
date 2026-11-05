@@ -18,6 +18,26 @@ export function isFakeOrSeedId(id?: string | null): boolean {
   );
 }
 
+/** 瀏覽次數送到後端累加；回傳的是全站總數，寫回本機快取並通知畫面更新 */
+function syncServerViews(id: string, storageKey: string, eventName: string) {
+  try {
+    fetch(`/api/competition/proposals/${encodeURIComponent(id)}/view`, { method: 'POST' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const total = Number(j?.viewsCount);
+        if (!j?.success || !Number.isFinite(total) || total <= 0) return;
+        try {
+          const saved = localStorage.getItem(storageKey);
+          const map: Record<string, number> = saved ? JSON.parse(saved) : {};
+          map[id] = total;
+          localStorage.setItem(storageKey, JSON.stringify(map));
+        } catch {}
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(eventName, { detail: { id, views: total } }));
+      })
+      .catch(() => {});
+  } catch {}
+}
+
 export function getProposalRealClicks(): Record<string, number> {
   try {
     if (typeof window === 'undefined') return {};
@@ -41,12 +61,8 @@ export function recordProposalViewClick(proposalId: string, currentViews: number
     map[proposalId] = next;
     localStorage.setItem(PROPOSAL_CLICKS_KEY, JSON.stringify(map));
 
-    // 非同步同步到後端原子遞增
-    try {
-      fetch(`/api/competition/proposals/${encodeURIComponent(proposalId)}/view`, {
-        method: 'POST',
-      }).catch(() => {});
-    } catch {}
+    // 送到後端原子遞增（全站所有訪客，不論是否登入），回來後以雲端的總數為準
+    if (!isFakeOrSeedId(proposalId)) syncServerViews(proposalId, PROPOSAL_CLICKS_KEY, 'ideax_proposal_views_updated');
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ideax_proposal_views_updated', { detail: { id: proposalId, views: next } }));
@@ -81,12 +97,8 @@ export function recordQuestionViewClick(questionId: string, currentViews: number
     map[questionId] = next;
     localStorage.setItem(QUESTION_CLICKS_KEY, JSON.stringify(map));
 
-    // 非同步同步到後端原子遞增
-    try {
-      fetch(`/api/competition/proposals/${encodeURIComponent(questionId)}/view`, {
-        method: 'POST',
-      }).catch(() => {});
-    } catch {}
+    // 送到後端原子遞增（全站所有訪客，不論是否登入），回來後以雲端的總數為準
+    if (!isFakeOrSeedId(questionId)) syncServerViews(questionId, QUESTION_CLICKS_KEY, 'ideax_question_views_updated');
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ideax_question_views_updated', { detail: { id: questionId, views: next } }));

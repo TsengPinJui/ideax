@@ -24,7 +24,7 @@ export const FeaturedGamesBoard: React.FC<{
   carouselQuestions?: Question[];
   category?: HomeShowcaseCategory;
 }> = ({ questions, onSelectGame, carouselQuestions = [], category = 'games' }) => {
-  // 按照首頁輪播展示順序排列，不足 10 款則由該分類精選庫依序補滿
+  // 照後台「首頁播放區」的精選設定排列（自選順序優先）；後台沒有任何精選內容時，才由該分類精選庫補上
   const carouselList: Question[] = [];
   const seenIds = new Set<string>();
 
@@ -34,7 +34,7 @@ export const FeaturedGamesBoard: React.FC<{
     carouselList.push(q);
   }
 
-  if (carouselList.length < 10) {
+  if (carouselList.length === 0) {
     const fallbackList =
       category === 'proposals_software'
         ? getFeaturedProposalsAndSoftware(questions)

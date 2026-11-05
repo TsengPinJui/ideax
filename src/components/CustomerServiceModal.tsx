@@ -139,6 +139,9 @@ export const CustomerServiceModal: React.FC = () => {
 
       // 從「填寫專人回報工單」按鈕打開：直接到工單分頁
       if (customerServiceContext?.tab === 'ticket') setActiveTab('ticket');
+      // 點數儲值頁「私訊客服購買」：直接帶入金流類別與所選方案，由專人回覆匯款資訊
+      if (customerServiceContext?.tab === 'ticket' && customerServiceContext?.category) setTicketCategory(customerServiceContext.category);
+      if (customerServiceContext?.tab === 'ticket' && customerServiceContext?.ticketMessage) setTicketMessage(customerServiceContext.ticketMessage);
 
       const newConvId = `conv-${Date.now().toString(36)}`;
       setConversationId(newConvId);
