@@ -18,6 +18,16 @@ interface HomeHeroSideBoardsProps {
 /**
  * 首頁輪播區左側：精選榜（支援「提案與軟體」與「遊戲」兩類切換）
  */
+/** 作品名稱（沒有填名稱時，取標題「—」「|」前面那一段） */
+export function showcaseNameOf(q: Question): string {
+  return (
+    q.appName ||
+    deriveInnovationProposalName(q) ||
+    q.title.split('—')[0]?.split('|')[0]?.trim() ||
+    q.title
+  );
+}
+
 export const FeaturedGamesBoard: React.FC<{
   questions: Question[];
   onSelectGame: (game: Question) => void;
@@ -92,11 +102,8 @@ export const FeaturedGamesBoard: React.FC<{
       <div className={`flex-1 flex flex-col ${featuredList.length >= 8 ? 'justify-between' : 'justify-start'} divide-y divide-stone-100/70 text-left overflow-hidden`}>
         {featuredList.map(({ question, rank }) => {
           const isTop3 = rank <= 3;
-          const displayTitle =
-            question.appName ||
-            deriveInnovationProposalName(question) ||
-            question.title.split('—')[0]?.split('|')[0]?.trim() ||
-            question.title;
+          // 創新與軟體：排行顯示標題；遊戲：排行顯示名稱
+          const displayTitle = category === 'proposals_software' ? question.title : showcaseNameOf(question);
 
           return (
             <button
@@ -178,11 +185,7 @@ export const HotGamesRankingBoard: React.FC<{
                 {rank}
               </span>
               <span className="text-xs font-medium text-stone-800 truncate min-w-0 flex-1 group-hover:text-red-700 transition-colors">
-                {question.appName
-                  ? `${question.appName}：${question.title}`
-                  : deriveInnovationProposalName(question)
-                  ? `${deriveInnovationProposalName(question)}：${question.title}`
-                  : question.title}
+                {category === 'proposals_software' ? question.title : showcaseNameOf(question)}
               </span>
             </button>
           );
