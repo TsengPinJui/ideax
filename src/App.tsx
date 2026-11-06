@@ -781,23 +781,47 @@ function MainContent() {
   const [isFirstVisitModalOpen, setIsFirstVisitModalOpen] = useState(false);
   const [tourTrack, setTourTrack] = useState<TourTrack>('general');
 
-  // 開站載入完成後自動檢查是否為首次進入，若尚未探索則彈出「歡迎與首選功能引導」
+  // 首次引導面板：只在「首頁」出現。直接從分享連結、子網址、個別提案或功能頁進站時不跳出；
+  // 之後第一次回到首頁才出現（同一次開站只出現一次，選過功能後不再出現）
+  const [splashDismissed, setSplashDismissed] = useState(() => inKingdomPanel);
+  const firstVisitShownRef = useRef(false);
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const hasSelected = localStorage.getItem(FIRST_VISIT_STORAGE_KEY);
-        // 若為直接帶參網址或深層分享連結，不干擾用戶
-        const params = new URLSearchParams(window.location.search);
-        const isDeepLink = params.has('idea') || params.has('q') || params.has('search') || window.location.pathname.startsWith('/ideas/');
-        if (!hasSelected && !isDeepLink && !isOnboardingOpen) {
-          const timer = setTimeout(() => {
-            setIsFirstVisitModalOpen(true);
-          }, 1800);
-          return () => clearTimeout(timer);
-        }
-      }
-    } catch {}
+    // 保險：開場畫面萬一沒回報結束，也在 9 秒後照常判斷
+    const t = setTimeout(() => setSplashDismissed(true), 9000);
+    return () => clearTimeout(t);
   }, []);
+  const isOnHomePage = () => {
+    try {
+      if (inKingdomPanel || fullscreenEmbedApp || selectedQuestion || selectedSolver) return false;
+      if (activeTab !== 'explore' || specialZone !== 'all') return false;
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (path !== '/') return false;
+      const params = new URLSearchParams(window.location.search);
+      for (const k of ['idea', 'q', 'search', 'zone', 'app', 'tab']) if (params.has(k)) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  useEffect(() => {
+    if (!splashDismissed || firstVisitShownRef.current || isOnboardingOpen || isFirstVisitModalOpen) return;
+    try {
+      if (localStorage.getItem(FIRST_VISIT_STORAGE_KEY)) return;
+      if (sessionStorage.getItem('ideax_first_visit_modal_shown_session') === '1') return;
+    } catch {}
+    // 網址同步在同一輪之後才更新，所以等一下再判斷是不是在首頁
+    const timer = setTimeout(() => {
+      // 等一下再確認一次：轉場期間（例如分享連結剛切到內頁）不要誤跳
+      if (firstVisitShownRef.current || !isOnHomePage()) return;
+      firstVisitShownRef.current = true;
+      try {
+        sessionStorage.setItem('ideax_first_visit_modal_shown_session', '1');
+      } catch {}
+      setIsFirstVisitModalOpen(true);
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splashDismissed, activeTab, specialZone, selectedQuestion, selectedSolver, fullscreenEmbedApp, isOnboardingOpen]);
 
   const handleSelectFirstVisitFeature = (track: OnboardingTrackType) => {
     try {
@@ -2555,11 +2579,8 @@ function MainContent() {
         <SplashScreen
           minDurationMs={1400}
           onDismiss={() => {
-            try {
-              if (typeof window !== 'undefined' && !localStorage.getItem(FIRST_VISIT_STORAGE_KEY) && !isOnboardingOpen) {
-                setTimeout(() => setIsFirstVisitModalOpen(true), 250);
-              }
-            } catch {}
+            // 開場畫面結束後才判斷要不要跳首次引導（只在首頁）
+            setSplashDismissed(true);
           }}
         />
       )}
