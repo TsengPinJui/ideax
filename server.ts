@@ -2087,7 +2087,6 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
   "categories": ["符合的分類（可複選，例如：網站程式、AI工具）"],
   "tertiaryCategory": "第三級子分類（若為遊戲必須為：休閒派對 / 模擬體驗 / 策略益智 / 多人冒險 / 競技對戰 / 卡牌桌遊 / 恐怖驚悚 / 解謎劇情 / 親子兒童 / 甜蜜浪漫 之一）",
   "tags": ["標籤1", "標籤2", "標籤3", "標籤4"],
-  "techArchitecture": "建議的技術架構（繁體中文，如：Web 全端架構 React / TypeScript）",
   "targetGoal": "創新提案目標與預期效益（繁體中文，說明能為使用者達成什麼成果，約 30~80 字）",
   "referencedPainPoint": "對應解決之用戶痛點或市場需求（繁體中文，說明針對什麼傳統難題，約 30~80 字）"
 }
@@ -2109,7 +2108,6 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
           type: Type.ARRAY,
           items: { type: Type.STRING },
         },
-        techArchitecture: { type: Type.STRING },
         targetGoal: { type: Type.STRING },
         referencedPainPoint: { type: Type.STRING },
       },
@@ -2178,7 +2176,8 @@ ${hasValidPreferred ? userSelectedCategories.join('、') : '未指定（請由 A
     let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0
       ? parsedResult.tags.map((t: string) => toTraditionalChinese(String(t).trim()))
       : [];
-    let techArchitecture = parsedResult?.techArchitecture ? toTraditionalChinese(parsedResult.techArchitecture.trim()) : 'Web 網頁應用程式';
+    // 技術架構只能由作者自己填寫，AI 不猜、不補預設值
+    let techArchitecture = '';
     let targetGoal = parsedResult?.targetGoal ? toTraditionalChinese(parsedResult.targetGoal.trim()) : '';
     let referencedPainPoint = parsedResult?.referencedPainPoint ? toTraditionalChinese(parsedResult.referencedPainPoint.trim()) : '';
 

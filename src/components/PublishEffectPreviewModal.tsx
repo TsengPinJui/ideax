@@ -159,7 +159,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
         .filter(Boolean)
         .slice(0, 6)
     : isVibeApp
-    ? ['React', 'TypeScript', 'Tailwind CSS', 'Gemini API']
+    ? [] // 作者沒填技術架構就不補
     : ['商業模式', 'AI應用', '創新提案', '市場驗證'];
 
   const effectiveTags =
@@ -213,7 +213,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
     coverMode,
     cardHoverMode,
     proposalProgressStage: proposalProgressStage || undefined,
-    techArchitecture: techArchitecture || (isVibeApp ? 'React + TypeScript + Tailwind CSS + Gemini API' : undefined),
+    techArchitecture: techArchitecture || undefined,
     demoUrl: effectiveDemoUrl || undefined,
     referencedPainPoint: effectivePainPoint,
     targetGoal: effectiveTargetGoal,
@@ -1074,7 +1074,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                           <span>技術架構與開發模型</span>
                         </div>
                         <p className="text-xs text-stone-700 font-mono leading-relaxed">
-                          {techArchitecture || 'React + TypeScript + Tailwind CSS + Gemini API'}
+                          {techArchitecture || <span className="text-stone-400 font-sans">作者尚未填寫</span>}
                         </p>
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {effectiveTags.map((t, i) => (

@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#289',
+    version: 'v4.9.2',
+    releaseDate: '2026.11.07',
+    releaseTime: '21:30',
+    author: 'IdeaX 核心工程團隊',
+    summary: '軟體提案的技術架構只顯示作者自己填寫的內容，沒填就空著',
+    changes: [
+      '一鍵智慧上架的 AI 分析不再猜測技術架構，也不再自動補「Web 網頁應用程式」',
+      '作品內頁、卡片與發布預覽不再自動補 React、TypeScript、Tailwind CSS、Google AI Studio、Cursor 等技術或工具',
+      '先前自動補上的預設文字一律視為未填寫，不顯示；作者沒填時顯示「作者尚未填寫」',
+    ],
+  },
+  {
     seqNumber: '#288',
     version: 'v4.9.1',
     releaseDate: '2026.11.06',
@@ -3591,6 +3604,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#289** | **v4.9.2** | 2026.11.07 | 21:30 | IdeaX 創點子核心 | 軟體提案的技術架構只顯示作者自己填寫的內容，沒填就空著 |
 | **#288** | **v4.9.1** | 2026.11.06 | 18:10 | IdeaX 創點子核心 | 首次引導面板只在進入首頁時出現：直接開啟功能頁、子網址或個別提案時不再跳出 |
 | **#287** | **v4.9.0** | 2026.11.05 | 22:35 | IdeaX 創點子核心 | 首頁排行與輪播顯示文字：創新與軟體排行顯示標題、輪播顯示名稱；遊戲排行顯示名稱、輪播顯示標題 |
 | **#286** | **v4.8.10** | 2026.11.05 | 21:45 | IdeaX 創點子核心 | 首頁輪播改為完全照後台「首頁輪播&精選榜」設定播放，不再穿插熱度榜 |

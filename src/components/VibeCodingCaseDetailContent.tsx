@@ -37,6 +37,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { getYoutubeEmbedUrl } from '../utils/youtubeUtils';
 import { MindMapSection } from './mindmap/MindMapSection';
+import { authorTechArchitecture } from '../utils/techArchitecture';
 
 interface VibeCodingCaseDetailContentProps {
   question: Question;
@@ -314,9 +315,9 @@ function getCaseRichMeta(q: Question): CaseRichMeta {
   }
 
   // Default concise generator for other apps
-  const techList =
-    q.vibeCodingData?.techStack ||
-    (q.techArchitecture ? q.techArchitecture.split(/\s*\+\s*|\s*,\s*/) : ['React', 'TypeScript', 'Tailwind CSS']);
+  // 技術清單只列作者自己填的（沒填就空著，不補常見技術）
+  const techList: string[] = Array.isArray(q.vibeCodingData?.techStack) ? q.vibeCodingData!.techStack!.filter(Boolean) : [];
+  const toolsList: string[] = Array.isArray(q.vibeCodingData?.aiToolsUsed) ? q.vibeCodingData!.aiToolsUsed!.filter(Boolean) : [];
 
   return {
     subtitle: q.vibeCodingData?.oneLinePitch || q.title,
@@ -340,8 +341,8 @@ function getCaseRichMeta(q: Question): CaseRichMeta {
     ],
     architectureLayers: [
       { layer: '使用技術', items: techList },
-      { layer: '開發工具', items: q.vibeCodingData?.aiToolsUsed || ['Google AI Studio', 'Cursor'] },
-    ],
+      { layer: '開發工具', items: toolsList },
+    ].filter((l) => l.items.length > 0),
     captions: (q.galleryImages || []).map((_, idx) => `${appName} 畫面截圖 ${idx + 1}`),
   };
 }
@@ -901,11 +902,13 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
               <span>技術架構</span>
             </h3>
 
-            {question.techArchitecture && (
+            {authorTechArchitecture(question.techArchitecture) ? (
               <p className="text-xs font-mono text-stone-700 bg-stone-50 p-2.5 rounded-lg border border-stone-200 leading-relaxed">
-                {question.techArchitecture}
+                {authorTechArchitecture(question.techArchitecture)}
               </p>
-            )}
+            ) : meta.architectureLayers.length === 0 ? (
+              <p className="text-xs text-stone-400">作者尚未填寫</p>
+            ) : null}
 
             {question.publishedPlatforms && question.publishedPlatforms.length > 0 && (
               <div className="space-y-1">
