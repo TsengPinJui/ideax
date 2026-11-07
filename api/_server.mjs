@@ -175554,7 +175554,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.1";
+var APP_VERSION = "4.9.2";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
@@ -177512,7 +177512,6 @@ ${hasValidPreferred ? userSelectedCategories.join("\u3001") : "\u672A\u6307\u5B9
   "categories": ["\u7B26\u5408\u7684\u5206\u985E\uFF08\u53EF\u8907\u9078\uFF0C\u4F8B\u5982\uFF1A\u7DB2\u7AD9\u7A0B\u5F0F\u3001AI\u5DE5\u5177\uFF09"],
   "tertiaryCategory": "\u7B2C\u4E09\u7D1A\u5B50\u5206\u985E\uFF08\u82E5\u70BA\u904A\u6232\u5FC5\u9808\u70BA\uFF1A\u4F11\u9592\u6D3E\u5C0D / \u6A21\u64EC\u9AD4\u9A57 / \u7B56\u7565\u76CA\u667A / \u591A\u4EBA\u5192\u96AA / \u7AF6\u6280\u5C0D\u6230 / \u5361\u724C\u684C\u904A / \u6050\u6016\u9A5A\u609A / \u89E3\u8B0E\u5287\u60C5 / \u89AA\u5B50\u5152\u7AE5 / \u751C\u871C\u6D6A\u6F2B \u4E4B\u4E00\uFF09",
   "tags": ["\u6A19\u7C641", "\u6A19\u7C642", "\u6A19\u7C643", "\u6A19\u7C644"],
-  "techArchitecture": "\u5EFA\u8B70\u7684\u6280\u8853\u67B6\u69CB\uFF08\u7E41\u9AD4\u4E2D\u6587\uFF0C\u5982\uFF1AWeb \u5168\u7AEF\u67B6\u69CB React / TypeScript\uFF09",
   "targetGoal": "\u5275\u65B0\u63D0\u6848\u76EE\u6A19\u8207\u9810\u671F\u6548\u76CA\uFF08\u7E41\u9AD4\u4E2D\u6587\uFF0C\u8AAA\u660E\u80FD\u70BA\u4F7F\u7528\u8005\u9054\u6210\u4EC0\u9EBC\u6210\u679C\uFF0C\u7D04 30~80 \u5B57\uFF09",
   "referencedPainPoint": "\u5C0D\u61C9\u89E3\u6C7A\u4E4B\u7528\u6236\u75DB\u9EDE\u6216\u5E02\u5834\u9700\u6C42\uFF08\u7E41\u9AD4\u4E2D\u6587\uFF0C\u8AAA\u660E\u91DD\u5C0D\u4EC0\u9EBC\u50B3\u7D71\u96E3\u984C\uFF0C\u7D04 30~80 \u5B57\uFF09"
 }
@@ -177533,7 +177532,6 @@ ${hasValidPreferred ? userSelectedCategories.join("\u3001") : "\u672A\u6307\u5B9
           type: Type.ARRAY,
           items: { type: Type.STRING }
         },
-        techArchitecture: { type: Type.STRING },
         targetGoal: { type: Type.STRING },
         referencedPainPoint: { type: Type.STRING }
       },
@@ -177579,7 +177577,7 @@ ${hasValidPreferred ? userSelectedCategories.join("\u3001") : "\u672A\u6307\u5B9
     }
     const primaryCategory = finalCategories[0] || "\u7DB2\u7AD9\u7A0B\u5F0F";
     let tags = Array.isArray(parsedResult?.tags) && parsedResult.tags.length > 0 ? parsedResult.tags.map((t2) => toTraditionalChinese(String(t2).trim())) : [];
-    let techArchitecture = parsedResult?.techArchitecture ? toTraditionalChinese(parsedResult.techArchitecture.trim()) : "Web \u7DB2\u9801\u61C9\u7528\u7A0B\u5F0F";
+    let techArchitecture = "";
     let targetGoal = parsedResult?.targetGoal ? toTraditionalChinese(parsedResult.targetGoal.trim()) : "";
     let referencedPainPoint = parsedResult?.referencedPainPoint ? toTraditionalChinese(parsedResult.referencedPainPoint.trim()) : "";
     if (!appName) {

@@ -6284,7 +6284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           appName: finalAppName,
           demoUrl: targetQ.demoUrl || targetQ.vibeCodingData?.demoUrl || targetQ.externalLink || '',
           githubUrl: targetQ.vibeCodingData?.githubUrl || '',
-          techArchitecture: targetQ.techArchitecture || targetQ.vibeCodingData?.techArchitecture || 'Web 網頁應用程式',
+          techArchitecture: targetQ.techArchitecture || targetQ.vibeCodingData?.techArchitecture || '',
           publishedPlatforms: targetQ.publishedPlatforms || targetQ.vibeCodingData?.publishedPlatforms || (targetQ.demoUrl ? [{ name: 'Web 網頁版', url: targetQ.demoUrl }] : []),
           coverImageUrl: targetQ.coverImage || targetQ.vibeCodingData?.coverImageUrl || '',
           screenshots: targetQ.galleryImages || targetQ.vibeCodingData?.screenshots || [],

@@ -103,6 +103,7 @@ import { isSampleContent } from '../utils/sampleContent';
 import { isGuestPreviewOnly } from '../utils/guestAccess';
 import { MindMapSection } from './mindmap/MindMapSection';
 import { recordQuestionViewClick } from '../utils/proposalClicks';
+import { authorTechArchitecture } from '../utils/techArchitecture';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -1376,7 +1377,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         ) : (
         <>
         {/* 多媒體大圖、YouTube 介紹影片、圖集、技術架構與線上網址 */}
-        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || workUrl || (liveQuestion.publishedPlatforms && liveQuestion.publishedPlatforms.length > 0)) && (
+        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || authorTechArchitecture(question.techArchitecture) || workUrl || (liveQuestion.publishedPlatforms && liveQuestion.publishedPlatforms.length > 0)) && (
           <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
             {/* YouTube 介紹影片 */}
             {(() => {
@@ -1463,13 +1464,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             )}
             {/* Tech Architecture & Demo Link Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
-              {question.techArchitecture && (
+              {authorTechArchitecture(question.techArchitecture) && (
                 <div className="p-3 rounded-xl bg-white border border-purple-200 text-xs space-y-1">
                   <div className="font-extrabold text-purple-900 flex items-center gap-1.5">
                     <Cpu className="w-3.5 h-3.5 text-purple-600" />
                     <span>技術架構</span>
                   </div>
-                  <p className="font-mono text-stone-700 leading-normal">{question.techArchitecture}</p>
+                  <p className="font-mono text-stone-700 leading-normal">{authorTechArchitecture(question.techArchitecture)}</p>
                 </div>
               )}
               {workUrl && (

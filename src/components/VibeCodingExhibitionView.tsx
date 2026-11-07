@@ -69,6 +69,7 @@ interface VibeCodingExhibitionViewProps {
 }
 
 import { SOFTWARE_TERTIARY_CATEGORIES, SoftwareCategory } from '../types';
+import { authorTechArchitecture } from '../utils/techArchitecture';
 
 export const VIBE_CATEGORIES = [
   { id: 'all', label: '軟體、遊戲', icon: LayoutGrid, description: '全站所有軟體網站、AI 工具與互動遊戲' },
@@ -516,9 +517,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     </span>
                   )}
                 </span>
-                {app.techArchitecture && (
+                {authorTechArchitecture(app.techArchitecture) && (
                   <span className="text-indigo-700 font-semibold truncate max-w-[120px]">
-                    · {app.techArchitecture}
+                    · {authorTechArchitecture(app.techArchitecture)}
                   </span>
                 )}
               </div>
@@ -894,9 +895,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </span>
                 )}
               </div>
-              {app.techArchitecture && (
+              {authorTechArchitecture(app.techArchitecture) && (
                 <div className="text-[10px] text-indigo-700 font-semibold truncate">
-                  {app.techArchitecture}
+                  {authorTechArchitecture(app.techArchitecture)}
                 </div>
               )}
               <PublishedPlatformsBadges platforms={app.publishedPlatforms} size="sm" max={3} linkable={false} className="mt-1" />
