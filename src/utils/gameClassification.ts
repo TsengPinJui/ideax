@@ -714,6 +714,8 @@ export function classifyGame(params: {
 
 export function isGameQuestion(question?: Partial<Question> | null): boolean {
   if (!question) return false;
+  // 痛點是需求者提出的問題，不是作品：即使分類為「遊戲」也不算遊戲作品
+  if (question.postType === 'pain_point' || (!question.postType && question.specialZone === 'pain_points')) return false;
   if (question.id?.startsWith('game-hot-') || question.id?.startsWith('game-')) return true;
   if (question.subcategory === '遊戲' || question.subcategory === '小遊戲') return true;
   if (

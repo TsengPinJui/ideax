@@ -126005,6 +126005,7 @@ function classifyGame(params) {
 }
 function isGameQuestion(question) {
   if (!question) return false;
+  if (question.postType === "pain_point" || !question.postType && question.specialZone === "pain_points") return false;
   if (question.id?.startsWith("game-hot-") || question.id?.startsWith("game-")) return true;
   if (question.subcategory === "\u904A\u6232" || question.subcategory === "\u5C0F\u904A\u6232") return true;
   if (question.tertiaryCategory && GAME_TERTIARY_CATEGORIES.includes(question.tertiaryCategory)) {
@@ -175554,7 +175555,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.2";
+var APP_VERSION = "4.9.3";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

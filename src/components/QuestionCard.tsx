@@ -154,12 +154,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const isPainPoint = isPainPointQuestion(question);
   const isL0Discussion = isL0DiscussionQuestion(question);
   const effectiveTertiary = getEffectiveTertiaryCategory(question);
+  // 痛點自成一類，不歸入軟體作品或創新提案
   const isVibeCoding =
-    isGame ||
+    !isPainPoint && (isGame ||
     question.category === '網站程式' ||
     question.postType === 'vibecoding_app' ||
-    question.specialZone === 'vibecoding';
-  const isInnovationProposal = question.postType === 'innovation_proposal';
+    question.specialZone === 'vibecoding');
+  const isInnovationProposal = !isPainPoint && question.postType === 'innovation_proposal';
   const displayCategoryLabel = isGame ? '遊戲' : (isVibeCoding ? '軟體網站' : question.category);
   const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(question);
   const referencedPainPointObj = findReferencedPainPoint(question, questions);
