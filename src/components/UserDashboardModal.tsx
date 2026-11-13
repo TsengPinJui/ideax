@@ -5,6 +5,7 @@ import { fetchMyXp, XP_STATE_EVENT, type XpLite } from '../services/xpService';
 import { realSurvey } from '../utils/surveyData';
 import { isLocalDevHost } from '../services/accountGuard';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
 import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser, isMockAnswerId, isMockSolverId, isMockConversationId } from '../data/mockData';
@@ -6548,6 +6549,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* 顯示語言：繁體／簡體（存在本機，換裝置需重選） */}
+                {profileSubTab === 'basic' && profileSection === 'basic' && (
+                  <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-[14px] text-stone-800">顯示語言</span>
+                    <LanguageSwitcher />
                   </div>
                 )}
 

@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { installStorageQuotaGuard } from './utils/safeStorage';
 import './index.css';
+import { getSiteLang, initSiteLanguage } from './utils/siteLanguage';
 
 // 全域安裝 LocalStorage 容量保護攔截器，防止 QuotaExceededError 導致畫面崩潰
 installStorageQuotaGuard();
@@ -54,6 +55,12 @@ if ('serviceWorker' in navigator) {
     });
   }
 }
+
+// 簡體使用者：先短暫隱藏畫面，等轉換字典載入後再顯示，避免先閃過繁體字（最多等 3 秒）
+if (getSiteLang() === 'zh-CN') document.documentElement.style.visibility = 'hidden';
+const revealPage = () => { document.documentElement.style.visibility = ''; };
+const revealTimer = setTimeout(revealPage, 3000);
+initSiteLanguage().catch(() => {}).finally(() => { clearTimeout(revealTimer); revealPage(); });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

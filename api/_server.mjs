@@ -176179,6 +176179,12 @@ async function generateRawTextWithGemini(prompt, systemInstruction) {
   }
   return "\u3010IdeaX \u667A\u6167\u9867\u554F\u5206\u6790\u610F\u898B\u3011\n\n\u5DF2\u91DD\u5C0D\u60A8\u7684\u63D0\u793A\u8A5E\u5B8C\u6210\u591A\u7DAD\u5EA6\u6DF1\u5EA6\u904B\u7B97\u8207\u6230\u7565\u62C6\u89E3\uFF0C\u76F8\u95DC\u53EF\u884C\u6027\u5206\u6790\u3001\u57F7\u884C\u8DEF\u5F91\u8207\u98A8\u96AA\u63A7\u5236\u5C0D\u7B56\u5DF2\u5F59\u6574\u5B8C\u7562\u3002";
 }
+app.get("/api/geo", (req, res) => {
+  const raw = req.headers["x-vercel-ip-country"];
+  const country = (Array.isArray(raw) ? raw[0] : raw) || null;
+  res.set("Cache-Control", "no-store");
+  res.json({ country: country ? String(country).toUpperCase().slice(0, 2) : null });
+});
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",

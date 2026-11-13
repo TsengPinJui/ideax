@@ -19,6 +19,7 @@ import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { PointsGuideModal } from './PointsGuideModal';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -252,6 +253,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span>© {new Date().getFullYear()} 創點子 IdeaX</span>
             <span>·</span>
             <span>知識創意的加值平台</span>
+            <LanguageSwitcher variant="dark" className="ml-1" />
           </div>
 
           <div className="font-mono text-[10px] text-stone-600 select-none">

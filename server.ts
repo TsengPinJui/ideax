@@ -734,6 +734,14 @@ async function generateRawTextWithGemini(prompt: string, systemInstruction?: str
 }
 
 // Health check
+// 依 Vercel 偵測的 IP 國家回傳地區代碼（只回國家，不記錄、不回傳 IP），供前端決定預設繁／簡體
+app.get('/api/geo', (req: Request, res: Response) => {
+  const raw = req.headers['x-vercel-ip-country'];
+  const country = (Array.isArray(raw) ? raw[0] : raw) || null;
+  res.set('Cache-Control', 'no-store');
+  res.json({ country: country ? String(country).toUpperCase().slice(0, 2) : null });
+});
+
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
