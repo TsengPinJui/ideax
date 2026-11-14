@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#298',
+    version: 'v4.9.12',
+    releaseDate: '2026.11.15',
+    releaseTime: '02:31',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季提案卡片「查看完整敘述」改為「查看概述」',
+    changes: [
+      '手機版提案卡片的展開按鈕改為「查看概述」／「收合概述」',
+      '調整創星季展示提案的標示',
+    ],
+  },
+  {
     seqNumber: '#297',
     version: 'v4.9.11',
     releaseDate: '2026.11.15',
@@ -3702,6 +3714,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#298** | **v4.9.12** | 2026.11.15 | 02:31 | IdeaX 創點子核心 | 創星季提案卡片「查看完整敘述」改為「查看概述」 |
 | **#297** | **v4.9.11** | 2026.11.15 | 02:25 | IdeaX 創點子核心 | 調整仿真帳號名稱，數字不再與帳號序號相同 |
 | **#296** | **v4.9.10** | 2026.11.15 | 02:22 | IdeaX 創點子核心 | 全站仿真帳號改為英文數字混合的名稱 |
 | **#295** | **v4.9.9** | 2026.11.15 | 02:16 | IdeaX 創點子核心 | 創星季仿真示範提案的提案帳號改為英文數字名稱 |

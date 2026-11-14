@@ -2,7 +2,7 @@
  * 創星季「想解方」提案區的展示用提案：1 則官方提案範例 + 2 則仿真帳號示範提案。
  *
  * - 只存在程式中，不寫入 competition_proposals，因此不會出現在審核後台、募資排名與決選名單。
- * - 畫面上一律標示「提案範例」或「仿真示範」，且不能注資、按讚或留言，不影響真實參賽者。
+ * - 「提案範例」在畫面上標示；仿真示範提案不另外標示。兩者都不能注資、按讚或留言，不影響真實參賽者。
  * - 引用的痛點皆為仿真帳號提出的痛點（q-vp-pain-*），不引用真實用戶的內容。
  * - 仿真示範提案的提案帳號為展示專用（u-sim-*），名稱採英文數字混合。
  */
@@ -135,8 +135,11 @@ export const STAR_SEASON_SHOWCASE_PROPOSALS: ShowcaseProposal[] = [
 export const isShowcaseProposal = (p: any): boolean =>
   Boolean(p && (p.isShowcase === true || (typeof p.id === 'string' && p.id.startsWith('showcase-'))));
 
+export const isShowcaseExample = (p: any): boolean =>
+  isShowcaseProposal(p) && p?.showcaseKind === 'example';
+
 export const showcaseLabel = (p: any): string =>
   p?.showcaseKind === 'example' ? '提案範例' : '仿真示範';
 
 /** 展示用提案不能注資、按讚、留言時的提示 */
-export const SHOWCASE_BLOCK_MESSAGE = 'ℹ️ 這是展示用的提案（範例／仿真示範），不參與募資與評選，無法注資、按讚或留言。';
+export const SHOWCASE_BLOCK_MESSAGE = 'ℹ️ 此提案不參與募資與評選，無法注資、按讚或留言。';
