@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#295',
+    version: 'v4.9.9',
+    releaseDate: '2026.11.15',
+    releaseTime: '02:16',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季仿真示範提案的提案帳號改為英文數字名稱',
+    changes: [
+      '兩則仿真示範提案的提案帳號改名為 AutoLab23、Volt9Kai，並使用展示專用帳號',
+    ],
+  },
+  {
     seqNumber: '#294',
     version: 'v4.9.8',
     releaseDate: '2026.11.15',
@@ -3668,6 +3679,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#295** | **v4.9.9** | 2026.11.15 | 02:16 | IdeaX 創點子核心 | 創星季仿真示範提案的提案帳號改為英文數字名稱 |
 | **#294** | **v4.9.8** | 2026.11.15 | 02:13 | IdeaX 創點子核心 | 創星季解方提案區新增提案範例與仿真示範提案 |
 | **#293** | **v4.9.7** | 2026.11.15 | 02:00 | IdeaX 創點子核心 | 創新提案專區不再出現創星季的痛點 |
 | **#292** | **v4.9.6** | 2026.11.13 | 17:05 | IdeaX 創點子核心 | 沒手動選過語言時，每次開網站都依所在地區重新決定繁體或簡體 |

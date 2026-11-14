@@ -4,6 +4,7 @@
  * - 只存在程式中，不寫入 competition_proposals，因此不會出現在審核後台、募資排名與決選名單。
  * - 畫面上一律標示「提案範例」或「仿真示範」，且不能注資、按讚或留言，不影響真實參賽者。
  * - 引用的痛點皆為仿真帳號提出的痛點（q-vp-pain-*），不引用真實用戶的內容。
+ * - 仿真示範提案的提案帳號為展示專用（u-sim-*），名稱採英文數字混合。
  */
 import type { StarSeasonProposal } from '../types/competition';
 
@@ -78,11 +79,10 @@ export const STAR_SEASON_SHOWCASE_PROPOSALS: ShowcaseProposal[] = [
     sourcePainPointProposalId: 'q-vp-pain-11',
     sourcePainPointTitle: '在社區 LINE 群開團購，每禮拜核對上百筆「+1」跟轉帳末五碼核到眼花',
     tags: ['社群團購', '自動對帳', 'LINE', 'No-Code'],
-    authorId: 'u-vc-23',
-    authorName: '阿哲自動化實驗室',
-    authorAvatar: '/avatars/vc-23.svg',
+    authorId: 'u-sim-autolab23',
+    authorName: 'AutoLab23',
     authorRole: 'solver',
-    teamName: '阿哲自動化實驗室',
+    teamName: 'AutoLab23',
     proposalProgressStage: '正在計畫',
     showCardImage: false,
     status: 'approved',
@@ -116,11 +116,10 @@ export const STAR_SEASON_SHOWCASE_PROPOSALS: ShowcaseProposal[] = [
     sourcePainPointProposalId: 'q-vp-pain-13',
     sourcePainPointTitle: '合租公寓夏天台電帳單一來室友就吵架，客廳冷氣跟烘衣機的公電怎麼分才公平？',
     tags: ['合租生活', '智慧電表', '公電分攤', '物聯網'],
-    authorId: 'u-vc-11',
-    authorName: '硬體宅宇翔',
-    authorAvatar: '/avatars/vc-11.svg',
+    authorId: 'u-sim-volt9kai',
+    authorName: 'Volt9Kai',
     authorRole: 'solver',
-    teamName: '硬體宅宇翔',
+    teamName: 'Volt9Kai',
     proposalProgressStage: '初步構想',
     showCardImage: false,
     status: 'approved',
