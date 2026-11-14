@@ -1,5 +1,6 @@
 import { DEFAULT_MASCOT_CONFIG, cheerMascot, normalizeMascotConfig, type MascotConfig } from '../components/mascot/mascotConfig';
 import { trackFeature } from '../services/featureUsage';
+import { normalizeSimulatedUsers, normalizeSimulatedQuestions, normalizeSimulatedAnswers } from '../utils/simulatedNames';
 import { safeSetItem, safeSetJSON, stripHeavyFields, pruneStorageQuota } from '../utils/safeStorage';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
@@ -1214,7 +1215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return new Set();
   };
 
-  const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
+  const [availableUsers, setAvailableUsersRaw] = useState<User[]>(() => {
     const isDemo = getInitialIsDemoMode();
     const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
     const deletedUsers = getDeletedUserIds();
@@ -1281,6 +1282,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : [...CORE_TEST_ACCOUNTS, ...activeVirtualPersonas];
     return deduplicateUsersList(baseUsers, deletedUsers).uniqueUsers;
   });
+  // 仿真帳號改名後，資料庫裡的舊名字一律換成目前的名字（只影響仿真帳號）
+  const setAvailableUsers = useCallback((value: React.SetStateAction<User[]>) => {
+    setAvailableUsersRaw((prev) => normalizeSimulatedUsers(typeof value === 'function' ? (value as (p: User[]) => User[])(prev) : value));
+  }, []);
+  React.useLayoutEffect(() => { setAvailableUsers((prev) => prev); }, [setAvailableUsers]);
 
   // 嚴格過濾真實註冊用戶（排扣訪客、測試帳號）
   const realRegisteredUsers = useMemo(() => {
@@ -1527,7 +1533,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [questions, setQuestions] = useState<Question[]>(() => {
+  const [questions, setQuestionsRaw] = useState<Question[]>(() => {
     const getRealClicks = (): Record<string, number> => {
       try {
         const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
@@ -1725,6 +1731,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .map(sanitizeQuestion)
     );
   });
+  // 仿真帳號改名後，資料庫裡的舊名字一律換成目前的名字（只影響仿真帳號）
+  const setQuestions = useCallback((value: React.SetStateAction<Question[]>) => {
+    setQuestionsRaw((prev) => normalizeSimulatedQuestions(typeof value === 'function' ? (value as (p: Question[]) => Question[])(prev) : value));
+  }, []);
+  React.useLayoutEffect(() => { setQuestions((prev) => prev); }, [setQuestions]);
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
     const isDemo = getInitialIsDemoMode();
@@ -1776,7 +1787,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return MOCK_SOLVERS.filter(isNotDeletedSolver);
   });
 
-  const [answers, setAnswers] = useState<Answer[]>(() => {
+  const [answers, setAnswersRaw] = useState<Answer[]>(() => {
     const isDemo = getInitialIsDemoMode();
     const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
     const deletedAnsIds = getDeletedAnswerIds();
@@ -1852,6 +1863,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return mergeWithVirtualAnswers(isPurged ? [] : MOCK_ANSWERS.filter(isAnswerValid));
   });
+  // 仿真帳號改名後，資料庫裡的舊名字一律換成目前的名字（只影響仿真帳號）
+  const setAnswers = useCallback((value: React.SetStateAction<Answer[]>) => {
+    setAnswersRaw((prev) => normalizeSimulatedAnswers(typeof value === 'function' ? (value as (p: Answer[]) => Answer[])(prev) : value));
+  }, []);
+  React.useLayoutEffect(() => { setAnswers((prev) => prev); }, [setAnswers]);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const isDemo = getInitialIsDemoMode();
