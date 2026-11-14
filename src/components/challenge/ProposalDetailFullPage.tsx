@@ -543,11 +543,9 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             )}
           </div>
 
-          {isShowcaseProposal(proposal) && (
+          {(proposal as any).showcaseKind === 'example' && (
             <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[13px] leading-relaxed text-violet-800">
-              {(proposal as any).showcaseKind === 'example'
-                ? '📘 提案範例：由 IdeaX 創點子團隊撰寫，示範一份完整提案該包含的內容，不參與募資與評選。'
-                : '🧪 仿真示範：由仿真帳號提出的示範提案，僅供參考，不參與募資與評選，也無法注資、按讚或留言。'}
+              📘 提案範例：由 IdeaX 創點子團隊撰寫，示範一份完整提案該包含的內容，不參與募資與評選。
             </div>
           )}
 

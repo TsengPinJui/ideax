@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
+import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, isShowcaseExample, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
 import {
   Sparkles,
   Send,
@@ -1450,7 +1450,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         onClick={() => handleOpenProposalDetail(proposal)}
                         className="text-base font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 cursor-pointer"
                       >
-                        {isShowcaseProposal(proposal) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(proposal)}</span>)}
+                        {isShowcaseExample(proposal) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(proposal)}</span>)}
                         {proposal.title}
                       </h3>
 
@@ -1511,7 +1511,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <HelpCircle className="w-3 h-3 text-amber-600 shrink-0" />
-                          <span>？ {expandedMobileSummaryId === proposal.id ? '收合敘述' : '查看完整敘述'}</span>
+                          <span>{expandedMobileSummaryId === proposal.id ? '收合概述' : '查看概述'}</span>
                         </button>
                         {expandedMobileSummaryId === proposal.id && (
                           <p className="mt-1.5 p-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed animate-in fade-in duration-150">

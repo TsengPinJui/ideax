@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
+import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, isShowcaseExample, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
 import {
   Sparkles,
   Trophy,
@@ -3742,7 +3742,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             <div className="p-3.5 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                               <div className="space-y-2">
                                 <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
-                                  {isShowcaseProposal(p) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(p)}</span>)}
+                                  {isShowcaseExample(p) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(p)}</span>)}
                                   {p.title}
                                 </h3>
 
@@ -3797,7 +3797,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                     className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                                   >
                                     <HelpCircle className="w-3 h-3 text-amber-600 shrink-0" />
-                                    <span>？ {expandedBatchMobileSummaryId === p.id ? '收合敘述' : '查看完整敘述'}</span>
+                                    <span>{expandedBatchMobileSummaryId === p.id ? '收合概述' : '查看概述'}</span>
                                   </button>
                                   {expandedBatchMobileSummaryId === p.id && (
                                     <p className="mt-1.5 p-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed animate-in fade-in duration-150">
