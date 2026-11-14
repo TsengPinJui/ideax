@@ -73,8 +73,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     supportPoints: 3600,
     tippersCount: 42,
     tipsHistory: [
-      { id: 'tip-vibe4-1', userId: 'vp-user-01', userName: 'JHLin_RD01', amount: 600, message: '拍照看鍋況收汁熟度太神了！對於新手來說火候最難掌握，這個功能真的解決大痛點！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString() },
-      { id: 'tip-vibe4-2', userId: 'vp-user-04', userName: 'Meiling營養04', amount: 500, message: '份量自動等比換算超貼心，食材備料清單一目了然，已加到手機主畫面天天用！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString() }
+      { id: 'tip-vibe4-1', userId: 'vp-user-01', userName: 'JH_Lin.rd8', amount: 600, message: '拍照看鍋況收汁熟度太神了！對於新手來說火候最難掌握，這個功能真的解決大痛點！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString() },
+      { id: 'tip-vibe4-2', userId: 'vp-user-04', userName: 'Meiling營養9', amount: 500, message: '份量自動等比換算超貼心，食材備料清單一目了然，已加到手機主畫面天天用！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString() }
     ]
   }
 ];

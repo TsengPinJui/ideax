@@ -145,7 +145,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-01',
     userId: 'user-02',
-    userName: 'yenting.go02 (創業者)',
+    userName: 'yenting.go7 (創業者)',
     question: '請問我購買的點數發案如果沒有專家被採納，懸賞點數會不會全額退款？',
     category: '金流與點數',
     timestamp: '2026-10-02 14:20',
@@ -156,7 +156,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-02',
     userId: 'user-03',
-    userName: 'MeiBuyer_03 (企業採購)',
+    userName: 'MeiBuyer91 (企業採購)',
     question: 'L0 痛點免費提出與懸賞發案有什麼差別？提問需要事先簽 NDA 保密合約嗎？',
     category: '提問與媒合',
     timestamp: '2026-10-02 16:45',
