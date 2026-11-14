@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#293',
+    version: 'v4.9.7',
+    releaseDate: '2026.11.15',
+    releaseTime: '02:00',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創新提案專區不再出現創星季的痛點',
+    changes: [
+      '創新提案專區只顯示創星季「想解方」階段的提案，痛點不再混入',
+      '從痛點引用產生的建議標題不再帶「【痛點】」字樣',
+    ],
+  },
+  {
     seqNumber: '#292',
     version: 'v4.9.6',
     releaseDate: '2026.11.13',
@@ -3642,6 +3654,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#293** | **v4.9.7** | 2026.11.15 | 02:00 | IdeaX 創點子核心 | 創新提案專區不再出現創星季的痛點 |
 | **#292** | **v4.9.6** | 2026.11.13 | 17:05 | IdeaX 創點子核心 | 沒手動選過語言時，每次開網站都依所在地區重新決定繁體或簡體 |
 | **#291** | **v4.9.5** | 2026.11.13 | 16:55 | IdeaX 創點子核心 | 新增簡體中文：可切換繁體／簡體，並依所在地區自動選擇預設語言 |
 | **#290** | **v4.9.3** | 2026.11.13 | 16:45 | IdeaX 創點子核心 | 痛點與作品分開：痛點卡片不再同時標成「軟體作品」或「創新提案」 |

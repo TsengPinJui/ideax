@@ -165,6 +165,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     if (stageInfo.activeStage >= 2) {
       source.forEach((p) => {
         if (p.id.startsWith('demo-') || p.id.startsWith('test-')) return;
+        // 創星季的痛點不是提案：只收「想解方」階段的解方提案
+        if (p.stage === 'pain_point') return;
         if (!map.has(p.id)) {
           map.set(p.id, p);
         }
