@@ -9,8 +9,8 @@ import { VIRTUAL_PERSONAS } from '../data/virtualProposalsSeed';
 
 const EXTRA_SIM_NAMES: Record<string, string> = {
   'user-vibecoder-chef': 'ChefAlan_5star',
-  'vp-user-01': 'JHLin_RD01',
-  'vp-user-04': 'Meiling營養04',
+  'vp-user-01': 'JH_Lin.rd8',
+  'vp-user-04': 'Meiling營養9',
 };
 
 let cache: Map<string, string> | null = null;
