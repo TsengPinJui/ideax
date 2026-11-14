@@ -252,7 +252,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.title) {
-          setFormTitle((prev) => prev || `針對「${parsed.title}」之創新解方`);
+          setFormTitle((prev) => prev || `針對「${String(parsed.title).replace(/^【[^】]*】\s*/, '')}」之創新解方`);
           setFormSummary((prev) => prev || `針對痛點「${parsed.title}」所提出之具體創新落地解決方案。`);
         }
         if (parsed.id) {
@@ -264,7 +264,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         const titleParam = params.get('title');
         const painPointIdParam = params.get('sourcePainPointId');
         if (titleParam) {
-          setFormTitle((prev) => prev || `針對「${decodeURIComponent(titleParam)}」之創新解方`);
+          setFormTitle((prev) => prev || `針對「${decodeURIComponent(titleParam).replace(/^【[^】]*】\s*/, '')}」之創新解方`);
         }
         if (painPointIdParam) {
           setFormSourcePainPointId(painPointIdParam);
