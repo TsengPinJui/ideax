@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#296',
+    version: 'v4.9.10',
+    releaseDate: '2026.11.15',
+    releaseTime: '02:22',
+    author: 'IdeaX 核心工程團隊',
+    summary: '全站仿真帳號改為英文數字混合的名稱',
+    changes: [
+      '42 位仿真創作者與其他仿真帳號改用風格各異、英文數字混合的名稱（少數夾雜中文）',
+      '資料庫中較早存下的貼文、留言與用戶資料，顯示時也會自動換成新名稱；真實用戶不受影響',
+    ],
+  },
+  {
     seqNumber: '#295',
     version: 'v4.9.9',
     releaseDate: '2026.11.15',
@@ -3679,6 +3691,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#296** | **v4.9.10** | 2026.11.15 | 02:22 | IdeaX 創點子核心 | 全站仿真帳號改為英文數字混合的名稱 |
 | **#295** | **v4.9.9** | 2026.11.15 | 02:16 | IdeaX 創點子核心 | 創星季仿真示範提案的提案帳號改為英文數字名稱 |
 | **#294** | **v4.9.8** | 2026.11.15 | 02:13 | IdeaX 創點子核心 | 創星季解方提案區新增提案範例與仿真示範提案 |
 | **#293** | **v4.9.7** | 2026.11.15 | 02:00 | IdeaX 創點子核心 | 創新提案專區不再出現創星季的痛點 |

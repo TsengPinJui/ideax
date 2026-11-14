@@ -145,7 +145,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-01',
     userId: 'user-02',
-    userName: '林彥廷 (創業者)',
+    userName: 'yenting.go02 (創業者)',
     question: '請問我購買的點數發案如果沒有專家被採納，懸賞點數會不會全額退款？',
     category: '金流與點數',
     timestamp: '2026-10-02 14:20',
@@ -156,7 +156,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-02',
     userId: 'user-03',
-    userName: '陳美玲 (企業採購)',
+    userName: 'MeiBuyer_03 (企業採購)',
     question: 'L0 痛點免費提出與懸賞發案有什麼差別？提問需要事先簽 NDA 保密合約嗎？',
     category: '提問與媒合',
     timestamp: '2026-10-02 16:45',
@@ -167,7 +167,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-03',
     userId: 'user-04',
-    userName: '張家瑋 (AI 技術顧問)',
+    userName: 'jw_ai_lab (AI 技術顧問)',
     question: '專家接案完成成果交付後，收益什麼時候會撥款到我的銀行帳戶？手續費是多少？',
     category: '金流與點數',
     timestamp: '2026-10-03 09:12',
@@ -178,7 +178,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-04',
     userId: 'user-05',
-    userName: '趙偉倫 (獨立開發者)',
+    userName: 'Wei5Dev (獨立開發者)',
     question: 'AI 獵頭智慧找專家是怎麼收費的？如果推薦的名單都不符合需求會扣點數嗎？',
     category: '提問與媒合',
     timestamp: '2026-10-03 11:30',
@@ -189,7 +189,7 @@ const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
   {
     id: 'q-seed-05',
     userId: 'user-06',
-    userName: '李欣穎 (品牌總監)',
+    userName: '欣Brand_88 (品牌總監)',
     question: '如果解答方交付的內容與原本約定嚴重不符，平台有爭議仲裁與退款保障機制嗎？',
     category: '爭議與仲裁',
     timestamp: '2026-10-03 12:05',
