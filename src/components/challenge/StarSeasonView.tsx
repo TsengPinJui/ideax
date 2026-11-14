@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
 import {
   Sparkles,
   Trophy,
@@ -152,6 +153,8 @@ import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposal
 
 export const isFakeProposal = (p: any): boolean => {
   if (!p) return true;
+  // 展示用的提案範例與仿真示範提案：允許顯示（另有標示，且不能注資）
+  if (isShowcaseProposal(p)) return false;
   // 真實參賽隊伍與參賽者白名單（靠臉解決 / 小美余、創星漫遊者 / 陳天奉、超級痛點 / ching）
   if (
     p.authorName === '小美余' ||
@@ -1037,7 +1040,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     try {
       const list = await fetchProposals();
       const effectiveList = list.filter((p) => !isFakeProposal(p));
-      setProposals(applyRealClicksToProposals(effectiveList));
+      setProposals(applyRealClicksToProposals([...effectiveList, ...STAR_SEASON_SHOWCASE_PROPOSALS]));
 
       // 嚴格依登入狀態與身份計算創星幣（未登入/登出狀態清空為 null 絕不顯示錢包；已登入依身分配發不同額度）
       const userIsLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
@@ -1306,6 +1309,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 解方卡片角標 (決選 / 冠軍 / 亞軍 / 季軍 / 4~10名)
   const renderProposalCornerBadge = (proposal: any, idx: number) => {
+    // 展示用提案（範例／仿真示範）不參與排名與決選
+    if (isShowcaseProposal(proposal)) return null;
     const rank = proposal.finalRank;
     const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
 
@@ -1416,9 +1421,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 全站統計指標（參賽件數、全網虛擬支持金池、社群支持熱度人次）
   const competitionStats = useMemo(() => {
-    const totalCount = proposals.length;
-    const totalPoints = proposals.reduce((acc, p) => acc + (p.supportPoints || 0), 0);
-    const totalSupporters = proposals.reduce((acc, p) => acc + (p.supporterCount || 0), 0);
+    const realProposals = proposals.filter((p) => !isShowcaseProposal(p));
+    const totalCount = realProposals.length;
+    const totalPoints = realProposals.reduce((acc, p) => acc + (p.supportPoints || 0), 0);
+    const totalSupporters = realProposals.reduce((acc, p) => acc + (p.supporterCount || 0), 0);
     return {
       totalCount,
       totalPoints,
@@ -1458,6 +1464,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 愛心按讚 / 取消按讚（同步寫入 Firestore 資料庫）
   const handleToggleLike = async (proposalId: string) => {
+    if (isShowcaseProposal({ id: proposalId })) { showToast(SHOWCASE_BLOCK_MESSAGE); return; }
     if (!isLoggedIn) {
       onOpenAuth();
       return;
@@ -1544,6 +1551,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
     setIsSubmittingComment(true);
     try {
+      if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } 
       const res = await postProposalComment(selectedProposalForDetail.id, newCommentText.trim());
       if (res.success && res.comment) {
         setActiveComments((prev) => [...prev, res.comment!]);
@@ -3734,6 +3742,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             <div className="p-3.5 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                               <div className="space-y-2">
                                 <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
+                                  {isShowcaseProposal(p) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(p)}</span>)}
                                   {p.title}
                                 </h3>
 
@@ -5186,7 +5195,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
                         return;
                       }
-                      setSelectedProposalForSupport(selectedProposalForDetail);
+                      if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(selectedProposalForDetail);
                       setSelectedProposalForDetail(null);
                       setIsSupportModalOpen(true);
                     }}
@@ -6796,7 +6805,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               type="button"
                               onClick={() => {
                                 setIsFavoritesModalOpen(false);
-                                setSelectedProposalForSupport(prop);
+                                if (isShowcaseProposal(prop)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(prop);
                                 setIsSupportModalOpen(true);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-amber-400 text-stone-950 font-black hover:bg-amber-300 cursor-pointer"

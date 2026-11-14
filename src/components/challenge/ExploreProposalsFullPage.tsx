@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { STAR_SEASON_SHOWCASE_PROPOSALS, isShowcaseProposal, SHOWCASE_BLOCK_MESSAGE, showcaseLabel } from '../../data/starSeasonShowcaseProposals';
 import {
   Sparkles,
   Send,
@@ -360,7 +361,13 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   // 依賽程階段與結果動態產生解方卡片圖片右下角標籤：
   // 1. 進入決選階段：藍色「決選」
   // 2. 名次公布後：金黃色「冠軍」、灰銀色「亞軍」、銅褐色「季軍」、「4~10名」
-  const renderCornerBadge = (proposal: StarSeasonProposal, idx: number) => {
+  const renderCornerBadge = (proposal: StarSeasonProposal, _idx: number) => {
+    // 展示用提案不參與排名與決選
+    if (isShowcaseProposal(proposal)) return null;
+    // 名次只計算真實提案（排除展示用提案），避免展示提案佔用前 20 名的位置
+    const realOrder = sortedProposals.filter((p) => !isShowcaseProposal(p));
+    const realIdx = realOrder.findIndex((p) => p.id === proposal.id);
+    const idx = realIdx >= 0 ? realIdx : _idx;
     const rank = proposal.finalRank;
     const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
 
@@ -584,6 +591,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 愛心按讚/收藏切換（同步寫入 Firestore 資料庫）
   const handleToggleLike = async (proposalId: string) => {
+    if (isShowcaseProposal({ id: proposalId })) { showToast(SHOWCASE_BLOCK_MESSAGE); return; }
     if (!currentUser || currentUser.id === 'user-guest') {
       onOpenAuth();
       return;
@@ -675,6 +683,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     }
     setIsSubmittingComment(true);
     try {
+      if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } 
       const res = await postProposalComment(selectedProposalForDetail.id, newCommentText.trim());
       if (res.success && res.comment) {
         setActiveComments((prev) => [...prev, res.comment!]);
@@ -811,6 +820,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         comments={activeComments}
         isLoadingComments={isLoadingComments}
         onAddComment={async (text) => {
+          if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } 
           const res = await postProposalComment(selectedProposalForDetail.id, text);
           if (res.success && res.comment) {
             setActiveComments((prev) => [...prev, res.comment!]);
@@ -830,7 +840,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           }
         }}
         onSupport={(p) => {
-          setSelectedProposalForSupport(p);
+          if (isShowcaseProposal(p)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(p);
           setIsSupportModalOpen(true);
         }}
         onEditProposal={(p) => {
@@ -1031,7 +1041,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">提案總數</div>
-                <div className="text-lg font-black font-mono text-stone-900">{filteredProposals.length} 件</div>
+                <div className="text-lg font-black font-mono text-stone-900">{filteredProposals.filter((p) => !isShowcaseProposal(p)).length} 件</div>
               </div>
               <FileText className="w-4 h-4 text-amber-500" />
             </div>
@@ -1440,6 +1450,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         onClick={() => handleOpenProposalDetail(proposal)}
                         className="text-base font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 cursor-pointer"
                       >
+                        {isShowcaseProposal(proposal) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(proposal)}</span>)}
                         {proposal.title}
                       </h3>
 
@@ -1635,7 +1646,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                                 showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
                                 return;
                               }
-                              setSelectedProposalForSupport(proposal);
+                              if (isShowcaseProposal(proposal)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(proposal);
                               setIsSupportModalOpen(true);
                             }}
                             className={`py-1.5 px-3 rounded-xl text-xs transition-colors cursor-pointer shadow-2xs ${
