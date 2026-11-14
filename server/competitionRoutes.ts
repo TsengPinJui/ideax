@@ -394,7 +394,8 @@ router.post('/proposals', async (req: Request, res: Response) => {
     const tPreProposalStart = Date.UTC(currentYear, 10, 14, 2, 0, 0); // 11/14 10:00 UTC+8
     const tCrowdfundEnd = Date.UTC(currentYear, 11, 4, 8, 30, 0); // 12/04 16:30 UTC+8
 
-    const isStageOverride = Boolean(req.headers['x-stage-override']);
+    // 只有已驗證的管理員可以略過時程限制（測試用），一般使用者送這個標頭也無效
+    const isStageOverride = Boolean(req.headers['x-stage-override']) && Boolean(authUser?.uid) && (await isVerifiedAdmin(authUser!.uid));
     if (!isStageOverride) {
       if (stage === 'pain_point') {
         if (nowTime < tPainPointStart) {

@@ -52,6 +52,7 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../.
 import { isGuestPreviewOnly } from '../../utils/guestAccess';
 import { getYoutubeEmbedUrl } from '../../utils/youtubeUtils';
 import { isFakeProposal } from './StarSeasonView';
+import { isShowcaseProposal } from '../../data/starSeasonShowcaseProposals';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -542,6 +543,14 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             )}
           </div>
 
+          {isShowcaseProposal(proposal) && (
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[13px] leading-relaxed text-violet-800">
+              {(proposal as any).showcaseKind === 'example'
+                ? '📘 提案範例：由 IdeaX 創點子團隊撰寫，示範一份完整提案該包含的內容，不參與募資與評選。'
+                : '🧪 仿真示範：由仿真帳號提出的示範提案，僅供參考，不參與募資與評選，也無法注資、按讚或留言。'}
+            </div>
+          )}
+
           {/* 提案主標題 */}
           <h1 className="text-xl sm:text-3xl font-black text-stone-900 leading-snug tracking-tight">
             {(() => {
@@ -570,9 +579,11 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                   <span className={getUserNameColorClass(proposal.authorId, undefined, { name: proposal.authorName })}>
                     {authorInfo.displayText}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                    參賽團隊
-                  </span>
+                  {!isShowcaseProposal(proposal) && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      參賽團隊
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-stone-400 mt-0.5">
                   發布時間：{new Date(proposal.createdAt).toLocaleDateString('zh-TW')}
@@ -635,7 +646,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         ) : (
         <>
         {/* 2. ［注資創星幣 / 點數打賞］橫條（痛點不開放注資，僅解方提案展示） */}
-        {proposal.stage !== 'pain_point' && (
+        {proposal.stage !== 'pain_point' && !isShowcaseProposal(proposal) && (
           <section id="module-support" className="bg-amber-50/60 rounded-2xl p-4 sm:p-5 border border-amber-200/70 shadow-2xs space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
@@ -734,7 +745,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </p>
             )}
 
-            {proposal.sourcePainPointTitle && (
+            {proposal.sourcePainPointTitle && !isShowcaseProposal(proposal) && (
               <p className="text-xs text-emerald-700 leading-relaxed">
                 ★ 獲專家評審評定為前三名獲獎解方時，此痛點提出者將一併獲得激勵獎勵！
               </p>

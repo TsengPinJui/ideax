@@ -170627,7 +170627,7 @@ router.post("/proposals", async (req, res) => {
     const tPainPointEnd = Date.UTC(currentYear, 10, 13, 8, 30, 0);
     const tPreProposalStart = Date.UTC(currentYear, 10, 14, 2, 0, 0);
     const tCrowdfundEnd = Date.UTC(currentYear, 11, 4, 8, 30, 0);
-    const isStageOverride = Boolean(req.headers["x-stage-override"]);
+    const isStageOverride = Boolean(req.headers["x-stage-override"]) && Boolean(authUser?.uid) && await isVerifiedAdmin(authUser.uid);
     if (!isStageOverride) {
       if (stage === "pain_point") {
         if (nowTime < tPainPointStart) {
@@ -175555,7 +175555,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.7";
+var APP_VERSION = "4.9.8";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
