@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#302',
+    version: 'v4.9.16',
+    releaseDate: '2026.11.17',
+    releaseTime: '17:08',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季管理資料（報名、提案、專家申請）限管理員讀取',
+    changes: [
+      '修正：創星季報名、全部提案與專家申請清單原本未登入也能讀取，現在僅限已驗證的管理員',
+    ],
+  },
+  {
     seqNumber: '#301',
     version: 'v4.9.15',
     releaseDate: '2026.11.17',
@@ -3750,6 +3761,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#302** | **v4.9.16** | 2026.11.17 | 17:08 | IdeaX 創點子核心 | 創星季管理資料限管理員讀取 |
 | **#301** | **v4.9.15** | 2026.11.17 | 17:02 | IdeaX 創點子核心 | 修正創星季解方提案核准後又跳回待審核 |
 | **#300** | **v4.9.14** | 2026.11.17 | 16:59 | IdeaX 創點子核心 | 提案人可看到自己審核中的創星季提案 |
 | **#299** | **v4.9.13** | 2026.11.17 | 12:29 | IdeaX 創點子核心 | 專家智庫移除「12 月將公布首批智庫名單」提示 |

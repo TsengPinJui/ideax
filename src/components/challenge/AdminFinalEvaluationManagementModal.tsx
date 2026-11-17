@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { auth } from '../../services/firebase';
 import {
   X,
   Trophy,
@@ -103,7 +104,10 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
     setDistributionRecord(getRewardsDistributionHistory());
 
     // 實時從後端 API 同步最新審核通過的專家 (雲端即時連動)
-    fetch('/api/competition/admin/all-experts')
+    (async () => {
+      const token = await auth.currentUser?.getIdToken().catch(() => undefined);
+      return fetch('/api/competition/admin/all-experts', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    })()
       .then((res) => res.json())
       .then((data) => {
         if (data?.success && Array.isArray(data.experts)) {
