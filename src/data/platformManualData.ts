@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#311',
+    version: 'v4.9.25',
+    releaseDate: '2026.11.17',
+    releaseTime: '20:58',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正創星季提案送出時顯示「圖片上傳失敗」',
+    changes: [
+      '送出前自動把提案內的圖片壓縮到可儲存的大小',
+      '圖片轉存雲端失敗時不再擋下送出，改為隨提案一起保存',
+    ],
+  },
+  {
     seqNumber: '#310',
     version: 'v4.9.24',
     releaseDate: '2026.11.17',
@@ -3860,6 +3872,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#311** | **v4.9.25** | 2026.11.17 | 20:58 | IdeaX 創點子核心 | 修正創星季提案送出時顯示圖片上傳失敗 |
 | **#310** | **v4.9.24** | 2026.11.17 | 20:51 | IdeaX 創點子核心 | 修正含圖片的創星季提案送出時顯示沒有權限 |
 | **#309** | **v4.9.23** | 2026.11.17 | 19:26 | IdeaX 創點子核心 | 照片上傳上限統一為 8MB，超過時提醒用戶 |
 | **#308** | **v4.9.22** | 2026.11.17 | 19:20 | IdeaX 創點子核心 | 修正含圖片的創星季提案無法送出 |

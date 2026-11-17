@@ -9,6 +9,7 @@
  */
 
 import { auth, storage } from './firebase';
+import { compressBase64Image } from '../utils/imageUploadUtils';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   StarSeasonProposal,
@@ -203,8 +204,8 @@ export async function submitProposal(params: {
     return { success: false, message: '請先登入帳號再提交競賽提案' };
   }
 
-  // 圖片由伺服器上傳到雲端儲存空間（不受用戶端儲存規則影響）；這裡只檢查整份資料不超過伺服器上限
-  const body = JSON.stringify({ ...params, userId: effectiveUserId });
+  // 圖片會先壓縮到整份提案不超過資料庫單筆上限（約 1MB），伺服器再嘗試轉存到雲端儲存空間
+  const body = await shrinkInlineImages(JSON.stringify({ ...params, userId: effectiveUserId }), MAX_PROPOSAL_PAYLOAD_CHARS);
   if (body.length > MAX_PROPOSAL_PAYLOAD_CHARS) {
     return { success: false, message: '提案內容（含圖片）太大，無法送出。請減少段落中的圖片數量後再試一次。' };
   }
@@ -226,8 +227,25 @@ export async function submitProposal(params: {
   return data;
 }
 
-/** 送出資料上限（Vercel 單次請求約 4.5MB，伺服器接收上限 4MB） */
-const MAX_PROPOSAL_PAYLOAD_CHARS = 3.9 * 1024 * 1024;
+/** 提案資料上限：Firestore 單筆文件 1MB，留安全空間 */
+const MAX_PROPOSAL_PAYLOAD_CHARS = 900 * 1024;
+const INLINE_IMAGE_RE = /data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+/g;
+
+/** 依序以更小的尺寸與畫質重新壓縮內嵌圖片，直到整份資料小於上限 */
+async function shrinkInlineImages(json: string, limit: number): Promise<string> {
+  if (json.length <= limit) return json;
+  const passes: Array<[number, number]> = [[1024, 0.72], [800, 0.62], [640, 0.55], [480, 0.5]];
+  let current = json;
+  for (const [maxSide, quality] of passes) {
+    const found = Array.from(new Set(current.match(INLINE_IMAGE_RE) || []));
+    if (found.length === 0) break;
+    const map = new Map<string, string>();
+    for (const d of found) map.set(d, await compressBase64Image(d, maxSide, maxSide, quality));
+    current = current.replace(INLINE_IMAGE_RE, (m) => map.get(m) || m);
+    if (current.length <= limit) break;
+  }
+  return current;
+}
 
 /** 伺服器若回傳非 JSON（例如錯誤頁），不要讓瀏覽器丟出看不懂的英文錯誤 */
 async function readJsonSafely(res: Response): Promise<any> {

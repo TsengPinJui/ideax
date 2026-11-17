@@ -324,8 +324,11 @@ router.post('/proposals', async (req: Request, res: Response) => {
     try {
       bodyData = await uploadInlineProposalImages(bodyData, effectiveUid, hasAdminCredentials);
     } catch (imgErr: any) {
-      console.error('[Competition] 提案圖片上傳失敗:', imgErr?.message || imgErr);
-      return res.status(400).json({ success: false, error: imgErr?.message?.startsWith('圖片') || imgErr?.message?.startsWith('單張') ? imgErr.message : '圖片上傳失敗，請稍後再試一次' });
+      // 轉存失敗時不擋送出：圖片已在用戶端壓縮過，直接隨提案保存
+      console.error('[Competition] 提案圖片轉存 Storage 失敗，改為隨提案保存:', imgErr?.code || '', imgErr?.message || imgErr);
+    }
+    if (JSON.stringify(bodyData).length > 1_000_000) {
+      return res.status(400).json({ success: false, error: '提案內容（含圖片）太大，請減少段落中的圖片數量後再試一次' });
     }
 
     const {
