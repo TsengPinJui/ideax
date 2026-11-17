@@ -863,7 +863,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">真實姓名 (法定)</span>
                       <span className="font-semibold text-stone-900 text-sm">
-                        {inspectUser.realNameAuthData?.legalName || inspectUser.name || '未填寫'}
+                        {inspectUser.realNameAuthData?.legalName || '未填寫'}
                       </span>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
@@ -875,19 +875,19 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">國籍 / 出生年月日</span>
                       <span className="font-bold text-stone-800">
-                        {inspectUser.realNameAuthData?.nationality || '中華民國'} · {inspectUser.realNameAuthData?.birthDate || '1990-01-01'}
+                        {inspectUser.realNameAuthData?.nationality || '國籍未填寫'} · {inspectUser.realNameAuthData?.birthDate || '生日未填寫'}
                       </span>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">聯絡手機</span>
                       <span className="font-bold text-stone-900 tabular-nums">
-                        {inspectUser.realNameAuthData?.phoneNumber || inspectUser.phone || '未留存'}
+                        {inspectUser.realNameAuthData?.phoneNumber || '未填寫'}
                       </span>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200 col-span-2">
                       <span className="text-stone-400 block text-[11px]">戶籍住址 / 通訊地址</span>
                       <span className="font-bold text-stone-800 truncate block">
-                        {inspectUser.realNameAuthData?.idAddress || inspectUser.realNameAuthData?.address || '台北市'}
+                        {inspectUser.realNameAuthData?.idAddress || inspectUser.realNameAuthData?.address || '未填寫'}
                       </span>
                     </div>
                   </div>
@@ -1120,6 +1120,8 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   </div>
                 </div>
 
+                {(Boolean(inspectUser.expertApplicationData) || inspectUser.expertApplicationStatus === 'pending' || inspectUser.verifiedExpert) ? (
+                  <>
                 {/* 專家領域與申請頭銜卡片 */}
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
                   <div className="flex items-center justify-between">
@@ -1128,7 +1130,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                       <span>專家申請之專業領域與公開資歷</span>
                     </span>
                     <span className="text-[11px] font-bold text-stone-500 tabular-nums">
-                      送審時間：{inspectUser.expertApplicationData?.appliedAt ? new Date(inspectUser.expertApplicationData.appliedAt).toLocaleString() : '最近'}
+                      送審時間：{inspectUser.expertApplicationData?.appliedAt ? new Date(inspectUser.expertApplicationData.appliedAt).toLocaleString() : '未記錄'}
                     </span>
                   </div>
 
@@ -1136,17 +1138,14 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">申請認證主領域</span>
                       <span className="font-semibold text-stone-900">
-                        {inspectUser.expertApplicationData?.domains?.join('、') ||
-                          inspectUser.domains?.join('、') ||
-                          inspectUser.domain ||
-                          '專業問題'}
+                        {inspectUser.expertApplicationData?.domains?.join('、') || '未填寫'}
                       </span>
                     </div>
 
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">公開頭銜 / 實務年資</span>
                       <span className="font-semibold text-stone-900">
-                        {inspectUser.expertApplicationData?.professionalTitle || inspectUser.title || '專業顧問'} · {inspectUser.expertApplicationData?.yearsOfExperience || '5年以上'}
+                        {inspectUser.expertApplicationData?.professionalTitle || '未填寫頭銜'} · {inspectUser.expertApplicationData?.yearsOfExperience || '未填寫年資'}
                       </span>
                     </div>
 
@@ -1154,10 +1153,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                       <span className="text-stone-400 block text-[11px]">專家專長子領域標籤</span>
                       <div className="flex items-center gap-1.5 flex-wrap mt-1">
                         {(
-                          (inspectUser.expertApplicationData?.subdomains ||
-                            inspectUser.subdomains ||
-                            inspectUser.skills ||
-                            ['系統架構', 'AI應用', '顧問諮詢']) as string[]
+                          (inspectUser.expertApplicationData?.subdomains || []) as string[]
                         ).map((sub, idx) => (
                           <span
                             key={idx}
@@ -1346,6 +1342,14 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     </div>
                   );
                 })()}
+
+                  </>
+                ) : (
+                  <div className="p-6 rounded-2xl bg-stone-50 border border-dashed border-stone-200 text-center text-xs text-stone-500">
+                    <Award className="w-6 h-6 mx-auto mb-1.5 text-stone-300" />
+                    此用戶尚未送出專家認證申請，沒有可審查的資料。
+                  </div>
+                )}
 
                 {/* 專家快速操作工具列 */}
                 <div className="flex items-center justify-between pt-2 border-t border-stone-100">
