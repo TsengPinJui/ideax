@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { realKycValue } from '../utils/kycPlaceholders';
 import { formatDateTime } from '../utils/formatDateTime';
 import { usePagedList, ShowMoreButton } from './ShowMoreList';
 import { useApp } from '../context/AppContext';
@@ -856,7 +857,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                       <span>實名登記資料</span>
                     </span>
                     <span className="text-[11px] font-bold text-stone-500 tabular-nums">
-                      送審時間：{inspectUser.realNameAuthData?.appliedAt ? new Date(inspectUser.realNameAuthData.appliedAt).toLocaleString() : '最近'}
+                      送審時間：{inspectUser.realNameAuthData?.appliedAt ? new Date(inspectUser.realNameAuthData.appliedAt).toLocaleString() : '未記錄'}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
@@ -869,7 +870,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">身分證 / 居留證號</span>
                       <span className="font-bold text-stone-900 tabular-nums">
-                        {inspectUser.realNameAuthData?.idNumber || '未留存'}
+                        {realKycValue(inspectUser.realNameAuthData?.idNumber) || '未填寫'}
                       </span>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
@@ -881,7 +882,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-400 block text-[11px]">聯絡手機</span>
                       <span className="font-bold text-stone-900 tabular-nums">
-                        {inspectUser.realNameAuthData?.phoneNumber || '未填寫'}
+                        {realKycValue(inspectUser.realNameAuthData?.phoneNumber) || '未填寫'}
                       </span>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200 col-span-2">
@@ -1023,7 +1024,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   const hasBack = Boolean(rn?.idCardBackFile?.url);
                   const missingFields = [
                     !rn?.legalName?.trim() && '真實姓名',
-                    !rn?.idNumber?.trim() && '身分證字號',
+                    !realKycValue(rn?.idNumber) && '身分證字號',
                     !rn?.birthDate?.trim() && '出生日期',
                   ].filter(Boolean) as string[];
                   const ok = (t: string) => <span className="font-bold text-emerald-700">✓ {t}</span>;
