@@ -23,6 +23,8 @@ interface CategoryFilterProps {
   setViewMode?: (mode: MarketViewMode) => void;
   specialZone?: SpecialZone;
   onSelectSpecialZone?: (zone: SpecialZone) => void;
+  /** 上排選「全部」時不顯示下排分類（分類僅適用痛點與日常討論） */
+  hideCategoryRow?: boolean;
 }
 
 export const CategoryFilter: React.FC<CategoryFilterProps> = ({
@@ -43,6 +45,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   setViewMode,
   specialZone,
   onSelectSpecialZone,
+  hideCategoryRow = false,
 }) => {
   const { questions, currentUser } = useApp();
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
@@ -140,6 +143,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   return (
     <div className="space-y-2.5">
       {/* 1. 分類選取列：全寬展示，確保所有分類（全部、創新創業、專業問題、學術探討、日常疑難）清楚可見且隨時可直接點擊 */}
+      {!hideCategoryRow && (
       <div id="onboarding-step-1-categories" className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none py-1 -mx-1 px-1">
         <button
           onClick={() => {
@@ -190,6 +194,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
           </button>
         ))}
       </div>
+      )}
 
       {/* 2. 排序與功能控制列：獨立成排，避免橫向擠壓分類列 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 md:pb-3 border-b border-stone-200/80">

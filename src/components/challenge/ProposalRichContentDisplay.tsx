@@ -1,4 +1,5 @@
 import React from 'react';
+import { displayImageCaption } from '../../utils/imageCaption';
 import {
   ProposalContentSection,
   ProposalAttachmentItem,
@@ -98,10 +99,10 @@ export const ProposalRichContentDisplay: React.FC<ProposalRichContentDisplayProp
                         </button>
                       )}
                     </div>
-                    {imgItem.caption && (
+                    {displayImageCaption(imgItem.caption) && (
                       <figcaption className="p-3 bg-amber-50/50 border-t border-amber-100 text-xs sm:text-sm text-stone-700 font-medium flex items-center gap-2">
                         <ImageIcon className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>{imgItem.caption}</span>
+                        <span>{displayImageCaption(imgItem.caption)}</span>
                       </figcaption>
                     )}
                   </figure>

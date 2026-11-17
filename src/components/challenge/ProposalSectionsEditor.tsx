@@ -109,7 +109,7 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
       return;
     }
 
-    insertImageIntoSection(sectionId, res.dataUrl, imageCaptionInput.trim() || file.name.replace(/\.[^/.]+$/, ''));
+    insertImageIntoSection(sectionId, res.dataUrl, imageCaptionInput.trim()); // 不以檔名當圖說
   };
 
   // 7. 插入圖片至指定段落
@@ -120,7 +120,7 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
     const newImageItem = {
       id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       url,
-      caption: caption || imageCaptionInput.trim() || '專案成果與架構圖',
+      caption: caption || imageCaptionInput.trim() || '',
     };
 
     updateSection(sectionId, {
