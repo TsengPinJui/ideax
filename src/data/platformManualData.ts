@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#301',
+    version: 'v4.9.15',
+    releaseDate: '2026.11.17',
+    releaseTime: '17:02',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正創星季解方提案核准後又跳回待審核',
+    changes: [
+      '修正：核准解方提案時伺服器儲存失敗，導致畫面重新整理後跳回待審核',
+      '管理後台審核若未成功儲存，會直接顯示錯誤，不再只在畫面上看似已核准',
+    ],
+  },
+  {
     seqNumber: '#300',
     version: 'v4.9.14',
     releaseDate: '2026.11.17',
@@ -3738,6 +3750,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#301** | **v4.9.15** | 2026.11.17 | 17:02 | IdeaX 創點子核心 | 修正創星季解方提案核准後又跳回待審核 |
 | **#300** | **v4.9.14** | 2026.11.17 | 16:59 | IdeaX 創點子核心 | 提案人可看到自己審核中的創星季提案 |
 | **#299** | **v4.9.13** | 2026.11.17 | 12:29 | IdeaX 創點子核心 | 專家智庫移除「12 月將公布首批智庫名單」提示 |
 | **#298** | **v4.9.12** | 2026.11.15 | 02:31 | IdeaX 創點子核心 | 創星季提案卡片「查看完整敘述」改為「查看概述」 |

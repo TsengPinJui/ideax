@@ -318,11 +318,14 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
         status,
         reviewNote: defaultNote,
       });
-      if (!apiRes.success) {
-        console.warn('[CompetitionAdmin] API review proposal warning:', apiRes.message);
+      if (!apiRes?.success) {
+        // 伺服器沒有存成功：不要只改本機畫面，否則重新整理後會跳回待審核
+        triggerToast(`⚠️ 審核未儲存：${(apiRes as any)?.error || apiRes?.message || '伺服器回應失敗'}，請稍後再試。`);
+        return;
       }
     } catch (err: any) {
-      console.warn('[CompetitionAdmin] API review proposal warning:', err?.message);
+      triggerToast(`⚠️ 審核未儲存：${err?.message || '網路連線失敗'}，請稍後再試。`);
+      return;
     }
     const success = updateCompetitionProposalReviewStatus(
       proposalId,
