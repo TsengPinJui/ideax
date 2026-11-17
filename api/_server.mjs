@@ -135397,6 +135397,9 @@ async function reviewProposalByAdmin(params) {
       ambStatsRef = adminDb.collection("competition_ambassador_stats").doc(code);
       ambSnap = await transaction.get(ambStatsRef);
     }
+    const questionRef = adminDb.collection("questions").doc(params.proposalId);
+    const targetIsQuestion = targetRef?._colName === "questions" && targetRef.id === params.proposalId;
+    const questionSnap = targetIsQuestion ? null : await transaction.get(questionRef);
     transaction.update(targetRef, {
       status: params.status,
       reviewNote: params.reviewNote || "",
@@ -135404,8 +135407,7 @@ async function reviewProposalByAdmin(params) {
       reviewedAt: now,
       updatedAt: now
     });
-    try {
-      const questionRef = adminDb.collection("questions").doc(params.proposalId);
+    if (questionSnap?.exists) {
       transaction.update(questionRef, {
         competitionStatus: params.status,
         reviewNote: params.reviewNote || "",
@@ -135413,7 +135415,6 @@ async function reviewProposalByAdmin(params) {
         reviewedAt: now,
         updatedAt: now
       });
-    } catch {
     }
     const auditRef = adminDb.collection("competition_audit_logs").doc();
     transaction.set(auditRef, {
@@ -135421,7 +135422,7 @@ async function reviewProposalByAdmin(params) {
       proposalId: params.proposalId,
       status: params.status,
       reviewedBy: params.adminUid,
-      reviewNote: params.reviewNote,
+      reviewNote: params.reviewNote || "",
       timestamp: now
     });
     if (hasAmbassador && ambStatsRef && ambSnap) {
@@ -175564,7 +175565,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.14";
+var APP_VERSION = "4.9.15";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

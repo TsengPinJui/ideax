@@ -1436,6 +1436,11 @@ export async function reviewProposalByAdmin(params: {
       ambSnap = await transaction.get(ambStatsRef);
     }
 
+    // 解方提案通常沒有對應的 questions 文件；更新不存在的文件會讓整筆審核失敗，所以先確認存在
+    const questionRef = adminDb.collection('questions').doc(params.proposalId);
+    const targetIsQuestion = (targetRef as any)?._colName === 'questions' && targetRef.id === params.proposalId;
+    const questionSnap: any = targetIsQuestion ? null : await transaction.get(questionRef);
+
     // 2. ALL WRITES AFTER READS
     transaction.update(targetRef, {
       status: params.status,
@@ -1446,8 +1451,7 @@ export async function reviewProposalByAdmin(params: {
     });
 
     // 若同時存在於 questions 集合，同步更新
-    try {
-      const questionRef = adminDb.collection('questions').doc(params.proposalId);
+    if (questionSnap?.exists) {
       transaction.update(questionRef, {
         competitionStatus: params.status,
         reviewNote: params.reviewNote || '',
@@ -1455,7 +1459,7 @@ export async function reviewProposalByAdmin(params: {
         reviewedAt: now,
         updatedAt: now,
       });
-    } catch {}
+    }
 
     // 寫入審計日誌
     const auditRef = adminDb.collection('competition_audit_logs').doc();
@@ -1464,7 +1468,7 @@ export async function reviewProposalByAdmin(params: {
       proposalId: params.proposalId,
       status: params.status,
       reviewedBy: params.adminUid,
-      reviewNote: params.reviewNote,
+      reviewNote: params.reviewNote || '',
       timestamp: now,
     });
 
