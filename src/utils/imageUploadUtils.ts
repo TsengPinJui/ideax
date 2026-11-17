@@ -3,8 +3,8 @@
  * 確保單張圖片與整包提案資料不超出 Firestore (1MB) 與 localStorage (5MB) 配額
  */
 
-// 原始照片檔案上限（手機照片常見 3～15MB）；上傳前會自動壓縮成約 1280px，實際存檔仍很小
-export const MAX_IMAGE_FILE_SIZE_MB = 20;
+// 照片原始檔案上限 8MB（超過會提醒用戶）；上傳前會自動壓縮成約 1280px
+export const MAX_IMAGE_FILE_SIZE_MB = 8;
 export const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
 
 export interface UploadedImageResult {
@@ -89,7 +89,7 @@ export async function processUploadedImageFile(
   if (file.size > maxBytes) {
     return {
       ok: false,
-      error: `圖片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB），請選擇 ${maxSizeMB}MB 以內的圖片`,
+      error: `「${file.name}」檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB），照片上限為 ${maxSizeMB}MB，請換一張較小的圖片或先壓縮後再上傳`,
     };
   }
 

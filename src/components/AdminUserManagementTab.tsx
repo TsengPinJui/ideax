@@ -128,8 +128,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 20 * 1024 * 1024) {
-      setEditAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 20MB 內！`);
+    if (file.size > 8 * 1024 * 1024) {
+      setEditAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。照片上限為 8MB！`);
       e.target.value = '';
       return;
     }
