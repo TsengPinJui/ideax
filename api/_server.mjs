@@ -135768,10 +135768,12 @@ async function getPublicProposals(stage, track, options2) {
     }
   });
   list.sort((a, b) => (b.supportPoints || 0) - (a.supportPoints || 0));
-  return list.map((item, index) => ({
-    ...item,
-    rankQualifiedForFinal: index < 20
-  }));
+  let approvedIdx = 0;
+  return list.map((item) => {
+    const counted = item.status === "approved" || item.stage === "pain_point";
+    const idx = counted ? approvedIdx++ : Number.MAX_SAFE_INTEGER;
+    return { ...item, rankQualifiedForFinal: idx < 20 };
+  });
 }
 async function incrementProposalView(proposalId) {
   if (!proposalId) return { success: false, viewsCount: 0 };
@@ -170461,7 +170463,14 @@ router.get("/proposals", async (req, res) => {
   try {
     const stage = req.query.stage;
     const track = req.query.track;
-    const proposals = await getPublicProposals(stage, track);
+    let authUid;
+    try {
+      authUid = (await verifyAuthToken(req.headers.authorization))?.uid;
+    } catch {
+      authUid = void 0;
+    }
+    const proposals = await getPublicProposals(stage, track, authUid ? { authorId: authUid } : void 0);
+    if (authUid) res.set("Cache-Control", "private, no-store");
     res.json({ success: true, proposals });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -175555,7 +175564,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.13";
+var APP_VERSION = "4.9.14";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

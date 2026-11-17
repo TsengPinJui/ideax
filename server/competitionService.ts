@@ -1954,10 +1954,13 @@ export async function getPublicProposals(
   list.sort((a, b) => (b.supportPoints || 0) - (a.supportPoints || 0));
 
   // 募資前 20 名標記入圍複賽資格 (僅為入圍資格，非最終得獎)
-  return list.map((item, index) => ({
-    ...item,
-    rankQualifiedForFinal: index < 20,
-  }));
+  // 排名只計算審核通過的提案；作者自己看得到的待審提案不佔名次
+  let approvedIdx = 0;
+  return list.map((item) => {
+    const counted = item.status === 'approved' || item.stage === 'pain_point';
+    const idx = counted ? approvedIdx++ : Number.MAX_SAFE_INTEGER;
+    return { ...item, rankQualifiedForFinal: idx < 20 };
+  });
 }
 
 /**

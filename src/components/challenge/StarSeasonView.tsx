@@ -489,6 +489,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       commentsCount: p.commentsCount || 0,
       sourcePainPointTitle: p.sourcePainPointTitle,
       referencedPainPoint: p.referencedPainPoint,
+      status: p.status,
     }));
   }, [proposals, isSimulatedDataPurged, stageInfo.activeStage, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage, isRaceMode]);
 
@@ -1311,6 +1312,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const renderProposalCornerBadge = (proposal: any, idx: number) => {
     // 展示用提案（範例／仿真示範）不參與排名與決選
     if (isShowcaseProposal(proposal)) return null;
+    if ((proposal.stage !== 'pain_point' && proposal.status && proposal.status !== 'approved')) return null;
     const rank = proposal.finalRank;
     const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
 
@@ -1421,7 +1423,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 全站統計指標（參賽件數、全網虛擬支持金池、社群支持熱度人次）
   const competitionStats = useMemo(() => {
-    const realProposals = proposals.filter((p) => !isShowcaseProposal(p));
+    const realProposals = proposals.filter((p) => !isShowcaseProposal(p) && !(p.stage !== 'pain_point' && p.status && p.status !== 'approved'));
     const totalCount = realProposals.length;
     const totalPoints = realProposals.reduce((acc, p) => acc + (p.supportPoints || 0), 0);
     const totalSupporters = realProposals.reduce((acc, p) => acc + (p.supporterCount || 0), 0);
@@ -3742,7 +3744,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             <div className="p-3.5 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                               <div className="space-y-2">
                                 <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
-                                  {isShowcaseExample(p) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(p)}</span>)}
+                                  {(p.stage !== 'pain_point' && p.status && p.status !== 'approved') && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[11px] font-black">審核中</span>)}
+                        {isShowcaseExample(p) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(p)}</span>)}
                                   {p.title}
                                 </h3>
 
@@ -5195,7 +5198,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
                         return;
                       }
-                      if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(selectedProposalForDetail);
+                      if (isShowcaseProposal(selectedProposalForDetail)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } if ((selectedProposalForDetail.stage !== 'pain_point' && selectedProposalForDetail.status && selectedProposalForDetail.status !== 'approved')) { showToast('ℹ️ 此提案審核中，審核通過後才開放注資。'); return; } setSelectedProposalForSupport(selectedProposalForDetail);
                       setSelectedProposalForDetail(null);
                       setIsSupportModalOpen(true);
                     }}
@@ -6805,7 +6808,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               type="button"
                               onClick={() => {
                                 setIsFavoritesModalOpen(false);
-                                if (isShowcaseProposal(prop)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(prop);
+                                if (isShowcaseProposal(prop)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } if ((prop.stage !== 'pain_point' && prop.status && prop.status !== 'approved')) { showToast('ℹ️ 此提案審核中，審核通過後才開放注資。'); return; } setSelectedProposalForSupport(prop);
                                 setIsSupportModalOpen(true);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-amber-400 text-stone-950 font-black hover:bg-amber-300 cursor-pointer"

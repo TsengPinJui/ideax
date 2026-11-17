@@ -52,7 +52,12 @@ export async function fetchProposals(stage?: StarSeasonStage, track?: StarSeason
     if (stage) params.append('stage', stage);
     if (track) params.append('track', track);
 
-    const res = await fetch(`/api/competition/proposals?${params.toString()}`);
+    // 等登入狀態確定後帶上憑證，作者才看得到自己待審核的提案（最多等 3 秒）
+    try {
+      const ready = (auth as any).authStateReady?.();
+      if (ready) await Promise.race([ready, new Promise((r) => setTimeout(r, 3000))]);
+    } catch { /* ignore */ }
+    const res = await fetch(`/api/competition/proposals?${params.toString()}`, { headers: await getAuthHeader() });
     if (!res.ok) throw new Error('無法載入提案列表');
     const data = await res.json();
     return data.proposals || [];

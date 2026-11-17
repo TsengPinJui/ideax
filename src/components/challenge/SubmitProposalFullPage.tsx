@@ -785,7 +785,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         showToast(
           formStage === 'pain_point'
             ? '痛點發布成功！已成功上架至創星季痛點專區！'
-            : '提案發布成功！您的創新方案已成功送出！',
+            : '提案已成功送出！主辦單位審核通過後，就會公開顯示在提案區；審核期間只有你自己看得到（標示「審核中」）。',
           true
         );
 
