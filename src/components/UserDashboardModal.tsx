@@ -958,9 +958,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     e.target.value = '';
     if (!file) return;
 
-    // 檢查檔案大小：放寬至 6MB
-    if (file.size > 6 * 1024 * 1024) {
-      setAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 6MB 內，請選擇較小圖片或壓縮後再上傳！`);
+    // 檢查檔案大小：上限 20MB（裁切後會自動壓縮）
+    if (file.size > 20 * 1024 * 1024) {
+      setAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 20MB 內，請選擇較小的圖片！`);
       return;
     }
 

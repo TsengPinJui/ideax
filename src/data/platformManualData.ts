@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#309',
+    version: 'v4.9.23',
+    releaseDate: '2026.11.17',
+    releaseTime: '19:26',
+    author: 'IdeaX 核心工程團隊',
+    summary: '照片上傳上限提高到 20MB',
+    changes: [
+      '提案、作品、貼文照片與大頭貼的單張檔案上限提高到 20MB，手機原圖可直接上傳',
+      '照片上傳前仍會自動壓縮，不增加儲存空間與載入時間',
+      '畫面上標示的上限與實際上限統一',
+    ],
+  },
+  {
     seqNumber: '#308',
     version: 'v4.9.22',
     releaseDate: '2026.11.17',
@@ -3835,6 +3848,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#309** | **v4.9.23** | 2026.11.17 | 19:26 | IdeaX 創點子核心 | 照片上傳上限提高到 20MB |
 | **#308** | **v4.9.22** | 2026.11.17 | 19:20 | IdeaX 創點子核心 | 修正含圖片的創星季提案無法送出 |
 | **#307** | **v4.9.21** | 2026.11.17 | 17:31 | IdeaX 創點子核心 | 核准實名認證時不再自動填入預設資料 |
 | **#306** | **v4.9.20** | 2026.11.17 | 17:29 | IdeaX 創點子核心 | 後台認證審查不再以預設值填補未提供的資料 |

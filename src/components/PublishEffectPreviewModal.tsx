@@ -518,7 +518,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                             {effectiveAppName}
                           </div>
                           <div className="text-[11px] text-white/70 mt-0.5">
-                            可於表單上傳封面大圖（單張上限 2MB）自訂作品視覺圖
+                            可於表單上傳封面大圖（單張上限 20MB，會自動壓縮）自訂作品視覺圖
                           </div>
                         </div>
                       )}

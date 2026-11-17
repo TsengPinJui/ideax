@@ -97,7 +97,7 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
     );
   };
 
-  // 6. 本地上傳插入大圖 (投影片/海報/照片，單張上限 2MB)
+  // 6. 本地上傳插入大圖 (投影片/海報/照片，單張上限 20MB，自動壓縮)
   const handleFileUploadForSection = async (sectionId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
