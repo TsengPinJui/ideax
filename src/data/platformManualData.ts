@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#310',
+    version: 'v4.9.24',
+    releaseDate: '2026.11.17',
+    releaseTime: '20:51',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正含圖片的創星季提案送出時顯示沒有權限',
+    changes: [
+      '修正：送出含圖片的提案時出現「Firebase Storage: User does not have permission」而無法送出',
+      '提案圖片改由伺服器上傳到雲端儲存空間，用戶端不需要額外權限',
+    ],
+  },
+  {
     seqNumber: '#309',
     version: 'v4.9.23',
     releaseDate: '2026.11.17',
@@ -3848,6 +3860,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#310** | **v4.9.24** | 2026.11.17 | 20:51 | IdeaX 創點子核心 | 修正含圖片的創星季提案送出時顯示沒有權限 |
 | **#309** | **v4.9.23** | 2026.11.17 | 19:26 | IdeaX 創點子核心 | 照片上傳上限統一為 8MB，超過時提醒用戶 |
 | **#308** | **v4.9.22** | 2026.11.17 | 19:20 | IdeaX 創點子核心 | 修正含圖片的創星季提案無法送出 |
 | **#307** | **v4.9.21** | 2026.11.17 | 17:31 | IdeaX 創點子核心 | 核准實名認證時不再自動填入預設資料 |

@@ -20,8 +20,8 @@ var __require = /* @__PURE__ */ ((x2) => typeof require !== "undefined" ? requir
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
-var __commonJS = (cb, mod4) => function __require2() {
-  return mod4 || (0, cb[__getOwnPropNames(cb)[0]])((mod4 = { exports: {} }).exports, mod4), mod4.exports;
+var __commonJS = (cb, mod5) => function __require2() {
+  return mod5 || (0, cb[__getOwnPropNames(cb)[0]])((mod5 = { exports: {} }).exports, mod5), mod5.exports;
 };
 var __export = (target, all) => {
   for (var name4 in all)
@@ -35,15 +35,15 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod4, isNodeMode, target) => (target = mod4 != null ? __create(__getProtoOf(mod4)) : {}, __copyProps(
+var __toESM = (mod5, isNodeMode, target) => (target = mod5 != null ? __create(__getProtoOf(mod5)) : {}, __copyProps(
   // If the importer is in node compatibility mode or this is not an ESM
   // file that has been converted to a CommonJS file using a Babel-
   // compatible transform (i.e. "__esModule" has not been set), then set
   // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod4 || !mod4.__esModule ? __defProp(target, "default", { value: mod4, enumerable: true }) : target,
-  mod4
+  isNodeMode || !mod5 || !mod5.__esModule ? __defProp(target, "default", { value: mod5, enumerable: true }) : target,
+  mod5
 ));
-var __toCommonJS = (mod4) => __copyProps(__defProp({}, "__esModule", { value: true }), mod4);
+var __toCommonJS = (mod5) => __copyProps(__defProp({}, "__esModule", { value: true }), mod5);
 
 // node_modules/depd/index.js
 var require_depd = __commonJS({
@@ -17225,20 +17225,20 @@ var require_urlencoded = __commonJS({
       return count2;
     }
     function parser(name4) {
-      var mod4 = parsers[name4];
-      if (mod4 !== void 0) {
-        return mod4.parse;
+      var mod5 = parsers[name4];
+      if (mod5 !== void 0) {
+        return mod5.parse;
       }
       switch (name4) {
         case "qs":
-          mod4 = require_lib2();
+          mod5 = require_lib2();
           break;
         case "querystring":
-          mod4 = __require("querystring");
+          mod5 = __require("querystring");
           break;
       }
-      parsers[name4] = mod4;
-      return mod4.parse;
+      parsers[name4] = mod5;
+      return mod5.parse;
     }
     function simpleparser(options2) {
       var parameterLimit = options2.parameterLimit !== void 0 ? options2.parameterLimit : 1e3;
@@ -18538,11 +18538,11 @@ var require_view = __commonJS({
         fileName += this.ext;
       }
       if (!opts.engines[this.ext]) {
-        var mod4 = this.ext.slice(1);
-        debug('require "%s"', mod4);
-        var fn = __require(mod4).__express;
+        var mod5 = this.ext.slice(1);
+        debug('require "%s"', mod5);
+        var fn = __require(mod5).__express;
         if (typeof fn !== "function") {
-          throw new Error('Module "' + mod4 + '" does not provide a view engine.');
+          throw new Error('Module "' + mod5 + '" does not provide a view engine.');
         }
         opts.engines[this.ext] = fn;
       }
@@ -23554,8 +23554,8 @@ var require_util = __commonJS({
 var require_common = __commonJS({
   "node_modules/gaxios/build/cjs/src/common.js"(exports) {
     "use strict";
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.GaxiosError = exports.GAXIOS_ERROR_SYMBOL = void 0;
@@ -24579,13 +24579,13 @@ var require_helpers = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports && exports.__importStar || function(mod4) {
-      if (mod4 && mod4.__esModule) return mod4;
+    var __importStar = exports && exports.__importStar || function(mod5) {
+      if (mod5 && mod5.__esModule) return mod5;
       var result = {};
-      if (mod4 != null) {
-        for (var k in mod4) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod4, k)) __createBinding(result, mod4, k);
+      if (mod5 != null) {
+        for (var k in mod5) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod5, k)) __createBinding(result, mod5, k);
       }
-      __setModuleDefault(result, mod4);
+      __setModuleDefault(result, mod5);
       return result;
     };
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -24649,13 +24649,13 @@ var require_dist = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports && exports.__importStar || function(mod4) {
-      if (mod4 && mod4.__esModule) return mod4;
+    var __importStar = exports && exports.__importStar || function(mod5) {
+      if (mod5 && mod5.__esModule) return mod5;
       var result = {};
-      if (mod4 != null) {
-        for (var k in mod4) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod4, k)) __createBinding(result, mod4, k);
+      if (mod5 != null) {
+        for (var k in mod5) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod5, k)) __createBinding(result, mod5, k);
       }
-      __setModuleDefault(result, mod4);
+      __setModuleDefault(result, mod5);
       return result;
     };
     var __exportStar = exports && exports.__exportStar || function(m2, exports2) {
@@ -24787,8 +24787,8 @@ var require_dist = __commonJS({
 var require_parse_proxy_response = __commonJS({
   "node_modules/https-proxy-agent/dist/parse-proxy-response.js"(exports) {
     "use strict";
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.parseProxyResponse = void 0;
@@ -24901,17 +24901,17 @@ var require_dist2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports && exports.__importStar || function(mod4) {
-      if (mod4 && mod4.__esModule) return mod4;
+    var __importStar = exports && exports.__importStar || function(mod5) {
+      if (mod5 && mod5.__esModule) return mod5;
       var result = {};
-      if (mod4 != null) {
-        for (var k in mod4) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod4, k)) __createBinding(result, mod4, k);
+      if (mod5 != null) {
+        for (var k in mod5) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod5, k)) __createBinding(result, mod5, k);
       }
-      __setModuleDefault(result, mod4);
+      __setModuleDefault(result, mod5);
       return result;
     };
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.HttpsProxyAgent = void 0;
@@ -31520,8 +31520,8 @@ var init_src = __esm({
 var require_gaxios = __commonJS({
   "node_modules/gaxios/build/cjs/src/gaxios.js"(exports) {
     "use strict";
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     var _a2;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -31532,7 +31532,7 @@ var require_gaxios = __commonJS({
     var retry_js_1 = require_retry3();
     var stream_1 = __require("stream");
     var interceptor_js_1 = require_interceptor();
-    var randomUUID = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
+    var randomUUID2 = async () => globalThis.crypto?.randomUUID() || (await import("crypto")).randomUUID();
     var HTTP_STATUS_NO_CONTENT = 204;
     var Gaxios = class {
       agentCache = /* @__PURE__ */ new Map();
@@ -31805,7 +31805,7 @@ var require_gaxios = __commonJS({
          */
         ["Blob", "File", "FormData"].includes(opts.data?.constructor?.name || "");
         if (opts.multipart?.length) {
-          const boundary = await randomUUID();
+          const boundary = await randomUUID2();
           preparedHeaders.set("content-type", `multipart/related; boundary=${boundary}`);
           opts.body = stream_1.Readable.from(this.getMultipartRequest(opts.multipart, boundary));
         } else if (shouldDirectlyPassData) {
@@ -33936,13 +33936,13 @@ var require_logging_utils = __commonJS({
         };
         return ownKeys(o);
       };
-      return function(mod4) {
-        if (mod4 && mod4.__esModule) return mod4;
+      return function(mod5) {
+        if (mod5 && mod5.__esModule) return mod5;
         var result = {};
-        if (mod4 != null) {
-          for (var k = ownKeys(mod4), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod4, k[i2]);
+        if (mod5 != null) {
+          for (var k = ownKeys(mod5), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod5, k[i2]);
         }
-        __setModuleDefault(result, mod4);
+        __setModuleDefault(result, mod5);
         return result;
       };
     })();
@@ -34250,13 +34250,13 @@ var require_src5 = __commonJS({
         };
         return ownKeys(o);
       };
-      return function(mod4) {
-        if (mod4 && mod4.__esModule) return mod4;
+      return function(mod5) {
+        if (mod5 && mod5.__esModule) return mod5;
         var result = {};
-        if (mod4 != null) {
-          for (var k = ownKeys(mod4), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod4, k[i2]);
+        if (mod5 != null) {
+          for (var k = ownKeys(mod5), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod5, k[i2]);
         }
-        __setModuleDefault(result, mod4);
+        __setModuleDefault(result, mod5);
         return result;
       };
     })();
@@ -45490,13 +45490,13 @@ var require_logging_utils2 = __commonJS({
         };
         return ownKeys(o);
       };
-      return function(mod4) {
-        if (mod4 && mod4.__esModule) return mod4;
+      return function(mod5) {
+        if (mod5 && mod5.__esModule) return mod5;
         var result = {};
-        if (mod4 != null) {
-          for (var k = ownKeys(mod4), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod4, k[i2]);
+        if (mod5 != null) {
+          for (var k = ownKeys(mod5), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod5, k[i2]);
         }
-        __setModuleDefault(result, mod4);
+        __setModuleDefault(result, mod5);
         return result;
       };
     })();
@@ -45798,13 +45798,13 @@ var require_src8 = __commonJS({
         };
         return ownKeys(o);
       };
-      return function(mod4) {
-        if (mod4 && mod4.__esModule) return mod4;
+      return function(mod5) {
+        if (mod5 && mod5.__esModule) return mod5;
         var result = {};
-        if (mod4 != null) {
-          for (var k = ownKeys(mod4), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod4, k[i2]);
+        if (mod5 != null) {
+          for (var k = ownKeys(mod5), i2 = 0; i2 < k.length; i2++) if (k[i2] !== "default") __createBinding(result, mod5, k[i2]);
         }
-        __setModuleDefault(result, mod4);
+        __setModuleDefault(result, mod5);
         return result;
       };
     })();
@@ -69606,8 +69606,8 @@ var require_freeze = __commonJS({
 var require_sync = __commonJS({
   "node_modules/lru-memoizer/lib/sync.js"(exports) {
     "use strict";
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.syncMemoizer = void 0;
@@ -69692,8 +69692,8 @@ var require_sync = __commonJS({
 var require_async = __commonJS({
   "node_modules/lru-memoizer/lib/async.js"(exports) {
     "use strict";
-    var __importDefault = exports && exports.__importDefault || function(mod4) {
-      return mod4 && mod4.__esModule ? mod4 : { "default": mod4 };
+    var __importDefault = exports && exports.__importDefault || function(mod5) {
+      return mod5 && mod5.__esModule ? mod5 : { "default": mod5 };
     };
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.asyncMemoizer = void 0;
@@ -136708,6 +136708,223 @@ var init_competitionService = __esm({
   }
 });
 
+// node_modules/firebase-admin/lib/storage/error.js
+var require_error6 = __commonJS({
+  "node_modules/firebase-admin/lib/storage/error.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.FirebaseStorageError = exports.StorageErrorCode = void 0;
+    var error_1 = require_error();
+    exports.StorageErrorCode = {
+      INVALID_ARGUMENT: "invalid-argument",
+      INVALID_EMULATOR_HOST: "invalid-emulator-host",
+      MISSING_DEPENDENCIES: "missing-dependencies",
+      INVALID_CREDENTIAL: "invalid-credential",
+      NO_DOWNLOAD_TOKEN: "no-download-token"
+    };
+    var FirebaseStorageError2 = class extends error_1.FirebaseError {
+      /**
+       * @param info - The error code info.
+       * @param message - The error message. If provided, this will override the default message.
+       */
+      constructor(info, message2) {
+        super({
+          code: `storage/${info.code}`,
+          message: message2 || info.message,
+          httpResponse: info.httpResponse,
+          cause: info.cause
+        });
+        this.codePrefix = "storage";
+      }
+    };
+    exports.FirebaseStorageError = FirebaseStorageError2;
+  }
+});
+
+// node_modules/firebase-admin/lib/storage/storage.js
+var require_storage = __commonJS({
+  "node_modules/firebase-admin/lib/storage/storage.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Storage = void 0;
+    var error_1 = require_error6();
+    var credential_internal_1 = require_credential_internal();
+    var utils = require_utils3();
+    var validator = require_validator();
+    var Storage2 = class {
+      /**
+       * @param app - The app for this Storage service.
+       * @constructor
+       * @internal
+       */
+      constructor(app2) {
+        if (!validator.isNonNullObject(app2) || !("options" in app2)) {
+          throw new error_1.FirebaseStorageError({
+            code: "invalid-argument",
+            message: "First argument passed to admin.storage() must be a valid Firebase app instance."
+          });
+        }
+        if (!process.env.STORAGE_EMULATOR_HOST && process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
+          const firebaseStorageEmulatorHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+          if (firebaseStorageEmulatorHost.match(/https?:\/\//)) {
+            throw new error_1.FirebaseStorageError({
+              code: "invalid-emulator-host",
+              message: "FIREBASE_STORAGE_EMULATOR_HOST should not contain a protocol (http or https)."
+            });
+          }
+          process.env.STORAGE_EMULATOR_HOST = `http://${process.env.FIREBASE_STORAGE_EMULATOR_HOST}`;
+        }
+        let storage;
+        try {
+          storage = __require("@google-cloud/storage").Storage;
+        } catch (err) {
+          throw new error_1.FirebaseStorageError({
+            code: "missing-dependencies",
+            message: `Failed to import the Cloud Storage client library for Node.js. Make sure to install the "@google-cloud/storage" npm package. Original error: ${err}`
+          });
+        }
+        const projectId = utils.getExplicitProjectId(app2);
+        const credential = app2.options.credential;
+        if (credential instanceof credential_internal_1.ServiceAccountCredential) {
+          this.storageClient = new storage({
+            // When the SDK is initialized with ServiceAccountCredentials an explicit projectId is
+            // guaranteed to be available.
+            projectId,
+            credentials: {
+              private_key: credential.privateKey,
+              client_email: credential.clientEmail
+            }
+          });
+        } else if ((0, credential_internal_1.isApplicationDefault)(app2.options.credential)) {
+          this.storageClient = new storage();
+        } else {
+          throw new error_1.FirebaseStorageError({
+            code: "invalid-credential",
+            message: "Failed to initialize Google Cloud Storage client with the available credential. Must initialize the SDK with a certificate credential or application default credentials to use Cloud Storage API."
+          });
+        }
+        this.appInternal = app2;
+      }
+      /**
+       * Gets a reference to a Cloud Storage bucket.
+       *
+       * @param name - Optional name of the bucket to be retrieved. If name is not specified,
+       * retrieves a reference to the default bucket.
+       * @returns A {@link https://cloud.google.com/nodejs/docs/reference/storage/latest/Bucket | Bucket}
+       * instance as defined in the `@google-cloud/storage` package.
+       */
+      bucket(name4) {
+        const bucketName = typeof name4 !== "undefined" ? name4 : this.appInternal.options.storageBucket;
+        if (validator.isNonEmptyString(bucketName)) {
+          return this.storageClient.bucket(bucketName);
+        }
+        throw new error_1.FirebaseStorageError({
+          code: "invalid-argument",
+          message: "Bucket name not specified or invalid. Specify a valid bucket name via the storageBucket option when initializing the app, or specify the bucket name explicitly when calling the getBucket() method."
+        });
+      }
+      /**
+       * Optional app whose `Storage` service to
+       * return. If not provided, the default `Storage` service will be returned.
+       */
+      get app() {
+        return this.appInternal;
+      }
+    };
+    exports.Storage = Storage2;
+  }
+});
+
+// node_modules/firebase-admin/lib/storage/utils.js
+var require_utils5 = __commonJS({
+  "node_modules/firebase-admin/lib/storage/utils.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.getFirebaseMetadata = getFirebaseMetadata;
+    function getFirebaseMetadata(endpoint, file) {
+      const uri = `${endpoint}/b/${file.bucket.name}/o/${encodeURIComponent(file.name)}`;
+      return new Promise((resolve, reject) => {
+        file.storage.makeAuthenticatedRequest({
+          method: "GET",
+          uri
+        }, (err, body) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(body);
+          }
+        });
+      });
+    }
+  }
+});
+
+// node_modules/firebase-admin/lib/storage/index.js
+var require_storage2 = __commonJS({
+  "node_modules/firebase-admin/lib/storage/index.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.StorageErrorCode = exports.FirebaseStorageError = exports.Storage = void 0;
+    exports.getStorage = getStorage2;
+    exports.getDownloadURL = getDownloadURL2;
+    var app_1 = require_app();
+    var storage_1 = require_storage();
+    var error_1 = require_error6();
+    var utils_1 = require_utils5();
+    var storage_2 = require_storage();
+    Object.defineProperty(exports, "Storage", { enumerable: true, get: function() {
+      return storage_2.Storage;
+    } });
+    function getStorage2(app2) {
+      if (typeof app2 === "undefined") {
+        app2 = (0, app_1.getApp)();
+      }
+      const firebaseApp = app2;
+      return firebaseApp.getOrInitService("storage", (app3) => new storage_1.Storage(app3));
+    }
+    async function getDownloadURL2(file) {
+      const endpoint = (process.env.STORAGE_EMULATOR_HOST || "https://firebasestorage.googleapis.com") + "/v0";
+      const { downloadTokens } = await (0, utils_1.getFirebaseMetadata)(endpoint, file);
+      if (!downloadTokens) {
+        throw new error_1.FirebaseStorageError({
+          code: "no-download-token",
+          message: "No download token available. Please create one in the Firebase Console."
+        });
+      }
+      const [token] = downloadTokens.split(",");
+      return `${endpoint}/b/${file.bucket.name}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`;
+    }
+    var error_2 = require_error6();
+    Object.defineProperty(exports, "FirebaseStorageError", { enumerable: true, get: function() {
+      return error_2.FirebaseStorageError;
+    } });
+    Object.defineProperty(exports, "StorageErrorCode", { enumerable: true, get: function() {
+      return error_2.StorageErrorCode;
+    } });
+  }
+});
+
+// node_modules/firebase-admin/lib/esm/storage/index.js
+var storage_exports = {};
+__export(storage_exports, {
+  FirebaseStorageError: () => FirebaseStorageError,
+  Storage: () => Storage,
+  StorageErrorCode: () => StorageErrorCode,
+  getDownloadURL: () => getDownloadURL,
+  getStorage: () => getStorage
+});
+var import_storage, FirebaseStorageError, Storage, StorageErrorCode, getDownloadURL, getStorage;
+var init_storage = __esm({
+  "node_modules/firebase-admin/lib/esm/storage/index.js"() {
+    import_storage = __toESM(require_storage2(), 1);
+    FirebaseStorageError = import_storage.default.FirebaseStorageError;
+    Storage = import_storage.default.Storage;
+    StorageErrorCode = import_storage.default.StorageErrorCode;
+    getDownloadURL = import_storage.default.getDownloadURL;
+    getStorage = import_storage.default.getStorage;
+  }
+});
+
 // node_modules/process-nextick-args/index.js
 var require_process_nextick_args = __commonJS({
   "node_modules/process-nextick-args/index.js"(exports, module) {
@@ -138737,7 +138954,7 @@ var require_support = __commonJS({
 var require_base642 = __commonJS({
   "node_modules/jszip/lib/base64.js"(exports) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var support = require_support();
     var _keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     exports.encode = function(input) {
@@ -139375,7 +139592,7 @@ var require_setImmediate = __commonJS({
 });
 
 // node_modules/jszip/lib/utils.js
-var require_utils5 = __commonJS({
+var require_utils6 = __commonJS({
   "node_modules/jszip/lib/utils.js"(exports) {
     "use strict";
     var support = require_support();
@@ -139938,7 +140155,7 @@ var require_GenericWorker = __commonJS({
 var require_utf82 = __commonJS({
   "node_modules/jszip/lib/utf8.js"(exports) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var support = require_support();
     var nodejsUtils = require_nodejsUtils();
     var GenericWorker = require_GenericWorker();
@@ -140129,7 +140346,7 @@ var require_ConvertWorker = __commonJS({
   "node_modules/jszip/lib/stream/ConvertWorker.js"(exports, module) {
     "use strict";
     var GenericWorker = require_GenericWorker();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function ConvertWorker(destType) {
       GenericWorker.call(this, "ConvertWorker to " + destType);
       this.destType = destType;
@@ -140150,7 +140367,7 @@ var require_NodejsStreamOutputAdapter = __commonJS({
   "node_modules/jszip/lib/nodejs/NodejsStreamOutputAdapter.js"(exports, module) {
     "use strict";
     var Readable2 = require_readable().Readable;
-    var utils = require_utils5();
+    var utils = require_utils6();
     utils.inherits(NodejsStreamOutputAdapter, Readable2);
     function NodejsStreamOutputAdapter(helper, options2, updateCb) {
       Readable2.call(this, options2);
@@ -140180,7 +140397,7 @@ var require_NodejsStreamOutputAdapter = __commonJS({
 var require_StreamHelper = __commonJS({
   "node_modules/jszip/lib/stream/StreamHelper.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var ConvertWorker = require_ConvertWorker();
     var GenericWorker = require_GenericWorker();
     var base642 = require_base642();
@@ -140357,7 +140574,7 @@ var require_defaults = __commonJS({
 var require_DataWorker = __commonJS({
   "node_modules/jszip/lib/stream/DataWorker.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     var DEFAULT_BLOCK_SIZE = 16 * 1024;
     function DataWorker(dataP) {
@@ -140445,7 +140662,7 @@ var require_DataWorker = __commonJS({
 var require_crc32 = __commonJS({
   "node_modules/jszip/lib/crc32.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     function makeTable() {
       var c, table2 = [];
       for (var n = 0; n < 256; n++) {
@@ -140494,7 +140711,7 @@ var require_Crc32Probe = __commonJS({
     "use strict";
     var GenericWorker = require_GenericWorker();
     var crc32 = require_crc32();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function Crc32Probe() {
       GenericWorker.call(this, "Crc32Probe");
       this.withStreamInfo("crc32", 0);
@@ -140512,7 +140729,7 @@ var require_Crc32Probe = __commonJS({
 var require_DataLengthProbe = __commonJS({
   "node_modules/jszip/lib/stream/DataLengthProbe.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     function DataLengthProbe(propName) {
       GenericWorker.call(this, "DataLengthProbe for " + propName);
@@ -144922,7 +145139,7 @@ var require_flate = __commonJS({
     "use strict";
     var USE_TYPEDARRAY = typeof Uint8Array !== "undefined" && typeof Uint16Array !== "undefined" && typeof Uint32Array !== "undefined";
     var pako = require_pako();
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     var ARRAY_TYPE = USE_TYPEDARRAY ? "uint8array" : "array";
     exports.magic = "\b\0";
@@ -145010,7 +145227,7 @@ var require_signature = __commonJS({
 var require_ZipFileWorker = __commonJS({
   "node_modules/jszip/lib/generate/ZipFileWorker.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     var utf8 = require_utf82();
     var crc32 = require_crc32();
@@ -145335,7 +145552,7 @@ var require_generate = __commonJS({
 var require_NodejsStreamInputAdapter = __commonJS({
   "node_modules/jszip/lib/nodejs/NodejsStreamInputAdapter.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     function NodejsStreamInputAdapter(filename, stream) {
       GenericWorker.call(this, "Nodejs stream input adapter for " + filename);
@@ -145395,7 +145612,7 @@ var require_object2 = __commonJS({
   "node_modules/jszip/lib/object.js"(exports, module) {
     "use strict";
     var utf8 = require_utf82();
-    var utils = require_utils5();
+    var utils = require_utils6();
     var GenericWorker = require_GenericWorker();
     var StreamHelper = require_StreamHelper();
     var defaults = require_defaults();
@@ -145667,7 +145884,7 @@ var require_object2 = __commonJS({
 var require_DataReader = __commonJS({
   "node_modules/jszip/lib/reader/DataReader.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     function DataReader(data) {
       this.data = data;
       this.length = data.length;
@@ -145790,7 +146007,7 @@ var require_ArrayReader = __commonJS({
   "node_modules/jszip/lib/reader/ArrayReader.js"(exports, module) {
     "use strict";
     var DataReader = require_DataReader();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function ArrayReader(data) {
       DataReader.call(this, data);
       for (var i2 = 0; i2 < this.data.length; i2++) {
@@ -145832,7 +146049,7 @@ var require_StringReader = __commonJS({
   "node_modules/jszip/lib/reader/StringReader.js"(exports, module) {
     "use strict";
     var DataReader = require_DataReader();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function StringReader(data) {
       DataReader.call(this, data);
     }
@@ -145862,7 +146079,7 @@ var require_Uint8ArrayReader = __commonJS({
   "node_modules/jszip/lib/reader/Uint8ArrayReader.js"(exports, module) {
     "use strict";
     var ArrayReader = require_ArrayReader();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function Uint8ArrayReader(data) {
       ArrayReader.call(this, data);
     }
@@ -145885,7 +146102,7 @@ var require_NodeBufferReader = __commonJS({
   "node_modules/jszip/lib/reader/NodeBufferReader.js"(exports, module) {
     "use strict";
     var Uint8ArrayReader = require_Uint8ArrayReader();
-    var utils = require_utils5();
+    var utils = require_utils6();
     function NodeBufferReader(data) {
       Uint8ArrayReader.call(this, data);
     }
@@ -145904,7 +146121,7 @@ var require_NodeBufferReader = __commonJS({
 var require_readerFor = __commonJS({
   "node_modules/jszip/lib/reader/readerFor.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var support = require_support();
     var ArrayReader = require_ArrayReader();
     var StringReader = require_StringReader();
@@ -145932,7 +146149,7 @@ var require_zipEntry = __commonJS({
   "node_modules/jszip/lib/zipEntry.js"(exports, module) {
     "use strict";
     var readerFor = require_readerFor();
-    var utils = require_utils5();
+    var utils = require_utils6();
     var CompressedObject = require_compressedObject();
     var crc32fn = require_crc32();
     var utf8 = require_utf82();
@@ -146150,7 +146367,7 @@ var require_zipEntries = __commonJS({
   "node_modules/jszip/lib/zipEntries.js"(exports, module) {
     "use strict";
     var readerFor = require_readerFor();
-    var utils = require_utils5();
+    var utils = require_utils6();
     var sig2 = require_signature();
     var ZipEntry = require_zipEntry();
     var support = require_support();
@@ -146347,7 +146564,7 @@ var require_zipEntries = __commonJS({
 var require_load = __commonJS({
   "node_modules/jszip/lib/load.js"(exports, module) {
     "use strict";
-    var utils = require_utils5();
+    var utils = require_utils6();
     var external = require_external();
     var utf8 = require_utf82();
     var ZipEntries = require_zipEntries();
@@ -167192,9 +167409,9 @@ var GeminiNextGenEnvironmentFiles = class {
       }
       if (!buffer && typeof globalThis.process !== "undefined") {
         try {
-          const mod4 = (_b = (_a2 = globalThis.process.mainModule) === null || _a2 === void 0 ? void 0 : _a2.require) !== null && _b !== void 0 ? _b : globalThis.require;
-          if (mod4) {
-            const fs5 = mod4("fs");
+          const mod5 = (_b = (_a2 = globalThis.process.mainModule) === null || _a2 === void 0 ? void 0 : _a2.require) !== null && _b !== void 0 ? _b : globalThis.require;
+          if (mod5) {
+            const fs5 = mod5("fs");
             buffer = fs5.readFileSync(params.file);
           }
         } catch (_k) {
@@ -170328,6 +170545,44 @@ async function safeFetch(raw, init = {}, maxRedirects = 5) {
   throw new Error("too-many-redirects");
 }
 
+// server/proposalImages.ts
+init_app();
+import { randomUUID } from "crypto";
+var BUCKET = "ideax-2af9c.firebasestorage.app";
+var INLINE_IMAGE_RE = /data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+/g;
+var MAX_IMAGES = 30;
+var MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+async function uploadInlineProposalImages(data, uid, enabled) {
+  if (!enabled || !getApps().length) return data;
+  const json2 = JSON.stringify(data);
+  const found = Array.from(new Set(json2.match(INLINE_IMAGE_RE) || []));
+  if (found.length === 0) return data;
+  if (found.length > MAX_IMAGES) throw new Error(`\u5716\u7247\u6578\u91CF\u904E\u591A\uFF08${found.length} \u5F35\uFF09\uFF0C\u8ACB\u6E1B\u5C11\u5F8C\u518D\u9001\u51FA`);
+  const { getStorage: getStorage2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+  const bucket = getStorage2(getApps()[0]).bucket(BUCKET);
+  const safeUid = String(uid).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 128);
+  const urlByData = /* @__PURE__ */ new Map();
+  let i2 = 0;
+  for (const dataUrl of found) {
+    const mime = dataUrl.slice(5, dataUrl.indexOf(";"));
+    const ext = mime === "image/jpeg" || mime === "image/jpg" ? "jpg" : mime.split("/")[1];
+    const buf = Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
+    if (buf.length > MAX_IMAGE_BYTES) throw new Error("\u55AE\u5F35\u5716\u7247\u8D85\u904E 8MB\uFF0C\u8ACB\u63DB\u4E00\u5F35\u8F03\u5C0F\u7684\u5716\u7247");
+    const path4 = `competition_proposal_images/${safeUid}/${Date.now()}_${i2++}.${ext}`;
+    const token = randomUUID();
+    await bucket.file(path4).save(buf, {
+      resumable: false,
+      contentType: mime,
+      metadata: { metadata: { firebaseStorageDownloadTokens: token, uploadedBy: safeUid } }
+    });
+    urlByData.set(
+      dataUrl,
+      `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path4)}?alt=media&token=${token}`
+    );
+  }
+  return JSON.parse(json2.replace(INLINE_IMAGE_RE, (m2) => urlByData.get(m2) || m2));
+}
+
 // server/competitionRoutes.ts
 var router = (0, import_express.Router)();
 async function requireAdmin(req, res) {
@@ -170568,10 +170823,16 @@ router.post("/support", async (req, res) => {
 router.post("/proposals", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    const bodyData = req.body || {};
+    let bodyData = req.body || {};
     const effectiveUid = authUser?.uid || (typeof bodyData.userId === "string" && bodyData.userId && bodyData.userId !== "user-guest" ? bodyData.userId.trim() : "");
     if (!effectiveUid) {
       return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u8ACB\u767B\u5165\u5F8C\u518D\u63D0\u4EA4\u7AF6\u8CFD\u63D0\u6848" });
+    }
+    try {
+      bodyData = await uploadInlineProposalImages(bodyData, effectiveUid, hasAdminCredentials);
+    } catch (imgErr) {
+      console.error("[Competition] \u63D0\u6848\u5716\u7247\u4E0A\u50B3\u5931\u6557:", imgErr?.message || imgErr);
+      return res.status(400).json({ success: false, error: imgErr?.message?.startsWith("\u5716\u7247") || imgErr?.message?.startsWith("\u55AE\u5F35") ? imgErr.message : "\u5716\u7247\u4E0A\u50B3\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u4E00\u6B21" });
     }
     const {
       title,
@@ -175579,7 +175840,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.23";
+var APP_VERSION = "4.9.24";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
@@ -181923,6 +182184,7 @@ firebase-admin/lib/auth/token-generator.js:
 firebase-admin/lib/auth/user-record.js:
 firebase-admin/lib/auth/auth.js:
 firebase-admin/lib/firestore/firestore-internal.js:
+firebase-admin/lib/storage/storage.js:
   (*! firebase-admin v14.5.0 *)
   (*!
    * @license
@@ -181944,6 +182206,7 @@ firebase-admin/lib/firestore/firestore-internal.js:
 firebase-admin/lib/app/error.js:
 firebase-admin/lib/auth/error.js:
 firebase-admin/lib/firestore/error.js:
+firebase-admin/lib/storage/error.js:
   (*! firebase-admin v14.5.0 *)
   (*!
    * Copyright 2026 Google LLC
@@ -182045,6 +182308,7 @@ firebase-admin/lib/auth/tenant-manager.js:
 firebase-admin/lib/auth/identifier.js:
 firebase-admin/lib/auth/index.js:
 firebase-admin/lib/firestore/index.js:
+firebase-admin/lib/storage/index.js:
   (*! firebase-admin v14.5.0 *)
   (*!
    * Copyright 2020 Google LLC
@@ -182100,6 +182364,7 @@ firebase-admin/lib/auth/base-auth.js:
    *)
 
 firebase-admin/lib/auth/project-config-manager.js:
+firebase-admin/lib/storage/utils.js:
   (*! firebase-admin v14.5.0 *)
 
 @firebase/util/dist/postinstall.mjs:
