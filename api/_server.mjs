@@ -170831,8 +170831,10 @@ router.post("/proposals", async (req, res) => {
     try {
       bodyData = await uploadInlineProposalImages(bodyData, effectiveUid, hasAdminCredentials);
     } catch (imgErr) {
-      console.error("[Competition] \u63D0\u6848\u5716\u7247\u4E0A\u50B3\u5931\u6557:", imgErr?.message || imgErr);
-      return res.status(400).json({ success: false, error: imgErr?.message?.startsWith("\u5716\u7247") || imgErr?.message?.startsWith("\u55AE\u5F35") ? imgErr.message : "\u5716\u7247\u4E0A\u50B3\u5931\u6557\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u4E00\u6B21" });
+      console.error("[Competition] \u63D0\u6848\u5716\u7247\u8F49\u5B58 Storage \u5931\u6557\uFF0C\u6539\u70BA\u96A8\u63D0\u6848\u4FDD\u5B58:", imgErr?.code || "", imgErr?.message || imgErr);
+    }
+    if (JSON.stringify(bodyData).length > 1e6) {
+      return res.status(400).json({ success: false, error: "\u63D0\u6848\u5167\u5BB9\uFF08\u542B\u5716\u7247\uFF09\u592A\u5927\uFF0C\u8ACB\u6E1B\u5C11\u6BB5\u843D\u4E2D\u7684\u5716\u7247\u6578\u91CF\u5F8C\u518D\u8A66\u4E00\u6B21" });
     }
     const {
       title,
@@ -175840,7 +175842,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.24";
+var APP_VERSION = "4.9.25";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
