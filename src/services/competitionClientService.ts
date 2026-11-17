@@ -203,21 +203,77 @@ export async function submitProposal(params: {
     return { success: false, message: '請先登入帳號再提交競賽提案' };
   }
 
-  const headers = await getAuthHeader();
-  const res = await fetch('/api/competition/proposals', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ ...params, userId: effectiveUserId }),
-  });
+  let body = JSON.stringify({ ...params, userId: effectiveUserId });
+  // 圖片（封面照片、企劃段落內的圖片）先上傳到雲端儲存空間，提案內只留連結，避免資料過大送不出去
+  try {
+    body = await replaceInlineImagesWithUploads(body);
+  } catch (err: any) {
+    return { success: false, message: err?.message || '圖片上傳失敗，請檢查網路後再試一次' };
+  }
+  if (body.length > MAX_PROPOSAL_PAYLOAD_CHARS) {
+    return { success: false, message: '提案內容太大，無法送出。請減少段落中的圖片數量或刪除部分圖片後再試一次。' };
+  }
 
-  const data = await res.json();
-  if (!res.ok || !data.success) {
+  const headers = await getAuthHeader();
+  let res: Response;
+  try {
+    res = await fetch('/api/competition/proposals', { method: 'POST', headers, body });
+  } catch {
+    return { success: false, message: '網路連線失敗，提案尚未送出，請確認網路後再試一次。' };
+  }
+  const data = await readJsonSafely(res);
+  if (!res.ok || !data?.success) {
     return {
       success: false,
-      message: data.message || data.error || '提交失敗，請檢查填寫資料',
+      message: data?.message || data?.error || describeHttpFailure(res.status),
     };
   }
   return data;
+}
+
+/** 提案資料上限（Firestore 單筆文件 1MB，留安全空間） */
+const MAX_PROPOSAL_PAYLOAD_CHARS = 900 * 1024;
+const INLINE_IMAGE_RE = /data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+/g;
+
+/** 把內嵌的 base64 圖片上傳到 Storage，並以下載連結取代（同一張圖只上傳一次） */
+async function replaceInlineImagesWithUploads(json: string): Promise<string> {
+  const found = Array.from(new Set(json.match(INLINE_IMAGE_RE) || []));
+  if (found.length === 0) return json;
+  if (!auth.currentUser) {
+    throw new Error('登入狀態已過期，請重新登入後再送出提案（圖片需要登入才能上傳）');
+  }
+  const uid = auth.currentUser.uid;
+  const urlByData = new Map<string, string>();
+  let i = 0;
+  for (const dataUrl of found) {
+    const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
+    const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
+    const blob = await (await fetch(dataUrl)).blob();
+    const path = `competition_attachments/${uid}/proposal_img_${Date.now()}_${i++}.${ext}`;
+    const snap = await uploadBytes(ref(storage, path), blob, {
+      contentType: mime,
+      customMetadata: { uploadedBy: uid, originalName: `proposal-image.${ext}` },
+    });
+    urlByData.set(dataUrl, await getDownloadURL(snap.ref));
+  }
+  return json.replace(INLINE_IMAGE_RE, (m) => urlByData.get(m) || m);
+}
+
+/** 伺服器若回傳非 JSON（例如錯誤頁），不要讓瀏覽器丟出看不懂的英文錯誤 */
+async function readJsonSafely(res: Response): Promise<any> {
+  const text = await res.text().catch(() => '');
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+function describeHttpFailure(status: number): string {
+  if (status === 413) return '提案內容太大，無法送出。請減少圖片數量後再試一次。';
+  if (status === 401 || status === 403) return '登入狀態已過期，請重新登入後再送出提案。';
+  if (status >= 500) return `伺服器暫時無法處理（錯誤碼 ${status}），提案尚未送出，請稍後再試。`;
+  return `提案送出失敗（錯誤碼 ${status}），請稍後再試。`;
 }
 
 /**

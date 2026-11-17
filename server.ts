@@ -48,7 +48,8 @@ const PORT = 3000;
 
 // 部署在 Cloud Run / Vercel 等代理之後，需信任代理標頭才能取得真實訪客 IP（流量限制用）
 app.set('trust proxy', true);
-app.use(express.json());
+// 預設 100KB 太小：含圖片的提案會被拒收（413）；Vercel 單次請求上限約 4.5MB
+app.use(express.json({ limit: '4mb' }));
 
 // 安全性：流量限制
 // - AI 端點：每個 IP 每 10 分鐘最多 40 次
