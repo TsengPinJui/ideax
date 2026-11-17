@@ -364,8 +364,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const renderCornerBadge = (proposal: StarSeasonProposal, _idx: number) => {
     // 展示用提案不參與排名與決選
     if (isShowcaseProposal(proposal)) return null;
+    if ((proposal.stage !== 'pain_point' && proposal.status && proposal.status !== 'approved')) return null;
     // 名次只計算真實提案（排除展示用提案），避免展示提案佔用前 20 名的位置
-    const realOrder = sortedProposals.filter((p) => !isShowcaseProposal(p));
+    const realOrder = sortedProposals.filter((p) => !isShowcaseProposal(p) && !(p.stage !== 'pain_point' && p.status && p.status !== 'approved'));
     const realIdx = realOrder.findIndex((p) => p.id === proposal.id);
     const idx = realIdx >= 0 ? realIdx : _idx;
     const rank = proposal.finalRank;
@@ -840,7 +841,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           }
         }}
         onSupport={(p) => {
-          if (isShowcaseProposal(p)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(p);
+          if (isShowcaseProposal(p)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } if ((p.stage !== 'pain_point' && p.status && p.status !== 'approved')) { showToast('ℹ️ 此提案審核中，審核通過後才開放注資。'); return; } setSelectedProposalForSupport(p);
           setIsSupportModalOpen(true);
         }}
         onEditProposal={(p) => {
@@ -1041,7 +1042,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">提案總數</div>
-                <div className="text-lg font-black font-mono text-stone-900">{filteredProposals.filter((p) => !isShowcaseProposal(p)).length} 件</div>
+                <div className="text-lg font-black font-mono text-stone-900">{filteredProposals.filter((p) => !isShowcaseProposal(p) && (p.stage === 'pain_point' || !p.status || p.status === 'approved')).length} 件</div>
               </div>
               <FileText className="w-4 h-4 text-amber-500" />
             </div>
@@ -1450,6 +1451,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         onClick={() => handleOpenProposalDetail(proposal)}
                         className="text-base font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 cursor-pointer"
                       >
+                        {(proposal.stage !== 'pain_point' && proposal.status && proposal.status !== 'approved') && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[11px] font-black">審核中</span>)}
                         {isShowcaseExample(proposal) && (<span className="inline-flex align-middle mr-1.5 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[11px] font-black">{showcaseLabel(proposal)}</span>)}
                         {proposal.title}
                       </h3>
@@ -1646,7 +1648,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                                 showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
                                 return;
                               }
-                              if (isShowcaseProposal(proposal)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } setSelectedProposalForSupport(proposal);
+                              if (isShowcaseProposal(proposal)) { showToast(SHOWCASE_BLOCK_MESSAGE); return; } if ((proposal.stage !== 'pain_point' && proposal.status && proposal.status !== 'approved')) { showToast('ℹ️ 此提案審核中，審核通過後才開放注資。'); return; } setSelectedProposalForSupport(proposal);
                               setIsSupportModalOpen(true);
                             }}
                             className={`py-1.5 px-3 rounded-xl text-xs transition-colors cursor-pointer shadow-2xs ${

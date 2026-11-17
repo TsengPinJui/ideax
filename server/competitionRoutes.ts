@@ -186,7 +186,11 @@ router.get('/proposals', async (req: Request, res: Response) => {
   try {
     const stage = req.query.stage as StarSeasonStage | undefined;
     const track = req.query.track as StarSeasonTrack | undefined;
-    const proposals = await getPublicProposals(stage, track);
+    // 登入者另外看得到自己待審核的提案（其他人仍只看得到審核通過的）
+    let authUid: string | undefined;
+    try { authUid = (await verifyAuthToken(req.headers.authorization))?.uid; } catch { authUid = undefined; }
+    const proposals = await getPublicProposals(stage, track, authUid ? { authorId: authUid } : undefined);
+    if (authUid) res.set('Cache-Control', 'private, no-store');
     res.json({ success: true, proposals });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
