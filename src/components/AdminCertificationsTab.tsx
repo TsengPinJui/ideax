@@ -948,7 +948,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                               {inspectUser.realNameAuthData.idCardFrontFile.name}
                             </span>
                             <span className="text-emerald-700 font-bold">
-                              {inspectUser.realNameAuthData.idCardFrontFile.size || '安全清晰壓縮'}
+                              {inspectUser.realNameAuthData.idCardFrontFile.size || '大小未記錄'}
                             </span>
                           </div>
                         </div>
@@ -1002,7 +1002,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                               {inspectUser.realNameAuthData.idCardBackFile.name}
                             </span>
                             <span className="text-emerald-700 font-bold">
-                              {inspectUser.realNameAuthData.idCardBackFile.size || '安全清晰壓縮'}
+                              {inspectUser.realNameAuthData.idCardBackFile.size || '大小未記錄'}
                             </span>
                           </div>
                         </div>
@@ -1016,27 +1016,45 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   </div>
                 </div>
 
-                {/* AI 智能審查 Copilot 診斷面板 */}
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5 text-indigo-950">
-                  <div className="flex items-center gap-1.5 font-semibold text-indigo-900">
-                    <Bot className="w-4 h-4 text-indigo-600" />
-                    <span>AI 實名認證預審助手 (Copilot 診斷建議)</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">清晰度與反光：</span>
-                      <span className="font-bold text-emerald-700">✓ 文字銳利、無強光遮蔽</span>
+                {/* 實名資料檢核：只依實際上傳與填寫的內容判斷，不做任何自動影像辨識 */}
+                {(() => {
+                  const rn = inspectUser.realNameAuthData;
+                  const hasFront = Boolean(rn?.idCardFrontFile?.url);
+                  const hasBack = Boolean(rn?.idCardBackFile?.url);
+                  const missingFields = [
+                    !rn?.legalName?.trim() && '真實姓名',
+                    !rn?.idNumber?.trim() && '身分證字號',
+                    !rn?.birthDate?.trim() && '出生日期',
+                  ].filter(Boolean) as string[];
+                  const ok = (t: string) => <span className="font-bold text-emerald-700">✓ {t}</span>;
+                  const bad = (t: string) => <span className="font-bold text-rose-700">✗ {t}</span>;
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5 text-stone-900">
+                      <div className="flex items-center gap-1.5 font-semibold text-stone-800">
+                        <ShieldCheck className="w-4 h-4 text-stone-600" />
+                        <span>實名資料檢核（依實際上傳內容）</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">身分證相片：</span>
+                          {hasFront && hasBack ? ok('正反面皆已上傳') : bad(`未上傳${!hasFront && !hasBack ? '正反面' : !hasFront ? '正面' : '反面'}`)}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">填寫資料：</span>
+                          {missingFields.length === 0 ? ok('姓名、身分證字號、生日已填寫') : bad(`缺少${missingFields.join('、')}`)}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">審核提醒：</span>
+                          {hasFront && hasBack && missingFields.length === 0 ? (
+                            <span className="font-bold text-stone-700">請放大相片，人工核對姓名與身分證字號是否與填寫資料一致</span>
+                          ) : (
+                            <span className="font-bold text-rose-700">資料不完整，無法核對身分，不建議核准</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">OCR 比對一致性：</span>
-                      <span className="font-bold text-emerald-700">✓ 姓名與身分證號 100% 吻合</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">系統建議：</span>
-                      <span className="font-bold text-indigo-700"> 格式正確，建議核准通過</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 實名快速操作工具列 */}
                 <div className="flex items-center justify-between pt-2 border-t border-stone-100">
@@ -1204,7 +1222,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                               {cred.name}
                             </span>
                             <span className="text-[11px] text-emerald-700 font-bold tabular-nums">
-                              {cred.size || '安全清晰壓縮'}
+                              {cred.size || '大小未記錄'}
                             </span>
                           </div>
 
@@ -1294,27 +1312,40 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                     </div>
                   )}
 
-                {/* AI 專家審查 Copilot 診斷面板 */}
-                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5 text-amber-950">
-                  <div className="flex items-center gap-1.5 font-semibold text-amber-900">
-                    <Bot className="w-4 h-4 text-amber-600" />
-                    <span>AI 專家資格預審助手 (Copilot 診斷建議)</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">專業證照相符度：</span>
-                      <span className="font-bold text-emerald-700">✓ 執照與申請領域高度吻合</span>
+                {/* 專家資料檢核：只依實際上傳與填寫的內容判斷，不做任何自動判讀 */}
+                {(() => {
+                  const ea: any = inspectUser.expertApplicationData;
+                  const fileCount = ea?.credentialsFiles?.length || 0;
+                  const hasLink = Boolean(String(ea?.portfolioLink || '').trim());
+                  const ok = (t: string) => <span className="font-bold text-emerald-700">✓ {t}</span>;
+                  const bad = (t: string) => <span className="font-bold text-rose-700">✗ {t}</span>;
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5 text-stone-900">
+                      <div className="flex items-center gap-1.5 font-semibold text-stone-800">
+                        <ShieldCheck className="w-4 h-4 text-stone-600" />
+                        <span>專家資料檢核（依實際上傳內容）</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">證照／證明影像：</span>
+                          {fileCount > 0 ? ok(`已上傳 ${fileCount} 份`) : bad('未上傳任何證明')}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">作品或經歷連結：</span>
+                          {hasLink ? ok('已提供') : <span className="font-bold text-stone-500">未提供</span>}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
+                          <span className="text-stone-500 block">審核提醒：</span>
+                          {fileCount > 0 ? (
+                            <span className="font-bold text-stone-700">請人工檢視證明內容是否與申請領域相符</span>
+                          ) : (
+                            <span className="font-bold text-rose-700">沒有證明文件，建議先請申請人補件</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">資歷與成果完整度：</span>
-                      <span className="font-bold text-emerald-700">✓ 年資佐證與案例齊全</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-stone-200">
-                      <span className="text-stone-500 block">審查裁決建議：</span>
-                      <span className="font-bold text-amber-800"> 具備深厚實戰力，建議通過</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 專家快速操作工具列 */}
                 <div className="flex items-center justify-between pt-2 border-t border-stone-100">
@@ -1412,7 +1443,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-400 tabular-nums truncate">
-                  體積：{lightboxPhoto.size || '安全清晰壓縮'} · 儲存路徑：{lightboxPhoto.storagePath || 'storage/'}
+                  體積：{lightboxPhoto.size || '大小未記錄'} · 儲存路徑：{lightboxPhoto.storagePath || 'storage/'}
                 </p>
               </div>
             </div>
