@@ -369,7 +369,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
         const blurredSolvers = isGuest && filtered.length > GUEST_VISIBLE_COUNT ? filtered.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
         // 空狀態：沒有任何專家時邀請成為第一批認證專家；有專家但搜尋/篩選無結果時提示調整條件
-        // 首批專家招募期間：專家智庫只顯示招募公告（12 月公布首批名單後再改回 false）
+        // 首批專家招募期間：專家智庫只顯示招募公告（公布首批名單後再改回 false）
         const SHOW_RECRUITING_NOTICE = true;
         if (SHOW_RECRUITING_NOTICE || filtered.length === 0) {
           const hasAnySolver = !SHOW_RECRUITING_NOTICE && solvers.length > 0;
@@ -407,7 +407,6 @@ export const SolversView: React.FC<SolversViewProps> = ({
               ) : (
                 <>
                   <h3 className="mt-4 text-xl sm:text-2xl font-black text-stone-900">正在召集第一批專家！</h3>
-                  <p className="mt-2 text-sm sm:text-base font-bold text-amber-700">12 月將公布首批智庫名單！</p>
                   <div className="mt-6 flex flex-wrap justify-center gap-2.5">
                     <button
                       type="button"
