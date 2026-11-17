@@ -143,6 +143,10 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       adminFetch('/api/competition/admin/all-proposals').catch(() => null),
       adminFetch('/api/competition/admin/all-experts').catch(() => null),
     ]).then(([regsRes, propsRes, expRes]) => {
+      const denied = [regsRes, propsRes, expRes].find((r) => r && r.success === false);
+      if (denied) {
+        triggerToast(`⚠️ 伺服器資料載入失敗：${denied.error || denied.message || '未授權'}（伺服器可能沒有認出你的管理員身分，審核將無法儲存）`);
+      }
       if (regsRes?.success && Array.isArray(regsRes.records)) {
         const localRegs = getCompetitionRegistrations();
         const mergedMap = new Map<string, CompetitionRegistrationRecord>();
@@ -243,13 +247,18 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   // 1. 審核報名
   const handleReviewReg = async (id: string, status: 'approved' | 'rejected', defaultNote?: string) => {
     try {
-      await adminReviewRegistration({
+      const apiRes: any = await adminReviewRegistration({
         registrationId: id,
         status,
         reviewNote: defaultNote,
       });
+      if (!apiRes?.success) {
+        triggerToast(`⚠️ 報名審核未儲存：${apiRes?.error || apiRes?.message || '伺服器回應失敗'}，請稍後再試。`);
+        return;
+      }
     } catch (err: any) {
-      console.warn('[CompetitionAdmin] API review registration warning:', err?.message);
+      triggerToast(`⚠️ 報名審核未儲存：${err?.message || '網路連線失敗'}，請稍後再試。`);
+      return;
     }
     const success = updateCompetitionRegistrationStatus(
       id,
@@ -271,14 +280,19 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     const targetExpert = experts.find((e) => e.id === id);
     const finalNote = defaultNote || (status === 'approved' ? '專家身分審核通過，已配發 3,000,000 創星幣！' : '專家證明資料未通過');
     try {
-      await adminReviewExpert({
+      const apiRes: any = await adminReviewExpert({
         expertId: id,
         status,
         isJudgeSelected,
         reviewNote: finalNote,
       });
+      if (!apiRes?.success) {
+        triggerToast(`⚠️ 專家審核未儲存：${apiRes?.error || apiRes?.message || '伺服器回應失敗'}，請稍後再試。`);
+        return;
+      }
     } catch (err: any) {
-      console.warn('[CompetitionAdmin] API review expert warning:', err?.message);
+      triggerToast(`⚠️ 專家審核未儲存：${err?.message || '網路連線失敗'}，請稍後再試。`);
+      return;
     }
     const success = updateCompetitionExpertStatus(
       id,

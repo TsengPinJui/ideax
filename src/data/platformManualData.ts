@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#304',
+    version: 'v4.9.18',
+    releaseDate: '2026.11.17',
+    releaseTime: '17:16',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季後台審核失敗時顯示原因',
+    changes: [
+      '報名、專家審核未成功儲存時，後台會顯示錯誤原因，不再只在畫面上看似已完成',
+      '後台無法從伺服器載入資料時，會提示可能未被認出管理員身分',
+    ],
+  },
+  {
     seqNumber: '#303',
     version: 'v4.9.17',
     releaseDate: '2026.11.17',
@@ -3773,6 +3785,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#304** | **v4.9.18** | 2026.11.17 | 17:16 | IdeaX 創點子核心 | 創星季後台審核失敗時顯示原因 |
 | **#303** | **v4.9.17** | 2026.11.17 | 17:14 | IdeaX 創點子核心 | 專家評審申請被退回者可以報名參賽 |
 | **#302** | **v4.9.16** | 2026.11.17 | 17:08 | IdeaX 創點子核心 | 創星季管理資料限管理員讀取 |
 | **#301** | **v4.9.15** | 2026.11.17 | 17:02 | IdeaX 創點子核心 | 修正創星季解方提案核准後又跳回待審核 |
