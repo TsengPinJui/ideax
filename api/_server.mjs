@@ -175579,7 +175579,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.21";
+var APP_VERSION = "4.9.22";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
@@ -175657,7 +175657,7 @@ process.on("uncaughtException", (err) => {
 var app = (0, import_express3.default)();
 var PORT = 3e3;
 app.set("trust proxy", true);
-app.use(import_express3.default.json());
+app.use(import_express3.default.json({ limit: "4mb" }));
 app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40, name: "ai" }));
 app.use(["/api/ai", "/api/agent"], requireSignedInForAi);
 app.use("/api/ai/customer-analytics", requireAdminMiddleware);

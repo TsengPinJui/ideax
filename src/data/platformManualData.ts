@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#308',
+    version: 'v4.9.22',
+    releaseDate: '2026.11.17',
+    releaseTime: '19:20',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正含圖片的創星季提案無法送出',
+    changes: [
+      '修正：提案含自行上傳的圖片時，因資料過大被伺服器拒收，iPhone 上顯示英文錯誤「The string did not match the expected pattern」',
+      '送出時圖片會先上傳到雲端儲存空間，提案內只保留圖片連結',
+      '送出失敗時改為顯示中文原因（內容太大、登入過期、網路或伺服器問題）',
+    ],
+  },
+  {
     seqNumber: '#307',
     version: 'v4.9.21',
     releaseDate: '2026.11.17',
@@ -3822,6 +3835,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#308** | **v4.9.22** | 2026.11.17 | 19:20 | IdeaX 創點子核心 | 修正含圖片的創星季提案無法送出 |
 | **#307** | **v4.9.21** | 2026.11.17 | 17:31 | IdeaX 創點子核心 | 核准實名認證時不再自動填入預設資料 |
 | **#306** | **v4.9.20** | 2026.11.17 | 17:29 | IdeaX 創點子核心 | 後台認證審查不再以預設值填補未提供的資料 |
 | **#305** | **v4.9.19** | 2026.11.17 | 17:24 | IdeaX 創點子核心 | 後台認證審核改為依實際資料顯示檢核結果 |
