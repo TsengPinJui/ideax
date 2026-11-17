@@ -549,6 +549,10 @@ router.get('/admin/expert-marketing', async (req: Request, res: Response) => {
 // 管理員取得全站真實參賽團隊報名名單 (Firestore)
 router.get('/admin/registrations', async (req: Request, res: Response) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+    }
     const snap = await adminDb.collection('competition_participant_registrations').get();
     const records: any[] = [];
     const seenUids = new Set<string>();
@@ -604,6 +608,10 @@ router.get('/admin/registrations', async (req: Request, res: Response) => {
 // 管理員取得全站提案與痛點名單 (Firestore)
 router.get('/admin/all-proposals', async (req: Request, res: Response) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+    }
     const snap = await adminDb.collection('competition_proposals').get();
     const proposals: any[] = [];
     snap.forEach((doc) => {
@@ -673,6 +681,10 @@ router.get('/admin/all-proposals', async (req: Request, res: Response) => {
 // 管理員取得全站評審/專家申請名單 (Firestore)
 router.get('/admin/all-experts', async (req: Request, res: Response) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+    }
     const snap = await adminDb.collection('competition_judge_applications').get();
     const experts: any[] = [];
     snap.forEach((doc) => {

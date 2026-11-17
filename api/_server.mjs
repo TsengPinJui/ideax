@@ -170765,6 +170765,10 @@ router.get("/admin/expert-marketing", async (req, res) => {
 });
 router.get("/admin/registrations", async (req, res) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+    }
     const snap = await adminDb.collection("competition_participant_registrations").get();
     const records = [];
     const seenUids = /* @__PURE__ */ new Set();
@@ -170793,6 +170797,10 @@ router.get("/admin/registrations", async (req, res) => {
 });
 router.get("/admin/all-proposals", async (req, res) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+    }
     const snap = await adminDb.collection("competition_proposals").get();
     const proposals = [];
     snap.forEach((doc3) => {
@@ -170818,6 +170826,10 @@ router.get("/admin/all-proposals", async (req, res) => {
 });
 router.get("/admin/all-experts", async (req, res) => {
   try {
+    const adminUser = await verifyAuthToken(req.headers.authorization);
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+    }
     const snap = await adminDb.collection("competition_judge_applications").get();
     const experts = [];
     snap.forEach((doc3) => {
@@ -175565,7 +175577,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.15";
+var APP_VERSION = "4.9.16";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

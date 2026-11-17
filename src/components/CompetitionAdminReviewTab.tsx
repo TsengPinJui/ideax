@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { auth } from '../services/firebase';
 import {
   Award,
   CheckCircle2,
@@ -132,10 +133,15 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     setAutoRewardStatus(getAutomatedDistributionStatus());
 
     // 非同步從雲端 Firestore 取得跨裝置提交之最新真實團隊報名、提案與痛點
+    const adminFetch = async (url: string) => {
+      const token = await auth.currentUser?.getIdToken().catch(() => undefined);
+      const r = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      return r.json();
+    };
     Promise.all([
-      fetch('/api/competition/admin/registrations').then((r) => r.json()).catch(() => null),
-      fetch('/api/competition/admin/all-proposals').then((r) => r.json()).catch(() => null),
-      fetch('/api/competition/admin/all-experts').then((r) => r.json()).catch(() => null),
+      adminFetch('/api/competition/admin/registrations').catch(() => null),
+      adminFetch('/api/competition/admin/all-proposals').catch(() => null),
+      adminFetch('/api/competition/admin/all-experts').catch(() => null),
     ]).then(([regsRes, propsRes, expRes]) => {
       if (regsRes?.success && Array.isArray(regsRes.records)) {
         const localRegs = getCompetitionRegistrations();
