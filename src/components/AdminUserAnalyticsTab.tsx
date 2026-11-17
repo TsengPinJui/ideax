@@ -1350,7 +1350,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                     {/* 4. 職業 / 職稱 */}
                     <td className="p-3 text-stone-700">
                       <p className="font-medium text-stone-900 truncate max-w-[140px]">
-                        {u.jobTitle || u.title || '專業顧問'}
+                        {u.jobTitle || u.title || '未填寫'}
                       </p>
                       {u.industry && (
                         <p className="text-[11px] text-stone-400 truncate max-w-[140px]">{u.industry}</p>

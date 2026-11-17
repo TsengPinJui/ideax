@@ -4259,17 +4259,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatedUser = {
           ...updatedUser,
           realNameAuthStatus: 'verified',
+          // 只保留用戶實際填寫的實名資料，缺的欄位不自行補值
           realNameAuthData: {
-            legalName: targetUser.realNameAuthData?.legalName || targetUser.name,
-            idNumber: targetUser.realNameAuthData?.idNumber || 'A123456789',
-            nationality: targetUser.realNameAuthData?.nationality || '中華民國',
-            birthDate: targetUser.realNameAuthData?.birthDate || '1990-01-01',
-            phoneNumber: targetUser.realNameAuthData?.phoneNumber || '0912-345-678',
-            email: targetUser.realNameAuthData?.email || targetUser.email || 'user@ideax.io',
-            verifiedAt: nowIso,
-            agreedAmlPolicy: true,
             ...(targetUser.realNameAuthData || {}),
-          },
+            verifiedAt: nowIso,
+          } as NonNullable<User['realNameAuthData']>,
           bankAccount: targetUser.bankAccount
             ? { ...targetUser.bankAccount, isVerified: true }
             : undefined,

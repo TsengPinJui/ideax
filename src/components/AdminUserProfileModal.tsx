@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { realKycValue } from '../utils/kycPlaceholders';
 import { realSurvey } from '../utils/surveyData';
 import {
   X,
@@ -908,23 +909,23 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                   <div className="p-3 bg-white rounded-xl border border-stone-200">
                     <span className="text-stone-400 block text-[11px]">法定真實姓名</span>
                     <span className="font-bold text-stone-900 mt-1 block">
-                      {user.realNameAuthData?.legalName || user.name}
+                      {user.realNameAuthData?.legalName || '未填寫'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-stone-200">
                     <span className="text-stone-400 block text-[11px]">身分證字號 / 居留證號</span>
                     <span className="font-bold text-stone-900 font-mono mt-1 block">
-                      {user.realNameAuthData?.idNumber
-                        ? `${user.realNameAuthData.idNumber.slice(0, 3)}****${user.realNameAuthData.idNumber.slice(-3)}`
-                        : '未登記'}
+                      {realKycValue(user.realNameAuthData?.idNumber)
+                        ? `${realKycValue(user.realNameAuthData?.idNumber).slice(0, 3)}****${realKycValue(user.realNameAuthData?.idNumber).slice(-3)}`
+                        : '未填寫'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white rounded-xl border border-stone-200">
                     <span className="text-stone-400 block text-[11px]">國籍與出生年月日</span>
                     <span className="font-bold text-stone-900 mt-1 block">
-                      {user.realNameAuthData?.nationality || '中華民國'} · {user.realNameAuthData?.birthDate || '未登記'}
+                      {user.realNameAuthData?.nationality || '國籍未填寫'} · {user.realNameAuthData?.birthDate || '生日未填寫'}
                     </span>
                   </div>
 
@@ -942,11 +943,11 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-stone-200 text-xs">
                       <ImageIcon className="w-4 h-4 text-purple-600" />
-                      <span>正面檔案：{user.realNameAuthData?.idCardFrontFile?.name || '已封存身分證正面'}</span>
+                      <span>正面檔案：{user.realNameAuthData?.idCardFrontFile?.name || '未上傳'}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-stone-200 text-xs">
                       <ImageIcon className="w-4 h-4 text-purple-600" />
-                      <span>反面檔案：{user.realNameAuthData?.idCardBackFile?.name || '已封存身分證反面'}</span>
+                      <span>反面檔案：{user.realNameAuthData?.idCardBackFile?.name || '未上傳'}</span>
                     </div>
                   </div>
                 </div>
