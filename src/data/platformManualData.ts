@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#305',
+    version: 'v4.9.19',
+    releaseDate: '2026.11.17',
+    releaseTime: '17:24',
+    author: 'IdeaX 核心工程團隊',
+    summary: '後台實名與專家認證審核改為依實際資料顯示檢核結果',
+    changes: [
+      '移除固定顯示「合格、建議核准」的預審面板；改為依實際上傳的相片、證明與填寫資料列出檢核結果',
+      '缺少身分證相片或證明文件時，明確標示資料不完整、不建議核准',
+    ],
+  },
+  {
     seqNumber: '#304',
     version: 'v4.9.18',
     releaseDate: '2026.11.17',
@@ -3785,6 +3797,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#305** | **v4.9.19** | 2026.11.17 | 17:24 | IdeaX 創點子核心 | 後台認證審核改為依實際資料顯示檢核結果 |
 | **#304** | **v4.9.18** | 2026.11.17 | 17:16 | IdeaX 創點子核心 | 創星季後台審核失敗時顯示原因 |
 | **#303** | **v4.9.17** | 2026.11.17 | 17:14 | IdeaX 創點子核心 | 專家評審申請被退回者可以報名參賽 |
 | **#302** | **v4.9.16** | 2026.11.17 | 17:08 | IdeaX 創點子核心 | 創星季管理資料限管理員讀取 |

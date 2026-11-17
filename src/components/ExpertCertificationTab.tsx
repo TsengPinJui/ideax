@@ -656,7 +656,7 @@ export const ExpertCertificationTab: React.FC<ExpertCertificationTabProps> = ({
                           {file.name}
                         </span>
                         <div className="flex items-center gap-1.5 text-[11px] text-stone-500 tabular-nums mt-0.5">
-                          <span className="text-emerald-700 font-bold">{file.size || '安全清晰壓縮'}</span>
+                          <span className="text-emerald-700 font-bold">{file.size || ''}</span>
                           <span>•</span>
                           <span>{file.isStorage ? ' Storage' : '安全加密'}</span>
                         </div>
@@ -861,7 +861,7 @@ export const ExpertCertificationTab: React.FC<ExpertCertificationTabProps> = ({
                     {previewCredentialImg.title}
                   </h4>
                   <div className="flex items-center gap-2 text-[11px] text-stone-500 tabular-nums mt-0.5">
-                    <span className="text-emerald-700 font-bold">{previewCredentialImg.size || '安全清晰壓縮'}</span>
+                    <span className="text-emerald-700 font-bold">{previewCredentialImg.size || ''}</span>
                     <span>•</span>
                     <span>{previewCredentialImg.isStorage ? ' Firebase Storage' : '本地安全加密'}</span>
                   </div>
