@@ -2151,7 +2151,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 )}
               </div>
 
-            {/* 痛點 0~3 張圖片 / 提案 0~6 張截圖圖集 (檔案上傳，單張限 2MB) */}
+            {/* 痛點 0~3 張圖片 / 提案 0~6 張截圖圖集 (檔案上傳，單張限 8MB) */}
             <div>
               <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                 <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
