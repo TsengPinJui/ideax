@@ -11,6 +11,8 @@ interface SpecialZonesTopBarProps {
   showAllOption?: boolean;
   /** 點擊「創星季（限時競賽）」時前往競賽網站；未提供則不顯示此項 */
   onOpenStarSeason?: () => void;
+  /** 「全部」實際會顯示的貼文數（未提供時以 questions 總數計算） */
+  allCount?: number;
 }
 
 export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
@@ -19,6 +21,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
   questions: propQuestions,
   className = '',
   showAllOption = true,
+  allCount,
   onOpenStarSeason,
 }) => {
   const { questions: contextQuestions } = useApp();
@@ -90,7 +93,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
             shortLabel: '全部',
             subLabel: '綜合市場大廳',
             icon: '🌐',
-            count: zoneCounts.all,
+            count: typeof allCount === 'number' ? allCount : zoneCounts.all,
             activeClasses: 'bg-stone-200 text-stone-950 border-stone-300 ring-2 ring-stone-300/60 shadow-sm font-black',
             badgeActiveClasses: 'bg-white text-stone-900 font-bold shadow-2xs',
             idleClasses: 'bg-stone-100/70 hover:bg-stone-100 text-stone-700 border-stone-200/90 hover:border-stone-300 shadow-2xs',

@@ -40,12 +40,12 @@ export interface OnboardingStepConfig {
 const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     id: 1,
-    title: '1. 探索問題市場 - 選擇問題主題',
-    targetId: 'onboarding-step-1-categories',
+    title: '1. 探索問題市場 - 選擇專區',
+    targetId: 'special-zones-navigation-bar',
     icon: Layers,
     targetTab: 'explore',
     actionType: 'close_sidebar',
-    summary: '點選分類標籤（如創新創業、專業問題、日常疑難）快速篩選主題。',
+    summary: '點選上方專區（全部、軟體與遊戲、競賽、創點子、痛點等）快速切換想看的內容。',
   },
   {
     id: 2,

@@ -27,8 +27,11 @@ import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompas
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isSimulatedQuestion, isSimulatedUser } from './data/virtualProposalsSeed';
-import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion, matchesSubcategoryQuery } from './utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion, isInnovationProposalQuestion, matchesSubcategoryQuery } from './utils/questionUtils';
 import { isGameQuestion } from './utils/gameClassification';
+import { fetchProposals } from './services/competitionClientService';
+import { getCompetitionStageInfo } from './utils/competitionSchedule';
+import { STAR_SEASON_TRACKS } from './types/competition';
 import { isComingSoonWork } from './utils/experienceRating';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem, getQuestionShareUrl } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
@@ -1054,6 +1057,11 @@ function MainContent() {
 
   const handleSelectSpecialZone = (zone: SpecialZone) => {
     setSpecialZone(zone);
+    // 上排選「全部」時顯示所有貼文，不保留先前選的分類篩選
+    if (zone === 'all') {
+      setSelectedCategory('全部');
+      setSelectedSubcategory('全部');
+    }
     if (activeTab !== 'explore') {
       setActiveTab('explore');
     }
@@ -2031,11 +2039,53 @@ function MainContent() {
   // - 問題 (Categories, subcategories, tags, problem levels, postTypes: 痛點/討論/解答, status)
   // - 人物帳號 (Author name, author ID/account, author title, answer solver name, solver ID, solver title, solvers directory)
   // 基礎有效問題池：已排除管理員下架、已過期之案件；若非測試環境（正式營運模式）則排除模擬數據
+  // 創星季已核准的解方提案：存在 competition_proposals，不在 questions 內，首頁「全部」需另外併入
+  const [starSeasonFeedItems, setStarSeasonFeedItems] = useState<Question[]>([]);
+  useEffect(() => {
+    if (getCompetitionStageInfo().activeStage < 2) return;
+    let alive = true;
+    fetchProposals('solution')
+      .then((list) => {
+        if (!alive || !Array.isArray(list)) return;
+        setStarSeasonFeedItems(
+          list
+            .filter((p) => p && p.status === 'approved' && p.stage === 'solution' && !String(p.id).startsWith('showcase-'))
+            .map((p) => ({
+              id: p.id,
+              appName: p.appName,
+              title: p.title,
+              description: p.summary || '',
+              category: '創新創業',
+              subcategory: STAR_SEASON_TRACKS[p.track]?.name || '資通訊',
+              tags: Array.from(new Set(['創星季', ...((p.tags as string[]) || [])])),
+              level: 'L0',
+              bounty: 0,
+              status: 'open',
+              authorId: p.authorId,
+              authorName: p.authorName || p.teamName || '參賽團隊',
+              authorAvatar: p.authorAvatar || '',
+              createdAt: p.createdAt,
+              deadline: '永久',
+              views: p.viewsCount || 0,
+              likes: p.likeCount || 0,
+              answersCount: p.commentsCount || 0,
+              postType: 'innovation_proposal',
+              specialZone: 'create_ideas',
+              coverImage: p.cardDisplayImage || (p.images && p.images[0]) || undefined,
+              isStarSeasonProposal: true,
+            }) as unknown as Question)
+        );
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const baseQuestions = useMemo(() => {
     const seenIds = new Set<string>();
+    const merged = [...questions, ...starSeasonFeedItems];
     return (isDemoMode
-      ? questions
-      : questions.filter(
+      ? merged
+      : merged.filter(
           (q) =>
             Boolean(q && q.id) &&
             !isMockQuestionId(q.id, q.authorId)
@@ -2051,14 +2101,17 @@ function MainContent() {
       if (q.status === 'delisted') return false;
 
       // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示；若處於測試示範模式或為示範題目則常態保留以供搜尋與展示）
-      if (!isDemoMode && !isMockQuestionId(q.id, q.authorId) && isQuestionExpired(q.deadline)) {
+      //    截止日只對「求解答」的懸賞問題有意義；作品、提案、遊戲與痛點不會因截止日過了而從「全部」消失
+      const isLongLivedPost =
+        isInnovationProposalQuestion(q) || isVibeCodingAppQuestion(q) || isGameQuestion(q) || isPainPointQuestion(q);
+      if (!isDemoMode && !isLongLivedPost && !isMockQuestionId(q.id, q.authorId) && isQuestionExpired(q.deadline)) {
         return false;
       }
 
       // 3. 已有人提案或接案的問題，只要期限還沒過一樣顯示
       return true;
     });
-  }, [questions, isDemoMode, isRaceMode]);
+  }, [questions, starSeasonFeedItems, isDemoMode, isRaceMode]);
 
   // 各主分類看板之真實問題總數計算（解決非測試環境總題數是零但個別看板錯誤顯示數字之問題）
   const categoryCounts = useMemo(() => {
@@ -2867,6 +2920,7 @@ function MainContent() {
                   currentZone={specialZone}
                   onSelectZone={handleSelectSpecialZone}
                   questions={questions}
+                  allCount={baseQuestions.length}
                   showAllOption={true}
                   onOpenStarSeason={() => {
                     setSelectedQuestion(null);
@@ -3435,6 +3489,7 @@ function MainContent() {
                 {/* Unified Filter Controls */}
                 {!(specialZone !== 'all' || (selectedCategory !== '全部' && selectedSubcategory !== '全部')) && (
                   <CategoryFilter
+                    hideCategoryRow={specialZone === 'all'}
                     categories={CATEGORIES}
                     selectedCategory={selectedCategory}
                     setSelectedCategory={handleSelectCategory}
@@ -3681,7 +3736,9 @@ function MainContent() {
                                 }}
                                 onSearchTag={handleSearchTag}
                                 onClick={() => {
-                                  if (q.postType === 'vibecoding_app' || (q as any).isVibeCodingApp) {
+                                  if ((q as any).isStarSeasonProposal) {
+                                    openIdeaDetail(q.id);
+                                  } else if (q.postType === 'vibecoding_app' || (q as any).isVibeCodingApp) {
                                     handleOpenAppEmbed(q);
                                   } else {
                                     recordUserViewedQuestion(currentUser.id, q);

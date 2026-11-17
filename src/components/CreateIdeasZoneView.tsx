@@ -40,6 +40,7 @@ import { useApp } from '../context/AppContext';
 import { mapQuestionsToStarSeasonProposals, isCardViewsVisible } from '../utils/questionUtils';
 import {
   fetchProposals,
+  fetchSingleProposal,
   likeProposal,
   fetchUserLikedProposalIds,
   fetchProposalComments,
@@ -276,6 +277,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     }
   };
 
+  const [detailLookup, setDetailLookup] = useState<'idle' | 'loading' | 'missing'>('idle');
   // 獨立提案頁：網址上的提案 ID 改變時開啟對應提案（相關提案之間切換也會換網址）
   useEffect(() => {
     if (!detailProposalId) {
@@ -284,7 +286,26 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     }
     if (selectedProposalForDetail?.id === detailProposalId) return;
     const found = proposalsList.find((p) => p.id === detailProposalId);
-    if (found) handleOpenProposalInCreateIdeas(found);
+    if (found) {
+      setDetailLookup('idle');
+      handleOpenProposalInCreateIdeas(found);
+      return;
+    }
+    // 列表還沒載入到這筆時，直接向伺服器查詢這一筆，查到前一律顯示「載入中」
+    let cancelled = false;
+    setDetailLookup('loading');
+    fetchSingleProposal(detailProposalId)
+      .then((p) => {
+        if (cancelled) return;
+        if (p && p.stage !== 'pain_point') {
+          setDetailLookup('idle');
+          handleOpenProposalInCreateIdeas(p);
+        } else {
+          setDetailLookup('missing');
+        }
+      })
+      .catch(() => { if (!cancelled) setDetailLookup('missing'); });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailProposalId, proposalsList.length]);
 
@@ -648,7 +669,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   }
 
   if (detailProposalId) {
-    const stillLoading = (questions || []).length === 0 && dbCompetitionProposals.length === 0;
+    // 只有在伺服器查無此筆、且一般貼文也已載入完成時，才顯示找不到
+    const stillLoading = detailLookup !== 'missing' || (questions || []).length === 0;
     return (
       <div className="max-w-xl mx-auto my-16 p-6 rounded-2xl bg-white border border-stone-200 text-center space-y-3">
         <p className="text-sm font-bold text-stone-800">{stillLoading ? '提案載入中…' : '找不到這個提案，可能已下架或網址有誤。'}</p>
