@@ -17,6 +17,7 @@
 import { Router, Request, Response } from 'express';
 import { expertReviewEmail, sendMail } from './mailer';
 import {
+  hasAdminCredentials,
   verifyAuthToken,
   isVerifiedAdmin,
   getOrCreateCompetitionAccount,
@@ -48,6 +49,7 @@ import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_CO
 import { isKnownEmbeddableHost } from '../src/utils/embedPlatforms';
 import { isProtectedAnswer, splitAnswerForStorage } from '../src/utils/answerSecrets';
 import { safeFetch } from './safeFetch';
+import { uploadInlineProposalImages } from './proposalImages';
 
 const router = Router();
 
@@ -312,10 +314,18 @@ router.post('/support', async (req: Request, res: Response) => {
 router.post('/proposals', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    const bodyData = req.body || {};
+    let bodyData = req.body || {};
     const effectiveUid = authUser?.uid || (typeof bodyData.userId === 'string' && bodyData.userId && bodyData.userId !== 'user-guest' ? bodyData.userId.trim() : '');
     if (!effectiveUid) {
       return res.status(401).json({ success: false, error: '未授權：請登入後再提交競賽提案' });
+    }
+
+    // 提案內的圖片改由伺服器上傳到 Storage，提案只存連結（不受用戶端 Storage 規則影響）
+    try {
+      bodyData = await uploadInlineProposalImages(bodyData, effectiveUid, hasAdminCredentials);
+    } catch (imgErr: any) {
+      console.error('[Competition] 提案圖片上傳失敗:', imgErr?.message || imgErr);
+      return res.status(400).json({ success: false, error: imgErr?.message?.startsWith('圖片') || imgErr?.message?.startsWith('單張') ? imgErr.message : '圖片上傳失敗，請稍後再試一次' });
     }
 
     const {

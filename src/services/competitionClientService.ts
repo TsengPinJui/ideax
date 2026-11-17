@@ -203,15 +203,10 @@ export async function submitProposal(params: {
     return { success: false, message: '請先登入帳號再提交競賽提案' };
   }
 
-  let body = JSON.stringify({ ...params, userId: effectiveUserId });
-  // 圖片（封面照片、企劃段落內的圖片）先上傳到雲端儲存空間，提案內只留連結，避免資料過大送不出去
-  try {
-    body = await replaceInlineImagesWithUploads(body);
-  } catch (err: any) {
-    return { success: false, message: err?.message || '圖片上傳失敗，請檢查網路後再試一次' };
-  }
+  // 圖片由伺服器上傳到雲端儲存空間（不受用戶端儲存規則影響）；這裡只檢查整份資料不超過伺服器上限
+  const body = JSON.stringify({ ...params, userId: effectiveUserId });
   if (body.length > MAX_PROPOSAL_PAYLOAD_CHARS) {
-    return { success: false, message: '提案內容太大，無法送出。請減少段落中的圖片數量或刪除部分圖片後再試一次。' };
+    return { success: false, message: '提案內容（含圖片）太大，無法送出。請減少段落中的圖片數量後再試一次。' };
   }
 
   const headers = await getAuthHeader();
@@ -231,33 +226,8 @@ export async function submitProposal(params: {
   return data;
 }
 
-/** 提案資料上限（Firestore 單筆文件 1MB，留安全空間） */
-const MAX_PROPOSAL_PAYLOAD_CHARS = 900 * 1024;
-const INLINE_IMAGE_RE = /data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+/g;
-
-/** 把內嵌的 base64 圖片上傳到 Storage，並以下載連結取代（同一張圖只上傳一次） */
-async function replaceInlineImagesWithUploads(json: string): Promise<string> {
-  const found = Array.from(new Set(json.match(INLINE_IMAGE_RE) || []));
-  if (found.length === 0) return json;
-  if (!auth.currentUser) {
-    throw new Error('登入狀態已過期，請重新登入後再送出提案（圖片需要登入才能上傳）');
-  }
-  const uid = auth.currentUser.uid;
-  const urlByData = new Map<string, string>();
-  let i = 0;
-  for (const dataUrl of found) {
-    const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
-    const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
-    const blob = await (await fetch(dataUrl)).blob();
-    const path = `competition_attachments/${uid}/proposal_img_${Date.now()}_${i++}.${ext}`;
-    const snap = await uploadBytes(ref(storage, path), blob, {
-      contentType: mime,
-      customMetadata: { uploadedBy: uid, originalName: `proposal-image.${ext}` },
-    });
-    urlByData.set(dataUrl, await getDownloadURL(snap.ref));
-  }
-  return json.replace(INLINE_IMAGE_RE, (m) => urlByData.get(m) || m);
-}
+/** 送出資料上限（Vercel 單次請求約 4.5MB，伺服器接收上限 4MB） */
+const MAX_PROPOSAL_PAYLOAD_CHARS = 3.9 * 1024 * 1024;
 
 /** 伺服器若回傳非 JSON（例如錯誤頁），不要讓瀏覽器丟出看不懂的英文錯誤 */
 async function readJsonSafely(res: Response): Promise<any> {
