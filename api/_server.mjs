@@ -171133,8 +171133,10 @@ router.post("/register-participant", async (req, res) => {
     const userDoc = await adminDb.collection("users").doc(effectiveUid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     const judgeSnap = await adminDb.collection("competition_judge_applications").where("userId", "==", effectiveUid).limit(1).get();
-    if (!judgeSnap.empty || userData?.isStarSeasonJudge) {
-      const msg = "\u4F9D\u7AF6\u8CFD\u8FA6\u6CD5\u898F\u7BC4\uFF1A\u4E0D\u53EF\u517C\u4EFB\u53C3\u8CFD\u5718\u968A\u8207\u5275\u661F\u5B63\u5C08\u5BB6\u8A55\u5BE9\uFF01\u60A8\u5DF2\u7533\u8ACB\u6216\u5177\u5099\u5275\u661F\u5B63\u5C08\u5BB6\u8A55\u5BE9\u8EAB\u5206\uFF0C\u70BA\u7DAD\u6301\u8A55\u5BE9\u5BA2\u89C0\u8207\u5229\u76CA\u8FF4\u907F\u539F\u5247\uFF0C\u4E0D\u53EF\u517C\u4EFB\u53C3\u8CFD\u5718\u968A\u3002";
+    const judgeStatus = judgeSnap.empty ? null : String(judgeSnap.docs[0].data()?.status || "pending");
+    const hasActiveJudgeApplication = judgeStatus !== null && judgeStatus !== "rejected";
+    if (hasActiveJudgeApplication || userData?.isStarSeasonJudge) {
+      const msg = judgeStatus === "pending" && !userData?.isStarSeasonJudge ? "\u4F9D\u7AF6\u8CFD\u8FA6\u6CD5\u898F\u7BC4\uFF1A\u4E0D\u53EF\u517C\u4EFB\u53C3\u8CFD\u5718\u968A\u8207\u5275\u661F\u5B63\u5C08\u5BB6\u8A55\u5BE9\uFF01\u60A8\u76EE\u524D\u6709\u4E00\u7B46\u5BE9\u6838\u4E2D\u7684\u5C08\u5BB6\u8A55\u5BE9\u7533\u8ACB\uFF0C\u70BA\u7DAD\u6301\u8A55\u5BE9\u5BA2\u89C0\u8207\u5229\u76CA\u8FF4\u907F\u539F\u5247\uFF0C\u4E0D\u53EF\u540C\u6642\u5831\u540D\u53C3\u8CFD\u5718\u968A\u3002\u5982\u8981\u6539\u70BA\u53C3\u8CFD\uFF0C\u8ACB\u806F\u7D61\u4E3B\u8FA6\u55AE\u4F4D\u64A4\u56DE\u8A55\u5BE9\u7533\u8ACB\u3002" : "\u4F9D\u7AF6\u8CFD\u8FA6\u6CD5\u898F\u7BC4\uFF1A\u4E0D\u53EF\u517C\u4EFB\u53C3\u8CFD\u5718\u968A\u8207\u5275\u661F\u5B63\u5C08\u5BB6\u8A55\u5BE9\uFF01\u60A8\u5DF2\u7533\u8ACB\u6216\u5177\u5099\u5275\u661F\u5B63\u5C08\u5BB6\u8A55\u5BE9\u8EAB\u5206\uFF0C\u70BA\u7DAD\u6301\u8A55\u5BE9\u5BA2\u89C0\u8207\u5229\u76CA\u8FF4\u907F\u539F\u5247\uFF0C\u4E0D\u53EF\u517C\u4EFB\u53C3\u8CFD\u5718\u968A\u3002";
       return res.status(400).json({
         success: false,
         error: msg,
@@ -175577,7 +175579,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.16";
+var APP_VERSION = "4.9.17";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

@@ -1059,8 +1059,13 @@ router.post('/register-participant', async (req: Request, res: Response) => {
       .where('userId', '==', effectiveUid)
       .limit(1)
       .get();
-    if (!judgeSnap.empty || userData?.isStarSeasonJudge) {
-      const msg = '依競賽辦法規範：不可兼任參賽團隊與創星季專家評審！您已申請或具備創星季專家評審身分，為維持評審客觀與利益迴避原則，不可兼任參賽團隊。';
+    // 只有「審核中」或「已核准」的評審申請才算兼任；被退回的申請不影響報名參賽
+    const judgeStatus = judgeSnap.empty ? null : String(judgeSnap.docs[0].data()?.status || 'pending');
+    const hasActiveJudgeApplication = judgeStatus !== null && judgeStatus !== 'rejected';
+    if (hasActiveJudgeApplication || userData?.isStarSeasonJudge) {
+      const msg = judgeStatus === 'pending' && !userData?.isStarSeasonJudge
+        ? '依競賽辦法規範：不可兼任參賽團隊與創星季專家評審！您目前有一筆審核中的專家評審申請，為維持評審客觀與利益迴避原則，不可同時報名參賽團隊。如要改為參賽，請聯絡主辦單位撤回評審申請。'
+        : '依競賽辦法規範：不可兼任參賽團隊與創星季專家評審！您已申請或具備創星季專家評審身分，為維持評審客觀與利益迴避原則，不可兼任參賽團隊。';
       return res.status(400).json({
         success: false,
         error: msg,

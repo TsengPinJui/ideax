@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#303',
+    version: 'v4.9.17',
+    releaseDate: '2026.11.17',
+    releaseTime: '17:14',
+    author: 'IdeaX 核心工程團隊',
+    summary: '專家評審申請被退回者可以報名參賽',
+    changes: [
+      '修正：創星季專家評審申請被退回後，仍被擋下無法報名參賽',
+      '評審申請審核中時，報名提示會說明可聯絡主辦單位撤回申請',
+    ],
+  },
+  {
     seqNumber: '#302',
     version: 'v4.9.16',
     releaseDate: '2026.11.17',
@@ -3761,6 +3773,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#303** | **v4.9.17** | 2026.11.17 | 17:14 | IdeaX 創點子核心 | 專家評審申請被退回者可以報名參賽 |
 | **#302** | **v4.9.16** | 2026.11.17 | 17:08 | IdeaX 創點子核心 | 創星季管理資料限管理員讀取 |
 | **#301** | **v4.9.15** | 2026.11.17 | 17:02 | IdeaX 創點子核心 | 修正創星季解方提案核准後又跳回待審核 |
 | **#300** | **v4.9.14** | 2026.11.17 | 16:59 | IdeaX 創點子核心 | 提案人可看到自己審核中的創星季提案 |
