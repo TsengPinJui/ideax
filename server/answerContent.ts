@@ -24,7 +24,7 @@ export async function getEntitledAnswerContents(
   const { db } = await getDb();
   const ids = Array.from(new Set((answerIds || []).map((x) => String(x || '')).filter((x) => x && !x.includes('/')))).slice(0, 60);
   if (ids.length === 0) return {};
-  const isAdmin = await isVerifiedAdmin(auth.uid);
+  const isAdmin = await isVerifiedAdmin(auth.uid, auth.emailVerified ? auth.email : undefined);
   const userRef = await findUserDocByAuth(auth, { db });
   const myIds = memberIdsOf(userRef, auth);
   const out: Record<string, any> = {};

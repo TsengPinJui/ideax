@@ -58,7 +58,7 @@ const router = Router();
 // ==========================================
 async function requireAdmin(req: Request, res: Response): Promise<{ uid: string } | null> {
   const authUser = await verifyAuthToken(req.headers.authorization);
-  if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+  if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
     res.status(403).json({ success: false, error: '未授權：僅限認證管理員' });
     return null;
   }
@@ -412,7 +412,7 @@ router.post('/proposals', async (req: Request, res: Response) => {
     const tCrowdfundEnd = Date.UTC(currentYear, 11, 4, 8, 30, 0); // 12/04 16:30 UTC+8
 
     // 只有已驗證的管理員可以略過時程限制（測試用），一般使用者送這個標頭也無效
-    const isStageOverride = Boolean(req.headers['x-stage-override']) && Boolean(authUser?.uid) && (await isVerifiedAdmin(authUser!.uid));
+    const isStageOverride = Boolean(req.headers['x-stage-override']) && Boolean(authUser?.uid) && (await isVerifiedAdmin(authUser!.uid, authUser!.emailVerified ? authUser!.email : undefined));
     if (!isStageOverride) {
       if (stage === 'pain_point') {
         if (nowTime < tPainPointStart) {
@@ -527,7 +527,7 @@ router.post('/admin/confirm-award', async (req: Request, res: Response) => {
 router.get('/admin/ambassadors', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '未授權管理員' });
     }
 
@@ -545,7 +545,7 @@ router.get('/admin/ambassadors', async (req: Request, res: Response) => {
 router.get('/admin/expert-marketing', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '未授權管理員' });
     }
 
@@ -563,7 +563,7 @@ router.get('/admin/expert-marketing', async (req: Request, res: Response) => {
 router.get('/admin/registrations', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '僅限管理員存取' });
     }
     const snap = await adminDb.collection('competition_participant_registrations').get();
@@ -622,7 +622,7 @@ router.get('/admin/registrations', async (req: Request, res: Response) => {
 router.get('/admin/all-proposals', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '僅限管理員存取' });
     }
     const snap = await adminDb.collection('competition_proposals').get();
@@ -695,7 +695,7 @@ router.get('/admin/all-proposals', async (req: Request, res: Response) => {
 router.get('/admin/all-experts', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid))) {
+    if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '僅限管理員存取' });
     }
     const snap = await adminDb.collection('competition_judge_applications').get();
@@ -759,7 +759,7 @@ router.get('/admin/all-experts', async (req: Request, res: Response) => {
 router.post('/admin/review-registration', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
     }
 
@@ -803,7 +803,7 @@ router.post('/admin/review-registration', async (req: Request, res: Response) =>
 router.post('/admin/review-expert', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+    if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
     }
 
@@ -1356,11 +1356,11 @@ router.post('/db-mirror/:collection/:docId', async (req: Request, res: Response)
     if (!authUser) {
       return res.status(401).json({ success: false, error: '未授權：請先登入' });
     }
-    if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !(await isVerifiedAdmin(authUser.uid))) {
+    if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       return res.status(403).json({ success: false, error: '未授權：不可寫入此集合' });
     }
     // 非管理員：只能改自己發布的內容；別人的問題只能改互動欄位（與資料庫規則一致）
-    if (!(await isVerifiedAdmin(authUser.uid))) {
+    if (!(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
       const snap = await adminDb.collection(colName).doc(docId).get();
       const existingDoc: any = snap.exists ? snap.data() : null;
       // 官方身分、精選只有管理員能設定
@@ -1411,7 +1411,7 @@ router.delete('/db-mirror/:collection/:docId', async (req: Request, res: Respons
     if (!authUser) {
       return res.status(401).json({ success: false, error: '未授權：請先登入' });
     }
-    const isAdminUser = await isVerifiedAdmin(authUser.uid);
+    const isAdminUser = await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined);
     if (!isAdminUser) {
       if (!MIRROR_WRITABLE_COLLECTIONS.has(colName)) {
         return res.status(403).json({ success: false, error: '未授權：只能刪除自己發布的內容' });
