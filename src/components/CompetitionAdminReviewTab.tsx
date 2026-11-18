@@ -112,6 +112,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const [adminMetrics, setAdminMetrics] = useState<CompetitionAdminMetrics>(() => getCompetitionAggregatedMetrics());
   const [autoRewardStatus, setAutoRewardStatus] = useState<AutomatedDistributionStatus>(() => getAutomatedDistributionStatus());
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [reviewingPropId, setReviewingPropId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -220,7 +221,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), msg.startsWith('⚠️') ? 8000 : 3500);
   };
 
   const [currentStageOverride, setCurrentStageOverride] = useState<string>(() => {
@@ -344,6 +345,9 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
 
   // 3. 審核提案
   const handleReviewProp = async (proposalId: string, status: 'approved' | 'rejected', defaultNote?: string) => {
+    if (reviewingPropId) return;
+    setReviewingPropId(proposalId);
+    triggerToast('⏳ 審核送出中…');
     try {
       const apiRes = await adminReviewProposal({
         proposalId,
@@ -353,12 +357,18 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       if (!apiRes?.success) {
         // 伺服器沒有存成功：不要只改本機畫面，否則重新整理後會跳回待審核
         triggerToast(`⚠️ 審核未儲存：${(apiRes as any)?.error || apiRes?.message || '伺服器回應失敗'}，請稍後再試。`);
+        setReviewingPropId(null);
         return;
       }
     } catch (err: any) {
       triggerToast(`⚠️ 審核未儲存：${err?.message || '網路連線失敗'}，請稍後再試。`);
+      setReviewingPropId(null);
       return;
     }
+    setReviewingPropId(null);
+    // 伺服器已儲存：不論本機是否有這筆紀錄，都重新載入並提示
+    setProposals((prev) => prev.map((p) => (p.id === proposalId ? { ...p, status } : p)));
+    triggerToast(status === 'approved' ? '✅ 已核准該競賽提案，已公開於提案區！' : '已退回該提案。');
     const success = updateCompetitionProposalReviewStatus(
       proposalId,
       status,
@@ -389,8 +399,9 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       }
       loadAll();
       window.dispatchEvent(new CustomEvent('ideax_competition_proposals_updated'));
-      triggerToast(status === 'approved' ? '✅ 已核准該競賽提案！' : '❌ 已退回該提案。');
     }
+    loadAll();
+    window.dispatchEvent(new CustomEvent('ideax_competition_proposals_updated'));
   };
 
   // 4. 核定名次與痛點獎勵
@@ -541,7 +552,12 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
             <span>數據清零</span>
           </button>
           {toastMsg && (
-            <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold animate-in fade-in duration-200 shrink-0">
+            <span
+              role="status"
+              className={`fixed left-1/2 -translate-x-1/2 bottom-6 z-[400] max-w-[92vw] px-4 py-2.5 rounded-2xl text-white text-sm font-bold shadow-lg animate-in fade-in duration-200 ${
+                toastMsg.startsWith('⚠️') || toastMsg.startsWith('❌') ? 'bg-rose-600' : 'bg-emerald-600'
+              }`}
+            >
               {toastMsg}
             </span>
           )}
@@ -1670,9 +1686,10 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                       <button
                         type="button"
                         onClick={() => handleReviewProp(prop.id, 'approved')}
-                        className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-xs active:scale-95"
+                        disabled={reviewingPropId === prop.id}
+                        className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-xs active:scale-95 disabled:opacity-60 disabled:cursor-wait"
                       >
-                        核准通過
+                        {reviewingPropId === prop.id ? '處理中…' : '核准通過'}
                       </button>
                       <button
                         type="button"
