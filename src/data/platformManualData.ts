@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#317',
+    version: 'v4.9.31',
+    releaseDate: '2026.11.19',
+    releaseTime: '00:29',
+    author: 'IdeaX 核心工程團隊',
+    summary: '決選評分只列入已核准的解方提案',
+    changes: [
+      '修正：決選評分總控制台把第一階段痛點當成提案列入排名與獎金試算',
+      '決選評分、入選勾選與獎勵試算只計算已核准的「想解方」提案，不含痛點、展示用提案、待審核或已退回的提案',
+    ],
+  },
+  {
     seqNumber: '#316',
     version: 'v4.9.30',
     releaseDate: '2026.11.19',
@@ -3933,6 +3945,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#317** | **v4.9.31** | 2026.11.19 | 00:29 | IdeaX 創點子核心 | 決選評分只列入已核准的解方提案 |
 | **#316** | **v4.9.30** | 2026.11.19 | 00:25 | IdeaX 創點子核心 | 管理員身分驗證失敗時顯示排查資訊 |
 | **#315** | **v4.9.29** | 2026.11.19 | 00:19 | IdeaX 創點子核心 | 修正伺服器未認出管理員身分 |
 | **#314** | **v4.9.28** | 2026.11.19 | 00:12 | IdeaX 創點子核心 | 創星季後台核准提案時顯示處理狀態與結果 |
