@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#316',
+    version: 'v4.9.30',
+    releaseDate: '2026.11.19',
+    releaseTime: '00:25',
+    author: 'IdeaX 核心工程團隊',
+    summary: '管理員身分驗證失敗時顯示排查資訊',
+    changes: [
+      '後台操作被拒時，訊息會列出伺服器看到的登入帳號 ID、Email 與驗證狀態，方便確認管理員設定',
+    ],
+  },
+  {
     seqNumber: '#315',
     version: 'v4.9.29',
     releaseDate: '2026.11.19',
@@ -3922,6 +3933,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#316** | **v4.9.30** | 2026.11.19 | 00:25 | IdeaX 創點子核心 | 管理員身分驗證失敗時顯示排查資訊 |
 | **#315** | **v4.9.29** | 2026.11.19 | 00:19 | IdeaX 創點子核心 | 修正伺服器未認出管理員身分 |
 | **#314** | **v4.9.28** | 2026.11.19 | 00:12 | IdeaX 創點子核心 | 創星季後台核准提案時顯示處理狀態與結果 |
 | **#313** | **v4.9.27** | 2026.11.19 | 00:04 | IdeaX 創點子核心 | 修正創星季後台提案審核顯示舊的待審核紀錄 |
