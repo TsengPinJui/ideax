@@ -56,10 +56,16 @@ const router = Router();
 // ==========================================
 // 安全性：管理員驗證與敏感欄位過濾
 // ==========================================
+/** 管理員驗證失敗時附上伺服器看到的登入資訊，方便排查（只回給該登入者本人） */
+function adminDenyDetail(u: { uid: string; email?: string; emailVerified?: boolean } | null): string {
+  if (!u) return '（伺服器沒有收到有效的登入憑證，請登出後重新登入再試）';
+  return `（伺服器看到的帳號 ID：${u.uid}；Email：${u.email || '無'}${u.email ? (u.emailVerified ? '（已驗證）' : '（未驗證）') : ''}；伺服器管理權限：${hasAdminCredentials ? '有' : '無'}）`;
+}
+
 async function requireAdmin(req: Request, res: Response): Promise<{ uid: string } | null> {
   const authUser = await verifyAuthToken(req.headers.authorization);
   if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
-    res.status(403).json({ success: false, error: '未授權：僅限認證管理員' });
+    res.status(403).json({ success: false, error: '未授權：僅限認證管理員' + adminDenyDetail(authUser) });
     return null;
   }
   return authUser;
@@ -528,7 +534,7 @@ router.get('/admin/ambassadors', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
-      return res.status(403).json({ success: false, error: '未授權管理員' });
+      return res.status(403).json({ success: false, error: '未授權管理員' + adminDenyDetail(authUser) });
     }
 
     const snap = await adminDb.collection('competition_ambassador_stats').get();
@@ -546,7 +552,7 @@ router.get('/admin/expert-marketing', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
-      return res.status(403).json({ success: false, error: '未授權管理員' });
+      return res.status(403).json({ success: false, error: '未授權管理員' + adminDenyDetail(authUser) });
     }
 
     const snap = await adminDb.collection('competition_expert_marketing').get();
@@ -564,7 +570,7 @@ router.get('/admin/registrations', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
-      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+      return res.status(403).json({ success: false, error: '僅限管理員存取' + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection('competition_participant_registrations').get();
     const records: any[] = [];
@@ -623,7 +629,7 @@ router.get('/admin/all-proposals', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
-      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+      return res.status(403).json({ success: false, error: '僅限管理員存取' + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection('competition_proposals').get();
     const proposals: any[] = [];
@@ -696,7 +702,7 @@ router.get('/admin/all-experts', async (req: Request, res: Response) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !(await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : undefined))) {
-      return res.status(403).json({ success: false, error: '僅限管理員存取' });
+      return res.status(403).json({ success: false, error: '僅限管理員存取' + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection('competition_judge_applications').get();
     const experts: any[] = [];
@@ -760,7 +766,7 @@ router.post('/admin/review-registration', async (req: Request, res: Response) =>
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
-      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
+      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' + adminDenyDetail(authUser) });
     }
 
     const { registrationId, status, reviewNote } = req.body;
@@ -804,7 +810,7 @@ router.post('/admin/review-expert', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !(await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined))) {
-      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' });
+      return res.status(401).json({ success: false, error: '未授權：僅限管理員執行' + adminDenyDetail(authUser) });
     }
 
     const { expertId, status, isJudgeSelected, reviewNote } = req.body;

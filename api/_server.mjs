@@ -170604,10 +170604,14 @@ async function uploadInlineProposalImages(data, uid, enabled) {
 
 // server/competitionRoutes.ts
 var router = (0, import_express.Router)();
+function adminDenyDetail(u) {
+  if (!u) return "\uFF08\u4F3A\u670D\u5668\u6C92\u6709\u6536\u5230\u6709\u6548\u7684\u767B\u5165\u6191\u8B49\uFF0C\u8ACB\u767B\u51FA\u5F8C\u91CD\u65B0\u767B\u5165\u518D\u8A66\uFF09";
+  return `\uFF08\u4F3A\u670D\u5668\u770B\u5230\u7684\u5E33\u865F ID\uFF1A${u.uid}\uFF1BEmail\uFF1A${u.email || "\u7121"}${u.email ? u.emailVerified ? "\uFF08\u5DF2\u9A57\u8B49\uFF09" : "\uFF08\u672A\u9A57\u8B49\uFF09" : ""}\uFF1B\u4F3A\u670D\u5668\u7BA1\u7406\u6B0A\u9650\uFF1A${hasAdminCredentials ? "\u6709" : "\u7121"}\uFF09`;
+}
 async function requireAdmin(req, res) {
   const authUser = await verifyAuthToken(req.headers.authorization);
   if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
-    res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u8A8D\u8B49\u7BA1\u7406\u54E1" });
+    res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u8A8D\u8B49\u7BA1\u7406\u54E1" + adminDenyDetail(authUser) });
     return null;
   }
   return authUser;
@@ -171021,7 +171025,7 @@ router.get("/admin/ambassadors", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
-      return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" });
+      return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" + adminDenyDetail(authUser) });
     }
     const snap = await adminDb.collection("competition_ambassador_stats").get();
     const stats = [];
@@ -171035,7 +171039,7 @@ router.get("/admin/expert-marketing", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
-      return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" });
+      return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" + adminDenyDetail(authUser) });
     }
     const snap = await adminDb.collection("competition_expert_marketing").get();
     const records = [];
@@ -171049,7 +171053,7 @@ router.get("/admin/registrations", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
-      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection("competition_participant_registrations").get();
     const records = [];
@@ -171081,7 +171085,7 @@ router.get("/admin/all-proposals", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
-      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection("competition_proposals").get();
     const proposals = [];
@@ -171110,7 +171114,7 @@ router.get("/admin/all-experts", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
     if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
-      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
+      return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" + adminDenyDetail(adminUser) });
     }
     const snap = await adminDb.collection("competition_judge_applications").get();
     const experts = [];
@@ -171155,7 +171159,7 @@ router.post("/admin/review-registration", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
-      return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" });
+      return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" + adminDenyDetail(authUser) });
     }
     const { registrationId, status, reviewNote } = req.body;
     if (!registrationId || !status) {
@@ -171192,7 +171196,7 @@ router.post("/admin/review-expert", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
     if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
-      return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" });
+      return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" + adminDenyDetail(authUser) });
     }
     const { expertId, status, isJudgeSelected, reviewNote } = req.body;
     if (!expertId || !status) {
@@ -175861,7 +175865,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.29";
+var APP_VERSION = "4.9.30";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
