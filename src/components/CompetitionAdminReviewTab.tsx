@@ -134,6 +134,11 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
 
     // 非同步從雲端 Firestore 取得跨裝置提交之最新真實團隊報名、提案與痛點
     const adminFetch = async (url: string) => {
+      // 開啟後台時登入狀態可能尚未就緒：先等登入確認，否則請求不帶憑證會被伺服器拒絕，畫面只剩本機舊資料
+      try {
+        const ready = (auth as any).authStateReady?.();
+        if (ready) await Promise.race([ready, new Promise((r) => setTimeout(r, 5000))]);
+      } catch { /* ignore */ }
       const token = await auth.currentUser?.getIdToken().catch(() => undefined);
       const r = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       return r.json();
@@ -165,14 +170,14 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       }
 
       if (propsRes?.success && Array.isArray(propsRes.proposals)) {
-        const localProps = getCompetitionProposalsForAdmin();
+        // 伺服器資料為準：本機只用來補欄位，不保留伺服器已沒有的舊紀錄（避免舊的「待審核」狀態殘留）
+        const localById = new Map<string, StarSeasonProposal>(
+          getCompetitionProposalsForAdmin().map((p) => [p.id, p] as [string, StarSeasonProposal])
+        );
         const mergedPropsMap = new Map<string, StarSeasonProposal>();
-        localProps.forEach((p) => {
-          if (!isFakeOrVirtualProposal(p) && !isFakeProposal(p)) mergedPropsMap.set(p.id, p);
-        });
         propsRes.proposals.forEach((p: any) => {
           if (isFakeOrVirtualProposal(p) || isFakeProposal(p)) return;
-          const existing = mergedPropsMap.get(p.id);
+          const existing = localById.get(p.id);
           mergedPropsMap.set(p.id, { ...existing, ...p });
         });
         const mergedPropList = Array.from(mergedPropsMap.values()).filter(
@@ -204,6 +209,13 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
 
   useEffect(() => {
     loadAll();
+    // 登入狀態確認（或切換帳號）後重新向伺服器取得最新審核資料
+    let first = true;
+    const unsub = auth.onAuthStateChanged((u) => {
+      if (first) { first = false; return; }
+      if (u) loadAll();
+    });
+    return () => unsub();
   }, []);
 
   const triggerToast = (msg: string) => {
