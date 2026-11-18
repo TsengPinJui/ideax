@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { isShowcaseProposal } from '../../data/starSeasonShowcaseProposals';
 import { auth } from '../../services/firebase';
 import {
   X,
@@ -60,7 +61,7 @@ interface AdminFinalEvaluationManagementModalProps {
 export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationManagementModalProps> = ({
   isOpen,
   onClose,
-  proposals,
+  proposals: allProposals,
   onProposalsUpdated,
   onOpenJudgeEvaluationAsUser,
   mode = 'evaluation',
@@ -136,6 +137,19 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   };
 
   // 1. 計算當前入選提案的加權總分與排名
+  // 決選只評「想解方」階段且已核准的提案：痛點、展示用提案、待審核或已退回的提案都不列入
+  const proposals = useMemo(
+    () =>
+      (allProposals || []).filter(
+        (p) =>
+          p &&
+          p.stage !== 'pain_point' &&
+          !isShowcaseProposal(p) &&
+          (!p.status || p.status === 'approved')
+      ),
+    [allProposals]
+  );
+
   const finalRankings: FinalProposalAggregateScore[] = useMemo(() => {
     return calculateFinalProposalRankings(proposals);
   }, [proposals, nominatedIds, isOpen]);
