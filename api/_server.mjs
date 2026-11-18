@@ -134975,7 +134975,7 @@ async function isVerifiedAdmin(uid, tokenEmail) {
   const cached2 = adminCheckCache.get(uid);
   if (cached2 && Date.now() - cached2.at < ADMIN_CHECK_TTL_MS) return cached2.ok;
   const remember = (ok) => {
-    adminCheckCache.set(uid, { ok, at: Date.now() });
+    adminCheckCache.set(uid, { ok, at: ok ? Date.now() : Date.now() - ADMIN_CHECK_TTL_MS + 6e4 });
     return ok;
   };
   try {
@@ -134999,6 +134999,25 @@ async function isVerifiedAdmin(uid, tokenEmail) {
     const email = (userRecord.email || "").toLowerCase();
     if (email && getAdminEmailAllowlist().includes(email)) return remember(true);
   } catch {
+  }
+  const isAdminProfile = (uData) => {
+    const uEmail = String(uData?.email || "").toLowerCase();
+    if (uEmail && getAdminEmailAllowlist().includes(uEmail)) return true;
+    return uData?.role === "admin" || uData?.accountType === "admin" || uData?.isInitialAdmin === true;
+  };
+  if (hasAdminCredentials) {
+    try {
+      const { getFirestore: getFirestore3 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+      const dbId = firebase_applet_config_default.firestoreDatabaseId;
+      const app2 = getApps()[0];
+      const fsAdmin = dbId ? getFirestore3(app2, dbId) : getFirestore3(app2);
+      const direct = await fsAdmin.collection("users").doc(uid).get();
+      if (direct.exists && isAdminProfile(direct.data())) return remember(true);
+      const byAuth = await fsAdmin.collection("users").where("authUid", "==", uid).limit(1).get();
+      if (!byAuth.empty && isAdminProfile(byAuth.docs[0].data())) return remember(true);
+    } catch (err) {
+      console.warn("[Admin Check] users \u8B80\u53D6\u5931\u6557:", err?.code || err?.message);
+    }
   }
   try {
     const userDoc = await adminDb.collection("users").doc(uid).get();
@@ -170587,7 +170606,7 @@ async function uploadInlineProposalImages(data, uid, enabled) {
 var router = (0, import_express.Router)();
 async function requireAdmin(req, res) {
   const authUser = await verifyAuthToken(req.headers.authorization);
-  if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
+  if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
     res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u8A8D\u8B49\u7BA1\u7406\u54E1" });
     return null;
   }
@@ -170900,7 +170919,7 @@ router.post("/proposals", async (req, res) => {
     const tPainPointEnd = Date.UTC(currentYear, 10, 13, 8, 30, 0);
     const tPreProposalStart = Date.UTC(currentYear, 10, 14, 2, 0, 0);
     const tCrowdfundEnd = Date.UTC(currentYear, 11, 4, 8, 30, 0);
-    const isStageOverride = Boolean(req.headers["x-stage-override"]) && Boolean(authUser?.uid) && await isVerifiedAdmin(authUser.uid);
+    const isStageOverride = Boolean(req.headers["x-stage-override"]) && Boolean(authUser?.uid) && await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0);
     if (!isStageOverride) {
       if (stage === "pain_point") {
         if (nowTime < tPainPointStart) {
@@ -171001,7 +171020,7 @@ router.post("/admin/confirm-award", async (req, res) => {
 router.get("/admin/ambassadors", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
+    if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" });
     }
     const snap = await adminDb.collection("competition_ambassador_stats").get();
@@ -171015,7 +171034,7 @@ router.get("/admin/ambassadors", async (req, res) => {
 router.get("/admin/expert-marketing", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
+    if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\u7BA1\u7406\u54E1" });
     }
     const snap = await adminDb.collection("competition_expert_marketing").get();
@@ -171029,7 +171048,7 @@ router.get("/admin/expert-marketing", async (req, res) => {
 router.get("/admin/registrations", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
     }
     const snap = await adminDb.collection("competition_participant_registrations").get();
@@ -171061,7 +171080,7 @@ router.get("/admin/registrations", async (req, res) => {
 router.get("/admin/all-proposals", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
     }
     const snap = await adminDb.collection("competition_proposals").get();
@@ -171090,7 +171109,7 @@ router.get("/admin/all-proposals", async (req, res) => {
 router.get("/admin/all-experts", async (req, res) => {
   try {
     const adminUser = await verifyAuthToken(req.headers.authorization);
-    if (!adminUser || !await isVerifiedAdmin(adminUser.uid)) {
+    if (!adminUser || !await isVerifiedAdmin(adminUser.uid, adminUser.emailVerified ? adminUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u50C5\u9650\u7BA1\u7406\u54E1\u5B58\u53D6" });
     }
     const snap = await adminDb.collection("competition_judge_applications").get();
@@ -171135,7 +171154,7 @@ router.get("/admin/all-experts", async (req, res) => {
 router.post("/admin/review-registration", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
+    if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" });
     }
     const { registrationId, status, reviewNote } = req.body;
@@ -171172,7 +171191,7 @@ router.post("/admin/review-registration", async (req, res) => {
 router.post("/admin/review-expert", async (req, res) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
+    if (!authUser || !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u7BA1\u7406\u54E1\u57F7\u884C" });
     }
     const { expertId, status, isJudgeSelected, reviewNote } = req.body;
@@ -171619,10 +171638,10 @@ router.post("/db-mirror/:collection/:docId", async (req, res) => {
     if (!authUser) {
       return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u8ACB\u5148\u767B\u5165" });
     }
-    if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !await isVerifiedAdmin(authUser.uid)) {
+    if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u4E0D\u53EF\u5BEB\u5165\u6B64\u96C6\u5408" });
     }
-    if (!await isVerifiedAdmin(authUser.uid)) {
+    if (!await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0)) {
       const snap = await adminDb.collection(colName).doc(docId).get();
       const existingDoc = snap.exists ? snap.data() : null;
       const changedTo = (k) => data[k] !== void 0 && JSON.stringify(data[k]) !== JSON.stringify(existingDoc ? existingDoc[k] : void 0);
@@ -171666,7 +171685,7 @@ router.delete("/db-mirror/:collection/:docId", async (req, res) => {
     if (!authUser) {
       return res.status(401).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u8ACB\u5148\u767B\u5165" });
     }
-    const isAdminUser = await isVerifiedAdmin(authUser.uid);
+    const isAdminUser = await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0);
     if (!isAdminUser) {
       if (!MIRROR_WRITABLE_COLLECTIONS.has(colName)) {
         return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u80FD\u522A\u9664\u81EA\u5DF1\u767C\u5E03\u7684\u5167\u5BB9" });
@@ -173614,7 +173633,7 @@ async function getEntitledAnswerContents(auth, answerIds) {
   const { db } = await getDb();
   const ids = Array.from(new Set((answerIds || []).map((x2) => String(x2 || "")).filter((x2) => x2 && !x2.includes("/")))).slice(0, 60);
   if (ids.length === 0) return {};
-  const isAdmin = await isVerifiedAdmin(auth.uid);
+  const isAdmin = await isVerifiedAdmin(auth.uid, auth.emailVerified ? auth.email : void 0);
   const userRef = await findUserDocByAuth(auth, { db });
   const myIds = memberIdsOf(userRef, auth);
   const out = {};
@@ -175842,7 +175861,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.28";
+var APP_VERSION = "4.9.29";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([

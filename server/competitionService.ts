@@ -867,7 +867,8 @@ export async function isVerifiedAdmin(uid: string, tokenEmail?: string): Promise
   if (cached && Date.now() - cached.at < ADMIN_CHECK_TTL_MS) return cached.ok;
 
   const remember = (ok: boolean) => {
-    adminCheckCache.set(uid, { ok, at: Date.now() });
+    // 失敗結果只記 1 分鐘，避免剛設定好管理員權限後仍被拒絕很久
+    adminCheckCache.set(uid, { ok, at: ok ? Date.now() : Date.now() - ADMIN_CHECK_TTL_MS + 60_000 });
     return ok;
   };
 
@@ -896,7 +897,27 @@ export async function isVerifiedAdmin(uid: string, tokenEmail?: string): Promise
     if (email && getAdminEmailAllowlist().includes(email)) return remember(true);
   } catch {}
 
-  // 3. 檢查 users 與 user_private 集合：若明確具有 role: 'admin' / isInitialAdmin 或 Email 在白名單
+  // 3. 檢查 users 集合：若明確具有 role: 'admin' / isInitialAdmin 或 Email 在白名單
+  //    有服務帳戶時用管理端讀取（前端用的連線會被資料庫規則擋下，讀取失敗就會誤判為非管理員）
+  const isAdminProfile = (uData: any) => {
+    const uEmail = String(uData?.email || '').toLowerCase();
+    if (uEmail && getAdminEmailAllowlist().includes(uEmail)) return true;
+    return uData?.role === 'admin' || uData?.accountType === 'admin' || uData?.isInitialAdmin === true;
+  };
+  if (hasAdminCredentials) {
+    try {
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
+      const app = getAdminApps()[0];
+      const fsAdmin = dbId ? getFirestore(app, dbId) : getFirestore(app);
+      const direct = await fsAdmin.collection('users').doc(uid).get();
+      if (direct.exists && isAdminProfile(direct.data())) return remember(true);
+      const byAuth = await fsAdmin.collection('users').where('authUid', '==', uid).limit(1).get();
+      if (!byAuth.empty && isAdminProfile(byAuth.docs[0].data())) return remember(true);
+    } catch (err: any) {
+      console.warn('[Admin Check] users 讀取失敗:', err?.code || err?.message);
+    }
+  }
   try {
     const userDoc = await adminDb.collection('users').doc(uid).get();
     if (userDoc.exists) {
