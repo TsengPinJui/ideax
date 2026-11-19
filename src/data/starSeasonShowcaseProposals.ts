@@ -1,5 +1,5 @@
 /**
- * 創星季「想解方」提案區的展示用提案：1 則官方提案範例 + 2 則仿真帳號示範提案。
+ * 創星季「想解方」提案區的展示用提案：1 則官方提案範例（仿真帳號示範提案已移除）。
  *
  * - 只存在程式中，不寫入 competition_proposals，因此不會出現在審核後台、募資排名與決選名單。
  * - 「提案範例」在畫面上標示；仿真示範提案不另外標示。兩者都不能注資、按讚或留言，不影響真實參賽者。
@@ -46,80 +46,6 @@ export const STAR_SEASON_SHOWCASE_PROPOSALS: ShowcaseProposal[] = [
     authorName: 'IdeaX 創點子團隊',
     authorRole: 'enterprise',
     teamName: 'IdeaX 創點子團隊（提案範例）',
-    proposalProgressStage: '初步構想',
-    showCardImage: false,
-    status: 'approved',
-    supportPoints: 0,
-    supporterCount: 0,
-    likeCount: 0,
-    commentsCount: 0,
-    createdAt: CREATED_AT,
-    updatedAt: CREATED_AT,
-  },
-  {
-    id: 'showcase-sim-groupbuy-reconcile',
-    isShowcase: true,
-    showcaseKind: 'simulated',
-    appName: '團帳通',
-    title: '團帳通：社區 LINE 團購的自動喊單統計與轉帳對帳小幫手',
-    stage: 'solution',
-    track: 'ict',
-    summary:
-      '團媽在 LINE 記事本收「+1」、再一張張對網銀截圖末五碼，每週要花十幾個小時。「團帳通」把喊單改成 LINE 內的點選表單，自動彙整每戶品項與金額；鄰居轉帳後上傳截圖，系統辨識金額與末五碼並自動勾稽，改名也不會對錯人。團媽只需處理系統標出的少數異常，對帳時間目標縮短到原本的兩成以內。',
-    description:
-      '一、引用痛點\n「在社區 LINE 群開團購，每禮拜核對上百筆『+1』跟轉帳末五碼核到眼花」。真正的麻煩在於喊單、付款、領貨三份資料各自分散，只要有人改 LINE 名稱就對不起來。\n\n' +
-      '二、解方\n1. 喊單表單：團媽貼出商品連結，鄰居在 LINE 內點選品項與數量，系統以「戶號＋固定代號」記錄，不受改名影響。\n2. 截圖對帳：鄰居上傳轉帳截圖，系統辨識金額與帳號末五碼，自動配對到訂單；金額不符或重複上傳會標成異常。\n3. 領貨清單：到貨時自動產生每戶取貨清單，領完一鍵打勾，未領的自動提醒。\n\n' +
-      '三、使用情境\n團媽週一開團、週三截單，週四打開「異常清單」只處理三、五筆有問題的訂單，其餘全部自動對好。',
-    technicalFeasibility:
-      '以 No-Code 工具快速組合：LINE 官方帳號與 LIFF 表單收單、試算表當資料庫、OCR 服務辨識截圖金額與末五碼，再用自動化流程串起來。先找 3 個社區團購群試用 4 週，記錄辨識正確率與團媽實際節省的時間，再決定是否改寫成正式系統。',
-    marketAnalysis:
-      '目標是社區大樓團媽、小農直送與網購代購團主。現有團購工具多半偏向電商開店，功能多、上手門檻高；本方案只解決「收單＋對帳＋領貨」三件事，讓不熟電腦的團媽也能用。',
-    businessModelFinancials:
-      '免費版提供每月有限筆數訂單；團量大的團媽升級月費方案，解鎖不限筆數與截圖自動對帳。成本為 OCR 辨識費與推播費，依使用量計價，可隨訂閱收入同步成長。',
-    sourcePainPointProposalId: 'q-vp-pain-11',
-    sourcePainPointTitle: '在社區 LINE 群開團購，每禮拜核對上百筆「+1」跟轉帳末五碼核到眼花',
-    tags: ['社群團購', '自動對帳', 'LINE', 'No-Code'],
-    authorId: 'u-sim-autolab23',
-    authorName: 'AutoLab23',
-    authorRole: 'solver',
-    teamName: 'AutoLab23',
-    proposalProgressStage: '正在計畫',
-    showCardImage: false,
-    status: 'approved',
-    supportPoints: 0,
-    supporterCount: 0,
-    likeCount: 0,
-    commentsCount: 0,
-    createdAt: CREATED_AT,
-    updatedAt: CREATED_AT,
-  },
-  {
-    id: 'showcase-sim-shared-power-split',
-    isShowcase: true,
-    showcaseKind: 'simulated',
-    appName: '公電分得清',
-    title: '公電分得清：合租公寓免改配電的插座計量與自動分帳',
-    stage: 'solution',
-    track: 'mechanical_transport',
-    summary:
-      '合租公寓的客廳冷氣、烘衣機算公共電費，平均分攤總讓少用的人吃虧。「公電分得清」在公共大電器的插座加裝可計量的智慧插座，使用前室友用手機掃碼「認領」這次使用，系統依實際用電度數與時段分帳，月底自動產生每人帳單。不用敲牆、不用改配電箱，房東與房客都看得到透明紀錄。',
-    description:
-      '一、引用痛點\n「合租公寓夏天台電帳單一來室友就吵架，客廳冷氣跟烘衣機的公電怎麼分才公平？」房間有獨立電表，但公共電器沒有，只能平攤。\n\n' +
-      '二、解方\n1. 計量插座：在冷氣、烘衣機等公共大電器加裝可計量用電的智慧插座（大電流電器使用合規的專用計量開關）。\n2. 掃碼認領：使用前掃描電器上的 QR Code，選擇自己的房號，系統記錄這段時間的用電度數。\n3. 自動分帳：未認領的用電依室友約定的規則平攤，其餘依實際使用歸戶；月底把台電帳單金額依比例拆成每人帳單。\n4. 透明紀錄：每位房客都能查看自己的用電明細，房東後台可管理多間物件。\n\n' +
-      '三、預期成效\n把「公電怎麼分」從吵架變成有數據可看的帳單，降低房東處理租客糾紛的時間。',
-    technicalFeasibility:
-      '計量插座與計量開關已有成熟的商用產品，可透過 Wi-Fi 回傳用電資料；系統端只需開發掃碼認領、用電歸戶與帳單計算。大電流電器的安裝須由合格水電人員施作並符合用電安全規範。先在 2～3 間合租公寓試裝一個夏季，比對分帳結果與台電帳單的差距。',
-    marketAnalysis:
-      '目標客群是管理多間合租物件的二房東、共生公寓業者，以及學生合租族群。現有做法多是平攤或房東自訂固定公電費，缺少依實際使用分攤的工具；差異在於不必改配電，裝了就能用。',
-    businessModelFinancials:
-      '向房東收取硬體押金加每間物件月費；房客端免費使用。成本為計量硬體、雲端主機與安裝服務；硬體可由合作水電行安裝並分潤，降低前期投入。',
-    sourcePainPointProposalId: 'q-vp-pain-13',
-    sourcePainPointTitle: '合租公寓夏天台電帳單一來室友就吵架，客廳冷氣跟烘衣機的公電怎麼分才公平？',
-    tags: ['合租生活', '智慧電表', '公電分攤', '物聯網'],
-    authorId: 'u-sim-volt9kai',
-    authorName: 'Volt9Kai',
-    authorRole: 'solver',
-    teamName: 'Volt9Kai',
     proposalProgressStage: '初步構想',
     showCardImage: false,
     status: 'approved',
