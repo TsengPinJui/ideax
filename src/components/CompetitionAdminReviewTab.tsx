@@ -472,6 +472,53 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const pendingPropsCount = proposals.filter((p) => p.status === 'pending_review').length;
   const pendingExpertsCount = experts.filter((e) => e.status === 'pending_review').length;
 
+  // 一鍵核准：報名或提案分頁中所有「待審核」項目；需按兩次確認，逐筆送出並回報成功／失敗數
+  const [bulkConfirmKind, setBulkConfirmKind] = useState<'registrations' | 'proposals' | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const runBulkApprove = async (kind: 'registrations' | 'proposals') => {
+    if (bulkRunning) return;
+    if (bulkConfirmKind !== kind) {
+      setBulkConfirmKind(kind);
+      setTimeout(() => setBulkConfirmKind((k) => (k === kind ? null : k)), 5000);
+      return;
+    }
+    setBulkConfirmKind(null);
+    const ids =
+      kind === 'proposals'
+        ? proposals.filter((p) => p.status === 'pending_review').map((p) => p.id)
+        : registrations.filter((r) => r.status === 'pending_review').map((r) => r.id);
+    if (ids.length === 0) return;
+    setBulkRunning(true);
+    let ok = 0;
+    let fail = 0;
+    let lastErr = '';
+    for (let i = 0; i < ids.length; i++) {
+      triggerToast(`⏳ 一鍵核准中…（${i + 1}/${ids.length}）`);
+      try {
+        const res: any =
+          kind === 'proposals'
+            ? await adminReviewProposal({ proposalId: ids[i], status: 'approved' })
+            : await adminReviewRegistration({ registrationId: ids[i], status: 'approved', reviewNote: '審核通過，准予進入競賽專案庫' });
+        if (res?.success) ok++;
+        else {
+          fail++;
+          lastErr = res?.error || res?.message || '伺服器回應失敗';
+        }
+      } catch (err: any) {
+        fail++;
+        lastErr = err?.message || '網路連線失敗';
+      }
+    }
+    setBulkRunning(false);
+    triggerToast(
+      fail > 0
+        ? `⚠️ 一鍵核准完成：成功 ${ok} 件，失敗 ${fail} 件（${lastErr}）`
+        : `✅ 已一鍵核准 ${ok} 件${kind === 'proposals' ? '提案' : '參賽報名'}`
+    );
+    loadAll();
+    window.dispatchEvent(new CustomEvent(kind === 'proposals' ? 'ideax_competition_proposals_updated' : 'ideax_competition_registrations_updated'));
+  };
+
   const filteredRegistrations = registrations.filter((r) => {
     if (isFakeOrVirtualRegistration(r)) return false;
     if (statusFilter === 'pending' && (r.status as string) !== 'pending_review' && (r.status as string) !== 'pending') return false;
@@ -848,6 +895,26 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                 </button>
               ))}
             </div>
+            {(subTab === 'registrations' || subTab === 'proposals') &&
+              (subTab === 'proposals' ? pendingPropsCount : pendingRegsCount) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => runBulkApprove(subTab as 'registrations' | 'proposals')}
+                  disabled={bulkRunning}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-wait ${
+                    bulkConfirmKind === subTab
+                      ? 'bg-amber-500 hover:bg-amber-400 text-white ring-2 ring-amber-300'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  }`}
+                  title="核准此分頁所有待審核項目"
+                >
+                  {bulkRunning
+                    ? '一鍵核准中…'
+                    : bulkConfirmKind === subTab
+                      ? `確認核准 ${subTab === 'proposals' ? pendingPropsCount : pendingRegsCount} 件？再按一次`
+                      : `一鍵核准（${subTab === 'proposals' ? pendingPropsCount : pendingRegsCount}）`}
+                </button>
+              )}
           </div>
         )}
       </div>

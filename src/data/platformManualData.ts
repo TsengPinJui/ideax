@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#319',
+    version: 'v4.9.33',
+    releaseDate: '2026.11.20',
+    releaseTime: '04:43',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季後台新增一鍵核准',
+    changes: [
+      '參賽團隊報名審核與競賽提案審核新增「一鍵核准」，核准該分頁所有待審核項目',
+      '需按兩次確認，逐筆送出並顯示進度，完成後列出成功與失敗件數',
+    ],
+  },
+  {
     seqNumber: '#318',
     version: 'v4.9.32',
     releaseDate: '2026.11.20',
@@ -3956,6 +3968,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#319** | **v4.9.33** | 2026.11.20 | 04:43 | IdeaX 創點子核心 | 創星季後台新增一鍵核准 |
 | **#318** | **v4.9.32** | 2026.11.20 | 04:40 | IdeaX 創點子核心 | 創星季提案附件上傳失敗時顯示中文說明 |
 | **#317** | **v4.9.31** | 2026.11.19 | 00:29 | IdeaX 創點子核心 | 決選評分只列入已核准的解方提案 |
 | **#316** | **v4.9.30** | 2026.11.19 | 00:25 | IdeaX 創點子核心 | 管理員身分驗證失敗時顯示排查資訊 |
