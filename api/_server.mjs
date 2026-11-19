@@ -135141,6 +135141,15 @@ async function supportProposalWithPoints(params) {
   const accountRef = adminDb.collection("competition_accounts").doc(userId);
   const proposalRef = adminDb.collection("competition_proposals").doc(proposalId);
   const supportRecordsColl = adminDb.collection("competition_support_records");
+  let currentTotalForThisProposal = 0;
+  let isFirstTimeSupport = true;
+  {
+    const priorSnap = await supportRecordsColl.where("supporterId", "==", userId).where("proposalId", "==", proposalId).get();
+    priorSnap.forEach((doc3) => {
+      currentTotalForThisProposal += Number(doc3.data().points || 0);
+    });
+    isFirstTimeSupport = priorSnap.empty;
+  }
   return await adminDb.runTransaction(async (transaction) => {
     const [accountSnap, proposalSnap] = await Promise.all([
       transaction.get(accountRef),
@@ -135163,13 +135172,6 @@ async function supportProposalWithPoints(params) {
     if (account.availablePoints < points) {
       throw new Error(`\u53EF\u7528\u7AF6\u8CFD\u9EDE\u6578\u4E0D\u8DB3\uFF08\u76EE\u524D\u5269\u9918 ${account.availablePoints.toLocaleString()} \u9EDE\uFF09`);
     }
-    const priorSupportsSnap = await transaction.get(
-      supportRecordsColl.where("supporterId", "==", userId).where("proposalId", "==", proposalId)
-    );
-    let currentTotalForThisProposal = 0;
-    priorSupportsSnap.forEach((doc3) => {
-      currentTotalForThisProposal += Number(doc3.data().points || 0);
-    });
     if (currentTotalForThisProposal + points > maxLimit) {
       throw new Error(
         `\u8D85\u904E\u55AE\u6848\u652F\u6301\u4E0A\u9650\uFF01\u60A8\u7684\u8EAB\u5206\u55AE\u6848\u4E0A\u9650\u70BA ${maxLimit.toLocaleString()} \u9EDE\uFF08\u5DF2\u652F\u6301 ${currentTotalForThisProposal.toLocaleString()} \u9EDE\uFF09`
@@ -135183,7 +135185,6 @@ async function supportProposalWithPoints(params) {
       updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     const newPropPoints = (proposal.supportPoints || 0) + points;
-    const isFirstTimeSupport = priorSupportsSnap.empty;
     const newPropSupporters = (proposal.supporterCount || 0) + (isFirstTimeSupport ? 1 : 0);
     transaction.update(proposalRef, {
       supportPoints: newPropPoints,
@@ -175929,7 +175930,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.35";
+var APP_VERSION = "4.9.36";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
