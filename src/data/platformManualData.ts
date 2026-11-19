@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#324',
+    version: 'v4.9.38',
+    releaseDate: '2026.11.20',
+    releaseTime: '05:28',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季只顯示真實痛點',
+    changes: [
+      '官方提案範例不再引用仿真帳號的痛點，創星季中出現的痛點皆為真實用戶提出',
+    ],
+  },
+  {
     seqNumber: '#323',
     version: 'v4.9.37',
     releaseDate: '2026.11.20',
@@ -4016,6 +4027,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#324** | **v4.9.38** | 2026.11.20 | 05:28 | IdeaX 創點子核心 | 創星季只顯示真實痛點 |
 | **#323** | **v4.9.37** | 2026.11.20 | 05:22 | IdeaX 創點子核心 | 移除創星季的仿真示範提案 |
 | **#322** | **v4.9.36** | 2026.11.20 | 05:11 | IdeaX 創點子核心 | 修正創星幣注資全部失敗 |
 | **#321** | **v4.9.35** | 2026.11.20 | 05:08 | IdeaX 創點子核心 | 修正管理員注資創星幣失敗 |
