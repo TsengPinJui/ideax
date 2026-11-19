@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#322',
+    version: 'v4.9.36',
+    releaseDate: '2026.11.20',
+    releaseTime: '05:11',
+    author: 'IdeaX 核心工程團隊',
+    summary: '修正創星幣注資全部失敗',
+    changes: [
+      '修正：注資時在資料庫交易中執行查詢，伺服器以用戶端連線運作時不支援，導致所有人注資都失敗',
+    ],
+  },
+  {
     seqNumber: '#321',
     version: 'v4.9.35',
     releaseDate: '2026.11.20',
@@ -3994,6 +4005,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#322** | **v4.9.36** | 2026.11.20 | 05:11 | IdeaX 創點子核心 | 修正創星幣注資全部失敗 |
 | **#321** | **v4.9.35** | 2026.11.20 | 05:08 | IdeaX 創點子核心 | 修正管理員注資創星幣失敗 |
 | **#320** | **v4.9.34** | 2026.11.20 | 04:53 | IdeaX 創點子核心 | 創星季募資的支持人數僅管理員可見 |
 | **#319** | **v4.9.33** | 2026.11.20 | 04:43 | IdeaX 創點子核心 | 創星季後台新增一鍵核准 |

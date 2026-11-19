@@ -1094,6 +1094,17 @@ export async function supportProposalWithPoints(params: {
   const proposalRef = adminDb.collection('competition_proposals').doc(proposalId);
   const supportRecordsColl = adminDb.collection('competition_support_records');
 
+  // 先查此用戶對該提案已支持的總額：用戶端 SDK 的交易只能讀單筆文件、不能執行查詢，放在交易內會讓所有注資失敗
+  let currentTotalForThisProposal = 0;
+  let isFirstTimeSupport = true;
+  {
+    const priorSnap = await supportRecordsColl.where('supporterId', '==', userId).where('proposalId', '==', proposalId).get();
+    priorSnap.forEach((doc: any) => {
+      currentTotalForThisProposal += Number(doc.data().points || 0);
+    });
+    isFirstTimeSupport = priorSnap.empty;
+  }
+
   return await adminDb.runTransaction(async (transaction) => {
     const [accountSnap, proposalSnap] = await Promise.all([
       transaction.get(accountRef),
@@ -1128,14 +1139,6 @@ export async function supportProposalWithPoints(params: {
     }
 
     // 4. 單案累積支持上限檢核
-    // 查詢此用戶對該提案已支持的點數總和
-    const priorSupportsSnap = await transaction.get(
-      supportRecordsColl.where('supporterId', '==', userId).where('proposalId', '==', proposalId)
-    );
-    let currentTotalForThisProposal = 0;
-    priorSupportsSnap.forEach((doc: any) => {
-      currentTotalForThisProposal += Number(doc.data().points || 0);
-    });
 
     if (currentTotalForThisProposal + points > maxLimit) {
       throw new Error(
@@ -1154,7 +1157,6 @@ export async function supportProposalWithPoints(params: {
 
     // 增加提案支持額
     const newPropPoints = (proposal.supportPoints || 0) + points;
-    const isFirstTimeSupport = priorSupportsSnap.empty;
     const newPropSupporters = (proposal.supporterCount || 0) + (isFirstTimeSupport ? 1 : 0);
 
     transaction.update(proposalRef, {
