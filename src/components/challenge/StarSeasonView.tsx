@@ -3820,12 +3820,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                     </span>
                                     <span className="text-xs font-bold text-amber-800">創星幣</span>
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
-                                    <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                    <span className="font-mono font-bold text-stone-800">
-                                      {p.supporterCount} 人支持
-                                    </span>
-                                  </div>
+                                  {(currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin') && (
+                                    <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
+                                      <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                      <span className="font-mono font-bold text-stone-800">
+                                        {p.supporterCount || 0} 人支持
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -4917,11 +4919,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
 
                 <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs text-stone-700">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-amber-700" />
-                    <span>累積支持夥伴：</span>
-                    <span className="font-mono font-bold text-stone-900">{selectedProposalForDetail.supporterCount || 0} 人</span>
-                  </div>
+                  {(currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin') ? (
+                    <div className="flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-amber-700" />
+                      <span>累積支持夥伴：</span>
+                      <span className="font-mono font-bold text-stone-900">{selectedProposalForDetail.supporterCount || 0} 人</span>
+                    </div>
+                  ) : (
+                    <span />
+                  )}
                   <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
                     ⭐ 創星季實時榜單計分
                   </span>

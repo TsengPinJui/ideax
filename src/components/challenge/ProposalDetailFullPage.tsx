@@ -665,10 +665,15 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             </div>
 
             <div className="flex items-center justify-between gap-2 text-xs text-stone-600 bg-white/80 px-3 py-2 rounded-xl border border-amber-100 flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-stone-500" />
-                <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
-              </span>
+              {/* 創星季注資人次只有管理員看得到 */}
+              {(usePoints || (currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin')) ? (
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-stone-500" />
+                  <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
+                </span>
+              ) : (
+                <span />
+              )}
               <span className="text-xs text-amber-900 font-semibold flex items-center gap-1">
                 <span>刊登：</span>
                 <strong className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold">
@@ -722,7 +727,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                     {referencedPainPointProposal?.title || referencedPainPointQuestion?.title}
                   </h4>
                   <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-                    +{referencedPainPointProposal?.supporterCount || referencedPainPointQuestion?.secondedCount || 18} 附議
+                    +{referencedPainPointProposal?.supporterCount || referencedPainPointQuestion?.secondedCount || 0} 附議
                   </span>
                 </div>
                 <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
