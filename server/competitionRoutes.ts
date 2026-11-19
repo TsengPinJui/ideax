@@ -189,6 +189,36 @@ router.get('/config', (req: Request, res: Response) => {
   });
 });
 
+// 2-0. 已核准解方提案的純文字版（不含圖片與附件內容），供審閱與評分用
+router.get('/proposals-text', async (_req: Request, res: Response) => {
+  try {
+    const list = await getPublicProposals('solution' as StarSeasonStage, undefined);
+    const clean = (v: any): any => {
+      if (typeof v === 'string') {
+        if (v.startsWith('data:') || (v.length > 1000 && /^[A-Za-z0-9+/=\s]+$/.test(v.slice(0, 2000)))) return '[file]';
+        return v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '[file]');
+      }
+      if (Array.isArray(v)) return v.map(clean);
+      if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)]));
+      return v;
+    };
+    const items = (list || [])
+      .filter((p: any) => p && p.status === 'approved' && p.stage === 'solution')
+      .map((p: any) => clean({
+        id: p.id, title: p.title, track: p.track, authorName: p.authorName, teamName: p.teamName,
+        supportPoints: p.supportPoints || 0, sourcePainPointTitle: p.sourcePainPointTitle,
+        summary: p.summary, description: p.description,
+        technicalFeasibility: p.technicalFeasibility, marketAnalysis: p.marketAnalysis,
+        businessModelFinancials: p.businessModelFinancials, proposalProgressStage: p.proposalProgressStage,
+        externalLink: p.externalLink,
+      }));
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, count: items.length, proposals: items });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 2. 取得公開提案列表
 router.get('/proposals', async (req: Request, res: Response) => {
   try {
