@@ -170738,6 +170738,40 @@ router.get("/config", (req, res) => {
     pointsConfig: COMPETITION_POINTS_CONFIG
   });
 });
+router.get("/proposals-text", async (_req, res) => {
+  try {
+    const list = await getPublicProposals("solution", void 0);
+    const clean = (v) => {
+      if (typeof v === "string") {
+        if (v.startsWith("data:") || v.length > 1e3 && /^[A-Za-z0-9+/=\s]+$/.test(v.slice(0, 2e3))) return "[file]";
+        return v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "[file]");
+      }
+      if (Array.isArray(v)) return v.map(clean);
+      if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x2]) => [k, clean(x2)]));
+      return v;
+    };
+    const items = (list || []).filter((p) => p && p.status === "approved" && p.stage === "solution").map((p) => clean({
+      id: p.id,
+      title: p.title,
+      track: p.track,
+      authorName: p.authorName,
+      teamName: p.teamName,
+      supportPoints: p.supportPoints || 0,
+      sourcePainPointTitle: p.sourcePainPointTitle,
+      summary: p.summary,
+      description: p.description,
+      technicalFeasibility: p.technicalFeasibility,
+      marketAnalysis: p.marketAnalysis,
+      businessModelFinancials: p.businessModelFinancials,
+      proposalProgressStage: p.proposalProgressStage,
+      externalLink: p.externalLink
+    }));
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, count: items.length, proposals: items });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 router.get("/proposals", async (req, res) => {
   try {
     const stage = req.query.stage;
