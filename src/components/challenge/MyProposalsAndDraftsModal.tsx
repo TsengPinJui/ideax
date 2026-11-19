@@ -367,8 +367,12 @@ export const MyProposalsAndDraftsModal: React.FC<MyProposalsAndDraftsModalProps>
                             <Coins className="w-3.5 h-3.5 text-amber-500" />
                             {(p.supportPoints || 0).toLocaleString()} 創星幣
                           </span>
-                          <span>·</span>
-                          <span>獲支持 {p.supporterCount || 0} 次</span>
+                          {(currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin') && (
+                            <>
+                              <span>·</span>
+                              <span>獲支持 {p.supporterCount || 0} 次</span>
+                            </>
+                          )}
                           <span>·</span>
                           <span>按讚 {p.likeCount || 0}</span>
                         </div>

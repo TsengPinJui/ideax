@@ -1055,6 +1055,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               <Coins className="w-4 h-4 text-amber-500" />
             </div>
 
+            {(currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin') && (
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">支持總人次</div>
@@ -1062,6 +1063,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               </div>
               <TrendingUp className="w-4 h-4 text-rose-500" />
             </div>
+            )}
 
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
@@ -1346,7 +1348,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             const renderProposalCard = (proposal: StarSeasonProposal, idx: number) => {
               const currentPoints = proposal.supportPoints || 0;
               const trackMeta = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
-              const supporterCount = proposal.supporterCount || Math.max(1, Math.round(currentPoints / 2500));
+              const supporterCount = proposal.supporterCount || 0;
               const coverImg = getUniqueProposalCoverImage(proposal, idx);
 
               return (
@@ -1533,12 +1535,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           </span>
                           <span className="text-xs font-bold text-amber-800">創星幣</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
-                          <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                          <span className="font-mono font-bold text-stone-800">
-                            {supporterCount} 人支持
-                          </span>
-                        </div>
+                        {/* 支持人數只有管理員看得到；一般用戶只看創星幣募資額 */}
+                        {(currentUser?.role === 'admin' || (currentUser as any)?.accountType === 'admin') && (
+                          <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
+                            <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span className="font-mono font-bold text-stone-800">
+                              {supporterCount} 人支持
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
