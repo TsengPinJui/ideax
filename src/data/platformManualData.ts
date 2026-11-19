@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#323',
+    version: 'v4.9.37',
+    releaseDate: '2026.11.20',
+    releaseTime: '05:22',
+    author: 'IdeaX 核心工程團隊',
+    summary: '移除創星季的仿真示範提案',
+    changes: [
+      '創星季解方提案區移除 2 則仿真帳號示範提案（團帳通、公電分得清），保留官方提案範例',
+    ],
+  },
+  {
     seqNumber: '#322',
     version: 'v4.9.36',
     releaseDate: '2026.11.20',
@@ -4005,6 +4016,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#323** | **v4.9.37** | 2026.11.20 | 05:22 | IdeaX 創點子核心 | 移除創星季的仿真示範提案 |
 | **#322** | **v4.9.36** | 2026.11.20 | 05:11 | IdeaX 創點子核心 | 修正創星幣注資全部失敗 |
 | **#321** | **v4.9.35** | 2026.11.20 | 05:08 | IdeaX 創點子核心 | 修正管理員注資創星幣失敗 |
 | **#320** | **v4.9.34** | 2026.11.20 | 04:53 | IdeaX 創點子核心 | 創星季募資的支持人數僅管理員可見 |
