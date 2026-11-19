@@ -202,7 +202,12 @@ router.get('/proposals', async (req: Request, res: Response) => {
     // lite=1：移除內嵌的 base64 圖片／檔案內容，只回傳文字（列表資料原本可達數 MB）
     if (req.query.lite === '1') {
       const stripInline = (v: any): any => {
-        if (typeof v === 'string') return v.startsWith('data:') ? '[inline-file]' : v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '[inline-file]');
+        if (typeof v === 'string') {
+          if (v.startsWith('data:')) return '[inline-file]';
+          // 沒有 data: 前綴的長段 base64（例如 PDF 附件）
+          if (v.length > 1000 && /^[A-Za-z0-9+/=\s]+$/.test(v.slice(0, 2000))) return '[inline-file]';
+          return v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '[inline-file]');
+        }
         if (Array.isArray(v)) return v.map(stripInline);
         if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, stripInline(x)]));
         return v;
