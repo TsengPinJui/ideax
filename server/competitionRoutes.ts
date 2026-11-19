@@ -343,9 +343,23 @@ router.post('/support', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: '缺少必要參數 proposalId 或 points' });
     }
 
-    // 查核身分角色以判斷單案上限
-    const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
-    const userRole = (userDoc.exists ? userDoc.data()?.role : 'user') || 'user';
+    // 查核身分角色以判斷單案上限：管理員以伺服器驗證為準（單案上限 1,000 萬，錢包補足 1,000 萬創星幣）
+    const isAdminUser = await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : undefined);
+    let userRole: any = 'user';
+    if (isAdminUser) {
+      userRole = 'admin';
+    } else {
+      try {
+        const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
+        userRole = (userDoc.exists ? userDoc.data()?.role : 'user') || 'user';
+      } catch { userRole = 'user'; }
+    }
+    // 確保伺服器端有競賽錢包（每位會員自動開立；管理員補足 1,000 萬）
+    try {
+      await getOrCreateCompetitionAccount(authUser.uid, isAdminUser ? 'admin' : userRole === 'solver' ? 'solver' : 'user');
+    } catch (accErr: any) {
+      console.warn('[Competition] 建立競賽錢包失敗:', accErr?.message || accErr);
+    }
 
     const result = await supportProposalWithPoints({
       userId: authUser.uid,
@@ -357,7 +371,9 @@ router.post('/support', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    const authUser = await verifyAuthToken(req.headers.authorization).catch(() => null);
+    const hint = /上限|不足/.test(String(err?.message)) ? adminDenyDetail(authUser) : '';
+    res.status(400).json({ success: false, error: String(err?.message || '注資失敗') + hint });
   }
 });
 

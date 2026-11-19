@@ -170876,8 +170876,23 @@ router.post("/support", async (req, res) => {
     if (!proposalId || !points) {
       return res.status(400).json({ success: false, error: "\u7F3A\u5C11\u5FC5\u8981\u53C3\u6578 proposalId \u6216 points" });
     }
-    const userDoc = await adminDb.collection("users").doc(authUser.uid).get();
-    const userRole = (userDoc.exists ? userDoc.data()?.role : "user") || "user";
+    const isAdminUser = await isVerifiedAdmin(authUser.uid, authUser.emailVerified ? authUser.email : void 0);
+    let userRole = "user";
+    if (isAdminUser) {
+      userRole = "admin";
+    } else {
+      try {
+        const userDoc = await adminDb.collection("users").doc(authUser.uid).get();
+        userRole = (userDoc.exists ? userDoc.data()?.role : "user") || "user";
+      } catch {
+        userRole = "user";
+      }
+    }
+    try {
+      await getOrCreateCompetitionAccount(authUser.uid, isAdminUser ? "admin" : userRole === "solver" ? "solver" : "user");
+    } catch (accErr) {
+      console.warn("[Competition] \u5EFA\u7ACB\u7AF6\u8CFD\u9322\u5305\u5931\u6557:", accErr?.message || accErr);
+    }
     const result = await supportProposalWithPoints({
       userId: authUser.uid,
       userRole,
@@ -170887,7 +170902,9 @@ router.post("/support", async (req, res) => {
     });
     res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    const authUser = await verifyAuthToken(req.headers.authorization).catch(() => null);
+    const hint = /上限|不足/.test(String(err?.message)) ? adminDenyDetail(authUser) : "";
+    res.status(400).json({ success: false, error: String(err?.message || "\u6CE8\u8CC7\u5931\u6557") + hint });
   }
 });
 router.post("/proposals", async (req, res) => {
@@ -175912,7 +175929,7 @@ var FALLBACK_USD_RATES = {
 };
 
 // src/data/versionData.ts
-var APP_VERSION = "4.9.34";
+var APP_VERSION = "4.9.35";
 
 // src/utils/titleFormat.ts
 var COMMON_TECH_TERMS = /* @__PURE__ */ new Set([
