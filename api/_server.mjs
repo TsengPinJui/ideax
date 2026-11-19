@@ -170752,7 +170752,11 @@ router.get("/proposals", async (req, res) => {
     if (authUid) res.set("Cache-Control", "private, no-store");
     if (req.query.lite === "1") {
       const stripInline = (v) => {
-        if (typeof v === "string") return v.startsWith("data:") ? "[inline-file]" : v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "[inline-file]");
+        if (typeof v === "string") {
+          if (v.startsWith("data:")) return "[inline-file]";
+          if (v.length > 1e3 && /^[A-Za-z0-9+/=\s]+$/.test(v.slice(0, 2e3))) return "[inline-file]";
+          return v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "[inline-file]");
+        }
         if (Array.isArray(v)) return v.map(stripInline);
         if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x2]) => [k, stripInline(x2)]));
         return v;
