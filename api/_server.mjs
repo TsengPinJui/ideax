@@ -170750,6 +170750,15 @@ router.get("/proposals", async (req, res) => {
     }
     const proposals = await getPublicProposals(stage, track, authUid ? { authorId: authUid } : void 0);
     if (authUid) res.set("Cache-Control", "private, no-store");
+    if (req.query.lite === "1") {
+      const stripInline = (v) => {
+        if (typeof v === "string") return v.startsWith("data:") ? "[inline-file]" : v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, "[inline-file]");
+        if (Array.isArray(v)) return v.map(stripInline);
+        if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x2]) => [k, stripInline(x2)]));
+        return v;
+      };
+      return res.json({ success: true, proposals: stripInline(proposals) });
+    }
     res.json({ success: true, proposals });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -199,6 +199,16 @@ router.get('/proposals', async (req: Request, res: Response) => {
     try { authUid = (await verifyAuthToken(req.headers.authorization))?.uid; } catch { authUid = undefined; }
     const proposals = await getPublicProposals(stage, track, authUid ? { authorId: authUid } : undefined);
     if (authUid) res.set('Cache-Control', 'private, no-store');
+    // lite=1：移除內嵌的 base64 圖片／檔案內容，只回傳文字（列表資料原本可達數 MB）
+    if (req.query.lite === '1') {
+      const stripInline = (v: any): any => {
+        if (typeof v === 'string') return v.startsWith('data:') ? '[inline-file]' : v.replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '[inline-file]');
+        if (Array.isArray(v)) return v.map(stripInline);
+        if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, stripInline(x)]));
+        return v;
+      };
+      return res.json({ success: true, proposals: stripInline(proposals) });
+    }
     res.json({ success: true, proposals });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
