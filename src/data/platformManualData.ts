@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#318',
+    version: 'v4.9.32',
+    releaseDate: '2026.11.20',
+    releaseTime: '04:40',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季提案附件上傳失敗時顯示中文說明與替代做法',
+    changes: [
+      '附件上傳被雲端儲存空間拒絕時，不再顯示英文錯誤，改說明附件為選填、可先送出提案或改貼雲端硬碟連結',
+    ],
+  },
+  {
     seqNumber: '#317',
     version: 'v4.9.31',
     releaseDate: '2026.11.19',
@@ -3945,6 +3956,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#318** | **v4.9.32** | 2026.11.20 | 04:40 | IdeaX 創點子核心 | 創星季提案附件上傳失敗時顯示中文說明 |
 | **#317** | **v4.9.31** | 2026.11.19 | 00:29 | IdeaX 創點子核心 | 決選評分只列入已核准的解方提案 |
 | **#316** | **v4.9.30** | 2026.11.19 | 00:25 | IdeaX 創點子核心 | 管理員身分驗證失敗時顯示排查資訊 |
 | **#315** | **v4.9.29** | 2026.11.19 | 00:19 | IdeaX 創點子核心 | 修正伺服器未認出管理員身分 |

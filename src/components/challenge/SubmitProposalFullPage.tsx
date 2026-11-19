@@ -483,7 +483,13 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         showToast('附件上傳完成！');
       }
     } catch (err: any) {
-      showToast(err.message || '上傳出錯');
+      const code = String(err?.code || '');
+      if (code.startsWith('storage/')) {
+        // 雲端儲存空間拒絕或連線失敗：附件為選填，不影響送出提案
+        showToast('附件暫時無法上傳。附件為選填，你可以先不附檔直接送出提案，或把檔案放在 Google 雲端硬碟並將分享連結貼在「專屬網站連結 / Demo 體驗網址 / 外部參考資料」欄位。');
+      } else {
+        showToast(err?.message || '附件上傳失敗，請稍後再試');
+      }
     } finally {
       setIsUploadingFile(false);
     }
