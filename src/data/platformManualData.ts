@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#326',
+    version: 'v4.9.40',
+    releaseDate: '2026.11.21',
+    releaseTime: '02:46',
+    author: 'IdeaX 核心工程團隊',
+    summary: '創星季提案與痛點載入中時顯示載入狀態',
+    changes: [
+      '創星季首頁與提案總覽的解方提案、痛點問題在資料載入完成前顯示「資料載入中…」，不再先顯示「目前尚無」',
+    ],
+  },
+  {
     seqNumber: '#325',
     version: 'v4.9.39',
     releaseDate: '2026.11.20',
@@ -4038,6 +4049,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#326** | **v4.9.40** | 2026.11.21 | 02:46 | IdeaX 創點子核心 | 創星季提案與痛點載入中時顯示載入狀態 |
 | **#325** | **v4.9.39** | 2026.11.20 | 13:11 | IdeaX 創點子核心 | 修正提案內容頁的注資按鈕按了沒反應 |
 | **#324** | **v4.9.38** | 2026.11.20 | 05:28 | IdeaX 創點子核心 | 創星季只顯示真實痛點 |
 | **#323** | **v4.9.37** | 2026.11.20 | 05:22 | IdeaX 創點子核心 | 移除創星季的仿真示範提案 |

@@ -87,6 +87,8 @@ interface ExploreProposalsFullPageProps {
   onOpenPainPointInChuangDianZi?: (item: any) => void;
   initialSectionTab?: 'solution' | 'pain_point';
   initialProposalId?: string | null;
+  /** 提案資料是否仍在載入中（載入中不顯示「目前尚無」） */
+  isLoading?: boolean;
   proposals: StarSeasonProposal[];
   onRefreshProposals: () => Promise<void>;
   account: CompetitionAccount | null;
@@ -98,6 +100,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   onBackToOldSite,
   onOpenAuth,
   onOpenPainPointInChuangDianZi,
+  isLoading = false,
   initialSectionTab,
   initialProposalId,
   proposals: initialProposals,
@@ -1411,7 +1414,13 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
         {/* 提案總覽卡片清單 / 痛點問題專區 (依分頁切換) */}
         {activeSectionTab === 'solution' ? (
-          sortedProposals.length === 0 ? (
+          isLoading && sortedProposals.length === 0 ? (
+          <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-3 shadow-xs" role="status" aria-live="polite">
+            <div className="w-10 h-10 mx-auto rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin" />
+            <h3 className="text-base font-bold text-stone-800">資料載入中…</h3>
+            <p className="text-xs text-stone-500">正在取得最新內容，請稍候</p>
+          </div>
+          ) : sortedProposals.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
             <Clock className="w-12 h-12 text-amber-500 mx-auto" />
             <h3 className="text-base font-bold text-stone-800">
@@ -1799,7 +1808,13 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         )
       ) : (
         /* 痛點問題專區（附圖一卡片形式不顯示圖片，3欄展示） */
-        filteredPainPoints.length === 0 ? (
+        isLoading && filteredPainPoints.length === 0 ? (
+          <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-3 shadow-xs" role="status" aria-live="polite">
+            <div className="w-10 h-10 mx-auto rounded-full border-4 border-rose-200 border-t-rose-500 animate-spin" />
+            <h3 className="text-base font-bold text-stone-800">資料載入中…</h3>
+            <p className="text-xs text-stone-500">正在取得最新內容，請稍候</p>
+          </div>
+          ) : filteredPainPoints.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
             <Clock className="w-12 h-12 text-rose-500 mx-auto" />
             <h3 className="text-base font-bold text-stone-800">
