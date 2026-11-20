@@ -2098,6 +2098,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           originY={shatterTransition.originY}
         />
         <ExploreProposalsFullPage
+          isLoading={loading}
           onNavigate={navigateToSubView}
           onBackToOldSite={onBackToOldSite}
           onOpenAuth={onOpenAuth}
@@ -3602,7 +3603,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           </div>
 
           {homepageSectionTab === 'solution' ? (
-            homepageProposalBatches.length === 0 ? (
+            loading && homepageProposalBatches.length === 0 ? (
+              <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-amber-200/90 space-y-3 shadow-2xs" role="status" aria-live="polite">
+                <div className="w-10 h-10 mx-auto rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin" />
+                <h3 className="text-base sm:text-lg font-black text-stone-900">資料載入中…</h3>
+                <p className="text-xs sm:text-sm text-stone-500">正在取得最新內容，請稍候</p>
+              </div>
+            ) : homepageProposalBatches.length === 0 ? (
               <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-amber-200/90 space-y-3 shadow-2xs">
                 <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-2xs">
                   <Clock className="w-6 h-6" />
@@ -3938,7 +3945,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
             </>
             )
-          ) : homepagePainPoints.length === 0 ? (
+          ) : loading && homepagePainPoints.length === 0 ? (
+              <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-rose-200/90 space-y-3 shadow-2xs" role="status" aria-live="polite">
+                <div className="w-10 h-10 mx-auto rounded-full border-4 border-rose-200 border-t-rose-500 animate-spin" />
+                <h3 className="text-base sm:text-lg font-black text-stone-900">資料載入中…</h3>
+                <p className="text-xs sm:text-sm text-stone-500">正在取得最新內容，請稍候</p>
+              </div>
+            ) : homepagePainPoints.length === 0 ? (
             <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-rose-200/90 space-y-3 shadow-2xs">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-2xs">
                 <Clock className="w-6 h-6" />

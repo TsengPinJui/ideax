@@ -142,16 +142,27 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   // 創點子提案的打賞視窗（使用點數）
   const [tipQuestion, setTipQuestion] = useState<Question | null>(null);
   const [dbCompetitionProposals, setDbCompetitionProposals] = useState<StarSeasonProposal[]>(initialProposals || []);
+  // 創星季提案是否已載入完成：完成前先顯示載入中，讓創星季提案與既有提案同時出現（最多等 8 秒）
+  const [competitionReady, setCompetitionReady] = useState<boolean>(
+    Boolean(initialProposals && initialProposals.length > 0) || getCompetitionStageInfo().activeStage < 2
+  );
 
   useEffect(() => {
     if (initialProposals && initialProposals.length > 0) {
       setDbCompetitionProposals(initialProposals);
+      setCompetitionReady(true);
     } else {
+      const timer = setTimeout(() => setCompetitionReady(true), 8000);
       fetchProposals()
         .then((list) => {
           if (Array.isArray(list)) setDbCompetitionProposals(list);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          clearTimeout(timer);
+          setCompetitionReady(true);
+        });
+      return () => clearTimeout(timer);
     }
   }, [initialProposals]);
 
@@ -728,7 +739,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 </button>
               )}
               <span className="text-[11px] font-mono font-black text-amber-900 bg-amber-200/90 border border-amber-300 px-2 py-0.5 rounded-full">
-                {activeProposals.length} 件專案
+                {competitionReady ? activeProposals.length : "…"} 件專案
               </span>
             </h2>
           </div>
@@ -958,7 +969,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
       {/* 提案卡片清單列表 */}
       <div id="create-ideas-cards-list">
-      {finalFilteredProposals.length === 0 ? (
+      {!competitionReady ? (
+        <div className="p-12 text-center bg-white rounded-3xl border border-stone-200 shadow-2xs space-y-3" role="status" aria-live="polite">
+          <div className="w-10 h-10 mx-auto rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin" />
+          <h3 className="text-base font-black text-stone-800">提案載入中…</h3>
+          <p className="text-xs text-stone-500">正在同步創星季與平台的提案，請稍候</p>
+        </div>
+      ) : finalFilteredProposals.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-stone-200 shadow-2xs space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center font-bold">
             {activeTab === 'favorites' ? <Heart className="w-6 h-6 text-rose-500" /> : <Lightbulb className="w-6 h-6 text-amber-600" />}
