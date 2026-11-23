@@ -1,4 +1,5 @@
 import { realSurvey } from '../utils/surveyData';
+import { EXPERT_APPLICATION_OPEN } from '../config/expertApplication';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -1883,7 +1884,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">已認證</span>
                       ) : null}
                     </button>
-                    <button
+                    {EXPERT_APPLICATION_OPEN && (
+<button
                       onClick={() => handleOpenDashboard('expert_certification')}
                       className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50/80 hover:text-emerald-950 flex items-center justify-between cursor-pointer group transition-all"
                     >
@@ -1897,6 +1899,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">認證專家</span>
                       ) : null}
                     </button>
+)}
                     <div
                       onClick={() => handleOpenDashboard('survey', 'survey-questions-section')}
                       className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"

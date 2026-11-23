@@ -4,6 +4,7 @@ import AdminXpPanel from './xp/AdminXpPanel';
 import { fetchMyXp, XP_STATE_EVENT, type XpLite } from '../services/xpService';
 import { realSurvey } from '../utils/surveyData';
 import { isLocalDevHost } from '../services/accountGuard';
+import { EXPERT_APPLICATION_OPEN } from '../config/expertApplication';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useApp } from '../context/AppContext';
@@ -708,6 +709,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [adminCertTargetUserId, setAdminCertTargetUserId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
+  // 專家申請暫停時，只保留已是專家或審核中的用戶查看自己的認證狀態
+  const showExpertCertEntry = EXPERT_APPLICATION_OPEN || !!currentUser?.verifiedExpert || currentUser?.expertCertStatus === 'verified' || currentUser?.expertCertStatus === 'pending';
 
   React.useEffect(() => {
     if (initialTab === 'survey') {
@@ -2159,7 +2162,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           active: activeTab === 'profile' && profileSubTab !== 'survey',
         },
         { key: 'realname', label: '實名認證', icon: UserCheck, onSelect: openTab('real_name_auth'), active: activeTab === 'real_name_auth', trailing: certStatusText(currentUser.realNameAuthStatus) },
-        { key: 'expert', label: '專家認證', icon: ShieldCheck, onSelect: openTab('expert_certification'), active: activeTab === 'expert_certification', trailing: certStatusText(currentUser.expertCertStatus) },
+        ...(showExpertCertEntry ? [{ key: 'expert', label: '專家認證', icon: ShieldCheck, onSelect: openTab('expert_certification'), active: activeTab === 'expert_certification', trailing: certStatusText(currentUser.expertCertStatus) }] : []),
         {
           key: 'survey', label: '用戶問卷', icon: ClipboardList,
           onSelect: openTab('profile', () => {
@@ -3930,7 +3933,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {[
                     { label: '個人資料', desc: currentUser.bio ? '已填寫自我介紹' : '還沒有自我介紹，填寫後別人更容易找到你', action: '編輯', go: openTab('profile', () => setProfileSubTab('basic')) },
                     { label: '實名認證', desc: certStatusText(currentUser.realNameAuthStatus), action: currentUser.realNameAuthStatus === 'verified' ? '查看' : '前往認證', go: openTab('real_name_auth') },
-                    { label: '專家認證', desc: certStatusText(currentUser.expertCertStatus), action: currentUser.expertCertStatus === 'verified' ? '查看' : '申請', go: openTab('expert_certification') },
+                    ...(showExpertCertEntry ? [{ label: '專家認證', desc: certStatusText(currentUser.expertCertStatus), action: currentUser.expertCertStatus === 'verified' ? '查看' : '申請', go: openTab('expert_certification') }] : []),
                     {
                       label: '用戶問卷', desc: isSurveyDone ? '已填寫，謝謝你' : '花 2 分鐘填完，送會員體驗', action: isSurveyDone ? '查看' : '填寫',
                       go: openTab('profile', () => { setProfileSubTab('survey'); setTimeout(() => document.getElementById('survey-questions-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120); }),
@@ -5879,7 +5882,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {activeTab === 'real_name_auth' && <RealNameAuthTab />}
 
         {/* TAB: 專家認證資格審查 */}
-        {activeTab === 'expert_certification' && (
+        {activeTab === 'expert_certification' && !showExpertCertEntry && (
+          <div className="p-6 text-sm text-stone-600">專家申請目前暫停開放。</div>
+        )}
+        {activeTab === 'expert_certification' && showExpertCertEntry && (
           <ExpertCertificationTab onNavigateToRealName={() => setActiveTab('real_name_auth')} />
         )}
 
@@ -8116,7 +8122,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <p className="text-[11px] text-stone-500 leading-relaxed">
                   成為認證專家可享有全站優先推薦與專屬標章。達成條件：(1) 提交專業證照審核通過官方認證，或 (2) 在平台累計採納落地方案達 50 份以上且評分 ≥ 4 星。
                 </p>
-                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50 && (currentUser.rating || 0) >= 4.0) || currentUser.verifiedBadge) ? (
+                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50 && (currentUser.rating || 0) >= 4.0) || currentUser.verifiedBadge) ? (!EXPERT_APPLICATION_OPEN ? (
+                  <p className="text-[11px] text-stone-500">專家申請目前暫停開放。</p>
+                ) : (
                   <button
                     type="button"
                     onClick={() => setActiveTab('expert_certification')}
@@ -8129,7 +8137,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         : '進入「專家認證」填寫申請表單'}
                     </span>
                   </button>
-                ) : (
+                )) : (
                   <div className="p-3 rounded-xl bg-emerald-50 border border-stone-200 flex items-center justify-between gap-3 text-emerald-900 text-xs font-bold">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 shrink-0" />

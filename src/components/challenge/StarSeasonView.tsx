@@ -150,6 +150,7 @@ import { isGuestUser } from '../../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../../utils/guestAccess';
 import { isSimulatedUser, isSimulatedQuestion } from '../../data/virtualProposalsSeed';
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 
 export const isFakeProposal = (p: any): boolean => {
   if (!p) return true;
@@ -629,11 +630,18 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // 專家申請暫停開放：直接造訪 /challenge/expert 或 judge 子頁時導回總覽
+  useEffect(() => {
+    if (!EXPERT_APPLICATION_OPEN && currentSubView === 'judge') {
+      navigateToSubView('home');
+    }
+  }, [currentSubView]);
+
   // 未登入點擊提案或成為專家等需登入功能提示登入（使用 ref 防止重複觸發循環）
   const lastAuthPromptedSubViewRef = useRef<string | null>(null);
   useEffect(() => {
     if (
-      (currentSubView === 'submit' || currentSubView === 'participant' || currentSubView === 'judge') &&
+      (currentSubView === 'submit' || currentSubView === 'participant' || (currentSubView === 'judge' && EXPERT_APPLICATION_OPEN)) &&
       !isLoggedIn
     ) {
       if (lastAuthPromptedSubViewRef.current !== currentSubView) {
@@ -1586,7 +1594,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       onOpenAuth();
       return;
     }
-    setRegModalTab(tab);
+    setRegModalTab(tab === 'judge' && !EXPERT_APPLICATION_OPEN ? 'participant' : tab);
     setIsRegistrationModalOpen(true);
   };
 
@@ -2164,7 +2172,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     );
   }
 
-  if (currentSubView === 'judge') {
+  if (currentSubView === 'judge' && EXPERT_APPLICATION_OPEN) {
     return (
       <JudgeFullPage
         onNavigate={navigateToSubView}
@@ -2200,7 +2208,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
         {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
-        <StarSeasonBroadcastBanner onApply={() => navigateToSubView('judge')} />
+        {EXPERT_APPLICATION_OPEN && <StarSeasonBroadcastBanner onApply={() => navigateToSubView('judge')} />}
 
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-2">
@@ -2313,7 +2321,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </button>
 
             {/* 6. 成為專家 */}
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => {
                 if (!isLoggedIn) {
@@ -2328,6 +2337,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <ShieldCheck className="w-3.5 h-3.5 text-stone-500" />
               <span>成為專家</span>
             </button>
+)}
 
             {/* 8. 推廣大使 */}
             <button
@@ -2739,7 +2749,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         </button>
 
                         {/* 🌟 成為專家 */}
-                        <button
+                        {EXPERT_APPLICATION_OPEN && (
+<button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
@@ -2773,6 +2784,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           </div>
                           <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
+)}
 
                         {/* 推廣大使推薦碼 */}
                         <button
@@ -3301,7 +3313,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <span>報名參賽</span>
                 </button>
 
-                <button
+                {EXPERT_APPLICATION_OPEN && (
+<button
                   type="button"
                   onClick={() => {
                     if (!isLoggedIn) {
@@ -3315,6 +3328,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
                   <span>成為專家</span>
                 </button>
+)}
               </div>
 
               {/* 獎勵簡述 */}
@@ -5972,7 +5986,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <GraduationCap className="w-4 h-4" />
                 <span>參賽者報名</span>
               </button>
-              <button
+              {EXPERT_APPLICATION_OPEN && (
+<button
                 type="button"
                 onClick={() => setRegModalTab('judge')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
@@ -5984,6 +5999,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <ShieldCheck className="w-4 h-4" />
                 <span>成為專家 (專業專家團)</span>
               </button>
+)}
             </div>
 
             {/* Tab 1: 參賽者報名表單 */}

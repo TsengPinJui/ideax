@@ -1,3 +1,4 @@
+import { EXPERT_APPLICATION_OPEN } from '../config/expertApplication';
 import React, { useState, useEffect } from 'react';
 import { Solver, Category, ProblemLevel, isCertifiedExpert } from '../types';
 import { useApp } from '../context/AppContext';
@@ -122,7 +123,8 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 title="認證專家標準"
                 content="通過平台實名與資歷核驗，或累積採納方案 ≥ 50 份且評分 ≥ 4.0 星。認證專家享有優先曝光與專屬信譽標章。"
               />
-              <button
+              {EXPERT_APPLICATION_OPEN && (
+<button
                 type="button"
                 onClick={handleOpenCertification}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors group"
@@ -132,6 +134,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 <span>申請認證曝光</span>
                 <ArrowRight className="w-3 h-3 text-amber-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
               </button>
+)}
             </div>
             <p className="text-xs text-stone-500">
               匯聚各領域實務顧問，為您的難題提供落地破局方案
@@ -407,6 +410,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
               ) : (
                 <>
                   <h3 className="mt-4 text-xl sm:text-2xl font-black text-stone-900">正在召集第一批專家！</h3>
+                  {EXPERT_APPLICATION_OPEN && (
                   <div className="mt-6 flex flex-wrap justify-center gap-2.5">
                     <button
                       type="button"
@@ -418,6 +422,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
+                  )}
                 </>
               )}
             </div>

@@ -1,3 +1,4 @@
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 import React from 'react';
 import { Mail, ExternalLink, ArrowRight } from 'lucide-react';
 import { APP_VERSION, APP_RELEASE_DATE } from '../../data/versionData';
@@ -98,13 +99,15 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                 >
                   • 探索Idea
                 </button>
-                <button
+                {EXPERT_APPLICATION_OPEN && (
+<button
                   type="button"
                   onClick={() => onNavigate('judge')}
                   className="text-left hover:text-amber-400 transition-colors cursor-pointer"
                 >
                   • 申請成為專家
                 </button>
+)}
                 <button
                   type="button"
                   onClick={() => onNavigate('ambassador')}

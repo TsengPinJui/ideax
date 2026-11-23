@@ -48,6 +48,7 @@ import {
   downloadCompetitionPackage,
   downloadCompetitionDocOnly,
 } from '../../services/competitionCheatSheetService';
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 
 interface RulesFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -310,7 +311,8 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
             </button>
 
             {/* 5. 成為專家 */}
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => {
                 if (!currentUser || currentUser.id === 'user-guest') {
@@ -324,6 +326,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
             >
               成為專家
             </button>
+)}
 
             {/* 6. 推廣大使 */}
             <button
@@ -872,7 +875,8 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               <Users className="w-4 h-4 text-stone-300" />
               <span>參賽者 / 團隊報名</span>
             </button>
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => onNavigate('judge')}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white border border-stone-700 font-bold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer active:scale-98 flex items-center justify-center gap-2"
@@ -880,6 +884,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               <ShieldCheck className="w-4 h-4 text-stone-300" />
               <span>成為專家評審</span>
             </button>
+)}
           </div>
         </div>
       </main>
