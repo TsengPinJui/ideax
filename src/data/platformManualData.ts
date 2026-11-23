@@ -41,6 +41,17 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#328',
+    version: 'v4.9.42',
+    releaseDate: '2026.11.23',
+    releaseTime: '11:06',
+    author: 'IdeaX 核心工程團隊',
+    summary: '移除創星季後台「數據清零」按鈕，避免誤按',
+    changes: [
+      '創星季後台審核頁頂部的「數據清零」按鈕已移除，避免誤按造成競賽數據被歸零',
+    ],
+  },
+  {
     seqNumber: '#327',
     version: 'v4.9.41',
     releaseDate: '2026.11.23',
@@ -4063,6 +4074,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#328** | **v4.9.42** | 2026.11.23 | 11:06 | IdeaX 創點子核心 | 移除創星季後台數據清零按鈕 |
 | **#327** | **v4.9.41** | 2026.11.23 | 11:00 | IdeaX 創點子核心 | 隱藏專家申請入口，後台提案審核分類痛點與創新提案 |
 | **#326** | **v4.9.40** | 2026.11.21 | 02:46 | IdeaX 創點子核心 | 提案載入中顯示載入狀態，創點子專區提案同步顯示 |
 | **#325** | **v4.9.39** | 2026.11.20 | 13:11 | IdeaX 創點子核心 | 修正提案內容頁的注資按鈕按了沒反應 |
