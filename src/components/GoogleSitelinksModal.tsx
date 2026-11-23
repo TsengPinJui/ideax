@@ -1,3 +1,4 @@
+import { EXPERT_APPLICATION_OPEN } from '../config/expertApplication';
 import React, { useState } from 'react';
 import {
   X,
@@ -58,6 +59,7 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
   const starSeasonSitelinks = GOOGLE_SITELINKS.filter(
     (s) =>
       s.category === 'star_season' &&
+      (EXPERT_APPLICATION_OPEN || s.id !== 'challenge_expert') &&
       (isDefaultQuery ||
         s.name.toLowerCase().includes(queryLower) ||
         s.description.toLowerCase().includes(queryLower) ||

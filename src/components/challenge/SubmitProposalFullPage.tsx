@@ -80,6 +80,7 @@ import {
   serializeProposalSections,
   extractProposalAttachments,
 } from '../../utils/proposalContentHelper';
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 
 interface SubmitProposalFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'participant' | 'judge' | 'ambassador') => void;
@@ -899,7 +900,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             </button>
 
             {/* 5. 成為專家 */}
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => {
                 if (!currentUser || currentUser.id === 'user-guest') {
@@ -913,6 +915,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             >
               成為專家
             </button>
+)}
 
             {/* 6. 推廣大使 */}
             <button

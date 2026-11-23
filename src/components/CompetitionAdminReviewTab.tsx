@@ -114,6 +114,8 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [reviewingPropId, setReviewingPropId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // 提案審核區類型分類：全部 / 痛點（第一階段）/ 創新提案（第二階段）
+  const [propTypeFilter, setPropTypeFilter] = useState<'all' | 'pain_point' | 'solution'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Review note modal
@@ -470,6 +472,9 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   // 統計數據
   const pendingRegsCount = registrations.filter((r) => r.status === 'pending_review').length;
   const pendingPropsCount = proposals.filter((p) => p.status === 'pending_review').length;
+  // 一鍵核准只處理目前選取的類型（全部／痛點／創新提案）
+  const matchesPropType = (p: { stage?: string }) => propTypeFilter === 'all' || (propTypeFilter === 'pain_point') === (p.stage === 'pain_point');
+  const pendingPropsTypedCount = proposals.filter((p) => p.status === 'pending_review' && matchesPropType(p)).length;
   const pendingExpertsCount = experts.filter((e) => e.status === 'pending_review').length;
 
   // 一鍵核准：報名或提案分頁中所有「待審核」項目；需按兩次確認，逐筆送出並回報成功／失敗數
@@ -485,7 +490,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     setBulkConfirmKind(null);
     const ids =
       kind === 'proposals'
-        ? proposals.filter((p) => p.status === 'pending_review').map((p) => p.id)
+        ? proposals.filter((p) => p.status === 'pending_review' && matchesPropType(p)).map((p) => p.id)
         : registrations.filter((r) => r.status === 'pending_review').map((r) => r.id);
     if (ids.length === 0) return;
     setBulkRunning(true);
@@ -550,8 +555,17 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     return true;
   });
 
+  const isPainPointProp = (p: { stage?: string }) => p.stage === 'pain_point';
+  const typeFilteredBase = proposals.filter((p) => !isFakeProposal(p) && !isFakeOrVirtualProposal(p));
+  const propTypeCounts = {
+    all: typeFilteredBase.length,
+    pain_point: typeFilteredBase.filter(isPainPointProp).length,
+    solution: typeFilteredBase.filter((p) => !isPainPointProp(p)).length,
+  };
   const filteredProposals = proposals.filter((p) => {
     if (isFakeProposal(p) || isFakeOrVirtualProposal(p)) return false;
+    if (propTypeFilter === 'pain_point' && !isPainPointProp(p)) return false;
+    if (propTypeFilter === 'solution' && isPainPointProp(p)) return false;
     if (statusFilter === 'pending' && (p.status as string) !== 'pending_review' && (p.status as string) !== 'pending') return false;
     if (statusFilter === 'approved' && p.status !== 'approved') return false;
     if (statusFilter === 'rejected' && p.status !== 'rejected') return false;
@@ -896,7 +910,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
               ))}
             </div>
             {(subTab === 'registrations' || subTab === 'proposals') &&
-              (subTab === 'proposals' ? pendingPropsCount : pendingRegsCount) > 0 && (
+              (subTab === 'proposals' ? pendingPropsTypedCount : pendingRegsCount) > 0 && (
                 <button
                   type="button"
                   onClick={() => runBulkApprove(subTab as 'registrations' | 'proposals')}
@@ -911,8 +925,8 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                   {bulkRunning
                     ? '一鍵核准中…'
                     : bulkConfirmKind === subTab
-                      ? `確認核准 ${subTab === 'proposals' ? pendingPropsCount : pendingRegsCount} 件？再按一次`
-                      : `一鍵核准（${subTab === 'proposals' ? pendingPropsCount : pendingRegsCount}）`}
+                      ? `確認核准 ${subTab === 'proposals' ? pendingPropsTypedCount : pendingRegsCount} 件？再按一次`
+                      : `一鍵核准（${subTab === 'proposals' ? pendingPropsTypedCount : pendingRegsCount}）`}
                 </button>
               )}
           </div>
@@ -1673,6 +1687,26 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       {/* ========================================================================= */}
       {subTab === 'proposals' && (
         <div className="space-y-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {([
+              { key: 'all', label: '全部' },
+              { key: 'pain_point', label: '痛點' },
+              { key: 'solution', label: '創新提案' },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setPropTypeFilter(t.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                  propTypeFilter === t.key
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                {t.label}（{propTypeCounts[t.key]}）
+              </button>
+            ))}
+          </div>
           {filteredProposals.length === 0 ? (
             <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-stone-300 text-stone-400 text-xs">
               目前無符合條件的競賽提案

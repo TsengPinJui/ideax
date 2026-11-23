@@ -24,6 +24,7 @@ import {
 } from '../../services/competitionClientService';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 
 interface AmbassadorFullPageProps {
   onNavigate: (view: 'home' | 'rules' | 'submit' | 'participant' | 'judge') => void;
@@ -235,7 +236,8 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
             </button>
 
             {/* 5. 成為專家 */}
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => {
                 if (!currentUser || currentUser.id === 'user-guest') {
@@ -249,6 +251,7 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
             >
               成為專家
             </button>
+)}
 
             {/* 6. 推廣大使 (當前頁) */}
             <span className="px-3 py-1.5 rounded-xl text-stone-950 bg-white font-black shadow-2xs">

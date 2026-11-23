@@ -23,6 +23,7 @@ import { recordNewParticipantRegistration } from '../../services/competitionAdmi
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
+import { EXPERT_APPLICATION_OPEN } from '../../config/expertApplication';
 
 interface ParticipantFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'judge' | 'ambassador') => void;
@@ -370,7 +371,8 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
             </span>
 
             {/* 5. 成為專家 */}
-            <button
+            {EXPERT_APPLICATION_OPEN && (
+<button
               type="button"
               onClick={() => {
                 if (!currentUser || currentUser.id === 'user-guest') {
@@ -384,6 +386,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
             >
               成為專家
             </button>
+)}
 
             {/* 6. 推廣大使 */}
             <button
